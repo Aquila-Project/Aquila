@@ -31,12 +31,11 @@ aquila_link_engine(AquilaEditor)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(AquilaEditor PRIVATE
-        -Wall -Wextra
+        ${AQUILA_CLANG_WALL} -Wextra
         -Wno-unused-parameter
         -Wno-deprecated-literal-operator
         -fcolor-diagnostics
-        $<$<CONFIG:Debug>:-O0 -g3 -fno-omit-frame-pointer -fno-inline>
-        $<$<CONFIG:Release>:-O3 -g1>
+        $<$<CONFIG:Release>:-gline-tables-only>
     )
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(AquilaEditor PRIVATE

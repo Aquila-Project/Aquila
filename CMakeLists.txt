@@ -29,6 +29,15 @@ if (MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "MSVC (cl.exe) is not supported. Use Clang/clang-cl or GCC instead.")
 endif ()
 
+set(AQUILA_CLANG_CL OFF)
+set(AQUILA_CLANG_WALL -Wall)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set(AQUILA_CLANG_CL ON)
+    set(AQUILA_CLANG_WALL /W3)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+endif ()
+message(STATUS "clang-cl frontend: ${AQUILA_CLANG_CL}")
+
 set(CACHE_PROGRAM "none")
 find_program(SCCACHE_PROGRAM sccache)
 find_program(CCACHE_PROGRAM ccache)
@@ -49,16 +58,28 @@ endif ()
 set(LINKER_NAME "default")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    find_program(LLD_LINKER lld)
-    if (LLD_LINKER)
-        message(STATUS "Using lld linker with Clang")
-        add_link_options(-fuse-ld=lld)
-        set(LINKER_NAME "lld")
+    if (AQUILA_CLANG_CL)
+        # clang-cl: CMake calls the linker directly, so -fuse-ld doesn't apply
+        find_program(LLD_LINK_PROGRAM lld-link)
+        if (LLD_LINK_PROGRAM)
+            set(CMAKE_LINKER "${LLD_LINK_PROGRAM}" CACHE FILEPATH "Linker" FORCE)
+            set(LINKER_NAME "lld-link")
+            message(STATUS "Using lld-link with clang-cl")
+        else ()
+            message(WARNING "lld-link not found; falling back to link.exe")
+        endif ()
     else ()
-        message(WARNING "lld not found for Clang. Using default linker (slower). Install lld for faster linking.")
-        set(LINKER_NAME "default (install lld for faster builds)")
+        # clang/clang++: linking goes through the driver
+        find_program(LLD_LINKER NAMES ld.lld lld)
+        if (LLD_LINKER)
+            add_link_options(-fuse-ld=lld)
+            set(LINKER_NAME "lld")
+            message(STATUS "Using lld linker with Clang")
+        else ()
+            message(WARNING "lld not found for Clang. Using default linker (slower).")
+            set(LINKER_NAME "default (install lld for faster builds)")
+        endif ()
     endif ()
-
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     if (UNIX AND NOT APPLE)
         find_program(MOLD_LINKER mold)
@@ -102,39 +123,39 @@ set(CMAKE_BUILD_PARALLEL_LEVEL ${BUILD_PARALLELISM})
 set(ENV{CMAKE_BUILD_PARALLEL_LEVEL} ${BUILD_PARALLELISM})
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(
-            -Xclang -fno-pch-timestamp
-    )
+    add_compile_options("SHELL:-Xclang -fno-pch-timestamp")
+    if (AQUILA_CLANG_CL)
+        add_compile_options(-Wno-clang-cl-pch)
+    endif ()
 
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        add_compile_options(-O0 -g3 -fno-omit-frame-pointer -fno-inline)
+        if (AQUILA_CLANG_CL)
+            add_compile_options(/clang:-fno-omit-frame-pointer)
+        else ()
+            add_compile_options(-O0 -g3 -fno-omit-frame-pointer -fno-inline)
+        endif ()
     endif ()
 
-    if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    if (CMAKE_BUILD_TYPE STREQUAL "Release" AND LINKER_NAME MATCHES "^lld")
         add_compile_options(-flto=thin)
-        add_link_options(-flto=thin)
+        if (NOT AQUILA_CLANG_CL)
+            add_link_options(-flto=thin)   # lld-link detects bitcode on its own
+        endif ()
     endif ()
 endif ()
-
 if (WIN32)
     add_compile_definitions(AQUILA_PLATFORM_WINDOWS)
     # clang targets MSVC ABI (_M_AMD64) but the Windows SDK also checks _AMD64_ (DDK macro)
     # in headers like winnt.h; define it explicitly.
     add_compile_definitions(_AMD64_)
-    # Use the Windows SDK rc.exe directly. cmake_llvm_rc invokes clang via an 8.3 short path
-    # which can prevent clang from locating its resource directory; rc.exe has its own
-    # preprocessor and handles the .rc files correctly without the two-step wrapper.
-    file(GLOB _wdk_rc_candidates
-        "C:/Program Files (x86)/Windows Kits/10/bin/10.*/x64/rc.exe"
-    )
-    list(SORT _wdk_rc_candidates ORDER DESCENDING)
-    if (_wdk_rc_candidates)
-        list(GET _wdk_rc_candidates 0 _wdk_rc)
-        set(CMAKE_RC_COMPILER "${_wdk_rc}" CACHE FILEPATH "Windows SDK RC compiler" FORCE)
-    endif()
-    set(CMAKE_RC_COMPILER_LAUNCHER "" CACHE STRING "" FORCE)
-    set(CMAKE_RC_COMPILE_OBJECT
-        "<CMAKE_RC_COMPILER> <DEFINES> <INCLUDES> /fo<OBJECT> <SOURCE>")
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    if (CMAKE_RC_COMPILER MATCHES "llvm-rc")
+        set(CMAKE_RC_COMPILE_OBJECT
+            "<CMAKE_RC_COMPILER> <DEFINES> <INCLUDES> /C 1252 /fo <OBJECT> <SOURCE>")
+    else ()
+        set(CMAKE_RC_COMPILE_OBJECT
+            "<CMAKE_RC_COMPILER> <DEFINES> <INCLUDES> /fo <OBJECT> <SOURCE>")
+    endif ()
 elseif (UNIX AND NOT APPLE)
     add_compile_definitions(AQUILA_PLATFORM_LINUX)
 elseif (APPLE)
@@ -279,16 +300,15 @@ add_compile_definitions(
 )
 
 
-if (PROJECT_IS_TOP_LEVEL)
-    # Expose whichever preset was configured last at the source root, so
-    # clangd (pointed at CompilationDatabase: .) finds it without per-user setup.
-    file(CREATE_LINK
-        "${CMAKE_BINARY_DIR}/compile_commands.json"
-        "${CMAKE_SOURCE_DIR}/compile_commands.json"
-        COPY_ON_ERROR SYMBOLIC
+if (PROJECT_IS_TOP_LEVEL AND CMAKE_EXPORT_COMPILE_COMMANDS)
+    add_custom_target(copy_compile_commands ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/compile_commands.json"
+            "${CMAKE_SOURCE_DIR}/compile_commands.json"
+        COMMENT "Exposing compile_commands.json at source root"
+        VERBATIM
     )
 endif ()
-
 
 add_subdirectory(Engine)
 

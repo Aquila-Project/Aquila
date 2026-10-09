@@ -44,11 +44,9 @@ target_link_libraries(${MODULE_NAME}
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(${MODULE_NAME} PRIVATE
-        -Wall -Wextra -Wpedantic
+        ${AQUILA_CLANG_WALL} -Wextra -Wpedantic
         -Wno-unused-parameter
         -fcolor-diagnostics
         -Werror=missing-designated-field-initializers
-        $<$<CONFIG:Debug>:-O0 -g3 -fno-omit-frame-pointer -fno-inline>
-        $<$<CONFIG:Release>:-O3>
     )
 endif()

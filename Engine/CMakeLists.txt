@@ -29,6 +29,7 @@ set(ASSIMP_BUILD_DOCS OFF)
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
 
 if(UNIX)
     set(ASSIMP_BUILD_MINIZIP ON CACHE BOOL "" FORCE)
@@ -36,7 +37,10 @@ endif()
 
 set(ASSIMP_BUILD_USE_CCACHE OFF CACHE BOOL "" FORCE)
 
-add_subdirectory(${VENDOR_DIR}/assimp)
+add_subdirectory(${VENDOR_DIR}/assimp SYSTEM)
+if (TARGET zlibstatic)
+    target_compile_options(zlibstatic PRIVATE -w)
+endif ()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(assimp PRIVATE
         -Wno-padded
