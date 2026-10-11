@@ -35,6 +35,7 @@ struct PropertyHints {
 	bool slider = false;
 	bool read_only = false;
 	std::string_view unit{};
+	std::string_view asset_type{};
 };
 
 struct Property {

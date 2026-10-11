@@ -38,7 +38,6 @@ void AssetSlot::clear() {
 	m_has_value = false;
 	m_value = {};
 	update_display();
-	remove_class("asset-slot-filled");
 	on_changed(std::nullopt);
 }
 
@@ -54,7 +53,6 @@ void AssetSlot::on_drop(DragState &state) {
 			return;
 		}
 		set_value(payload);
-		add_class("asset-slot-filled");
 		remove_class("drag-over");
 		remove_class("drag-over-invalid");
 		on_changed(m_value);
@@ -92,6 +90,7 @@ void AssetSlot::apply_xml_attribute(std::string_view name, std::string_view valu
 
 void AssetSlot::update_display() {
 	m_clear_button->set_hidden(!m_has_value);
+	set_class("asset-slot-filled", m_has_value);
 
 	if (m_has_value) {
 		m_label->set_text(m_value.display_name.empty() ? m_value.asset_path : m_value.display_name);

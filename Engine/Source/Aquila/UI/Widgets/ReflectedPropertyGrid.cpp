@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 
+#include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/ColorPicker.h"
 #include "Aquila/UI/Widgets/DragFloat.h"
@@ -172,6 +173,23 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 			auto *label = grid.add_row<Label>(property.name, std::string{});
 			row.widget = label;
 			row.show = [label](const PropertyValue &value) { label->set_text(std::get<std::string>(value)); };
+			break;
+		}
+		if (!property.hints.asset_type.empty()) {
+			const std::string type(property.hints.asset_type);
+			auto *slot = grid.add_row<AssetSlot>(property.name, type);
+			slot->on_changed.connect([edited](const Option<AssetPayload> &asset) {
+				edited(PropertyValue{ asset ? asset->asset_path : std::string{} });
+			});
+			row.widget = slot;
+			row.show = [slot, type](const PropertyValue &value) {
+				const auto &path = std::get<std::string>(value);
+				if (path.empty()) {
+					slot->clear();
+					return;
+				}
+				slot->set_value(AssetPayload{ path, type, path.substr(path.find_last_of('/') + 1) });
+			};
 			break;
 		}
 		auto *field = grid.add_row<TextInput>(property.name);

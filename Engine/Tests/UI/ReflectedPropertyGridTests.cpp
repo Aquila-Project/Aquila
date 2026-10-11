@@ -1,5 +1,6 @@
 #include <doctest.h>
 
+#include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/DragFloat.h"
 #include "Aquila/UI/Widgets/DragInt.h"
@@ -212,5 +213,30 @@ TEST_SUITE("ReflectedPropertyGrid") {
 		reflected.bind(&thing);
 
 		CHECK(widget<Label>(reflected, "Id").get_text() == "thing#1");
+	}
+
+	TEST_CASE("strings with an asset type are slots that take matching drops") {
+		TypeInfo type("Thing");
+		TypeBuilder<Thing>(type).property("Script", &Thing::label, { .asset_type = "script" });
+		PropertyGrid grid;
+		ReflectedPropertyGrid reflected(grid, type, nullptr);
+		Thing thing;
+		thing.label = "/scripts/old.luau";
+		reflected.bind(&thing);
+
+		auto &slot = widget<AssetSlot>(reflected, "Script");
+		CHECK(slot.get_value().display_name == "old.luau");
+
+		DragState drag{};
+		drag.payload = AssetPayload{ "/textures/wood.png", "texture", "wood.png" };
+		slot.on_drop(drag);
+		CHECK(thing.label == "/scripts/old.luau");
+
+		drag.payload = AssetPayload{ "/scripts/spin.luau", "script", "spin.luau" };
+		slot.on_drop(drag);
+		CHECK(thing.label == "/scripts/spin.luau");
+
+		slot.clear();
+		CHECK(thing.label.empty());
 	}
 }
