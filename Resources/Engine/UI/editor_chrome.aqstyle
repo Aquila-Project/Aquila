@@ -189,10 +189,22 @@
     background-color: var(--selection);
 }
 
+.content-tile-preview {
+    width: 48px;
+    height: 48px;
+    align-items: center;
+    justify-content: center;
+}
+
 .content-tile-icon {
     width: 36px;
     height: 36px;
     color: var(--text-dim);
+}
+
+.content-tile-thumbnail {
+    color: #ffffff;
+    border-radius: 2px;
 }
 
 .content-tile-folder {

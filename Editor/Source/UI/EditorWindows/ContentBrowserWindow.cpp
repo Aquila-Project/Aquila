@@ -2,7 +2,9 @@
 
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/GFX/GfxTexture.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+#include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Image.h"
@@ -19,6 +21,8 @@ namespace Editor {
 
 using namespace Aquila::UI::Core;
 using Aquila::Platform::KeyCode;
+using Aquila::UI::StyleLength;
+using Aquila::UI::StyleProperties;
 using Aquila::Platform::Filesystem::VirtualFileSystem;
 
 namespace {
@@ -26,6 +30,8 @@ namespace {
 constexpr std::string_view k_root = "/resources";
 constexpr Usize k_line_length = 12;
 constexpr std::chrono::milliseconds k_double_click{ 400 };
+constexpr F32 k_thumbnail_size = 48.F;
+constexpr Int64 k_max_preview_bytes = 8 * 1024 * 1024;
 
 std::string lower(std::string_view text) {
 	std::string out(text);
@@ -60,6 +66,24 @@ std::string asset_type(std::string_view name) {
 	return "file";
 }
 
+bool is_previewable(const std::string &path) {
+	const std::string file = lower(path);
+	const bool image =
+		std::ranges::any_of(std::initializer_list<std::string_view>{ ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".svg" },
+							[&file](std::string_view extension) { return file.ends_with(extension); });
+	return image && VirtualFileSystem::get()->get_file_size(path) <= k_max_preview_bytes;
+}
+
+StyleProperties fit_thumbnail(const Aquila::GFX::GfxTexture &texture) {
+	const F32 width = static_cast<F32>(std::max(1U, texture.get_width()));
+	const F32 height = static_cast<F32>(std::max(1U, texture.get_height()));
+	const F32 scale = k_thumbnail_size / std::max(width, height);
+	StyleProperties style;
+	style.width = StyleLength::pixel(width * scale);
+	style.height = StyleLength::pixel(height * scale);
+	return style;
+}
+
 std::string_view icon_for(std::string_view type) {
 	if (type == "folder") {
 		return "folder";
@@ -82,7 +106,8 @@ std::string_view icon_for(std::string_view type) {
 bool is_break(std::string_view name, Usize i) {
 	const char c = name[i];
 	return c == '.' || c == '_' || c == '-' || c == ' ' ||
-		   (std::isupper(static_cast<unsigned char>(c)) != 0 && std::islower(static_cast<unsigned char>(name[i - 1])) != 0);
+		(std::isupper(static_cast<unsigned char>(c)) != 0 &&
+		 std::islower(static_cast<unsigned char>(name[i - 1])) != 0);
 }
 
 std::string wrap_name(std::string_view name) {
@@ -146,16 +171,23 @@ class RenameField final : public TextInput {
 
 class ContentTile final : public View {
   public:
-	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon)
+	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon, bool thumbnail)
 		: m_payload(std::move(payload)) {
 		m_is_draggable = !is_directory;
 		set_input_leaf(true);
 		set_tooltip(m_payload.display_name);
 		add_class("content-tile");
 
-		auto *image = add_child<Image>(icon);
-		image->add_class("content-tile-icon");
-		image->set_class("content-tile-folder", is_directory);
+		auto *preview = add_child<View>();
+		preview->add_class("content-tile-preview");
+		auto *image = preview->add_child<Image>(icon);
+		if (thumbnail) {
+			image->add_class("content-tile-thumbnail");
+			image->set_style(fit_thumbnail(*icon));
+		} else {
+			image->add_class("content-tile-icon");
+			image->set_class("content-tile-folder", is_directory);
+		}
 		m_name = add_child<Label>(wrap_name(m_payload.display_name));
 		m_name->add_class("content-tile-name");
 	}
@@ -320,12 +352,14 @@ void ContentBrowserWindow::build_grid() {
 
 	for (Tile &tile : tiles) {
 		const std::string type = tile.is_directory ? "folder" : asset_type(tile.name);
+		Aquila::GFX::GfxTexture *thumbnail =
+			!tile.is_directory && is_previewable(tile.path) ? context().textures().load(tile.path) : nullptr;
 		tile.view = m_grid->add_child<ContentTile>(AssetPayload{ tile.path, type, tile.name }, tile.is_directory,
-												   context().icon(icon_for(type)));
+												   thumbnail != nullptr ? thumbnail : context().icon(icon_for(type)),
+												   thumbnail != nullptr);
 		tile.view->set_class("content-tile-selected", tile.path == m_selected);
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
-		tile.view->on_context_menu.connect(
-			[this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
+		tile.view->on_context_menu.connect([this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
 		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path, view = tile.view](KeyCode key) {
 			if (key == KeyCode::F2) {
 				begin_rename(path);
