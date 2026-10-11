@@ -42,11 +42,16 @@ class ContentBrowserWindow final : public EditorWindow {
 	void create(const ContentCreator &creator);
 	void begin_rename(const std::string &path);
 	void rename(const std::string &path, const std::string &name);
+	void confirm_delete(const std::string &path, Vec2 position);
+	void remove(const std::string &path);
+	void defer(Delegate<void()> action);
 
 	Aquila::UI::Core::View *m_path = nullptr;
 	Aquila::UI::Core::View *m_grid = nullptr;
 	Aquila::UI::Core::TextInput *m_filter = nullptr;
 	Aquila::UI::Core::PopupMenu *m_menu = nullptr;
+	Aquila::UI::Core::PopupMenu *m_confirm = nullptr;
+	std::vector<Delegate<void()>> m_deferred;
 	std::vector<Tile> m_tiles;
 	std::string m_directory;
 	std::optional<std::string> m_pending;

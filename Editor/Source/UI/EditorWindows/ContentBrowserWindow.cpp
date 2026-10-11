@@ -231,6 +231,7 @@ void ContentBrowserWindow::build(View &content) {
 	}
 
 	m_menu = dynamic_cast<PopupMenu *>(overlay_root()->add_child(std::make_unique<PopupMenu>()));
+	m_confirm = dynamic_cast<PopupMenu *>(overlay_root()->add_child(std::make_unique<PopupMenu>()));
 	m_grid->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
 	if (auto *scroll = root->find_by_id("content-scroll")) {
 		scroll->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
@@ -240,6 +241,9 @@ void ContentBrowserWindow::build(View &content) {
 }
 
 void ContentBrowserWindow::update(F32) {
+	for (Delegate<void()> &action : std::exchange(m_deferred, {})) {
+		action();
+	}
 	if (!m_pending) {
 		return;
 	}
@@ -250,6 +254,11 @@ void ContentBrowserWindow::update(F32) {
 
 void ContentBrowserWindow::navigate(std::string directory) {
 	m_pending = std::move(directory);
+	Aquila::Foundation::FrameScheduler::get()->request_frame();
+}
+
+void ContentBrowserWindow::defer(Delegate<void()> action) {
+	m_deferred.push_back(std::move(action));
 	Aquila::Foundation::FrameScheduler::get()->request_frame();
 }
 
@@ -309,9 +318,12 @@ void ContentBrowserWindow::build_grid() {
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
 		tile.view->on_context_menu.connect(
 			[this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
-		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path](KeyCode key) {
+		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path, view = tile.view](KeyCode key) {
 			if (key == KeyCode::F2) {
 				begin_rename(path);
+			} else if (key == KeyCode::Delete) {
+				const Rect rect = view->get_absolute_rect();
+				confirm_delete(path, { rect.position.x, rect.position.y + rect.size.y });
 			}
 		};
 	}
@@ -357,7 +369,28 @@ void ContentBrowserWindow::open_item_menu(const std::string &path, Vec2 position
 	press(path);
 	m_menu->clear_items();
 	m_menu->add_item("Rename", "F2", context().icon("pencil"), [this, path] { begin_rename(path); });
+	m_menu->add_item("Delete", "Del", context().icon("trash"),
+					 [this, path, position] { defer([this, path, position] { confirm_delete(path, position); }); });
 	m_menu->open_at(position);
+}
+
+void ContentBrowserWindow::confirm_delete(const std::string &path, Vec2 position) {
+	const std::string name = path.substr(path.find_last_of('/') + 1);
+	const bool folder = VirtualFileSystem::get()->is_directory(path);
+	m_confirm->clear_items();
+	m_confirm->add_item(folder ? "Delete " + name + " and everything in it" : "Delete " + name, {},
+						context().icon("trash"), [this, path] { remove(path); });
+	m_confirm->add_item("Cancel", [] {});
+	m_confirm->open_at(position);
+}
+
+void ContentBrowserWindow::remove(const std::string &path) {
+	auto *vfs = VirtualFileSystem::get();
+	const bool removed = vfs->is_directory(path) ? vfs->delete_directory(path, true) : vfs->delete_file_aq(path);
+	if (!removed) {
+		AQUILA_LOG_WARNING("ContentBrowserWindow: could not delete {}", path);
+	}
+	navigate(m_directory);
 }
 
 void ContentBrowserWindow::begin_rename(const std::string &path) {
