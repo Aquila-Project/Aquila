@@ -43,6 +43,9 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 			on_entity_selected(entity);
 		});
 
+		m_tree_view->on_asset_dropped.connect(
+			[this](Entity entity, const UI::Core::AssetPayload &asset) { on_asset_dropped(entity, asset); });
+
 		m_tree_view->on_deselected.connect([this] {
 			AQUILA_LOG_DEBUG("Entity was deselected");
 			m_selected_node = nullptr;

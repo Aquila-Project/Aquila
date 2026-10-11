@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Aquila/Scene/Entity.h"
+#include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/TreeView.h"
 
 #include <array>
@@ -59,6 +60,7 @@ class HierarchyTreeView : public Aquila::UI::Core::TreeView {
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_selected;
 	Signal<void(Aquila::SceneManagement::Entity, Vec2)> on_entity_right_clicked;
 	Signal<void(Aquila::SceneManagement::Entity)> on_visibility_changed;
+	Signal<void(Aquila::SceneManagement::Entity, const Aquila::UI::Core::AssetPayload &)> on_asset_dropped;
 
   private:
 	struct Group {

@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/EntityManager.h"
+#include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/Button.h"
 
 namespace Editor {
@@ -54,7 +55,25 @@ void HierarchyTreeNode::on_drag_start(DragState &state) {
 	state.label = get_label();
 }
 
+void HierarchyTreeNode::on_drag_enter(DragState &state) {
+	TreeNode::on_drag_enter(state);
+	const auto *asset = std::any_cast<AssetPayload>(&state.payload);
+	const bool accepted =
+		std::any_cast<Entity>(&state.payload) != nullptr || (asset != nullptr && asset->asset_type == "script");
+	get_row()->set_class("hierarchy-drop-target", accepted);
+}
+
+void HierarchyTreeNode::on_drag_leave(DragState &state) {
+	TreeNode::on_drag_leave(state);
+	get_row()->remove_class("hierarchy-drop-target");
+}
+
 void HierarchyTreeNode::on_drop(DragState &state) {
+	if (const auto *asset = std::any_cast<AssetPayload>(&state.payload)) {
+		m_hierarchy_view.on_asset_dropped(m_entity, *asset);
+		return;
+	}
+
 	const auto *dragged = std::any_cast<Entity>(&state.payload);
 	if (dragged == nullptr) {
 		return;

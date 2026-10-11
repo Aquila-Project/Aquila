@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "UI/Panels/IEditorPanel.h"
 #include "Aquila/Scene/Entity.h"
@@ -26,6 +27,7 @@ class HierarchyPanel : public IEditorPanel {
 	Signal<void()> on_entity_deselected;
 	Signal<void()> on_create_requested;
 	Signal<void(Aquila::SceneManagement::Entity)> on_visibility_changed;
+	Signal<void(Aquila::SceneManagement::Entity, const Aquila::UI::Core::AssetPayload &)> on_asset_dropped;
 	void add_entity(Aquila::SceneManagement::Entity entity);
 	void select_entity(Aquila::SceneManagement::Entity entity);
 	void deselect_entity();

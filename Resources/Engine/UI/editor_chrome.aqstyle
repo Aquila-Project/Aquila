@@ -86,6 +86,10 @@
     color: var(--text-muted);
 }
 
+.hierarchy-drop-target {
+    background-color: var(--drop-overlay);
+}
+
 #content-root {
     flex-direction: column;
     width: 100%;

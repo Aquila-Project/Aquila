@@ -2,6 +2,7 @@
 
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scripting/ScriptComponent.h"
 #include "UI/ComponentIcons.h"
 #include "UI/Panels/HierarchyPanel.h"
 #include "UI/Panels/HierarchyTreeView.h"
@@ -42,6 +43,14 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 		if (!m_syncing) {
 			context().selection.select(entity);
 		}
+	});
+	m_panel->on_asset_dropped.connect([this](Entity entity, const Aquila::UI::Core::AssetPayload &asset) {
+		if (asset.asset_type != "script") {
+			return;
+		}
+		entity.get_or_emplace<Aquila::Scripting::ScriptComponent>().path = asset.asset_path;
+		context().selection.select(entity);
+		context().selection.on_entity_modified(entity);
 	});
 	m_panel->on_entity_deselected.connect([this] {
 		if (!m_syncing) {

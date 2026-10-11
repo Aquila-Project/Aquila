@@ -23,6 +23,8 @@ class HierarchyTreeNode : public Aquila::UI::Core::TreeNode {
   private:
 	void on_drag_start(Aquila::UI::Core::DragState &state) override;
 	void on_drop(Aquila::UI::Core::DragState &state) override;
+	void on_drag_enter(Aquila::UI::Core::DragState &state) override;
+	void on_drag_leave(Aquila::UI::Core::DragState &state) override;
 
 	void toggle_visibility();
 
