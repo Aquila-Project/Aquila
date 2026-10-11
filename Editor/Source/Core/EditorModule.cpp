@@ -352,12 +352,13 @@ void EditorModule::add_workspace(std::string name, Aquila::UI::Core::DockLayoutD
 void EditorModule::register_workspaces() {
 	using namespace Aquila::UI::Core::DockLayout;
 
-	m_workspaces->add("Scene",
-					  layout(row({
-						  { 0.18F, tabs({ "hierarchy" }) },
-						  { 0.60F, column({ { 0.74F, tabs({ "viewport" }) }, { 0.26F, tabs({ "console" }) } }) },
-						  { 0.22F, tabs({ "inspector" }) },
-					  })));
+	m_workspaces->add(
+		"Scene",
+		layout(row({
+			{ 0.18F, tabs({ "hierarchy" }) },
+			{ 0.60F, column({ { 0.70F, tabs({ "viewport" }) }, { 0.30F, tabs({ "content", "console" }) } }) },
+			{ 0.22F, tabs({ "inspector" }) },
+		})));
 
 	m_workspaces->add(
 		"Layout",
@@ -370,7 +371,7 @@ void EditorModule::register_workspaces() {
 		"Debug",
 		layout(column({
 			{ 0.60F, row({ { 0.68F, tabs({ "viewport" }) }, { 0.32F, tabs({ "inspector", "hierarchy" }) } }) },
-			{ 0.40F, tabs({ "console" }) },
+			{ 0.40F, tabs({ "console", "content" }) },
 		})));
 }
 
