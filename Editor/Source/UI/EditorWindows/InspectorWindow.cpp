@@ -25,6 +25,11 @@ void InspectorWindow::build(Aquila::UI::Core::View &content) {
 	listen(selection.on_changed, [this](Entity entity) { show(entity); });
 	listen(selection.on_scene_replaced, [this] { m_panel->clear(); });
 	listen(selection.on_entity_transformed, [this](Entity entity) { m_panel->refresh_values(entity); });
+	listen(selection.on_components_changed, [this](Entity entity) {
+		if (entity == context().selection.get()) {
+			show(entity);
+		}
+	});
 
 	if (selection.has()) {
 		show(selection.get());

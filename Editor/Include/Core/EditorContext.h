@@ -37,6 +37,7 @@ class EditorSelection {
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_created;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_modified;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_transformed;
+	Signal<void(Aquila::SceneManagement::Entity)> on_components_changed;
 	Signal<void()> on_scene_replaced;
 
   private:

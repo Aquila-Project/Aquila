@@ -50,7 +50,7 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 		}
 		entity.get_or_emplace<Aquila::Scripting::ScriptComponent>().path = asset.asset_path;
 		context().selection.select(entity);
-		context().selection.on_entity_modified(entity);
+		context().selection.on_components_changed(entity);
 	});
 	m_panel->on_entity_deselected.connect([this] {
 		if (!m_syncing) {
