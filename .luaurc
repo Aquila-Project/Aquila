@@ -1,0 +1,7 @@
+{
+	"languageMode": "strict",
+	"aliases": {
+		"aquila": "Resources/Engine/API",
+		"native": "Resources/Engine/Types/native"
+	}
+}

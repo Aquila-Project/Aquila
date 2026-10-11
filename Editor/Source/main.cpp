@@ -1,6 +1,7 @@
 #include "Core/EditorModule.h"
 
 #include "Aquila/Application/ApplicationNew.h"
+#include "Aquila/Scripting/ScriptModule.h"
 
 int main() {
 	ApplicationSpec spec;
@@ -10,6 +11,7 @@ int main() {
 	spec.start_hidden = true;
 
 	Aquila::Application::Application app(spec);
+	app.add_module<Aquila::Scripting::ScriptModule>();
 	app.add_module<Editor::EditorModule>();
 	app.run();
 	return EXIT_SUCCESS;

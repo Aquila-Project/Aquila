@@ -66,6 +66,8 @@ set(LUNASVG_DISABLE_LOAD_SYSTEM_FONTS ON CACHE BOOL "" FORCE)
 set(USE_SYSTEM_PLUTOVG OFF CACHE BOOL "" FORCE)
 add_subdirectory(${VENDOR_DIR}/lunasvg)
 
+add_subdirectory(${VENDOR_DIR}/aquiLua)
+
 
 add_subdirectory(Source/Aquila/Foundation)
 add_subdirectory(Source/Aquila/Platform)
@@ -76,11 +78,12 @@ add_subdirectory(Source/Aquila/Graphics)
 add_subdirectory(Source/Aquila/Scene)
 add_subdirectory(Source/Aquila/Rendering)
 add_subdirectory(Source/Aquila/UI)
+add_subdirectory(Source/Aquila/Scripting)
 
 enable_testing()
 add_subdirectory(Tests)
 
-set(AQUILA_ENGINE_MODULES Foundation Platform RHI GFX Graphics Scene Rendering Application UI)
+set(AQUILA_ENGINE_MODULES Foundation Platform RHI GFX Graphics Scene Rendering Application UI Scripting)
 
 if (AQUILA_SHARED_ENGINE)
     set(AQUILA_RUNTIME_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/AquilaRuntime.cpp)

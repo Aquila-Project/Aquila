@@ -16,3 +16,6 @@
 [submodule "Engine/Vendor/lunasvg"]
 	path = Engine/Vendor/lunasvg
 	url = https://github.com/sammycage/lunasvg.git
+[submodule "Engine/Vendor/aquiLua"]
+	path = Engine/Vendor/aquiLua
+	url = git@github.com:Aquila-Project/AquiLua.git
