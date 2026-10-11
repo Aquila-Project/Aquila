@@ -50,10 +50,12 @@ class EditorModule final : public Aquila::Application::IModule {
 	}
 	void add_window_type(EditorWindowType type);
 	void add_workspace(std::string name, Aquila::UI::Core::DockLayoutDesc preset);
+	void add_content_creator(ContentCreator creator);
 
   private:
 	void register_windows();
 	void register_workspaces();
+	void register_content_creators();
 
 	[[nodiscard]] Aquila::UI::Core::Canvas *canvas_for(Aquila::Platform::Events::EventSource source) const;
 	F32 window_aspect();
@@ -85,6 +87,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<Workspaces> m_workspaces;
 	std::vector<EditorWindowType> m_pending_window_types;
 	std::vector<std::pair<std::string, Aquila::UI::Core::DockLayoutDesc>> m_pending_workspaces;
+	std::vector<ContentCreator> m_pending_content_creators;
 	Aquila::UI::Core::DockSpace *m_dock_space = nullptr;
 	Unique<Aquila::UI::Core::DockWindowManager> m_dock_manager;
 

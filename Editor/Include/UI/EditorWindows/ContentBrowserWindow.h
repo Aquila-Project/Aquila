@@ -8,6 +8,7 @@
 #include <vector>
 
 namespace Aquila::UI::Core {
+class PopupMenu;
 class TextInput;
 class View;
 }
@@ -36,10 +37,13 @@ class ContentBrowserWindow final : public EditorWindow {
 	void build_grid();
 	void apply_filter();
 	void press(const std::string &path);
+	void open_background_menu(Vec2 position);
+	void create(const ContentCreator &creator);
 
 	Aquila::UI::Core::View *m_path = nullptr;
 	Aquila::UI::Core::View *m_grid = nullptr;
 	Aquila::UI::Core::TextInput *m_filter = nullptr;
+	Aquila::UI::Core::PopupMenu *m_menu = nullptr;
 	std::vector<Tile> m_tiles;
 	std::string m_directory;
 	std::optional<std::string> m_pending;

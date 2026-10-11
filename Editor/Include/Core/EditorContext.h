@@ -3,10 +3,12 @@
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Scene/Entity.h"
+#include "Core/ContentCreators.h"
 #include "Core/EditorTools.h"
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace Aquila::GFX {
 class GfxTexture;
@@ -65,6 +67,7 @@ class EditorContext {
 
 	EditorSelection selection;
 	EditorTools tools;
+	std::vector<ContentCreator> content_creators;
 	Signal<void()> on_render_output_changed;
 
   private:

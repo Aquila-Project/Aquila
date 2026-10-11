@@ -349,6 +349,24 @@ void EditorModule::add_workspace(std::string name, Aquila::UI::Core::DockLayoutD
 	m_pending_workspaces.emplace_back(std::move(name), std::move(preset));
 }
 
+void EditorModule::add_content_creator(ContentCreator creator) {
+	if (m_context) {
+		m_context->content_creators.push_back(std::move(creator));
+		return;
+	}
+	m_pending_content_creators.push_back(std::move(creator));
+}
+
+void EditorModule::register_content_creators() {
+	m_context->content_creators.push_back(folder_creator());
+	m_context->content_creators.push_back(
+		template_creator("Script", "file-code", "new_script.luau", "/resources/Engine/Templates/script.luau"));
+	for (ContentCreator &creator : m_pending_content_creators) {
+		m_context->content_creators.push_back(std::move(creator));
+	}
+	m_pending_content_creators.clear();
+}
+
 void EditorModule::register_workspaces() {
 	using namespace Aquila::UI::Core::DockLayout;
 
@@ -392,6 +410,7 @@ void EditorModule::setup_editor_ui() {
 	m_context =
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
+	register_content_creators();
 
 	m_layout_loader.register_command("entity.create", [this] {
 		auto entity = m_engine->get_scene().get_entity_manager()->create_entity("New Entity");

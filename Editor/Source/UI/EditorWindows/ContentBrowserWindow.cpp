@@ -7,6 +7,7 @@
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
 #include <algorithm>
@@ -127,6 +128,18 @@ class ContentTile final : public View {
 	AssetPayload m_payload;
 };
 
+std::string unique_path(const std::string &directory, const std::string &name) {
+	auto *vfs = VirtualFileSystem::get();
+	const Usize dot = name.find('.');
+	const std::string stem = name.substr(0, dot);
+	const std::string extension = dot == std::string::npos ? std::string{} : name.substr(dot);
+	std::string path = directory + "/" + name;
+	for (int i = 2; vfs->exists(path) || vfs->is_directory(path); ++i) {
+		path = directory + "/" + stem + std::to_string(i) + extension;
+	}
+	return path;
+}
+
 void clear_children(View &view) {
 	while (!view.get_children().empty()) {
 		view.remove_child(view.get_children().back().get());
@@ -162,6 +175,12 @@ void ContentBrowserWindow::build(View &content) {
 	}
 	if (auto *refresh = root->find_by_id<Button>("content-refresh")) {
 		refresh->on_click.connect([this] { navigate(m_directory); });
+	}
+
+	m_menu = dynamic_cast<PopupMenu *>(overlay_root()->add_child(std::make_unique<PopupMenu>()));
+	m_grid->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
+	if (auto *scroll = root->find_by_id("content-scroll")) {
+		scroll->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
 	}
 
 	open(m_directory);
@@ -246,6 +265,28 @@ void ContentBrowserWindow::apply_filter() {
 	for (const Tile &tile : m_tiles) {
 		tile.view->set_hidden(!query.empty() && lower(tile.name).find(query) == std::string::npos);
 	}
+}
+
+void ContentBrowserWindow::open_background_menu(Vec2 position) {
+	m_menu->clear_items();
+	const auto &creators = context().content_creators;
+	for (Usize i = 0; i < creators.size(); ++i) {
+		m_menu->add_item("New " + creators[i].label, {}, context().icon(creators[i].icon),
+						 [this, i] { create(context().content_creators[i]); });
+	}
+	m_menu->add_separator();
+	m_menu->add_item("Refresh", {}, context().icon("refresh-cw"), [this] { navigate(m_directory); });
+	m_menu->open_at(position);
+}
+
+void ContentBrowserWindow::create(const ContentCreator &creator) {
+	const std::string path = unique_path(m_directory, creator.name);
+	if (!creator.create(path)) {
+		AQUILA_LOG_WARNING("ContentBrowserWindow: could not create {}", path);
+		return;
+	}
+	m_selected = path;
+	navigate(m_directory);
 }
 
 void ContentBrowserWindow::press(const std::string &path) {
