@@ -38,7 +38,10 @@ class ContentBrowserWindow final : public EditorWindow {
 	void apply_filter();
 	void press(const std::string &path);
 	void open_background_menu(Vec2 position);
+	void open_item_menu(const std::string &path, Vec2 position);
 	void create(const ContentCreator &creator);
+	void begin_rename(const std::string &path);
+	void rename(const std::string &path, const std::string &name);
 
 	Aquila::UI::Core::View *m_path = nullptr;
 	Aquila::UI::Core::View *m_grid = nullptr;
@@ -48,6 +51,7 @@ class ContentBrowserWindow final : public EditorWindow {
 	std::string m_directory;
 	std::optional<std::string> m_pending;
 	std::string m_selected;
+	std::string m_rename_after_open;
 	std::chrono::steady_clock::time_point m_last_press{};
 };
 

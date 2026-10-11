@@ -13,10 +13,12 @@
 #include <algorithm>
 #include <cctype>
 #include <initializer_list>
+#include <utility>
 
 namespace Editor {
 
 using namespace Aquila::UI::Core;
+using Aquila::Platform::KeyCode;
 using Aquila::Platform::Filesystem::VirtualFileSystem;
 
 namespace {
@@ -102,6 +104,39 @@ std::string wrap_name(std::string_view name) {
 	return wrapped.append(name);
 }
 
+class RenameField final : public TextInput {
+  public:
+	explicit RenameField(Delegate<void(Option<std::string>)> done) : m_done(std::move(done)) {
+		add_class("content-tile-rename");
+		on_submit.connect([this](const std::string &text) { finish(text); });
+	}
+
+	void on_key_press(KeyCode key, int mods) override {
+		if (key == KeyCode::Escape) {
+			finish(std::nullopt);
+			return;
+		}
+		TextInput::on_key_press(key, mods);
+	}
+
+	void on_focus_lost() override {
+		TextInput::on_focus_lost();
+		finish(get_text());
+	}
+
+  private:
+	void finish(Option<std::string> name) {
+		if (m_finished) {
+			return;
+		}
+		m_finished = true;
+		m_done(std::move(name));
+	}
+
+	Delegate<void(Option<std::string>)> m_done;
+	bool m_finished = false;
+};
+
 class ContentTile final : public View {
   public:
 	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon)
@@ -114,7 +149,24 @@ class ContentTile final : public View {
 		auto *image = add_child<Image>(icon);
 		image->add_class("content-tile-icon");
 		image->set_class("content-tile-folder", is_directory);
-		add_child<Label>(wrap_name(m_payload.display_name))->add_class("content-tile-name");
+		m_name = add_child<Label>(wrap_name(m_payload.display_name));
+		m_name->add_class("content-tile-name");
+	}
+
+	Delegate<void(KeyCode)> on_key;
+
+	void begin_rename(Delegate<void(Option<std::string>)> done) {
+		set_input_leaf(false);
+		m_name->set_hidden(true);
+		auto *field = add_child<RenameField>(std::move(done));
+		field->set_text(m_payload.display_name);
+		field->request_focus();
+	}
+
+	void on_key_press(KeyCode key, int) override {
+		if (on_key) {
+			on_key(key);
+		}
 	}
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "ContentTile"; }
@@ -126,6 +178,7 @@ class ContentTile final : public View {
 
   private:
 	AssetPayload m_payload;
+	Label *m_name = nullptr;
 };
 
 std::string unique_path(const std::string &directory, const std::string &name) {
@@ -204,6 +257,9 @@ void ContentBrowserWindow::open(const std::string &directory) {
 	m_directory = VirtualFileSystem::get()->is_directory(directory) ? directory : std::string(k_root);
 	build_path();
 	build_grid();
+	if (!m_rename_after_open.empty()) {
+		begin_rename(std::exchange(m_rename_after_open, {}));
+	}
 }
 
 void ContentBrowserWindow::build_path() {
@@ -251,6 +307,13 @@ void ContentBrowserWindow::build_grid() {
 												   context().icon(icon_for(type)));
 		tile.view->set_class("content-tile-selected", tile.path == m_selected);
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
+		tile.view->on_context_menu.connect(
+			[this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
+		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path](KeyCode key) {
+			if (key == KeyCode::F2) {
+				begin_rename(path);
+			}
+		};
 	}
 	m_tiles = std::move(tiles);
 
@@ -286,7 +349,45 @@ void ContentBrowserWindow::create(const ContentCreator &creator) {
 		return;
 	}
 	m_selected = path;
+	m_rename_after_open = path;
 	navigate(m_directory);
+}
+
+void ContentBrowserWindow::open_item_menu(const std::string &path, Vec2 position) {
+	press(path);
+	m_menu->clear_items();
+	m_menu->add_item("Rename", "F2", context().icon("pencil"), [this, path] { begin_rename(path); });
+	m_menu->open_at(position);
+}
+
+void ContentBrowserWindow::begin_rename(const std::string &path) {
+	auto tile = std::ranges::find(m_tiles, path, &Tile::path);
+	if (tile == m_tiles.end()) {
+		return;
+	}
+	static_cast<ContentTile *>(tile->view)->begin_rename([this, path](Option<std::string> name) {
+		if (name) {
+			rename(path, *name);
+		}
+		navigate(m_directory);
+	});
+}
+
+void ContentBrowserWindow::rename(const std::string &path, const std::string &name) {
+	const std::string target = path.substr(0, path.find_last_of('/') + 1) + name;
+	if (target == path) {
+		return;
+	}
+	auto *vfs = VirtualFileSystem::get();
+	if (name.empty() || name.find('/') != std::string::npos || vfs->exists(target) || vfs->is_directory(target)) {
+		AQUILA_LOG_WARNING("ContentBrowserWindow: cannot rename {} to '{}'", path, name);
+		return;
+	}
+	if (!vfs->rename_file(path, target)) {
+		AQUILA_LOG_WARNING("ContentBrowserWindow: could not rename {}", path);
+		return;
+	}
+	m_selected = target;
 }
 
 void ContentBrowserWindow::press(const std::string &path) {
