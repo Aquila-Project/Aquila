@@ -232,6 +232,7 @@ AssetSlot:hover {
 
 .asset-slot-label {
     flex-grow: 1;
+    font-family: regular;
 }
 
 .asset-slot-placeholder {
