@@ -1,0 +1,11 @@
+<View id="content-root">
+    <View id="content-toolbar" class="content-toolbar">
+        <Button id="content-up" class="content-tool-btn" src="Engine/UI/Icons/arrow-up.svg" tooltip="Parent folder"/>
+        <View id="content-path" class="content-path"/>
+        <TextInput id="content-filter" class="content-filter"/>
+        <Button id="content-refresh" class="content-tool-btn" src="Engine/UI/Icons/refresh-cw.svg" tooltip="Refresh"/>
+    </View>
+    <ScrollView id="content-scroll">
+        <View id="content-grid" class="content-grid"/>
+    </ScrollView>
+</View>

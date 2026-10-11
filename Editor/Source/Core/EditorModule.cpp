@@ -10,6 +10,7 @@
 #include "Aquila/UI/Core/FontManager.h"
 #include "Aquila/UI/DevTools/UIDevTools.h"
 #include "UI/EditorWindows/ConsoleWindow.h"
+#include "UI/EditorWindows/ContentBrowserWindow.h"
 #include "UI/EditorWindows/HierarchyWindow.h"
 #include "UI/EditorWindows/InspectorWindow.h"
 #include "UI/EditorWindows/ViewportWindow.h"
@@ -327,6 +328,8 @@ void EditorModule::register_windows() {
 	m_windows->add<HierarchyWindow>({ .id = "hierarchy", .title = "Hierarchy", .icon = "list-tree", .group = "Scene" });
 	m_windows->add<InspectorWindow>(
 		{ .id = "inspector", .title = "Inspector", .icon = "sliders-horizontal", .group = "Scene" });
+	m_windows->add<ContentBrowserWindow>(
+		{ .id = "content", .title = "Content", .icon = "folder-open", .group = "Scene" });
 	m_windows->add<ConsoleWindow>({ .id = "console", .title = "Console", .icon = "terminal", .group = "Diagnostics" });
 }
 
