@@ -10,7 +10,7 @@
 namespace Aquila::UI::Core {
 class TextInput;
 class View;
-} // namespace Aquila::UI::Core
+}
 
 namespace Editor {
 
@@ -47,4 +47,4 @@ class ContentBrowserWindow final : public EditorWindow {
 	std::chrono::steady_clock::time_point m_last_press{};
 };
 
-} // namespace Editor
+}

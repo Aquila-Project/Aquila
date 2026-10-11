@@ -112,7 +112,7 @@ void clear_children(View &view) {
 	}
 }
 
-} // namespace
+}
 
 ContentBrowserWindow::ContentBrowserWindow(EditorContext &context) : EditorWindow(context), m_directory(k_root) {}
 
@@ -241,4 +241,4 @@ void ContentBrowserWindow::press(const std::string &path) {
 	}
 }
 
-} // namespace Editor
+}
