@@ -21,7 +21,7 @@ using Aquila::Platform::Filesystem::VirtualFileSystem;
 namespace {
 
 constexpr std::string_view k_root = "/resources";
-constexpr Usize k_max_name_length = 14;
+constexpr Usize k_line_length = 12;
 constexpr std::chrono::milliseconds k_double_click{ 400 };
 
 std::string lower(std::string_view text) {
@@ -76,8 +76,29 @@ std::string_view icon_for(std::string_view type) {
 	return "file";
 }
 
-std::string shorten(const std::string &name) {
-	return name.size() <= k_max_name_length ? name : name.substr(0, k_max_name_length - 3) + "...";
+bool is_break(std::string_view name, Usize i) {
+	const char c = name[i];
+	return c == '.' || c == '_' || c == '-' || c == ' ' ||
+		   (std::isupper(static_cast<unsigned char>(c)) != 0 && std::islower(static_cast<unsigned char>(name[i - 1])) != 0);
+}
+
+std::string wrap_name(std::string_view name) {
+	std::string wrapped;
+	while (name.size() > k_line_length) {
+		Usize cut = k_line_length;
+		for (Usize i = k_line_length; i > 0; --i) {
+			if (is_break(name, i)) {
+				cut = i;
+				break;
+			}
+		}
+		wrapped.append(name.substr(0, cut)).push_back('\n');
+		name.remove_prefix(cut);
+		if (name.starts_with(' ')) {
+			name.remove_prefix(1);
+		}
+	}
+	return wrapped.append(name);
 }
 
 class ContentTile final : public View {
@@ -92,7 +113,7 @@ class ContentTile final : public View {
 		auto *image = add_child<Image>(icon);
 		image->add_class("content-tile-icon");
 		image->set_class("content-tile-folder", is_directory);
-		add_child<Label>(shorten(m_payload.display_name))->add_class("content-tile-name");
+		add_child<Label>(wrap_name(m_payload.display_name))->add_class("content-tile-name");
 	}
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "ContentTile"; }
