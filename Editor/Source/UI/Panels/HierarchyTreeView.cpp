@@ -269,11 +269,12 @@ void HierarchyTreeView::apply_filter(const std::string &query) {
 }
 
 void HierarchyTreeView::on_drop(DragState &state) {
-	if (!state.payload.has_value()) {
+	const auto *dragged = std::any_cast<Entity>(&state.payload);
+	if (dragged == nullptr) {
 		return;
 	}
 
-	auto dragged_entity = std::any_cast<Entity>(state.payload);
+	Entity dragged_entity = *dragged;
 	HierarchyTreeNode *source_node = find_node_for_entity(dragged_entity);
 	if (source_node == nullptr) {
 		return;
