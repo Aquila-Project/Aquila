@@ -124,6 +124,13 @@ class RenameField final : public TextInput {
 		finish(get_text());
 	}
 
+	void select_stem() {
+		const Usize dot = m_state.text.find('.');
+		m_state.select_anchor = 0;
+		m_state.cursor = dot == 0 || dot == std::string::npos ? m_state.text.size() : dot;
+		queue_redraw();
+	}
+
   private:
 	void finish(Option<std::string> name) {
 		if (m_finished) {
@@ -161,6 +168,7 @@ class ContentTile final : public View {
 		auto *field = add_child<RenameField>(std::move(done));
 		field->set_text(m_payload.display_name);
 		field->request_focus();
+		field->select_stem();
 	}
 
 	void on_key_press(KeyCode key, int) override {
