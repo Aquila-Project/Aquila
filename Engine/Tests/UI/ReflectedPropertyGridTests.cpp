@@ -239,4 +239,25 @@ TEST_SUITE("ReflectedPropertyGrid") {
 		slot.clear();
 		CHECK(thing.label.empty());
 	}
+
+	TEST_CASE("asset slots say what they accept") {
+		AssetSlot slot("script");
+		const auto &label = dynamic_cast<const Label &>(*slot.get_children().front());
+		CHECK(label.get_text() == "Drop a script here");
+
+		DragState drag{};
+		drag.payload = AssetPayload{ "/textures/wood.png", "texture", "wood.png" };
+		slot.on_drag_enter(drag);
+		CHECK(label.get_text() == "Not a script");
+		slot.on_drag_leave(drag);
+		CHECK(label.get_text() == "Drop a script here");
+
+		drag.payload = AssetPayload{ "/scripts/spin.luau", "script", "spin.luau" };
+		slot.on_drag_enter(drag);
+		CHECK(label.get_text() == "Drop to use spin.luau");
+
+		slot.set_accepted_type("image");
+		slot.on_drag_leave(drag);
+		CHECK(label.get_text() == "Drop an image here");
+	}
 }

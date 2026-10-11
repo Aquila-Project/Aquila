@@ -28,6 +28,11 @@ void AssetSlot::set_accepted_type(std::string type) {
 	update_display();
 }
 
+void AssetSlot::set_placeholder(std::string text) {
+	m_placeholder = std::move(text);
+	update_display();
+}
+
 void AssetSlot::set_value(AssetPayload asset) {
 	m_value = std::move(asset);
 	m_has_value = true;
@@ -64,25 +69,29 @@ void AssetSlot::on_drag_enter(DragState &state) {
 	if (!state.payload.has_value()) {
 		return;
 	}
-	try {
-		AssetPayload payload = std::any_cast<AssetPayload>(state.payload);
-		if (is_compatible(payload)) {
-			add_class("drag-over");
-		} else {
-			add_class("drag-over-invalid");
-		}
-	} catch (const std::bad_any_cast &) {
+	const auto *payload = std::any_cast<AssetPayload>(&state.payload);
+	if (payload != nullptr && is_compatible(*payload)) {
+		add_class("drag-over");
+		show_hint("Drop to use " + payload->display_name);
+	} else {
+		add_class("drag-over-invalid");
+		show_hint("Not " + accepted_name());
 	}
 }
 
 void AssetSlot::on_drag_leave(DragState &) {
 	remove_class("drag-over");
 	remove_class("drag-over-invalid");
+	update_display();
 }
 
 void AssetSlot::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
 	if (name == "accept") {
 		set_accepted_type(std::string(value));
+		return;
+	}
+	if (name == "placeholder") {
+		set_placeholder(std::string(value));
 		return;
 	}
 	View::apply_xml_attribute(name, value, resolver);
@@ -92,15 +101,25 @@ void AssetSlot::update_display() {
 	m_clear_button->set_hidden(!m_has_value);
 	set_class("asset-slot-filled", m_has_value);
 
+	m_label->set_class("asset-slot-placeholder", !m_has_value);
 	if (m_has_value) {
 		m_label->set_text(m_value.display_name.empty() ? m_value.asset_path : m_value.display_name);
 	} else {
-		std::string placeholder = "None";
-		if (!m_accepted_type.empty()) {
-			placeholder += " (" + m_accepted_type + ")";
-		}
-		m_label->set_text(placeholder);
+		m_label->set_text(m_placeholder.empty() ? "Drop " + accepted_name() + " here" : m_placeholder);
 	}
+}
+
+void AssetSlot::show_hint(std::string text) {
+	m_label->set_class("asset-slot-placeholder", false);
+	m_label->set_text(std::move(text));
+}
+
+std::string AssetSlot::accepted_name() const {
+	if (m_accepted_type.empty()) {
+		return "an asset";
+	}
+	const bool vowel = std::string_view("aeiouAEIOU").find(m_accepted_type.front()) != std::string_view::npos;
+	return (vowel ? "an " : "a ") + m_accepted_type;
 }
 
 bool AssetSlot::is_compatible(const AssetPayload &payload) const {

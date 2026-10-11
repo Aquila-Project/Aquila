@@ -18,6 +18,8 @@ class AssetSlot : public View {
 	void set_accepted_type(std::string type);
 	[[nodiscard]] const std::string &get_accepted_type() const { return m_accepted_type; }
 
+	void set_placeholder(std::string text);
+
 	void set_value(AssetPayload asset);
 	void clear();
 	[[nodiscard]] bool has_value() const { return m_has_value; }
@@ -32,9 +34,12 @@ class AssetSlot : public View {
 
   private:
 	void update_display();
+	void show_hint(std::string text);
+	[[nodiscard]] std::string accepted_name() const;
 	[[nodiscard]] bool is_compatible(const AssetPayload &payload) const;
 
 	std::string m_accepted_type;
+	std::string m_placeholder;
 	AssetPayload m_value;
 	bool m_has_value = false;
 

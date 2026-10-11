@@ -234,6 +234,21 @@ AssetSlot:hover {
     flex-grow: 1;
 }
 
+.asset-slot-placeholder {
+    color: var(--text-muted);
+}
+
+.drag-over {
+    border-style: solid;
+    border-color: var(--accent);
+    background-color: var(--drop-overlay);
+}
+
+.drag-over-invalid {
+    border-style: solid;
+    border-color: var(--danger);
+}
+
 .asset-slot-clear {
     padding: 0px 6px;
     font-size: 12px;
