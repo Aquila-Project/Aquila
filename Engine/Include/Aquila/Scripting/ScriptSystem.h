@@ -21,7 +21,6 @@ class ScriptSystem {
 
 	void update(F32 delta_time);
 
-	// types of the engine API, for luau-lsp
 	bool write_types(const std::string &directory) const;
 
   private:

@@ -15,7 +15,6 @@ ScriptModule::~ScriptModule() = default;
 
 void ScriptModule::on_attach(Application::EngineContext &engine) {
 	m_system = std::make_unique<ScriptSystem>(engine.get_scene());
-	// luau-lsp reads them, see .luaurc and .vscode/settings.json
 	m_system->write_types(SharedConstants::RESOURCES_DIR + "Engine/Types");
 }
 

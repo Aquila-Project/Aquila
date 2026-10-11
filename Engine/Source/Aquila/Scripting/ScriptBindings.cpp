@@ -39,7 +39,6 @@ template <typename T> T *check_component(lua_State *state) {
 } // namespace
 
 void register_engine_api(aquiLua::Runtime &runtime, SceneManagement::Scene &scene) {
-	// raw bindings. scripts use the Luau API over them, Resources/Engine/API (require("@aquila"))
 	runtime.bind<log>("native.log", "Writes message to the engine log.");
 	runtime.bind<request_frame>("native.request_frame", "Requests another frame.");
 	runtime.add_alias("aquila", SharedConstants::RESOURCES_DIR + "Engine/API");
