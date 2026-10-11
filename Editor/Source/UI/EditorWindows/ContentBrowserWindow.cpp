@@ -308,6 +308,10 @@ void ContentBrowserWindow::open(const std::string &directory) {
 	build_grid();
 	if (!m_rename_after_open.empty()) {
 		begin_rename(std::exchange(m_rename_after_open, {}));
+		return;
+	}
+	if (auto tile = std::ranges::find(m_tiles, m_selected, &Tile::path); tile != m_tiles.end()) {
+		tile->view->request_focus();
 	}
 }
 
