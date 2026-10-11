@@ -187,7 +187,7 @@ bool VirtualFileSystem::delete_file_aq(const std::string &virtual_path) {
 	return mount->file_system->file_remove(relative_path);
 }
 
-bool VirtualFileSystem::delete_directory(const std::string &virtual_path) {
+bool VirtualFileSystem::delete_directory(const std::string &virtual_path, bool recursive) {
 	std::string relative_path;
 	MountPoint *mount = find_mount_point(virtual_path, relative_path);
 
@@ -195,7 +195,7 @@ bool VirtualFileSystem::delete_directory(const std::string &virtual_path) {
 		return false;
 	}
 
-	return mount->file_system->dir_remove(relative_path);
+	return recursive ? mount->file_system->dir_remove_all(relative_path) : mount->file_system->dir_remove(relative_path);
 }
 
 bool VirtualFileSystem::rename_file(const std::string &old_virtual_path, const std::string &new_virtual_path) {

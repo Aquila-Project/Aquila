@@ -40,7 +40,7 @@ class VirtualFileSystem : public Foundation::Singleton<VirtualFileSystem> {
 	bool copy_file_a(const std::string &src_virtual_path, const std::string &dst_virtual_path);
 	bool create_dir(const std::string &virtual_path);
 	bool delete_file_aq(const std::string &virtual_path);
-	bool delete_directory(const std::string &virtual_path);
+	bool delete_directory(const std::string &virtual_path, bool recursive = false);
 	bool write_text_file(const std::string &virtual_path, const std::string &content);
 	std::string read_text_file(const std::string &virtual_path);
 	std::vector<std::string> get_mount_points() const;

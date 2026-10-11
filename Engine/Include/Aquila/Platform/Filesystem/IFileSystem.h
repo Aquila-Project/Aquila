@@ -25,6 +25,7 @@ class IFileSystem {
 	virtual bool dir_exists(const std::string &path) = 0;
 	virtual bool dir_create(const std::string &path) = 0;
 	virtual bool dir_remove(const std::string &path) = 0;
+	virtual bool dir_remove_all(const std::string &path) = 0;
 	virtual std::vector<std::string> dir_list(const std::string &path) = 0;
 
 	// Filesystem properties

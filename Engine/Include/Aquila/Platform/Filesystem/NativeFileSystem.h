@@ -31,6 +31,7 @@ class NativeFileSystem final : public IFileSystem {
 	bool dir_exists(const std::string &path) override;
 	bool dir_create(const std::string &path) override;
 	bool dir_remove(const std::string &path) override;
+	bool dir_remove_all(const std::string &path) override;
 	std::vector<std::string> dir_list(const std::string &path) override;
 
 	[[nodiscard]] bool is_read_only() const override { return false; }

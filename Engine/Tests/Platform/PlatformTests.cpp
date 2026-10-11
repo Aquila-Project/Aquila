@@ -3,6 +3,8 @@
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 
+#include <fstream>
+
 using namespace Aquila::Platform::Filesystem;
 
 static std::string make_temp_root(const std::string &name) {
@@ -61,6 +63,25 @@ TEST_SUITE("Filesystem::Dir") {
 
 		CHECK(dir_remove(sub) == true);
 		CHECK(file_stat(sub).exists == false);
+
+		cleanup_temp_root(root);
+	}
+
+	TEST_CASE("dir_remove_all removes a folder with its contents but never the root") {
+		const std::string root = make_temp_root("removeall");
+		NativeFileSystem fs(root);
+		CHECK(fs.dir_create("a"));
+		CHECK(fs.dir_create("a/b"));
+		std::ofstream(path_join(root, "a/b/file.txt")) << "x";
+
+		CHECK(fs.dir_remove_all("a"));
+		CHECK_FALSE(fs.dir_exists("a"));
+		CHECK_FALSE(fs.dir_remove_all(""));
+		CHECK_FALSE(fs.dir_remove_all("/"));
+		CHECK_FALSE(fs.dir_remove_all("."));
+		CHECK_FALSE(fs.dir_remove_all("x/.."));
+		CHECK_FALSE(fs.dir_remove_all("../removeall"));
+		CHECK(file_stat(root).exists);
 
 		cleanup_temp_root(root);
 	}

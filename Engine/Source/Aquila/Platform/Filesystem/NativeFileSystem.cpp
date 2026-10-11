@@ -1,6 +1,8 @@
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 
+#include <filesystem>
+
 namespace Aquila::Platform::Filesystem {
 
 NativeFileSystem::NativeFileSystem(const std::string &root_path) : m_root_path(Filesystem::path_normalize(root_path)) {
@@ -101,6 +103,20 @@ bool NativeFileSystem::dir_create(const std::string &path) {
 
 bool NativeFileSystem::dir_remove(const std::string &path) {
 	return Filesystem::dir_remove(resolve_path(path));
+}
+
+bool NativeFileSystem::dir_remove_all(const std::string &path) {
+	std::string root = Filesystem::path_normalize(m_root_path);
+	if (!root.ends_with('/')) {
+		root += '/';
+	}
+	const std::string target = resolve_path(path);
+	if (!target.starts_with(root) || target.size() <= root.size()) {
+		return false;
+	}
+	std::error_code error;
+	std::filesystem::remove_all(target, error);
+	return !error;
 }
 
 std::vector<std::string> NativeFileSystem::dir_list(const std::string &path) {
