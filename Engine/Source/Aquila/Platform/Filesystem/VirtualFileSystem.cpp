@@ -249,7 +249,7 @@ bool VirtualFileSystem::copy_file_a(const std::string &src_virtual_path, const s
 	}
 
 	auto dst_file =
-		dst_mount->file_system->file_open(dst_relative_path, AccessMode::Read, OpenMode::Binary | OpenMode::Truncate);
+		dst_mount->file_system->file_open(dst_relative_path, AccessMode::Write, OpenMode::Binary | OpenMode::Truncate);
 	if (!dst_file) {
 		return false;
 	}
