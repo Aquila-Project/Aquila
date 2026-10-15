@@ -109,10 +109,10 @@ class ProfileSection {
 #define AQUILA_PROFILE_CONCAT(a, b) AQUILA_PROFILE_CONCAT_INNER(a, b)
 #define PROFILE_SCOPE(name) Aquila::Foundation::ProfileSection AQUILA_PROFILE_CONCAT(_profile_, __LINE__)(name)
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__FUNCTION__)
-#define PROFILE_PRINT_SUMMARY_EVERY_N_FRAMES(n)                                 \
-	do {                                                                        \
-		if (Aquila::Foundation::Profiler::Get()->GetFrameNumber() % (n) == 0) { \
-			Aquila::Foundation::Profiler::Get()->PrintFrameSummary();           \
-		}                                                                       \
+#define PROFILE_PRINT_SUMMARY_EVERY_N_FRAMES(n)                                   \
+	do {                                                                          \
+		if (Aquila::Foundation::Profiler::get()->get_frame_number() % (n) == 0) { \
+			Aquila::Foundation::Profiler::get()->print_frame_summary();           \
+		}                                                                         \
 	} while (0)
 #endif

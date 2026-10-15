@@ -74,7 +74,7 @@ class VulkanDevice final : public IRHIDevice {
 
 	template <typename Func> void execute_graphics_commands(Func &&func) {
 		VkCommandPool pool = get_or_create_thread_local_graphics_pool();
-		ExecuteSingleTimeCommands(pool, m_graphics_queue, m_graphics_queue_mutex, std::forward<Func>(func));
+		execute_single_time_commands(pool, m_graphics_queue, m_graphics_queue_mutex, std::forward<Func>(func));
 	}
 
 	template <typename Func> void execute_transfer_commands(Func &&func) {

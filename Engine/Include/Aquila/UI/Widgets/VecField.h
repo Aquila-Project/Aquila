@@ -36,7 +36,7 @@ template <int N, typename VecT> class VecFieldBase : public Control {
 
 	void set_step(float step) {
 		for (int i = 0; i < N; ++i) {
-			m_components[i]->SetStep(step);
+			m_components[i]->set_step(step);
 		}
 	}
 
