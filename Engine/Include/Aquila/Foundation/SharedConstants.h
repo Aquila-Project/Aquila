@@ -62,9 +62,9 @@ constexpr F32 FONT_AXIS_LINE_EPSILON_EM = 1.0e-5F;
 constexpr Uint32 FONT_CURVE_RESERVE_ROWS = 48;
 constexpr Uint32 FONT_BAND_RESERVE_ROWS = 48;
 
-constexpr Uint8 Z_MIN = -4096;
-constexpr Uint8 Z_MAX = 4096;
-constexpr Uint8 Z_RANGE = Z_MAX - Z_MIN + 1; // 4096 + 4096 + 1 = 8193
+constexpr Int32 Z_MIN = -4096;
+constexpr Int32 Z_MAX = 4096;
+constexpr Usize Z_RANGE = Z_MAX - Z_MIN + 1; // 4096 + 4096 + 1 = 8193
 
 }; // namespace Aquila::SharedConstants
 
