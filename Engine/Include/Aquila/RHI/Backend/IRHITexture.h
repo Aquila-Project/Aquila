@@ -5,6 +5,7 @@
 
 namespace Aquila::RHI {
 
+/// Destroying it is deferred until the frame slot comes back, so dropping one mid-frame is fine.
 class IRHITexture {
   public:
 	virtual ~IRHITexture() = default;
@@ -12,6 +13,7 @@ class IRHITexture {
 	IRHITexture(const IRHITexture &) = delete;
 	IRHITexture &operator=(const IRHITexture &) = delete;
 
+	/// Skips the deferred deletion. The GPU must be done with it.
 	virtual void destroy_immediate() = 0;
 
 	// Returns false if the underlying image view is not yet valid (e.g. lazy init or after DestroyImmediate).

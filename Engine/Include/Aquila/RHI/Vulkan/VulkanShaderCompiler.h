@@ -16,6 +16,7 @@ struct VulkanCompiledStage {
 	Slang::ComPtr<slang::ISession> session;
 };
 
+/// Slang to SPIR-V. Call initialize() once first. Imports are looked up in the engine shaders folder.
 class VulkanShaderCompiler {
   public:
 	static void initialize() {
@@ -31,6 +32,9 @@ class VulkanShaderCompiler {
 		s_Initialized = false;
 	}
 
+	/// One stage per entry point in the file. All or nothing: if one entry point fails,
+	/// `out_stages` is empty and `error_log` says why.
+	/// @note Paths with "://" go through the VFS, everything else is read from disk.
 	static bool compile_file(const std::string &filepath, std::vector<VulkanCompiledStage> &out_stages,
 							std::string &error_log) {
 		AQUILA_ASSERT(s_Initialized, "VulkanShaderCompiler::Initialize() was not called");
@@ -155,6 +159,7 @@ class VulkanShaderCompiler {
 		return true;
 	}
 
+	/// Same as compile_file() for source in memory. `name` is the module name used in errors.
 	static bool compile_source(const std::string &name, const std::string &source,
 							  std::vector<VulkanCompiledStage> &out_stages, std::string &error_log) {
 		AQUILA_ASSERT(s_Initialized, "VulkanShaderCompiler::Initialize() was not called");

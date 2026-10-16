@@ -36,6 +36,7 @@ class VulkanDynamicRendering {
 		std::optional<DepthAttachmentDesc> depth_attachment;
 	};
 
+	/// Also sets a full size viewport and scissor.
 	static void begin(VulkanCommandList &cmd, const BeginDesc &desc) {
 		std::vector<VkRenderingAttachmentInfo> color_infos;
 		color_infos.reserve(desc.color_attachments.size());

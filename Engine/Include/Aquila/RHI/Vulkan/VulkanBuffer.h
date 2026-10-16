@@ -10,6 +10,8 @@ namespace Aquila::RHI {
 
 class VulkanDevice;
 
+/// Every domain except GpuOnly stays mapped for its whole life.
+/// The *_index functions work on one padded instance, see BufferDesc::instance_count.
 class VulkanBuffer final : public IRHIBuffer {
   public:
 	VulkanBuffer(VulkanDevice &device, const std::string &debug_name, VkDeviceSize instance_size, uint32_t instance_count,

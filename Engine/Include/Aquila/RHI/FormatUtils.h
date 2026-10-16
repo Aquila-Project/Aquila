@@ -25,6 +25,7 @@ AQUILA_FORCE_INLINE bool is_color_format(TextureFormat format) {
 	return !is_depth_format(format);
 }
 
+/// Packed size for uploads, the GPU may use more for depth/stencil formats.
 AQUILA_FORCE_INLINE Uint32 get_format_bytes_per_pixel(TextureFormat format) {
 	switch (format) {
 	case TextureFormat::R8:

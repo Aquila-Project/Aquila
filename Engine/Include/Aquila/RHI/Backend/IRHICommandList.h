@@ -55,6 +55,7 @@ class IRHICommandList {
 										Int32 src_offset_y = 0) = 0;
 	virtual void fill_buffer(IRHIBuffer &buffer, Uint64 offset, Uint64 size, Uint32 value) = 0;
 
+	/// Group counts, not threads.
 	virtual void dispatch(Uint32 x, Uint32 y, Uint32 z) = 0;
 
 	virtual void reset_queries(IRHIQueryPool &pool, Uint32 first, Uint32 count) = 0;

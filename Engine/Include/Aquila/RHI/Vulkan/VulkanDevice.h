@@ -68,8 +68,10 @@ class VulkanDevice final : public IRHIDevice {
 	void wait_transfer_queue_idle();
 
 	void reset_frame_command_pool(Uint32 slot);
+	/// Same as wait_idle().
 	void wait() const { vkDeviceWaitIdle(m_device); }
 
+	/// Command pools aren't thread safe, so every thread gets its own.
 	VkCommandPool get_or_create_thread_local_graphics_pool();
 
 	template <typename Func> void execute_graphics_commands(Func &&func) {
@@ -77,6 +79,7 @@ class VulkanDevice final : public IRHIDevice {
 		execute_single_time_commands(pool, m_graphics_queue, m_graphics_queue_mutex, std::forward<Func>(func));
 	}
 
+	/// Records `func(VkCommandBuffer)` on the transfer queue and waits for it.
 	template <typename Func> void execute_transfer_commands(Func &&func) {
 		execute_single_time_commands(m_transfer_command_pool, m_transfer_queue, m_transfer_queue_mutex,
 								  std::forward<Func>(func));
@@ -99,6 +102,7 @@ class VulkanDevice final : public IRHIDevice {
 	void create_transfer_command_pool();
 	void create_frame_command_pools();
 
+	/// Every domain except GpuOnly comes back mapped.
 	template <MemoryDomain Domain>
 	BufferAllocation CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, const char *debug_name = nullptr) {
 		AQUILA_ASSERT(size > 0, "Buffer size must be > 0");
@@ -140,6 +144,7 @@ class VulkanDevice final : public IRHIDevice {
 		return buffer_allocation;
 	}
 
+	/// CPU visible domains use linear tiling, so no mips, no MSAA and one layer.
 	template <MemoryDomain Domain>
 	ImageAllocation create_image(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage,
 								uint32_t mip_levels = 1, uint32_t array_layers = 1,
@@ -213,6 +218,7 @@ class VulkanDevice final : public IRHIDevice {
 		return image_allocation;
 	}
 
+	/// Cached per desc, don't destroy what it returns.
 	VkSampler get_or_create_sampler(const SamplerDesc &desc);
 	void destroy_sampler_cache();
 
@@ -238,6 +244,7 @@ class VulkanDevice final : public IRHIDevice {
 		return query_swap_chain_support(m_physical_device, surface);
 	}
 
+	/// For secondary windows. Destroy it with destroy_surface_handle().
 	[[nodiscard]] VkSurfaceKHR create_surface_for_window(GLFWwindow *window) const;
 	void destroy_surface_handle(VkSurfaceKHR surface) const;
 
