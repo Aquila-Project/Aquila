@@ -6,6 +6,8 @@
 
 namespace Aquila::Platform::Events {
 
+/// The window that sent the event, opaque so Platform doesn't know about windows.
+/// Application casts it back to `Window *`.
 using EventSource = const void *;
 
 enum class EventCategory : Uint8 {
@@ -43,6 +45,12 @@ class Event {
 	EventSource m_source = nullptr;
 };
 
+/// Runs the handler only when the event is of type T. The handler's return value becomes `handled`.
+///
+/// @code
+/// EventDispatcher dispatcher(event);
+/// dispatcher.dispatch<KeyPressedEvent>([&](KeyPressedEvent &key) { return on_key(key); });
+/// @endcode
 class EventDispatcher {
   public:
 	explicit EventDispatcher(Event &event) : m_event(event) {}

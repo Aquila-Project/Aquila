@@ -4,6 +4,7 @@
 #include "Aquila/Platform/Filesystem/Files/VirtualFile.h"
 
 namespace Aquila::Platform::Filesystem {
+/// A file over a byte vector. It doesn't own the vector, keep it alive while the file is open.
 class MemoryFile final : public VirtualFile {
   private:
 	std::vector<Uint8> *m_data;

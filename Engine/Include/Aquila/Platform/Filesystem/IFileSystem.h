@@ -5,6 +5,7 @@
 #include "Aquila/Platform/Filesystem/Files/NativeFile.h"
 
 namespace Aquila::Platform::Filesystem {
+/// A backend the VFS mounts. Paths are relative to its root and start with "/".
 class IFileSystem {
   public:
 	AQUILA_NONCOPYABLE(IFileSystem);

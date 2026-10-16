@@ -20,6 +20,7 @@ bool dir_create(const std::string &path);
 bool dir_remove(const std::string &path);
 bool file_remove(const std::string &path);
 bool file_move(const std::string &from, const std::string &to);
+/// Names only, not full paths. With `recursive` nested names lose their folder.
 std::vector<std::string> dir_list(const std::string &path, bool recursive = false);
 
 // Helpers
