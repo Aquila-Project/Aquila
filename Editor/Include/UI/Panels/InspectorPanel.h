@@ -4,9 +4,6 @@
 #include "UI/Inspectors/IComponentUI.h"
 #include "UI/Panels/IEditorPanel.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxContext;
 class GfxTexture;

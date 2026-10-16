@@ -5,9 +5,6 @@
 #include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/UI/Core/View.h"
 
-#include <string_view>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxContext;
 }

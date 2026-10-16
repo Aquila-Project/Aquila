@@ -9,10 +9,6 @@
 #include "Aquila/Rendering/RenderSettings.h"
 #include "Aquila/GFX/GfxTexture.h"
 
-#include <array>
-#include <string>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxContext;
 class GfxCommandList;

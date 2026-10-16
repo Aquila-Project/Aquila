@@ -2,11 +2,6 @@
 
 #include "Core/EditorWindow.h"
 
-#include <chrono>
-#include <optional>
-#include <string>
-#include <vector>
-
 namespace Aquila::UI::Core {
 class PopupMenu;
 class TextInput;

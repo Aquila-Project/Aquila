@@ -12,8 +12,6 @@
 #include "Aquila/UI/Widgets/Toggle.h"
 #include "Aquila/UI/Widgets/VecField.h"
 
-#include <cmath>
-
 namespace Aquila::UI::Core {
 
 using Reflection::Property;

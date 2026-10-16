@@ -8,7 +8,6 @@
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 
-#include <array>
 #include <bit>
 
 namespace Aquila::UI::Core {

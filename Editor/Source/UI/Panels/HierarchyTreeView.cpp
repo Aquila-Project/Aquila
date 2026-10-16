@@ -11,9 +11,6 @@
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/UI/Widgets/Label.h"
 
-#include <algorithm>
-#include <cctype>
-
 namespace Editor {
 
 using namespace Aquila::SceneManagement;

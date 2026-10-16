@@ -4,8 +4,6 @@
 #include "Aquila/UI/Widgets/Button.h"
 #include "Core/EditorWindows.h"
 
-#include <algorithm>
-
 namespace Editor {
 
 void Workspaces::add(std::string name, Aquila::UI::Core::DockLayoutDesc preset) {

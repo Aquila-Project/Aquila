@@ -16,9 +16,6 @@
 #include "Aquila/Rendering/Renderers/Renderer.h"
 #include "Aquila/Rendering/Renderers/OverlayRenderer.h"
 
-#include <array>
-#include <vector>
-
 struct ApplicationSpec {
 	std::string name = "Aquila";
 	Uint32 width = 1920;

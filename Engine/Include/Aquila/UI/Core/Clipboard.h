@@ -1,6 +1,4 @@
 #pragma once
-#include <functional>
-#include <string>
 
 namespace Aquila::UI::Core {
 

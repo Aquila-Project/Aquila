@@ -1,10 +1,6 @@
 #include "Aquila/Rendering/Environment/HosekWilkieSky.h"
 #include "Aquila/Foundation/Math/Math.h"
 
-#include <array>
-#include <cmath>
-#include <random>
-
 extern "C" {
 #include "hosek/ArHosekSkyModel.h"
 }

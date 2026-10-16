@@ -2,8 +2,6 @@
 
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Button.h"
-#include <string>
-#include <vector>
 
 namespace Aquila::GFX {
 class GfxTexture;

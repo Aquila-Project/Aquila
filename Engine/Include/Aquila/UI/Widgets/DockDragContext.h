@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Aquila/UI/Core/View.h"
-#include <functional>
 
 namespace Aquila::GFX {
 class GfxTexture;

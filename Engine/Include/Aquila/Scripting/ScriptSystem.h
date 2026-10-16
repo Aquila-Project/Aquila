@@ -7,9 +7,6 @@
 
 #include "runtime.h"
 
-#include <string>
-#include <unordered_map>
-
 namespace Aquila::Scripting {
 
 class ScriptSystem {

@@ -8,7 +8,6 @@
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
 
-#include <algorithm>
 #include <charconv>
 
 namespace Editor {

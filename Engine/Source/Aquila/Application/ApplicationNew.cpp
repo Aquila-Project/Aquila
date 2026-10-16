@@ -7,8 +7,6 @@
 #include "Aquila/Graphics/Core/Renderer2D.h"
 #include "Aquila/RHI/Vulkan/VulkanShaderCompiler.h"
 
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "Aquila/Rendering/Systems/GridSystem.h"
 #include "Aquila/Rendering/Systems/OutlineSystem.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"

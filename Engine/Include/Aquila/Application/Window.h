@@ -7,8 +7,6 @@
 #include "Aquila/Platform/Platform.h"
 #include "Aquila/Platform/Cursor.h"
 
-#include <array>
-
 #include "Aquila/Platform/Events/Event.h"
 #include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/Platform/Events/InputEvent.h"

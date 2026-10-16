@@ -6,10 +6,6 @@
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Core/EditorContext.h"
 
-#include <string>
-#include <string_view>
-#include <vector>
-
 namespace Editor {
 
 class EditorWindow : public Aquila::UI::Core::DockPanelContent {

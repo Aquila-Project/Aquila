@@ -3,9 +3,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Graphics/Material/Material.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 namespace Aquila::GFX {
 class GfxContext;

@@ -12,8 +12,6 @@
 #include "Aquila/UI/Widgets/Toggle.h"
 #include "Aquila/UI/Widgets/VecField.h"
 
-#include <algorithm>
-
 using namespace Aquila::UI::Core;
 using namespace Aquila::Reflection;
 

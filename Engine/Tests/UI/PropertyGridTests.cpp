@@ -6,8 +6,6 @@
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/VecField.h"
 
-#include <algorithm>
-
 using namespace Aquila::UI::Core;
 
 namespace {

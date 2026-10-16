@@ -2,7 +2,6 @@
 
 #include "Aquila/UI/Style/StyleProperties.h"
 #include "Aquila/UI/Style/StyleParserHelper.h"
-#include <span>
 
 namespace Aquila::UI {
 

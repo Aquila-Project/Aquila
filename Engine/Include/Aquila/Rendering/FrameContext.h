@@ -4,8 +4,6 @@
 #include "Aquila/Rendering/LightData.h"
 #include "Aquila/Rendering/RenderSettings.h"
 
-#include <array>
-
 namespace Aquila::SceneManagement {
 class Scene;
 }

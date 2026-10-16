@@ -2,7 +2,6 @@
 #include "Aquila/Foundation/Defines.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/GFX/GfxPipeline.h"
-#include <string>
 
 namespace Aquila::GFX {
 class GfxContext;

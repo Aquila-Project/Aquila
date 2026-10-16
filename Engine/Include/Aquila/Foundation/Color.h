@@ -5,10 +5,6 @@
 #include "Aquila/Foundation/Math/MathTypes.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <algorithm>
-#include <cmath>
-#include <vector>
-
 namespace Aquila::Foundation::Color {
 
 // RGBA clear colors

@@ -4,9 +4,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Platform/Cursor.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::Graphics {
 class Renderer2D;
 }

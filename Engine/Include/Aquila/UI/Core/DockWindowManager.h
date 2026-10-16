@@ -6,9 +6,6 @@
 #include "Aquila/Rendering/IRenderWindowHost.h"
 #include "Aquila/UI/Core/FloatingPanelWindow.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::UI::Core {
 
 class Canvas;

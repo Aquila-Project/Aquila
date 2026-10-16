@@ -7,8 +7,6 @@
 #include "Aquila/UI/Rendering/DrawCmd.h"
 #include "Aquila/UI/Text/FontAtlas.h"
 
-#include <type_traits>
-
 namespace Aquila::UI::Rendering {
 
 namespace {

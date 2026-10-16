@@ -12,10 +12,7 @@
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
-#include <algorithm>
-#include <cctype>
 #include <initializer_list>
-#include <utility>
 
 namespace Editor {
 

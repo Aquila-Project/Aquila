@@ -5,12 +5,6 @@
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Scene/Entity.h"
 
-#include <concepts>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <vector>
-
 namespace Aquila::SceneManagement {
 
 enum class ComponentCategory : Uint8 { Object, General, Rendering };

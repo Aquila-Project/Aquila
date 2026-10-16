@@ -2,9 +2,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::UI::Core {
 
 class DockSpace;

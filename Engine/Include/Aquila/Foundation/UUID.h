@@ -1,13 +1,6 @@
 #pragma once
-#include <cstdint>
-#include <functional>
-#include <cstddef>
 #include <ios>
-#include <iomanip>
 #include <cstdio>
-#include <random>
-#include <string>
-#include <sstream>
 namespace Aquila::Foundation {
 struct UUID {
 	uint64_t high;

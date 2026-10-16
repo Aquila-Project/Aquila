@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Graphics/Material/MaterialParameters.h"

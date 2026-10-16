@@ -8,9 +8,6 @@
 
 #include <lunasvg.h>
 
-#include <algorithm>
-#include <cmath>
-
 namespace Aquila::UI::Core {
 
 namespace {

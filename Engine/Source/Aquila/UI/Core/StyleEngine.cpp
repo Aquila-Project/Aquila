@@ -1,7 +1,6 @@
 #include "Aquila/UI/Core/StyleEngine.h"
 #include "Aquila/Foundation/Profiler.h"
 #include "Aquila/UI/Style/StylePropertyList.h"
-#include <unordered_set>
 
 namespace Aquila::UI::Core {
 

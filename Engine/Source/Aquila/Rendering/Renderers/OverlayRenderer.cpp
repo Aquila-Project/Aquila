@@ -2,7 +2,6 @@
 #include "Aquila/Graphics/RenderGraph/RGGraph.h"
 #include "Aquila/Rendering/FrameContext.h"
 #include "Aquila/GFX/GfxSwapchain.h"
-#include <algorithm>
 
 namespace Aquila::Rendering {
 

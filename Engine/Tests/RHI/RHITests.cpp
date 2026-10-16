@@ -5,8 +5,6 @@
 
 #include "Aquila/GFX/GfxContext.h"
 
-#include <array>
-
 using namespace Aquila;
 
 namespace {

@@ -3,8 +3,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <span>
-
 namespace Aquila::RHI {
 
 class IRHIQueryPool {

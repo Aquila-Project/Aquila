@@ -2,8 +2,6 @@
 
 #include "Aquila/Scene/SceneStatistics.h"
 
-#include <string>
-
 namespace Aquila::UI::Core {
 class Label;
 class View;

@@ -4,9 +4,6 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Text/TextSelection.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::UI::Core {
 
 class SelectableTextView : public View {

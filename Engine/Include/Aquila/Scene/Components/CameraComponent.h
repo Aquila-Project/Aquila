@@ -4,8 +4,6 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Signal.h"
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 namespace Aquila::SceneManagement::Components {

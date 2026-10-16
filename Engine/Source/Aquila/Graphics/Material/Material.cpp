@@ -2,7 +2,6 @@
 #include "Aquila/Graphics/Shader/ShaderProgram.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/Foundation/SharedConstants.h"
-#include <cstring>
 
 namespace Aquila::Graphics {
 

@@ -3,16 +3,7 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <glm/glm.hpp>
-
 #include "Aquila/Foundation/Math/MathTypes.h"
-
-#include <limits>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <variant>
-#include <vector>
 
 namespace Aquila::Reflection {
 

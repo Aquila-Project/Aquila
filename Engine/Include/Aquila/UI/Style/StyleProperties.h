@@ -2,7 +2,6 @@
 
 #include "Aquila/UI/Style/StyleLength.h"
 #include "Aquila/Platform/Cursor.h"
-#include <vector>
 
 namespace Aquila::UI {
 

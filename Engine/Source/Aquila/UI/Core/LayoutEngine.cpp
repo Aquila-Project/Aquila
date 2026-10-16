@@ -2,9 +2,6 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/UI/Text/FontAtlas.h"
 
-#include <algorithm>
-#include <unordered_map>
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-designated-field-initializers"
 #pragma clang diagnostic ignored "-Wmissing-field-initializers"

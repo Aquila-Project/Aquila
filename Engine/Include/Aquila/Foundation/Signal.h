@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
-#include <vector>
 
 template <typename Sig> class Signal;
 

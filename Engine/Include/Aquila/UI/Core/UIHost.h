@@ -7,9 +7,6 @@
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/CanvasManager.h"
 
-#include <functional>
-#include <string>
-
 namespace Aquila::Platform::Events {
 class Event;
 }

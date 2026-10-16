@@ -1,8 +1,5 @@
 #include "Aquila/Foundation/Singleton.h"
 
-#include <mutex>
-#include <unordered_map>
-
 namespace Aquila::Foundation {
 
 void *&singleton_slot(std::string_view type_name) {

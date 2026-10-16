@@ -2,9 +2,6 @@
 
 #include "Aquila/UI/Text/TextSelection.h"
 
-#include <string>
-#include <vector>
-
 using namespace Aquila::UI::Text;
 
 namespace {

@@ -5,8 +5,6 @@
 #include "Aquila/UI/Core/IResourceResolver.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Text/FontAtlas.h"
-#include <string>
-#include <vector>
 
 namespace Aquila::UI::Core {
 

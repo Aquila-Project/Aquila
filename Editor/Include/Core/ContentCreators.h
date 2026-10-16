@@ -2,8 +2,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <string>
-
 namespace Editor {
 
 struct ContentCreator {

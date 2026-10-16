@@ -1,6 +1,5 @@
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
 #include "Aquila/Foundation/FrameScheduler.h"
-#include <vector>
 
 namespace Aquila::Graphics::Shader {
 

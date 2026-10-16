@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Aquila/UI/Core/View.h"
-#include <unordered_map>
-#include <vector>
 
 namespace Aquila::UI::Core {
 

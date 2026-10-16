@@ -5,10 +5,6 @@
 #include "Core/EditorTools.h"
 #include "UI/Viewport/ViewportCanvas.h"
 
-#include <array>
-#include <string>
-#include <vector>
-
 namespace Editor {
 
 class EditorContext;

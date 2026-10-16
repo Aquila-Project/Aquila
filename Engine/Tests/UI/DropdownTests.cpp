@@ -3,8 +3,6 @@
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
 
-#include <array>
-
 using namespace Aquila::UI::Core;
 
 namespace {

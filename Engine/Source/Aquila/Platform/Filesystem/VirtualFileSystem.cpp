@@ -1,8 +1,6 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <algorithm>
-
 namespace Aquila::Platform::Filesystem {
 
 std::string VirtualFileSystem::normalize_path(const std::string &path) {

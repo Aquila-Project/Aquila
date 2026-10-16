@@ -4,13 +4,6 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Reflection/Property.h"
 
-#include <functional>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <utility>
-#include <vector>
-
 namespace Aquila::Reflection {
 
 class TypeInfo {

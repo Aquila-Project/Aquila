@@ -4,7 +4,6 @@
 #include "Aquila/UI/Widgets/Control.h"
 #include "Aquila/UI/Core/TextInputState.h"
 #include "Aquila/UI/Text/FontAtlas.h"
-#include <string>
 
 namespace Aquila::UI::Core {
 

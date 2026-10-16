@@ -1,8 +1,6 @@
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 
-#include <filesystem>
-
 namespace Aquila::Platform::Filesystem {
 
 NativeFileSystem::NativeFileSystem(const std::string &root_path) : m_root_path(Filesystem::path_normalize(root_path)) {

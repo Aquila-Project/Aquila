@@ -6,8 +6,6 @@
 
 #include "Aquila/UI/Style/StyleTypes.h"
 
-#include <algorithm>
-
 namespace Aquila::UI::Core {
 
 View *DockNode::make_zone_indicator(FloatingAttachPoint elem_pt, FloatingAttachPoint parent_pt, Vec2 offset,

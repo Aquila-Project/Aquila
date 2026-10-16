@@ -11,10 +11,6 @@
 #include "Aquila/Scripting/ScriptComponent.h"
 #include "Aquila/Scripting/ScriptSystem.h"
 
-#include <filesystem>
-#include <fstream>
-#include <sstream>
-
 using namespace Aquila;
 using namespace Aquila::SceneManagement;
 using namespace Aquila::SceneManagement::Components;

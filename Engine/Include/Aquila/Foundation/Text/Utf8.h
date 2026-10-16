@@ -2,8 +2,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <string_view>
-
 namespace Aquila::Foundation::Utf8 {
 
 // thank you

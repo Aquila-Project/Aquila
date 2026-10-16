@@ -3,11 +3,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <algorithm>
-#include <cctype>
-#include <string>
-#include <string_view>
-
 namespace Aquila::Foundation {
 
 inline std::string to_lower(std::string_view text) {

@@ -2,8 +2,6 @@
 
 #include "Aquila/Scene/Entity.h"
 
-#include <string_view>
-
 namespace Editor {
 
 inline constexpr std::string_view k_empty_entity_icon = "circle-dashed";

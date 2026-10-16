@@ -1,7 +1,5 @@
 #include "Aquila/Foundation/Log.h"
 
-#include <mutex>
-
 namespace Aquila::Foundation {
 
 namespace {

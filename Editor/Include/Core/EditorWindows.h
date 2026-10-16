@@ -4,10 +4,6 @@
 #include "Aquila/UI/Core/DockLayoutSerializer.h"
 #include "Core/EditorWindow.h"
 
-#include <string>
-#include <string_view>
-#include <vector>
-
 namespace Aquila::UI::Core {
 class DockNode;
 class DockPanel;

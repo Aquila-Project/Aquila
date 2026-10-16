@@ -9,10 +9,6 @@
 #include "Aquila/UI/Widgets/Image.h"
 #include <ostream>
 #include <streambuf>
-#include <string>
-#include <vector>
-#include <functional>
-#include <mutex>
 
 namespace Editor {
 

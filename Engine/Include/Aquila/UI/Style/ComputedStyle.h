@@ -2,8 +2,6 @@
 
 #include "Aquila/UI/Style/StyleDefaults.h"
 #include "Aquila/UI/Style/StyleLength.h"
-#include <string>
-#include <vector>
 
 namespace Aquila::UI {
 

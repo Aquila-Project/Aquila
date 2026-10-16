@@ -6,8 +6,6 @@
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/DockTypes.h"
 
-#include <algorithm>
-
 namespace Aquila::UI::Core {
 
 namespace {

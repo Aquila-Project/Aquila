@@ -10,9 +10,6 @@
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Widgets/DockSplitter.h"
 
-#include <algorithm>
-#include <unordered_map>
-
 namespace Aquila::UI::Core {
 
 DockSpace::DockSpace() {

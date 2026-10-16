@@ -1,14 +1,11 @@
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Foundation/Macros.h"
 
-#include <algorithm>
-
 #ifdef AQUILA_PLATFORM_LINUX
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <climits>
 #endif
 

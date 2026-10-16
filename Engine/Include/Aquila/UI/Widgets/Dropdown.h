@@ -3,8 +3,6 @@
 #include "Aquila/UI/Widgets/Control.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Popup.h"
-#include <string>
-#include <vector>
 
 namespace Aquila::UI::Core {
 

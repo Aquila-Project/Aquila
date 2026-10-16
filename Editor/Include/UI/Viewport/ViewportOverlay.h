@@ -5,9 +5,6 @@
 #include "Aquila/Scene/SceneStatistics.h"
 #include "UI/Viewport/ViewportCanvas.h"
 
-#include <string>
-#include <vector>
-
 namespace Editor {
 
 class EditorContext;

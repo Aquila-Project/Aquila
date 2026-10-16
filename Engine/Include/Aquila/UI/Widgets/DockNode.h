@@ -3,9 +3,6 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/DockDragContext.h"
 #include "Aquila/UI/Widgets/DockTypes.h"
-#include <string>
-#include <utility>
-#include <vector>
 
 namespace Aquila::GFX {
 class GfxTexture;

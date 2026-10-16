@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include "Aquila/RHI/Backend/IRHIDevice.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/GFX/GfxBuffer.h"

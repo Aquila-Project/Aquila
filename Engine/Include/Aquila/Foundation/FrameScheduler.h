@@ -3,11 +3,6 @@
 #include "Aquila/Foundation/Singleton.h"
 #include "Aquila/Foundation/Timer.h"
 
-#include <algorithm>
-#include <atomic>
-#include <thread>
-#include <vector>
-
 namespace Aquila::Foundation {
 
 class FrameScheduler : public Singleton<FrameScheduler> {

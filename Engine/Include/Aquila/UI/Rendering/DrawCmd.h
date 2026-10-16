@@ -6,9 +6,6 @@
 
 #include "Aquila/GFX/GfxTexture.h"
 
-#include <string>
-#include <variant>
-
 namespace Aquila::UI::Text {
 class FontAtlas;
 }

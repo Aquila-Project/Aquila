@@ -15,8 +15,6 @@
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/TreeView.h"
 
-#include <algorithm>
-#include <cctype>
 #include <cstdio>
 
 namespace Aquila::UI::DevTools {

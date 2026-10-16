@@ -3,8 +3,6 @@
 #include "Aquila/GFX/GfxBuffer.h"
 #include "Aquila/RHI/Vertex.h"
 
-#include <span>
-
 namespace Aquila::GFX {
 
 class GfxContext;

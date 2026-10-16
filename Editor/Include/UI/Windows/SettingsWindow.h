@@ -3,9 +3,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Core/EditorConfig.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::Graphics {
 class Renderer2D;
 }

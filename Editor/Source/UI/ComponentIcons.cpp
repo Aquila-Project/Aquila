@@ -5,9 +5,6 @@
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
 
-#include <array>
-#include <utility>
-
 namespace Editor {
 
 using namespace Aquila::SceneManagement::Components;

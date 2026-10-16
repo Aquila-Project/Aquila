@@ -3,12 +3,7 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <algorithm>
 #include <compare>
-#include <functional>
-#include <span>
-#include <string>
-#include <string_view>
 
 namespace Aquila::UI::Text {
 

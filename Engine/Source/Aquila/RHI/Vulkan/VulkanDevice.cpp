@@ -17,8 +17,6 @@
 #include "Aquila/RHI/Vulkan/VulkanVertex.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 
-#include <cstring>
-#include <fstream>
 #include <vulkan/vulkan_core.h>
 
 namespace Aquila::RHI {

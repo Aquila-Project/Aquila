@@ -7,8 +7,6 @@
 
 #include "Aquila/UI/Core/Canvas.h"
 
-#include <algorithm>
-
 using namespace Aquila::UI::Core;
 
 namespace {

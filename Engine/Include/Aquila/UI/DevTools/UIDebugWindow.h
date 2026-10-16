@@ -3,10 +3,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 namespace Aquila::Graphics {
 class Renderer2D;
 }

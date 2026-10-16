@@ -2,8 +2,6 @@
 #include "Aquila/Foundation/Singleton.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Graphics/Shader/ShaderWatcher.h"
-#include <string>
-#include <unordered_map>
 
 namespace Aquila::Graphics::Shader {
 

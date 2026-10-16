@@ -4,8 +4,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/UI/Core/FontManager.h"
 
-#include <vector>
-
 namespace Editor::Config {
 
 constexpr const char *EDITOR_NAME = "Aquila Editor";

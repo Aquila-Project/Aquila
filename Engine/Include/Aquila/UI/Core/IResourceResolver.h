@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
-#include <string>
 
 namespace Aquila::GFX {
 class GfxTexture;
