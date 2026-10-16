@@ -4,6 +4,15 @@
 
 template <typename Sig> class Signal;
 
+/// @code
+/// Signal<void(Entity)> on_selected;
+/// auto connection = on_selected.connect([](Entity entity) { ... });
+/// on_selected(entity);
+/// on_selected.disconnect(connection);
+/// @endcode
+///
+/// @note Don't connect or disconnect from inside a slot while the signal fires,
+/// the slot list can move under the running slot.
 template <typename... Args> class Signal<void(Args...)> {
 	using Slot = Delegate<void(Args...)>;
 
@@ -11,6 +20,7 @@ template <typename... Args> class Signal<void(Args...)> {
 	class Connection {
 	  public:
 		Connection() = default;
+		/// Only tells it came from connect(), it stays true after disconnect().
 		[[nodiscard]] bool is_valid() const { return m_id != 0; }
 
 	  private:
@@ -29,6 +39,7 @@ template <typename... Args> class Signal<void(Args...)> {
 		std::erase_if(m_slots, [id = connection.m_id](const Entry &entry) { return entry.id == id; });
 	}
 
+	/// Replaces every connected slot with this one.
 	void set(Slot slot) {
 		m_slots.clear();
 		connect(std::move(slot));

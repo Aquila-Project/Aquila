@@ -24,6 +24,7 @@ inline double get_time_since_start(const TimePoint &start) {
 	return elapsed_seconds(start, now());
 }
 
+/// Call tick() once per frame, get_delta_time() is the time between the last two ticks in seconds.
 class Stopwatch {
   public:
 	Stopwatch() { start(); }

@@ -2,6 +2,8 @@
 
 namespace Aquila::Foundation {
 
+/// A set that remembers the order keys were marked in, so dirty things get processed in that order.
+/// Marking a key twice keeps its first position.
 template <typename Key, typename Hash = std::hash<Key>> class DirtySet {
   public:
 	void mark_dirty(const Key &key) {

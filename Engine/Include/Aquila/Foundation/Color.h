@@ -140,6 +140,8 @@ inline std::vector<Uint8> gen_hue(Uint32 w, Uint32 h) {
 	return px;
 }
 
+/// Gradient for one slider of the color picker.
+/// `ch` is 0 to 2 for R, G, B (or H, S, V when `is_hsv`) and 3 for alpha over a checkerboard.
 inline std::vector<Uint8> gen_channel_grad(Vec4 color, float h, float s, float v, int ch, bool is_hsv, Uint32 w,
 										   Uint32 tex_h) {
 	std::vector<Uint8> px(w * tex_h * 4);
@@ -198,6 +200,7 @@ inline std::vector<Uint8> gen_channel_grad(Vec4 color, float h, float s, float v
 	return px;
 }
 
+/// Transparent to opaque over a checkerboard.
 inline std::vector<Uint8> gen_alpha(Vec3 rgb, Uint32 w, Uint32 h) {
 	std::vector<Uint8> px(w * h * 4);
 	for (Uint32 y = 0; y < h; ++y) {

@@ -2,6 +2,16 @@
 
 namespace Aquila::Foundation {
 
+/// Computes a value on first get() and keeps it until it's invalidated.
+/// Invalidating a key also invalidates every key that depends on it.
+///
+/// @code
+/// cache.register_dependency(text_view, parent_view);
+/// const ComputedStyle &style = cache.get(text_view, [&] { return compute_style(text_view); });
+/// cache.invalidate(parent_view);
+/// @endcode
+///
+/// @note A key that was never computed, or is already invalid, stops the cascade.
 template <typename Key, typename Value, typename Hash = std::hash<Key>> class ComputedCache {
   public:
 	template <typename ComputeFn> const Value &get(const Key &key, ComputeFn &&compute_fn) {
@@ -45,6 +55,7 @@ template <typename Key, typename Value, typename Hash = std::hash<Key>> class Co
 		}
 	}
 
+	/// When `dependency` gets invalidated, `dependent` does too.
 	void register_dependency(const Key &dependent, const Key &dependency) {
 		auto &list = m_dependents[dependency];
 		for (const Key &k : list) {

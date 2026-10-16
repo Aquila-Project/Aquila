@@ -6,6 +6,7 @@
 
 namespace Aquila::SharedConstants {
 
+/// Native paths baked in by CMake at configure time.
 AQUILA_INLINE const std::string SHADERS_DIR = AQUILA_SHADERS_DIR;
 AQUILA_INLINE const std::string RESOURCES_DIR = AQUILA_RESOURCES_DIR;
 

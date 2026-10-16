@@ -21,6 +21,7 @@ using Isize = std::ptrdiff_t;
 using Uptr = std::uintptr_t;
 using Iptr = std::intptr_t;
 
+/// A reader/writer lock: MutexLock to write, SharedLock to read.
 using Mutex = std::shared_mutex;
 using MutexLock = std::unique_lock<Mutex>; // exclusive write lock
 using SharedLock = std::shared_lock<Mutex>; // shared read lock
@@ -32,8 +33,14 @@ template <typename T> using Delegate = std::function<T>;
 
 template <typename T> using Option = std::optional<T>;
 template <typename... Ts> using Variant = std::variant<Ts...>;
+/// Just a variant, read it with std::get_if or std::visit.
 template <typename Ok, typename Err> using Result = std::variant<Ok, Err>;
 
+/// One lambda per alternative for std::visit.
+///
+/// @code
+/// std::visit(Overloaded{ [](Int32 value) { ... }, [](F32 value) { ... } }, property_value);
+/// @endcode
 template <typename... Visitors> struct Overloaded : Visitors... {
 	using Visitors::operator()...;
 };
@@ -62,6 +69,11 @@ AQUILA_FORCE_INLINE bool has_flag(OpenMode mode, OpenMode flag) {
 
 enum class Priority : Uint8 { VeryHigh = BIT(1), High = BIT(2), Medium = BIT(3), Low = BIT(4) };
 
+/// Converts to the default of whatever type it's assigned to.
+///
+/// @code
+/// Vec3 offset = DEFAULT_VALUE;
+/// @endcode
 struct DefaultValue {
 	template <typename T> constexpr operator T() const noexcept { return T{}; }
 };

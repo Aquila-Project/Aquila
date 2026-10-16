@@ -7,6 +7,7 @@
 	ClassName(const ClassName &) = delete; \
 	ClassName &operator=(const ClassName &) = delete;
 
+/// Needs a semicolon after it, AQUILA_NONCOPYABLE doesn't.
 #define AQUILA_NONMOVEABLE(ClassName) \
 	ClassName(ClassName &&) = delete; \
 	ClassName &operator=(ClassName &&) = delete
@@ -72,6 +73,7 @@
 #define AQUILA_DEPRECATED(msg)
 #endif
 
+/// Goes inside an Event subclass, fills in its name and type index.
 #define EVENT_CLASS_TYPE(type)                                      \
 	static const char *get_static_name() {                          \
 		return #type;                                               \

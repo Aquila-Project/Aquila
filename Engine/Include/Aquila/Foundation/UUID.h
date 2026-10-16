@@ -24,6 +24,8 @@ struct UUID {
 		return uuid;
 	}
 
+	/// Same path gives the same id. It's built on std::hash, which differs between compilers,
+	/// so don't save it in files shared between platforms.
 	static UUID from_filepath(const std::string &filepath) {
 		std::hash<std::string> hasher;
 		size_t const hash = hasher(filepath);
@@ -54,6 +56,7 @@ struct UUID {
 		return oss.str();
 	}
 
+	/// Doesn't validate, a bad string gives a partial or null id.
 	static UUID from_string(const std::string &str) {
 		UUID uuid{};
 		uint32_t data1 = 0;

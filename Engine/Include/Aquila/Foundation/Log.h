@@ -16,6 +16,11 @@ enum class LogLevel : Uint8 {
 	Critical = 1 << 7
 };
 
+/// Use the AQUILA_LOG_* macros, they take std::format strings.
+///
+/// @code
+/// AQUILA_LOG_WARNING("Missing texture {}", path);
+/// @endcode
 class Logger {
   private:
 	static LogLevel s_currentLevel;
@@ -27,6 +32,7 @@ class Logger {
 	static void set_log_level(LogLevel level);
 	static LogLevel get_log_level();
 
+	/// nullptr goes back to the default: errors to stderr, the rest to stdout. Thread safe.
 	static void set_sink(std::ostream *buf);
 
 	static void enable_timestamp(bool enable = true);

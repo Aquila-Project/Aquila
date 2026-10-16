@@ -11,6 +11,7 @@
 #define AQUILA_LOG_CRITICAL(...) Aquila::Foundation::log_critical(__VA_ARGS__)
 
 #ifdef AQUILA_DEBUG
+/// Checked in release builds too.
 #define AQUILA_ASSERT(condition, message)                                              \
 	do {                                                                               \
 		if (AQUILA_UNLIKELY(!(condition))) {                                           \
@@ -37,6 +38,7 @@
 		}                                                                                                         \
 	} while (0)
 
+/// Logs a warning and keeps going.
 #define AQUILA_UNIMPLEMENTED() AQUILA_LOG_WARNING("Not implemented: {}", __FUNCTION__)
 
 #endif

@@ -40,6 +40,8 @@ struct Decoded {
 	Uint32 size; // bytes consumed from the source (always >= 1)
 };
 
+/// Bad bytes come back as REPLACEMENT with size 1, so a decode loop always moves forward.
+/// Size is 0 only when pos is past the end.
 inline Decoded decode(std::string_view text, Usize pos) {
 	if (pos >= text.size()) {
 		return { .codepoint = 0u, .size = 0u };
@@ -88,6 +90,7 @@ inline Decoded decode(std::string_view text, Usize pos) {
 	return { codepoint, extra + 1u };
 }
 
+/// @return bytes written to `out`, 1 to 4. The codepoint isn't checked.
 inline Uint32 encode(Uint32 codepoint, char out[4]) {
 	if (codepoint <= MAX_ONE_BYTE) {
 		out[0] = static_cast<char>(codepoint);
@@ -111,6 +114,7 @@ inline Uint32 encode(Uint32 codepoint, char out[4]) {
 	return 4u;
 }
 
+/// Byte index of the next codepoint, so a caret never lands inside a character.
 inline Usize next_index(std::string_view text, Usize pos) {
 	if (pos >= text.size()) {
 		return text.size();

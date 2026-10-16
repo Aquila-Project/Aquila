@@ -16,14 +16,17 @@ struct Rect {
 	[[nodiscard]] AQUILA_FORCE_INLINE float height() const { return size.y; }
 	[[nodiscard]] AQUILA_FORCE_INLINE Vec2 center() const { return position + size * 0.5F; }
 
+	/// The right and bottom edges are outside.
 	[[nodiscard]] AQUILA_FORCE_INLINE bool contains(Vec2 p) const {
 		return p.x >= left() && p.x < right() && p.y >= top() && p.y < bottom();
 	}
 
+	/// Rects that only touch count as overlapping.
 	[[nodiscard]] AQUILA_FORCE_INLINE bool overlaps(const Rect &other) const {
 		return left() <= other.right() && right() >= other.left() && top() <= other.bottom() && bottom() >= other.top();
 	}
 
+	/// Empty rects aren't skipped, an empty rect at the origin still stretches the result to the origin.
 	[[nodiscard]] AQUILA_FORCE_INLINE Rect Union(const Rect &other) const {
 		const float x = Aquila::Math::min(left(), other.left());
 		const float y = Aquila::Math::min(top(), other.top());
@@ -32,6 +35,7 @@ struct Rect {
 		return { .position = { x, y }, .size = { r - x, b - y } };
 	}
 
+	/// Zero size when they don't overlap.
 	[[nodiscard]] AQUILA_FORCE_INLINE Rect intersect(const Rect &other) const {
 		float l = Aquila::Math::max(left(), other.left());
 		float t = Aquila::Math::max(top(), other.top());
