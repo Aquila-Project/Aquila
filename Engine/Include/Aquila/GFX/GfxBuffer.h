@@ -12,6 +12,7 @@ class GfxBuffer {
 	~GfxBuffer() = default;
 	AQUILA_NONCOPYABLE(GfxBuffer);
 
+	/// Mapped buffers only (every domain except GpuOnly). size 0 copies the whole buffer.
 	void write(const void *data, Uint64 size = 0, Uint64 offset = 0);
 	void *map();
 	void unmap();

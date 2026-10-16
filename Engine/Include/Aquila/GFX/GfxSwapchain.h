@@ -12,6 +12,8 @@ class GfxSwapchain {
 	~GfxSwapchain() = default;
 	AQUILA_NONCOPYABLE(GfxSwapchain);
 
+	/// Secondary windows pass false for drive_device_frame, see IRHISwapchain.
+	/// @return false when the swapchain needs a resize, skip the frame
 	bool acquire_next_image(Uint32 &out_image_index, bool drive_device_frame = true);
 
 	[[nodiscard]] Uint32 get_width() const;

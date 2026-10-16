@@ -9,6 +9,7 @@ class GfxContext;
 
 class GfxMesh {
   public:
+	/// Uploads to GPU only buffers right away and blocks until it's done.
 	static Ref<GfxMesh> create(GfxContext &ctx, std::span<const RHI::Vertex> vertices, std::span<const Uint32> indices);
 
 	AQUILA_NONCOPYABLE(GfxMesh);
