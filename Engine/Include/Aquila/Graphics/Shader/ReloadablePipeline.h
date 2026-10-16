@@ -9,6 +9,15 @@ class GfxContext;
 
 namespace Aquila::Graphics::Shader {
 
+/// A pipeline that rebuilds itself when its shader file changes (debug builds only).
+/// `build` runs again on every change. If it returns null the old pipeline stays.
+///
+/// @code
+/// auto grid = ReloadablePipeline::create(ctx, grid_shader_path, [this](GFX::GfxContext &ctx) {
+///     return build_grid_pipeline(ctx);
+/// });
+/// grid->get().bind(cmd);
+/// @endcode
 class ReloadablePipeline {
   public:
 	using BuildFn = Delegate<Ref<GFX::GfxPipeline>(GFX::GfxContext &)>;

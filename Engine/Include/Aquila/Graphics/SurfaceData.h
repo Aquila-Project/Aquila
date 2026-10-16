@@ -3,6 +3,7 @@
 
 namespace Aquila::Graphics {
 
+/// One entry of the per-frame material buffer. Has to match the shader side struct byte for byte.
 struct alignas(16) GpuSurfaceData {
 	Vec4 albedo{ 1.F, 1.F, 1.F, 1.F };
 	Vec4 emissive{ 0.F, 0.F, 0.F, 0.F };

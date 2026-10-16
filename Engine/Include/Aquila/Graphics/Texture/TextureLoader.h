@@ -39,8 +39,12 @@ class TextureLoader {
 
 	TextureLoader() = default;
 
+	/// Same as load_from_vfs(), the path is a VFS path.
 	RawImageData load_from_file(const std::string &filepath);
+	/// Always RGBA8, `channels` is what the file had.
+	/// Throws when the file can't be read, returns an invalid image when it can't be decoded.
 	RawImageData load_from_vfs(const std::string &filepath);
+	/// RGBA32F. Returns an invalid image on failure.
 	RawHDRData load_hdr_from_file(const std::string &filepath);
 
   private:

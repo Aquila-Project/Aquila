@@ -11,6 +11,19 @@ class GfxCommandList;
 
 namespace Aquila::Graphics::RG {
 
+/// Passes declare what they read and write, the graph orders them, drops the ones nothing uses,
+/// allocates transient resources and puts the barriers in.
+///
+/// @code
+/// RGTextureHandle color = graph.declare_texture({ .width = w, .height = h, .format = RHI::TextureFormat::RGBA16F });
+/// graph.add_pass(
+///     "Sky",
+///     [&](RGPassBuilder &builder) { color = builder.set_color_attachment(0, color); },
+///     [](GFX::GfxCommandList &cmd, RGRegistry &) { cmd.draw(3); });
+/// graph.compile(ctx);
+/// graph.execute(cmd);
+/// graph.reset();
+/// @endcode
 class RenderGraph {
   public:
 	RenderGraph() = default;
@@ -21,10 +34,13 @@ class RenderGraph {
 	RenderGraph(RenderGraph &&) = default;
 	RenderGraph &operator=(RenderGraph &&) = default;
 
+	/// Transient: the graph creates it at compile time and may reuse a texture another pass is done with.
 	RGTextureHandle declare_texture(const RGTextureDesc &desc) { return m_registry.declare_texture(desc); }
 
 	RGBufferHandle declare_buffer(const RGBufferDesc &desc) { return m_registry.declare_buffer(desc); }
 
+	/// The graph doesn't own it, keep it alive until execute() is done.
+	/// `initial_state` is the state it's in when the frame starts.
 	RGTextureHandle import_texture(GFX::GfxTexture *tex, std::string_view name = {},
 								  RG::ResourceState initial_state = RG::ResourceState::Undefined) {
 		return m_registry.import_texture(tex, name, initial_state);
@@ -62,6 +78,8 @@ class RenderGraph {
 	/// Compile() must have been called first.
 	void execute(GFX::GfxCommandList &cmd);
 
+	/// With a pool, execute() writes a timestamp before and after every pass.
+	/// get_timed_passes() names them in the same order.
 	void set_timestamp_pool(RHI::IRHIQueryPool *pool) { m_timestamp_pool = pool; }
 	[[nodiscard]] const std::vector<std::string> &get_timed_passes() const { return m_timed_passes; }
 
