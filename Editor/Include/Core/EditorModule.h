@@ -32,6 +32,7 @@ class SettingsWindow;
 class ProjectLauncher;
 class ProjectManager;
 
+/// The editor as an engine module: project launcher, dock shell, menus, shortcuts and preferences.
 class EditorModule final : public Aquila::Application::IModule {
   public:
 	EditorModule();
@@ -44,6 +45,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	void on_resize(Uint32 width, Uint32 height) override;
 	void on_render_resize(Uint32 width, Uint32 height) override;
 
+	/// add_window, add_workspace and add_content_creator also work before on_attach(), they're queued.
 	template <typename T> void add_window(EditorWindowType type) {
 		type.create = [](EditorContext &context) -> Unique<EditorWindow> { return std::make_unique<T>(context); };
 		add_window_type(std::move(type));

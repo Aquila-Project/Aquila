@@ -15,6 +15,7 @@ class VulkanSwapchain final : public IRHISwapchain {
   public:
 	VulkanSwapchain(VulkanDevice &device, VkExtent2D extent, bool vsync);
 	VulkanSwapchain(VulkanDevice &device, VkExtent2D extent, bool vsync, Ref<VulkanSwapchain> previous);
+	/// For a secondary window's surface. With `owns_surface` the swapchain destroys it.
 	VulkanSwapchain(VulkanDevice &device, VkExtent2D extent, bool vsync, VkSurfaceKHR surface, bool owns_surface);
 	~VulkanSwapchain() override;
 

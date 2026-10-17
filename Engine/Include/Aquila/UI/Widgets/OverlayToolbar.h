@@ -7,12 +7,15 @@ namespace Aquila::UI::Core {
 
 enum class OverlayEdge : Uint8 { Left, Right, Top, Bottom };
 
+/// A toolbar floating over its parent (the viewport). Dragging the grip docks it to the nearest edge:
+/// vertical on the left and right, a row on the top and bottom. Markup sets edge="" and along="".
 class OverlayToolbar : public View {
   public:
 	OverlayToolbar();
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "OverlayToolbar"; }
 
+	/// `along` is the offset along that edge, in pixels.
 	void dock(OverlayEdge edge, F32 along);
 	[[nodiscard]] OverlayEdge get_edge() const { return m_edge; }
 	[[nodiscard]] F32 get_along() const { return m_along; }

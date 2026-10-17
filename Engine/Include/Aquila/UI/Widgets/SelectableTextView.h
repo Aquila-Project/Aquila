@@ -4,17 +4,16 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Text/TextSelection.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::UI::Core {
 
+/// Read-only lines you can select with the mouse and copy, the console uses it.
 class SelectableTextView : public View {
   public:
 	SelectableTextView();
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "SelectableTextView"; }
 
+	/// A zero color means the style color. The tag colors `tag_length` bytes from `tag_begin`, like a [WARN] prefix.
 	void add_line(std::string text, Vec4 color = Vec4(0.F), Int32 tag_begin = 0, Int32 tag_length = 0,
 				  Vec4 tag_color = Vec4(0.F));
 	void clear();

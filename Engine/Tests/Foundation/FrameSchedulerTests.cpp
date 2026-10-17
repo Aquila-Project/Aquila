@@ -2,9 +2,6 @@
 
 #include "Aquila/Foundation/FrameScheduler.h"
 
-#include <atomic>
-#include <thread>
-
 using Aquila::Foundation::FrameScheduler;
 
 namespace {

@@ -9,13 +9,10 @@
 #include "Aquila/UI/Widgets/Image.h"
 #include <ostream>
 #include <streambuf>
-#include <string>
-#include <vector>
-#include <functional>
-#include <mutex>
 
 namespace Editor {
 
+/// A streambuf that hands out whole lines. The console sets it as the Logger sink.
 class LogCaptureBuf : public std::streambuf {
   public:
 	using LineCallback = std::function<void(std::string)>;
@@ -38,6 +35,7 @@ class ConsolePanel : public IEditorPanel {
 	~ConsolePanel();
 
 	void build(Aquila::UI::Core::View *panel, Aquila::UI::Core::View *overlay_root) override;
+	/// Lines can come from any thread, they're queued and added here on the main thread.
 	void flush_pending();
 	void clear_all();
 

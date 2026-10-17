@@ -1,8 +1,6 @@
 
 
 #include "Aquila/Foundation/Profiler.h"
-#include <algorithm>
-#include <mutex>
 
 namespace Aquila::Foundation {
 

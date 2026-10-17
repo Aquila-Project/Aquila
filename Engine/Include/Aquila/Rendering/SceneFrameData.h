@@ -26,10 +26,13 @@ namespace Aquila::Rendering {
 RenderView render_view_from_entity(const SceneManagement::Components::CameraComponent &cam,
 								   const SceneManagement::Components::TransformComponent &transform);
 
+/// Uploads the per-frame scene data (camera, lights, materials, shadows, environment) and owns
+/// the scene descriptor set every material binds.
 class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
   public:
 	SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height);
 
+	/// Fills `frame_slot`'s buffers. Also sets MaterialComponent::material_index on every material.
 	void update(SceneManagement::Scene &scene, float delta_time, Uint32 frame_slot, const RenderView &primary_view,
 				bool shadows_allowed = true);
 

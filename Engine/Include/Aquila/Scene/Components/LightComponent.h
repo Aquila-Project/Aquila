@@ -16,6 +16,9 @@ struct ShadowQualitySettings {
 	int blocker_search_samples = 16;
 };
 
+/// `m_range` is for Point and Spot. `m_direction` is for Directional and Spot, it's not the
+/// transform rotation, and a zero vector is ignored. Cone angles are half angles in degrees.
+/// Area has no shading yet.
 struct LightComponent {
 	enum class Type { Point, Directional, Spot, Area };
 

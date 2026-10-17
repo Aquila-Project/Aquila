@@ -2,8 +2,6 @@
 #include "Aquila/Foundation/Singleton.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Graphics/Shader/ShaderWatcher.h"
-#include <string>
-#include <unordered_map>
 
 namespace Aquila::Graphics::Shader {
 
@@ -14,14 +12,17 @@ class ShaderHotReload : public Foundation::Singleton<ShaderHotReload> {
 	ShaderHotReload() { s_alive = true; }
 	~ShaderHotReload() { s_alive = false; }
 
+	/// `on_change` runs on the main thread when the file changes. Keep the id to unregister().
 	Uint64 register_reloadable(const std::string &shader_path, ReloadCallback on_change);
 	void unregister(Uint64 id);
 
+	/// Checks the watched files. Application calls it every 0.5 s outside of frames.
 	void tick();
 
 	void enable(bool enable) { m_watcher.enable(enable); }
 	[[nodiscard]] bool is_enabled() const { return m_watcher.is_enabled(); }
 
+	/// Lets destructors that run after shutdown skip unregister().
 	[[nodiscard]] static bool is_alive() { return s_alive; }
 
   private:

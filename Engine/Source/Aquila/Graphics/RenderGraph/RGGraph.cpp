@@ -7,8 +7,6 @@
 #include "Aquila/GFX/GfxTexture.h"
 #include "Aquila/GFX/GfxBuffer.h"
 
-#include <algorithm>
-
 namespace Aquila::Graphics::RG {
 
 void RenderGraph::compile(GFX::GfxContext &ctx) {

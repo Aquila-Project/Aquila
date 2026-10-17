@@ -9,10 +9,6 @@
 #include "Aquila/Rendering/RenderSettings.h"
 #include "Aquila/GFX/GfxTexture.h"
 
-#include <array>
-#include <string>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxContext;
 class GfxCommandList;
@@ -24,6 +20,7 @@ class Scene;
 
 namespace Aquila::Rendering {
 
+/// Runs the renderers into one render graph every frame and owns the scene color, depth and picking targets.
 class RenderPipeline {
   public:
 	RenderPipeline(GFX::GfxContext &ctx, Uint32 width, Uint32 height);
@@ -42,9 +39,11 @@ class RenderPipeline {
 	}
 
 	void render(GFX::GfxCommandList &cmd, SceneManagement::Scene &scene, F32 delta_time);
+	/// Resizes first when the size changed.
 	void render(GFX::GfxCommandList &cmd, SceneManagement::Scene &scene, F32 delta_time, Uint32 width, Uint32 height);
 	void resize(Uint32 width, Uint32 height);
 
+	/// Render from this view instead of the scene's active camera. clear_primary_view() goes back.
 	void set_primary_view(const RenderView &view) { m_primary_view = view; }
 	void clear_primary_view() { m_primary_view.reset(); }
 
@@ -60,6 +59,7 @@ class RenderPipeline {
 		F32 milliseconds = 0.F;
 	};
 
+	/// GPU time per pass from an earlier frame, read without waiting. Empty until the GPU catches up.
 	[[nodiscard]] const std::vector<PassTiming> &get_pass_timings() const { return m_pass_timings; }
 	[[nodiscard]] F32 get_gpu_frame_milliseconds() const { return m_gpu_frame_ms; }
 	[[nodiscard]] bool has_gpu_timings() const { return m_timestamp_pools[0] != nullptr; }

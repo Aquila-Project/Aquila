@@ -23,6 +23,9 @@ using ResourceVariant =
 				 VkDescriptorSetLayout, VkRenderPass, VkFramebuffer, VkSemaphore, VmaImageDeletion, VmaBufferDeletion>;
 } // namespace Deletion
 
+/// Vulkan objects can't be destroyed while a frame in flight still uses them.
+/// queue_deletion() puts them in the current frame slot's bucket, and the bucket is flushed
+/// when that slot comes back around, after its fence. The main swapchain drives the slots.
 class DeletionQueue {
   public:
 	explicit DeletionQueue(VulkanDevice &device);
@@ -32,12 +35,14 @@ class DeletionQueue {
 
 	void queue_deletion(const Deletion::ResourceVariant &resource);
 
+	/// The GPU must be done with it.
 	void destroy_now(const Deletion::ResourceVariant &resource);
 
 	void set_current_slot(Uint32 slot);
 
 	void flush(Uint32 slot);
 
+	/// Waits for the device to go idle first.
 	void flush_all();
 
   private:

@@ -4,9 +4,6 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/UI/Widgets/Separator.h"
 
-#include <array>
-#include <string>
-
 namespace Aquila::UI::Core {
 
 namespace {

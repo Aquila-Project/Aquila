@@ -13,6 +13,8 @@ class RenderGraph;
 namespace Aquila::Rendering {
 struct FrameContext;
 
+/// A group of rendering systems with its own targets.
+/// RenderPipeline runs the renderers in the order they were added.
 class IRenderer {
   public:
 	virtual ~IRenderer() = default;

@@ -1,8 +1,5 @@
 #include "Aquila/RHI/SpirvInspection.h"
 
-#include <unordered_map>
-#include <unordered_set>
-
 namespace Aquila::RHI {
 
 namespace {

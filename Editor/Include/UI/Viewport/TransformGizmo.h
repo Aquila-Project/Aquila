@@ -5,25 +5,26 @@
 #include "Core/EditorTools.h"
 #include "UI/Viewport/ViewportCanvas.h"
 
-#include <array>
-#include <string>
-#include <vector>
-
 namespace Editor {
 
 class EditorContext;
 
+/// Move, rotate and scale handles drawn in 2D from projected 3D points. A drag freezes its frame
+/// (origin, axes, view) when it starts, so the handles don't jitter while the object moves.
 class TransformGizmo final : public ViewportCanvas {
   public:
 	explicit TransformGizmo(EditorContext &context);
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "TransformGizmo"; }
 
+	/// Call it every frame, it only redraws when something changed.
 	void sync(const Rect &viewport, const Aquila::Rendering::RenderView &view);
 	[[nodiscard]] bool is_over_handle() const { return m_hovered != Handle::None || m_active; }
 	[[nodiscard]] bool is_active() const { return m_active; }
 	[[nodiscard]] bool is_modal() const { return m_active && m_drag.modal; }
 
+	/// Blender style modal transform on axis 0, 1 or 2. Again on the same axis switches to the local axis,
+	/// a third time frees it.
 	void constrain_to_axis(int axis);
 	void confirm();
 	void cancel();
@@ -34,6 +35,7 @@ class TransformGizmo final : public ViewportCanvas {
 	void on_mouse_release(Aquila::Platform::MouseButton btn, Vec2 pos) override;
 	void draw(Aquila::UI::Rendering::DrawList &draw_list) const override;
 
+	/// Presses that miss every handle, the viewport picks with them.
 	Signal<void(Vec2)> on_background_pressed;
 
   private:

@@ -23,9 +23,6 @@
 #include "UI/ComponentIcons.h"
 #include "UI/Inspectors/ReflectedComponentUI.h"
 
-#include <algorithm>
-#include <array>
-
 namespace Editor {
 
 using namespace Aquila;

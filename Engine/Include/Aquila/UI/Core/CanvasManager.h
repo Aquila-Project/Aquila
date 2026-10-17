@@ -7,6 +7,7 @@
 
 namespace Aquila::UI::Core {
 
+/// Drawn back to front in this order. Each layer is its own Canvas.
 enum class UILayer : Uint8 {
 	WorldSpace = 0,
 	ScreenCamera = 1,
@@ -29,6 +30,7 @@ class CanvasManager : public Foundation::Singleton<CanvasManager> {
 	bool is_any_layer_dirty(UILayer from, UILayer to) const;
 	void clear_layer_dirty_flags(UILayer from, UILayer to);
 
+	/// The cursor of the top-most hovered view.
 	[[nodiscard]] Platform::CursorType get_active_cursor() const {
 		for (size_t i = static_cast<size_t>(UILayer::Count); i-- > 0;) {
 			if (View *hovered = m_layers[i]->get_hovered_view()) {

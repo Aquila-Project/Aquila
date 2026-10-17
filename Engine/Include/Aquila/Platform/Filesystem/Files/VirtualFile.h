@@ -12,6 +12,7 @@ class VirtualFile {
 	virtual size_t write(const void *buffer, size_t size) = 0;
 	virtual void close() = 0;
 
+	/// `origin` is SEEK_SET, SEEK_CUR or SEEK_END.
 	virtual bool seek(Int64 offset, int origin) = 0;
 	[[nodiscard]] virtual Int64 tell() const = 0;
 	[[nodiscard]] virtual Int64 size() const = 0;

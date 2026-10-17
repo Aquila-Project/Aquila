@@ -12,6 +12,7 @@ class ListBox : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "ListBox"; }
 
+	/// `id` is what selection uses, `display` is what's shown.
 	void add_item(std::string id, std::string display);
 	void remove_item(const std::string &id);
 	void clear_items();

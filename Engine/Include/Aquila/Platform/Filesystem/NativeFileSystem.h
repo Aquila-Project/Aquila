@@ -13,6 +13,7 @@ class NativeFileSystem final : public IFileSystem {
 	static std::string to_fopen_mode(AccessMode access_mode, OpenMode open_mode);
 
   public:
+	/// Every path is resolved under `root_path` on disk.
 	explicit NativeFileSystem(const std::string &root_path);
 	~NativeFileSystem() override = default;
 

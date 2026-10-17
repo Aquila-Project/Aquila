@@ -15,6 +15,7 @@ struct MeshData {
 	std::string path;
 };
 
+/// CPU side mesh data. Every change bumps get_revision(), so whoever owns the GPU copy knows to re-upload.
 class Mesh {
   public:
 	explicit Mesh(const std::string &debug_name);
@@ -34,8 +35,17 @@ class Mesh {
 	static MeshData generate_sphere(F32 radius, Uint32 segments, Uint32 rings);
 	static MeshData generate_cylinder(F32 radius, F32 height, Uint32 segments);
 	static MeshData generate_plane(F32 width, F32 height, Uint32 width_segments, Uint32 height_segments);
+	/// Primitive meshes by path, numbers are optional and fall back to the defaults.
+	///
+	/// @code
+	/// Mesh::generate_from_path("procedural://cube/2");
+	/// Mesh::generate_from_path("procedural://sphere/0.5/32/16");
+	/// Mesh::generate_from_path("procedural://plane/10/10/4/4");
+	/// @endcode
+	/// @return nullopt for anything else
 	[[nodiscard]] static Option<MeshData> generate_from_path(std::string_view path);
 
+	/// Points into this mesh, use it before the mesh changes or dies.
 	[[nodiscard]] RHI::GPUMeshDesc to_gpu_desc() const {
 		RHI::GPUMeshDesc desc;
 		desc.vertices = &m_vertices;

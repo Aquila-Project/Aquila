@@ -5,8 +5,6 @@
 #include "Aquila/Foundation/Macros.h"
 #include <slang/slang.h>
 
-#include <algorithm>
-
 namespace Aquila::Graphics::Shader {
 
 static RHI::ShaderStageFlags vk_stage_to_rhi(VkShaderStageFlagBits stage) {

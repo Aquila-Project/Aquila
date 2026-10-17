@@ -4,10 +4,6 @@
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/UI/Core/DockLayoutSerializer.h"
 
-#include <string>
-#include <string_view>
-#include <vector>
-
 namespace Aquila::UI::Core {
 class Button;
 class View;
@@ -17,6 +13,7 @@ namespace Editor {
 
 class EditorWindows;
 
+/// Named dock layouts. Switching away remembers the current arrangement, reset_active() goes back to the preset.
 class Workspaces {
   public:
 	explicit Workspaces(EditorWindows &windows) : m_windows(windows) {}

@@ -1,7 +1,5 @@
 #include "Aquila/UI/Widgets/Menubar.h"
 
-#include <utility>
-
 namespace Aquila::UI::Core {
 
 MenuBar::MenuBar() {

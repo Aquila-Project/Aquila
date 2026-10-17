@@ -4,8 +4,6 @@
 #include "Aquila/Rendering/LightData.h"
 #include "Aquila/Rendering/RenderSettings.h"
 
-#include <array>
-
 namespace Aquila::SceneManagement {
 class Scene;
 }
@@ -18,6 +16,8 @@ namespace Aquila::Rendering {
 
 class SceneFrameData;
 
+/// What a system gets every frame. The h_* handles are how systems pass graph resources to each other:
+/// a system that writes one must store the new handle back, so the next system reads the latest version.
 struct FrameContext {
 	SceneManagement::Scene *scene = nullptr;
 

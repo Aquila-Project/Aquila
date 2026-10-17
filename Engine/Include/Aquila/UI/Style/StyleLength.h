@@ -11,6 +11,7 @@ struct StyleLength {
 	constexpr static StyleLength pixel(float pixels) { return { .unit = LengthUnit::Pixel, .value = pixels }; }
 	constexpr static StyleLength percent(float percent) { return { .unit = LengthUnit::Percent, .value = percent }; }
 	constexpr static StyleLength Auto() { return { .unit = LengthUnit::Auto, .value = 0.F }; }
+	/// Takes the space that's left, like flex-grow.
 	constexpr static StyleLength grow() { return { .unit = LengthUnit::Grow, .value = 0.F }; }
 	constexpr static StyleLength vw(float viewport_width_percent) { return { .unit = LengthUnit::Vw, .value = viewport_width_percent }; }
 	constexpr static StyleLength vh(float viewport_height_percent) { return { .unit = LengthUnit::Vh, .value = viewport_height_percent }; }
@@ -21,6 +22,7 @@ struct StyleLength {
 	[[nodiscard]] bool is_percent() const { return unit == LengthUnit::Percent; }
 	[[nodiscard]] bool is_viewport() const { return unit == LengthUnit::Vw || unit == LengthUnit::Vh; }
 
+	/// Pixels and percent only, every other unit gives 0. Layout handles the rest.
 	[[nodiscard]] float resolve(float parent_size) const {
 		switch (unit) {
 		case LengthUnit::Pixel:

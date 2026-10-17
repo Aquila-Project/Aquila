@@ -6,10 +6,7 @@
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Scene.h"
 
-#include <algorithm>
-#include <array>
 #include <bit>
-#include <vector>
 
 namespace Aquila::SceneManagement {
 

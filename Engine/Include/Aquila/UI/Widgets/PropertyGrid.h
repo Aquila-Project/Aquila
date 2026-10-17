@@ -3,11 +3,14 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Label.h"
 
-#include <string>
-#include <utility>
-
 namespace Aquila::UI::Core {
 
+/// Label and widget rows, the base of the inspector.
+///
+/// @code
+/// auto *speed = grid.add_row<DragFloat>("Speed");
+/// speed->on_changed.connect([this](float value) { m_speed = value; });
+/// @endcode
 class PropertyGrid : public View {
   public:
 	explicit PropertyGrid(float label_width = 100.F);
@@ -30,6 +33,7 @@ class PropertyGrid : public View {
 			add_row(std::move(label), std::make_unique<T>(std::forward<Args>(args)...), RowLayout::Stacked));
 	}
 
+	/// The widget sits where the label column would, the label comes after it. For checkboxes.
 	View *add_check_row(std::string label, Unique<View> widget);
 
 	template <typename T, typename... Args> T *add_check_row(std::string label, Args &&...args) {
@@ -38,6 +42,7 @@ class PropertyGrid : public View {
 
 	void add_separator();
 
+	/// Right aligned label column, widgets tagged split-<TypeName> so styles can size them.
 	void set_split(bool split);
 	[[nodiscard]] bool is_split() const { return m_split; }
 

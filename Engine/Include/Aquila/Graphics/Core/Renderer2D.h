@@ -108,6 +108,14 @@ struct GlyphSpec {
 	bool flip_y = false;
 };
 
+/// Batches 2D rects, sprites, glyphs, shadows and points into as few draws as it can.
+/// Draw between begin() and end(), inside a render pass.
+///
+/// @code
+/// r2d.begin(cmd, RHI::TextureFormat::BGRA8, RHI::SampleCount::X1, ortho);
+/// r2d.draw_rect({ .position = { 10.F, 10.F }, .size = { 120.F, 32.F }, .color = { 1.F, 0.F, 0.F, 1.F } });
+/// r2d.end();
+/// @endcode
 class Renderer2D {
   public:
 	explicit Renderer2D(GFX::GfxContext &ctx);
@@ -117,11 +125,15 @@ class Renderer2D {
 
 	void begin(GFX::GfxCommandList &cmd, RHI::TextureFormat color_format, RHI::SampleCount sample_count,
 			   const Mat4 &view_projection, RHI::TextureFormat depth_format = RHI::TextureFormat::None);
+	/// Draws what's batched so far. end() and batch switches call it for you.
 	void flush();
 	void end();
 
+	/// Call before begin() to record that frame. execute_replay() then draws the same thing again
+	/// without rebuilding any vertices, the UI does it when the canvas didn't change.
 	void begin_capture();
 	void execute_replay(GFX::GfxCommandList &cmd);
+	/// Use this, not cmd.set_scissor(), so the scissor ends up in a capture too.
 	void set_scissor(GFX::GfxCommandList &cmd, Int32 x, Int32 y, Uint32 w, Uint32 h);
 
 	void draw_rect(const RectSpec &spec);
@@ -135,6 +147,7 @@ class Renderer2D {
 	[[nodiscard]] Uint32 get_quad_count() const { return m_stats.quad_count; }
 	[[nodiscard]] Uint32 get_primitive_count() const { return m_stats.primitive_count; }
 
+	/// The get_or_create_*_pipeline functions cache per color format, sample count and depth format.
 	GFX::GfxPipeline &get_or_create_flat_pipeline(RHI::TextureFormat color_format, RHI::SampleCount samples,
 												  RHI::TextureFormat depth_format);
 	GFX::GfxPipeline &get_or_create_texture_pipeline(RHI::TextureFormat color_format, RHI::SampleCount samples,

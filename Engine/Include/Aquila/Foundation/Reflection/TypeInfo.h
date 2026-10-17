@@ -4,15 +4,9 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Reflection/Property.h"
 
-#include <functional>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <utility>
-#include <vector>
-
 namespace Aquila::Reflection {
 
+/// Hand-written reflection for one type, filled with TypeBuilder.
 class TypeInfo {
   public:
 	explicit TypeInfo(std::string name) : m_name(std::move(name)) {}
@@ -36,10 +30,25 @@ class TypeInfo {
 	std::vector<Property> m_properties;
 };
 
+/// options() and visible_if() apply to the property added right before them.
+///
+/// @code
+/// struct Fog {
+///     bool enabled = true;
+///     F32 density = 0.1F;
+/// };
+///
+/// TypeInfo info("Fog");
+/// TypeBuilder<Fog>(info)
+///     .property("Enabled", &Fog::enabled)
+///     .property("Density", &Fog::density, { .min = 0.F, .max = 1.F, .slider = true })
+///     .visible_if([](const Fog &fog) { return fog.enabled; });
+/// @endcode
 template <typename T> class TypeBuilder {
   public:
 	explicit TypeBuilder(TypeInfo &info) : m_info(info) {}
 
+	/// `access` is a member pointer or anything that returns a reference to the field.
 	template <typename Access> TypeBuilder &property(std::string name, Access access, PropertyHints hints = {}) {
 		using V = std::decay_t<std::invoke_result_t<Access, T &>>;
 		return add<V>(
@@ -66,6 +75,7 @@ template <typename T> class TypeBuilder {
 			});
 	}
 
+	/// Edits are ignored, the inspector shows it as a label.
 	template <typename Getter> TypeBuilder &read_only(std::string name, Getter getter, PropertyHints hints = {}) {
 		using V = std::decay_t<std::invoke_result_t<Getter, const T &>>;
 		hints.read_only = true;

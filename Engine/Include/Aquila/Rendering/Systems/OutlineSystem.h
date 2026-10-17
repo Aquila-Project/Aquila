@@ -5,6 +5,7 @@
 
 namespace Aquila::Rendering {
 
+/// Outlines every entity that has an OutlineComponent.
 class OutlineSystem : public RenderingSystemBase {
   public:
 	OutlineSystem() = default;

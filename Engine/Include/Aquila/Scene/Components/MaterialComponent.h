@@ -13,6 +13,7 @@ struct MaterialComponent {
 
 	Graphics::GpuSurfaceData surface_properties;
 
+	/// Index into this frame's material buffer, SceneFrameData sets it every frame.
 	Uint32 material_index = UINT32_MAX;
 
 	Signal<void()> on_changed;

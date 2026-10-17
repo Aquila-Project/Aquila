@@ -21,6 +21,7 @@ struct BezierBounds {
 	Vec2 max;
 };
 
+/// When was_split is false, left and right are both the original curve.
 struct BezierSplit {
 	QuadraticBezier left;
 	QuadraticBezier right;
@@ -76,6 +77,7 @@ AQUILA_FORCE_INLINE BezierBounds compute_bounds(const QuadraticBezier &curve) {
 	return bounds;
 }
 
+/// t where the curve turns around in x or y. Can be outside 0..1, nullopt when it never turns on that axis.
 AQUILA_FORCE_INLINE BezierExtrema find_extrema(const QuadraticBezier &curve) {
 	BezierCoefficients coefficients = compute_coefficients(curve);
 	BezierExtrema extrema{};
@@ -101,6 +103,8 @@ AQUILA_FORCE_INLINE BezierSplit split(const QuadraticBezier &curve, F32 t) {
 	};
 }
 
+/// Splits where the curve turns around in y, so both halves only go up or only go down.
+/// Nothing to split when the turn isn't inside the curve.
 AQUILA_FORCE_INLINE BezierSplit split_at_y_extrema(const QuadraticBezier &curve) {
 	BezierExtrema extrema = find_extrema(curve);
 	if (extrema.t_y.has_value()) {

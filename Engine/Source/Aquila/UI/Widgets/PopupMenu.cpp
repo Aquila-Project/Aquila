@@ -2,8 +2,6 @@
 #include "Aquila/UI/Widgets/Separator.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
-#include <utility>
-
 namespace Aquila::UI::Core {
 
 PopupMenu::PopupMenu() : FloatingOverlay(10) {

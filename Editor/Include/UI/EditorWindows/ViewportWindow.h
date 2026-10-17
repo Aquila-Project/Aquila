@@ -5,9 +5,6 @@
 #include "Aquila/Scene/SceneStatistics.h"
 #include "Core/EditorWindow.h"
 
-#include <array>
-#include <vector>
-
 namespace Aquila::UI::Core {
 class Button;
 class DragFloat;

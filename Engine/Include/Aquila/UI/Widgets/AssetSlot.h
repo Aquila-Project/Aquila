@@ -8,6 +8,8 @@
 
 namespace Aquila::UI::Core {
 
+/// A drop target for one asset. An empty accepted type takes anything.
+/// on_changed gets nullopt when the slot is cleared.
 class AssetSlot : public View {
   public:
 	AssetSlot();

@@ -3,8 +3,6 @@
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 
-#include <fstream>
-
 using namespace Aquila::Platform::Filesystem;
 
 static std::string make_temp_root(const std::string &name) {

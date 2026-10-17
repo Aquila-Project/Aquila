@@ -6,10 +6,6 @@
 #include "Core/ContentCreators.h"
 #include "Core/EditorTools.h"
 
-#include <string>
-#include <string_view>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxTexture;
 }
@@ -27,6 +23,7 @@ class View;
 
 namespace Editor {
 
+/// The selection, and the signals windows use to keep each other in sync.
 class EditorSelection {
   public:
 	void select(Aquila::SceneManagement::Entity entity);
@@ -37,15 +34,19 @@ class EditorSelection {
 
 	Signal<void(Aquila::SceneManagement::Entity)> on_changed;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_created;
+	/// Once an edit is done: gizmo released, inspector field changed.
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_modified;
+	/// Over and over while the gizmo drags, so the inspector can follow.
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_transformed;
 	Signal<void(Aquila::SceneManagement::Entity)> on_components_changed;
+	/// A different scene was loaded, drop anything that points into the old one.
 	Signal<void()> on_scene_replaced;
 
   private:
 	Aquila::SceneManagement::Entity m_entity;
 };
 
+/// What every editor window can reach.
 class EditorContext {
   public:
 	EditorContext(Aquila::Application::EngineContext &engine, Aquila::UI::Core::Canvas &canvas,
@@ -62,7 +63,9 @@ class EditorContext {
 	[[nodiscard]] Aquila::Rendering::CameraController *camera() const { return m_camera; }
 	void set_camera(Aquila::Rendering::CameraController *camera) { m_camera = camera; }
 
+	/// A Lucide icon by name, like "list-tree" (Resources/Engine/UI/Icons/list-tree.svg).
 	[[nodiscard]] Aquila::GFX::GfxTexture *icon(std::string_view name) const;
+	/// A file from the editor's layout folder, by name.
 	[[nodiscard]] Unique<Aquila::UI::Core::View> load_layout(std::string_view file_name) const;
 
 	EditorSelection selection;

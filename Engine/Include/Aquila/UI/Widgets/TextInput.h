@@ -4,7 +4,6 @@
 #include "Aquila/UI/Widgets/Control.h"
 #include "Aquila/UI/Core/TextInputState.h"
 #include "Aquila/UI/Text/FontAtlas.h"
-#include <string>
 
 namespace Aquila::UI::Core {
 
@@ -20,7 +19,9 @@ class TextInput : public Control {
 	void set_text(const std::string &text);
 	void set_font(Text::FontAtlas *font) override;
 	void set_placeholder(std::string text);
+	/// Swallows the next typed character, for when the key that opened the field would also type into it.
 	void ignore_next_char() { m_ignore_next_char = true; }
+	/// Every edit. on_submit is Enter.
 	Signal<void(const std::string &)> on_changed;
 	Signal<void(const std::string &)> on_submit;
 

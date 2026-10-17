@@ -3,14 +3,26 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Defines.h"
-#include <string>
-#include <string_view>
-#include <typeinfo>
 
 namespace Aquila::Foundation {
 
 void *&singleton_slot(std::string_view type_name);
 
+/// The lifetime is explicit: init() before the first get(), shutdown() at the end.
+/// get() asserts if it isn't initialized.
+///
+/// Instances live in one shared table keyed by type name, so every module sees the same one.
+///
+/// @code
+/// class Thing : public Singleton<Thing> {
+///     friend class Singleton<Thing>;
+///     Thing() = default;
+/// };
+///
+/// Thing::init();
+/// Thing::get()->do_stuff();
+/// Thing::shutdown();
+/// @endcode
 template <class T> class Singleton {
   public:
 	template <typename... Args> static void init(Args &&...args) {

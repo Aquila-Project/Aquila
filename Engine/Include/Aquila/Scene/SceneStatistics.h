@@ -4,8 +4,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/Entity.h"
 
-#include <unordered_map>
-
 namespace Aquila::Graphics::Resources {
 class Mesh;
 }

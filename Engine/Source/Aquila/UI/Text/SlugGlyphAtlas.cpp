@@ -3,8 +3,6 @@
 #include "Aquila/Foundation/Math/Geometry/Bezier.h"
 #include "Aquila/Foundation/SharedConstants.h"
 
-#include <algorithm>
-
 namespace Aquila::UI::Text {
 
 Unique<SlugGlyphAtlas> SlugGlyphAtlas::create(GFX::GfxContext &ctx) {

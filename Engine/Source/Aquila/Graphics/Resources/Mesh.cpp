@@ -6,7 +6,6 @@
 #include "assimp/scene.h"
 
 #include <charconv>
-#include <format>
 
 namespace Aquila::Graphics::Resources {
 

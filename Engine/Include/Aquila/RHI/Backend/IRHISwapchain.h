@@ -5,6 +5,9 @@
 
 namespace Aquila::RHI {
 
+/// Only the main window passes drive_device_frame = true to acquire_next_image().
+/// That also recycles the device's per-frame resources (deferred deletions, frame command pool),
+/// which must happen once per frame, not once per window.
 class IRHISwapchain {
   public:
 	virtual ~IRHISwapchain() = default;

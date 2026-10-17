@@ -3,9 +3,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::Graphics {
 class Renderer2D;
 }
@@ -25,6 +22,7 @@ class TextureCache;
 
 namespace Aquila::UI::DevTools {
 
+/// Every widget on one page. Meant for open_content_window().
 class WidgetGalleryWindow {
   public:
 	WidgetGalleryWindow();

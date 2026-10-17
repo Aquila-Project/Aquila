@@ -16,6 +16,7 @@ struct VulkanCompiledStage {
 	Slang::ComPtr<slang::ISession> session;
 };
 
+/// Slang to SPIR-V. Call initialize() once first. Imports are looked up in the engine shaders folder.
 class VulkanShaderCompiler {
   public:
 	static void initialize() {
@@ -31,13 +32,16 @@ class VulkanShaderCompiler {
 		s_Initialized = false;
 	}
 
+	/// One stage per entry point in the file. All or nothing: if one entry point fails,
+	/// `out_stages` is empty and `error_log` says why.
+	/// @note Paths with "://" go through the VFS, everything else is read from disk.
 	static bool compile_file(const std::string &filepath, std::vector<VulkanCompiledStage> &out_stages,
 							std::string &error_log) {
 		AQUILA_ASSERT(s_Initialized, "VulkanShaderCompiler::Initialize() was not called");
 
 		slang::TargetDesc target_desc{};
 		target_desc.format = SLANG_SPIRV;
-		target_desc.profile = s_GlobalSession->findProfile("spirv_1_4");
+		target_desc.profile = s_GlobalSession->findProfile(K_SPIRV_PROFILE);
 
 		const char *search_paths[] = { AQUILA_SHADERS_DIR };
 		slang::SessionDesc session_desc{};
@@ -155,13 +159,14 @@ class VulkanShaderCompiler {
 		return true;
 	}
 
+	/// Same as compile_file() for source in memory. `name` is the module name used in errors.
 	static bool compile_source(const std::string &name, const std::string &source,
 							  std::vector<VulkanCompiledStage> &out_stages, std::string &error_log) {
 		AQUILA_ASSERT(s_Initialized, "VulkanShaderCompiler::Initialize() was not called");
 
 		slang::TargetDesc target_desc{};
 		target_desc.format = SLANG_SPIRV;
-		target_desc.profile = s_GlobalSession->findProfile("spirv_1_0");
+		target_desc.profile = s_GlobalSession->findProfile(K_SPIRV_PROFILE);
 
 		const char *search_paths[] = { AQUILA_SHADERS_DIR };
 		slang::SessionDesc session_desc{};
@@ -270,6 +275,8 @@ class VulkanShaderCompiler {
 	}
 
   private:
+	static constexpr const char *K_SPIRV_PROFILE = "spirv_1_4";
+
 	static inline Slang::ComPtr<slang::IGlobalSession> s_GlobalSession;
 	static inline bool s_Initialized = false;
 };

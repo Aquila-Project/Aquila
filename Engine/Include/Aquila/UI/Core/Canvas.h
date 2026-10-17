@@ -20,6 +20,8 @@ using namespace Aquila::UI::Rendering;
 class Tooltip;
 class DragGhost;
 
+/// One UI tree with its own style sheet, layout, input and draw list.
+/// Every frame the owner calls update(), then compute(), then submit_to_quad_batcher().
 class Canvas {
 	friend class InputRouter; // calls MarkDirty()/RequestLayout() on input
 
@@ -47,16 +49,20 @@ class Canvas {
 	void notify_layout_dirty(View *view);
 	void notify_focus_request(View *view);
 	void notify_view_removed(View *view);
+	/// Called for every view that leaves the tree, before it's destroyed.
 	void register_removal_observer(Delegate<void(View *)> observer);
 	void reload_styles();
 	void mark_subtree_dirty(View *node);
 
+	/// A click outside `popup` calls on_dismiss.
 	void register_popup(View *popup, Delegate<void()> on_dismiss);
 	void unregister_popup(View *popup);
 
+	/// The view's on_update() runs every frame until unregister_tick().
 	void register_tick(View *view);
 	void unregister_tick(View *view);
 
+	/// The label that follows the mouse while dragging.
 	void show_drag_ghost(std::string label, Vec2 pos, GFX::GfxTexture *icon = nullptr);
 	void move_drag_ghost(Vec2 pos);
 	void hide_drag_ghost();
@@ -64,8 +70,10 @@ class Canvas {
 	bool is_draw_list_dirty() const { return m_draw_list_dirty; }
 	void clear_draw_list_dirty() { m_draw_list_dirty = false; }
 
+	/// Frames this canvas asks for only redraw that window (a FrameScheduler target).
 	void set_frame_target(const void *target) { m_frame_target = target; }
 	[[nodiscard]] const void *get_frame_target() const { return m_frame_target; }
+	/// FrameScheduler::request_frame_in() with this canvas's frame target.
 	void request_frame_in(F64 seconds) const;
 
   private:

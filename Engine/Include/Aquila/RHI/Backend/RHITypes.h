@@ -182,6 +182,7 @@ struct SamplerDesc {
 		return d;
 	}
 
+	/// Compare sampler. Outside the map counts as lit.
 	static SamplerDesc shadow_map() {
 		SamplerDesc d{};
 		d.address_u = AddressMode::ClampToBorder;
@@ -205,6 +206,7 @@ struct SamplerDesc {
 		return d;
 	}
 
+	/// Slight negative LOD bias so downscaled images stay sharp.
 	static SamplerDesc ui_image(float max_lod) {
 		SamplerDesc d{};
 		d.mipmap_mode = MipmapMode::Linear;
@@ -251,6 +253,7 @@ struct SamplerDescHash {
 	}
 };
 
+/// With instance_count > 1 every instance is padded to min_alignment, like dynamic uniform buffers need.
 struct BufferDesc {
 	Uint64 size = 0;
 	BufferUsage usage = BufferUsage::None;
@@ -275,6 +278,7 @@ struct TextureDesc {
 	std::string debug_name = "Texture";
 };
 
+/// native_window_handle is the GLFWwindow of a secondary window, null for the main one.
 struct SwapchainDesc {
 	Uint32 width = 0;
 	Uint32 height = 0;

@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Graphics/Material/MaterialParameters.h"
@@ -28,6 +27,16 @@ enum class MaterialType : Uint8 {
 
 class MaterialFactory;
 
+/// Parameters live in a CPU copy of the uniform buffer. set() marks every frame slot dirty,
+/// flush(slot) uploads to that slot's buffer before it's drawn.
+///
+/// @code
+/// mat->set("tint", Vec4(1.F)).set("speed", 2.F);
+/// mat->flush(frame_slot);
+/// mat->bind(cmd, 1, frame_slot);
+/// @endcode
+///
+/// @note set() ignores names the shader doesn't have, and doesn't check the type.
 class Material {
   public:
 	std::string name;
@@ -55,10 +64,12 @@ class Material {
 	Material &set_roughness(F32 v) { return set("roughness", v); }
 	Material &set_emissive(F32 v) { return set("emissive", v); }
 
+	/// Keeps a raw pointer, the texture has to outlive the material.
 	Material &set_texture(Uint32 binding, GFX::GfxTexture &tex);
 
 	void flush(Uint32 frame_slot);
 
+	/// Binds the pipeline too.
 	void bind(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slot);
 
 	[[nodiscard]] GFX::GfxPipeline &get_pipeline() { return *m_pipeline; }
@@ -69,6 +80,7 @@ class Material {
 	[[nodiscard]] MaterialType get_type() const { return m_type; }
 	void set_type(MaterialType type) { m_type = type; }
 	[[nodiscard]] const std::string &get_shader_path() const { return m_shader_path; }
+	/// True when the shader reads FrameData.time. The renderer keeps requesting frames while it's drawn.
 	[[nodiscard]] bool uses_time() const { return m_uses_time; }
 
   private:

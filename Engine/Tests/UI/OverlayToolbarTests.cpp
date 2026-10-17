@@ -7,8 +7,6 @@
 
 #include "CanvasTestSupport.h"
 
-#include <algorithm>
-
 using namespace Aquila::UI;
 using namespace Aquila::UI::Core;
 

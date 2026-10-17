@@ -11,6 +11,8 @@ class DockNode;
 class DockSplitter;
 struct DockLayoutDesc;
 
+/// Panels in tabbed nodes that can be split, moved and torn off, like an IDE.
+/// Fill it from markup, apply_layout() or by hand.
 class DockSpace : public View {
   public:
 	DockSpace();
@@ -23,9 +25,12 @@ class DockSpace : public View {
 
 	using PanelFactory = Delegate<Unique<DockPanel>(const std::string &panel_id)>;
 
+	/// Panels already open are reused by id, new ones come from the panel factory.
+	/// The ones the layout doesn't place go to the first node, or get destroyed with `discard_unplaced`.
 	bool apply_layout(const DockLayoutDesc &desc, bool discard_unplaced = false);
 
 	void set_panel_factory(PanelFactory factory) { m_panel_factory = std::move(factory); }
+	/// Called for every tab bar so you can add buttons to it.
 	void set_tab_bar_decorator(std::function<void(DockNode *, View *)> decorator);
 	void set_closable_tabs(bool closable, GFX::GfxTexture *close_icon);
 
@@ -36,6 +41,7 @@ class DockSpace : public View {
 
 	[[nodiscard]] bool has_any_panels() const;
 	[[nodiscard]] DockNode *first_leaf_with_tabs() const;
+	/// A tab dropped outside the canvas: you get its content, title and the screen position.
 	void set_tear_off_callback(Delegate<void(Unique<View>, std::string, Vec2)> cb) { m_on_tear_off = std::move(cb); }
 
 	void set_emptied_callback(Delegate<void()> cb) { m_on_emptied = std::move(cb); }

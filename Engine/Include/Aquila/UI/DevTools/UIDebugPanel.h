@@ -1,9 +1,6 @@
 #ifndef AQUILA_UI_DEVTOOLS_UI_DEBUG_PANEL_H
 #define AQUILA_UI_DEVTOOLS_UI_DEBUG_PANEL_H
 
-#include <string>
-#include <unordered_map>
-
 namespace Aquila::UI::Core {
 class View;
 class Canvas;

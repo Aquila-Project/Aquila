@@ -9,10 +9,12 @@ struct Ray {
 	Vec3 origin;
 	Vec3 direction;
 
+	/// The direction gets normalized for you.
 	Ray(const Vec3 &o, const Vec3 &d) : origin(o), direction(normalize(d)) {}
 
 	Vec3 get_point(const F32 t) const { return origin + direction * t; }
 
+	/// `distance` is where the ray enters the box, or where it leaves when the origin is inside.
 	bool intersect_aabb(const Vec3 &aabb_min, const Vec3 &aabb_max, F32 &distance) const {
 		const Vec3 inv_dir = 1.0F / direction;
 		const Vec3 t1 = (aabb_min - origin) * inv_dir;
@@ -59,6 +61,7 @@ struct Ray {
 		return false;
 	}
 
+	/// Hits both sides of the triangle.
 	bool intersect_triangle(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2, F32 &distance) const {
 		Vec3 edge1;
 		Vec3 edge2;
@@ -103,6 +106,7 @@ struct Ray {
 		return false;
 	}
 
+	/// Hit when the ray passes within `threshold` of the segment. `distance` is along the ray.
 	bool intersect_line(const Vec3 &line_start, const Vec3 &line_end, F32 threshold, F32 &distance) const {
 		const Vec3 line_dir = line_end - line_start;
 		const Vec3 ray_to_line = line_start - origin;
@@ -134,6 +138,7 @@ struct Ray {
 		return false;
 	}
 
+	/// The plane is every p with dot(plane_normal, p) == plane_distance.
 	bool intersect_plane(const Vec3 &plane_normal, F32 plane_distance, F32 &distance) const {
 		const F32 denom = Math::dot(plane_normal, direction);
 
@@ -149,6 +154,7 @@ struct Ray {
 		return false;
 	}
 
+	/// Only the side, the caps aren't tested.
 	bool intersect_cylinder(const Vec3 &cylinder_start, const Vec3 &cylinder_end, F32 radius, F32 &distance) const {
 		const Vec3 cylinder_axis = normalize(cylinder_end - cylinder_start);
 		const Vec3 to_ray_origin = origin - cylinder_start;
@@ -189,6 +195,7 @@ struct Ray {
 		return false;
 	}
 
+	/// Never behind the origin.
 	Vec3 closest_point_to(const Vec3 &point) const {
 		const Vec3 to_point = point - origin;
 		F32 t = Math::dot(to_point, direction);
@@ -197,6 +204,8 @@ struct Ray {
 
 	F32 distance_to_point(const Vec3 &point) const { return length(point - closest_point_to(point)); }
 
+	/// Where the line gets closest to the ray, as t in line_origin + t * line_direction.
+	/// nullopt when they're parallel. The gizmo uses it to drag along an axis.
 	[[nodiscard]] Option<F32> closest_param_on_line(const Vec3 &line_origin, const Vec3 &line_direction) const {
 		const Vec3 w = origin - line_origin;
 		const F32 a = Math::dot(line_direction, line_direction);
@@ -211,6 +220,7 @@ struct Ray {
 		return ((d * c) - (b * e)) / denominator;
 	}
 
+	/// nullopt when the ray is parallel to the plane or the plane is behind it.
 	[[nodiscard]] Option<Vec3> hit_plane(const Vec3 &plane_point, const Vec3 &plane_normal) const {
 		const F32 denominator = Math::dot(plane_normal, direction);
 		if (Math::abs(denominator) < Math::EPSILON) {
@@ -224,6 +234,7 @@ struct Ray {
 	}
 };
 
+/// `screen_pos` in pixels from the top-left corner.
 inline Ray screen_to_world_ray(const Vec2 &screen_pos, const Vec2 &viewport_size, const Mat4 &view_matrix,
 							   const Mat4 &proj_matrix) {
 	Vec2 ndc;
@@ -247,6 +258,7 @@ inline Ray screen_to_world_ray(const Vec2 &screen_pos, const Vec2 &viewport_size
 	return Ray(ray_origin, ray_direction);
 }
 
+/// `fov` is in degrees here.
 inline Ray camera_ray(const Vec2 &screen_pos, const Vec2 &viewport_size, const Vec3 &camera_pos,
 					  const Vec3 &camera_forward, const Vec3 &camera_up, const Vec3 &camera_right, const F32 fov,
 					  const F32 aspect_ratio) {

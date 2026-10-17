@@ -7,8 +7,6 @@
 #include "Aquila/UI/Text/FontAtlas.h"
 #include "Core/EditorContext.h"
 
-#include <algorithm>
-#include <array>
 #include <cstdio>
 
 namespace Editor {

@@ -24,6 +24,11 @@ class GfxDescriptorSetLayout {
 	Unique<RHI::IRHIDescriptorSetLayout> m_layout;
 };
 
+/// Nothing reaches the GPU until flush().
+///
+/// @code
+/// set->set_buffer(0, *uniforms).set_texture(1, *albedo).flush();
+/// @endcode
 class GfxDescriptorSet {
   public:
 	~GfxDescriptorSet() = default;

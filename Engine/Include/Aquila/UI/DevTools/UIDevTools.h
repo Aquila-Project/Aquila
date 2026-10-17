@@ -5,9 +5,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/UI/Core/View.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxContext;
 }
@@ -38,6 +35,7 @@ struct UIDevToolsDesc {
 	std::vector<std::string> style_paths;
 };
 
+/// The UI inspector, the element picker and the widget gallery for one canvas.
 class UIDevTools {
   public:
 	explicit UIDevTools(const UIDevToolsDesc &desc);
@@ -51,6 +49,7 @@ class UIDevTools {
 	void open_inspector_window();
 	void open_widget_gallery(GFX::GfxContext &ctx, Core::TextureCache *texture_cache);
 
+	/// @return true when it used the event, while picking an element
 	bool on_event(Platform::Events::Event &event);
 
   private:

@@ -14,6 +14,8 @@ class ComponentDescriptor;
 
 namespace Editor {
 
+/// The inspector section of any registered component, built from its reflection.
+/// Derive from it only to add what reflection can't show (MeshComponentUI, MaterialComponentUI).
 class ReflectedComponentUI : public IComponentUI {
   public:
 	ReflectedComponentUI(const Aquila::SceneManagement::ComponentDescriptor &descriptor,

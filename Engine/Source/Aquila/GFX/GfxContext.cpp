@@ -77,8 +77,8 @@ void GfxContext::submit_frame(GfxCommandList &cmd, GfxSwapchain *swapchain, Uint
 }
 
 void GfxContext::submit_and_wait(GfxCommandList &cmd) {
-	if (!cmd.is_recording()) {
-		return;
+	if (cmd.is_recording()) {
+		cmd.end();
 	}
 	m_device->submit_and_wait(cmd.get_rhi());
 }

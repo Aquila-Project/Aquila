@@ -12,6 +12,7 @@ struct WatchedShader {
 	bool is_native = false; // true = bypass VFS, use std::filesystem directly
 };
 
+/// @note Only the file itself is watched. Editing a module it imports doesn't trigger a reload.
 class ShaderWatcher {
   public:
 	ShaderWatcher() = default;

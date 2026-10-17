@@ -2,8 +2,6 @@
 
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Button.h"
-#include <string>
-#include <vector>
 
 namespace Aquila::UI::Core {
 
@@ -13,6 +11,7 @@ class TabView : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "TabView"; }
 
+	/// @return the tab's panel, put its content in there
 	View *add_tab(std::string title, GFX::GfxTexture *icon = nullptr);
 
 	void set_active_tab(int index);

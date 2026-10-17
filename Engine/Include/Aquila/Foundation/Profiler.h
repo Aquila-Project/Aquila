@@ -36,12 +36,19 @@ struct FrameStats {
 	TimePoint timestamp;
 };
 
+/// CPU timings per named section. Times are in milliseconds.
+///
+/// @code
+/// PROFILE_FUNCTION();
+/// PROFILE_SCOPE("Shadow cascades");
+/// @endcode
 class Profiler : public Singleton<Profiler> {
 	friend class Singleton<Profiler>;
 
   public:
 	void begin_frame();
 	void end_frame();
+	/// Every begin_section() needs an end_section(). Prefer PROFILE_SCOPE, it does both.
 	void begin_section(const std::string &name);
 	void end_section();
 	void print_frame_summary() const;
@@ -62,6 +69,7 @@ class Profiler : public Singleton<Profiler> {
 	const std::vector<std::vector<ProfilerEntry>> &get_frame_history() const;
 	const std::vector<FrameStats> &get_frame_stats_history() const;
 	const std::array<F32, 120> &get_frame_time_history() const;
+	/// Sections that take more than 20% of the frame on average.
 	const std::vector<std::string> &get_bottlenecks() const;
 
   private:
@@ -109,10 +117,10 @@ class ProfileSection {
 #define AQUILA_PROFILE_CONCAT(a, b) AQUILA_PROFILE_CONCAT_INNER(a, b)
 #define PROFILE_SCOPE(name) Aquila::Foundation::ProfileSection AQUILA_PROFILE_CONCAT(_profile_, __LINE__)(name)
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__FUNCTION__)
-#define PROFILE_PRINT_SUMMARY_EVERY_N_FRAMES(n)                                 \
-	do {                                                                        \
-		if (Aquila::Foundation::Profiler::Get()->GetFrameNumber() % (n) == 0) { \
-			Aquila::Foundation::Profiler::Get()->PrintFrameSummary();           \
-		}                                                                       \
+#define PROFILE_PRINT_SUMMARY_EVERY_N_FRAMES(n)                                   \
+	do {                                                                          \
+		if (Aquila::Foundation::Profiler::get()->get_frame_number() % (n) == 0) { \
+			Aquila::Foundation::Profiler::get()->print_frame_summary();           \
+		}                                                                         \
 	} while (0)
 #endif

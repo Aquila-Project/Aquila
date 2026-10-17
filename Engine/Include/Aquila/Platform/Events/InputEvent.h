@@ -5,6 +5,7 @@
 
 namespace Aquila::Platform::Events {
 
+/// Same values as GLFW keys.
 enum class KeyCode : Uint16 {
 	Unknown = 0,
 	Space = 32,
@@ -121,6 +122,7 @@ class KeyReleasedEvent final : public Event {
 	KeyCode m_key_code;
 };
 
+/// Text input. get_key_code() is really the typed Unicode codepoint, not a key.
 class KeyTypedEvent final : public Event {
   public:
 	explicit KeyTypedEvent(const KeyCode keycode) : m_key_code(keycode) {}
@@ -134,6 +136,8 @@ class KeyTypedEvent final : public Event {
 	KeyCode m_key_code;
 };
 
+/// One per event poll with the latest position, the moves in between are merged.
+/// Window pixels, top-left origin.
 class MouseMovedEvent final : public Event {
   public:
 	MouseMovedEvent(const F32 x, const F32 y) : m_mouse_x(x), m_mouse_y(y) {}

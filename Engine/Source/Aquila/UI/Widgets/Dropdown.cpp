@@ -3,8 +3,6 @@
 #include "Aquila/UI/Core/IResourceResolver.h"
 #include "Aquila/UI/Text/FontAtlas.h"
 
-#include <algorithm>
-
 namespace Aquila::UI::Core {
 
 Dropdown::Dropdown() {

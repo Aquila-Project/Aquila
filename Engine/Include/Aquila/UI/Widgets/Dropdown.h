@@ -3,8 +3,6 @@
 #include "Aquila/UI/Widgets/Control.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Popup.h"
-#include <string>
-#include <vector>
 
 namespace Aquila::UI::Core {
 
@@ -14,6 +12,7 @@ class Dropdown : public Control {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "Dropdown"; }
 
+	/// `display` defaults to `value`.
 	void add_option(std::string value, std::string display = "", GFX::GfxTexture *icon = nullptr);
 	void clear_options();
 
@@ -24,6 +23,7 @@ class Dropdown : public Control {
 	void set_placeholder(std::string text);
 	void set_icon(GFX::GfxTexture *icon);
 	void set_chevron(GFX::GfxTexture *chevron);
+	/// Adds the `variant` class, plus `<variant>-header` and `<variant>-popup` on its parts.
 	void set_variant(const std::string &variant);
 	Signal<void(const std::string &)> on_changed;
 

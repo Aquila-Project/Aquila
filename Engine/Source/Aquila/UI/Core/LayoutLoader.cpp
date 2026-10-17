@@ -34,8 +34,6 @@
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleParserHelper.h"
-#include <algorithm>
-#include <utility>
 
 namespace Aquila::UI::Core {
 

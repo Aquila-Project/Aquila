@@ -38,8 +38,11 @@ class Scene final {
 	[[nodiscard]] Entity find_primary_camera() const;
 	[[nodiscard]] Foundation::UUID get_handle() const;
 
+	/// Recomputes world matrices for dirty transforms and their children, parents first.
+	/// Call it once per frame before anything reads world matrices.
 	void update_transform_hierarchy();
 	void update_transform_recursive(Entity entity, const Mat4 &parent_world);
+	/// Transform setters already call it.
 	void mark_transform_dirty(entt::entity entity);
 
 	bool serialize(const std::string &filepath);

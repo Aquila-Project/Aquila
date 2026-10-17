@@ -6,6 +6,8 @@ namespace Aquila::UI::Core {
 
 class Button;
 
+/// Base of popups, menus and tooltips: drawn above everything, closed by a click outside
+/// unless set_dismiss_on_click_away(false).
 class FloatingOverlay : public View {
   public:
 	void open();

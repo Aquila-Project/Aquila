@@ -3,9 +3,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Graphics/Material/Material.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
-#include <string>
-#include <unordered_map>
-#include <vector>
 
 namespace Aquila::GFX {
 class GfxContext;
@@ -35,12 +32,25 @@ struct MaterialCreateInfo {
 	Uint32 push_constant_size = 256;
 };
 
+/// Builds materials from Slang shaders. Every material made from the same path shares one shader
+/// program, and editing the file rebuilds all of them.
+///
+/// @code
+/// Ref<Material> mat = MaterialFactory::get()->create(ctx, shader_path, {});
+/// mat->set_albedo(Vec3(0.8F, 0.2F, 0.2F)).set_roughness(0.4F);
+/// @endcode
+///
+/// @note A hot reload rebuilds every material of a path with the MaterialCreateInfo
+/// of the first create() for that path.
 class MaterialFactory : public Foundation::Singleton<MaterialFactory> {
   public:
 	~MaterialFactory();
 
+	/// The scene descriptor layout every material pipeline gets. RenderPipeline sets it,
+	/// create() asserts without it.
 	void set_scene_layout(GFX::GfxDescriptorSetLayout &layout) { m_scene_layout = &layout; }
 
+	/// Null when the shader doesn't compile.
 	Ref<Material> create(GFX::GfxContext &ctx, const std::string &shader_path, MaterialCreateInfo info);
 
   private:

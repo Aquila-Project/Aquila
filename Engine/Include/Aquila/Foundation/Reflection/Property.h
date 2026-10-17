@@ -3,21 +3,14 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <glm/glm.hpp>
-
 #include "Aquila/Foundation/Math/MathTypes.h"
-
-#include <limits>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <variant>
-#include <vector>
 
 namespace Aquila::Reflection {
 
+/// Every reflected value travels as one of these. All integers and enums become Int32, all floats F32.
 using PropertyValue = std::variant<bool, Int32, F32, Vec2, Vec3, Vec4, std::string>;
 
+/// Enum values travel as Int32, their names are in Property::options.
 enum class PropertyKind : Uint8 { Bool, Int, Float, Vec2, Vec3, Vec4, String, Enum };
 
 struct EnumOption {
@@ -25,6 +18,15 @@ struct EnumOption {
 	Int32 value = 0;
 };
 
+/// How the inspector shows and limits a property. Every field is optional.
+///
+/// - speed: drag speed of number fields
+/// - precision: decimals shown
+/// - color: Vec3/Vec4 get a color picker
+/// - toggle: bool as a switch, not a checkbox
+/// - slider: draws a fill bar between min and max
+/// - unit: suffix like "m"
+/// - asset_type: the string is an asset path, the inspector shows an asset slot for that type
 struct PropertyHints {
 	F32 min = std::numeric_limits<F32>::lowest();
 	F32 max = std::numeric_limits<F32>::max();
@@ -38,6 +40,8 @@ struct PropertyHints {
 	std::string_view asset_type{};
 };
 
+/// One reflected field. The instance is a type-erased pointer to the object.
+/// An empty `visible` means always visible.
 struct Property {
 	std::string name;
 	PropertyKind kind = PropertyKind::Float;

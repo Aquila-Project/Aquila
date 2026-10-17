@@ -5,8 +5,6 @@
 #include "Aquila/UI/Style/ComputedStyle.h"
 #include "Aquila/UI/Text/FontAtlas.h"
 
-#include <cmath>
-
 namespace Aquila::UI::DevTools {
 
 using namespace Aquila::UI::Core;

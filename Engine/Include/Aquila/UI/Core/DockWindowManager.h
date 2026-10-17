@@ -6,15 +6,14 @@
 #include "Aquila/Rendering/IRenderWindowHost.h"
 #include "Aquila/UI/Core/FloatingPanelWindow.h"
 
-#include <string>
-#include <vector>
-
 namespace Aquila::UI::Core {
 
 class Canvas;
 class DockSpace;
 class View;
 
+/// Tear-off: dragging a tab out of a dock space opens it in its own OS window,
+/// and dragging that window over a dock space docks it back.
 class DockWindowManager {
   public:
 	DockWindowManager(Aquila::Rendering::IRenderWindowHost &host, std::vector<std::string> style_paths);

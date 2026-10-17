@@ -4,8 +4,6 @@
 #include "Aquila/Foundation/Math/MathTypes.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <array>
-#include <limits>
 #include <numbers>
 
 namespace Aquila::Math {
@@ -63,6 +61,7 @@ AQUILA_FORCE_INLINE F32 mod(const F32 a, const F32 b) {
 	return glm::mod(a, b);
 }
 
+/// Wraps radians into 0..TAU.
 AQUILA_FORCE_INLINE F32 normalize_angle(F32 angle) {
 	angle = mod(angle, TAU);
 	if (angle < 0.0F) {
@@ -71,6 +70,7 @@ AQUILA_FORCE_INLINE F32 normalize_angle(F32 angle) {
 	return angle;
 }
 
+/// Shortest signed angle from a to b, in -PI..PI.
 AQUILA_FORCE_INLINE F32 angle_difference(const F32 a, const F32 b) {
 	const F32 diff = mod(b - a + PI, TAU) - PI;
 	return diff < -PI ? diff + TAU : diff;
@@ -136,6 +136,7 @@ AQUILA_FORCE_INLINE Vec3 cross(const Vec3 &a, const Vec3 &b) {
 	return glm::cross(a, b);
 }
 
+/// The z of the 3D cross product. Its sign tells which side of a the vector b is on.
 AQUILA_FORCE_INLINE F32 cross(const Vec2 &a, const Vec2 &b) {
 	return (a.x * b.y) - (a.y * b.x);
 }
@@ -180,6 +181,7 @@ AQUILA_FORCE_INLINE Quaternion angle_axis(const F32 angle, const Vec3 &axis) {
 
 // Projection matrices (Vulkan)
 
+/// Depth goes 0 to 1 like Vulkan wants. Y isn't flipped.
 inline Mat4 ortho_vulkan(F32 left, F32 right, F32 bottom, F32 top, F32 z_near, F32 z_far) {
 	Mat4 result(1.0F);
 	result[0][0] = 2.0F / (right - left);
@@ -191,6 +193,7 @@ inline Mat4 ortho_vulkan(F32 left, F32 right, F32 bottom, F32 top, F32 z_near, F
 	return result;
 }
 
+/// Looks down +Z, depth 0 at near and 1 at far. fov_y is in radians.
 inline Mat4 perspective_vulkan(const F32 fov_y, const F32 aspect, const F32 z_near, const F32 z_far) {
 	const F32 tan_half_fovy = std::tan(fov_y / 2.0F);
 	Mat4 result(0.0F);
@@ -202,6 +205,7 @@ inline Mat4 perspective_vulkan(const F32 fov_y, const F32 aspect, const F32 z_ne
 	return result;
 }
 
+/// perspective_vulkan with the far plane at infinity.
 inline Mat4 infinite_perspective_vulkan(const F32 fov_y, const F32 aspect, const F32 z_near) {
 	const F32 tan_half_fovy = std::tan(fov_y / 2.0F);
 	Mat4 result(0.0F);
@@ -215,6 +219,7 @@ inline Mat4 infinite_perspective_vulkan(const F32 fov_y, const F32 aspect, const
 
 // View matrices
 
+/// u, v, w are the camera right, up and forward axes in world space. They must be orthonormal.
 inline Mat4 view_from_basis(const Vec3 &u, const Vec3 &v, const Vec3 &w, const Vec3 &position) {
 	Mat4 result(1.0F);
 	result[0][0] = u.x;
@@ -232,12 +237,14 @@ inline Mat4 view_from_basis(const Vec3 &u, const Vec3 &v, const Vec3 &w, const V
 	return result;
 }
 
+/// Cheap inverse for a view matrix without scale: transposes the rotation and puts the position back.
 inline Mat4 inverse_view(const Mat4 &view, const Vec3 &position) {
 	Mat4 result(transpose(Mat3(view)));
 	result[3] = Vec4(position, 1.0F);
 	return result;
 }
 
+/// Breaks when the view direction is parallel to `up`.
 inline Mat4 look_at(const Vec3 &position, const Vec3 &target, const Vec3 &up) {
 	const Vec3 w = normalize(target - position);
 	const Vec3 u = normalize(cross(w, up));
@@ -246,6 +253,7 @@ inline Mat4 look_at(const Vec3 &position, const Vec3 &target, const Vec3 &up) {
 	return view_from_basis(u, v, w, position);
 }
 
+/// Up defaults to -Y (Vulkan y-down). Breaks when `direction` is parallel to it.
 inline Mat4 look_in_direction(const Vec3 &position, const Vec3 &direction, const Vec3 &world_up = Vec3(0, -1, 0)) {
 	const Vec3 w = normalize(direction);
 	const Vec3 u = normalize(cross(w, world_up));
@@ -254,6 +262,7 @@ inline Mat4 look_in_direction(const Vec3 &position, const Vec3 &direction, const
 	return view_from_basis(u, v, w, position);
 }
 
+/// `rotation` is (pitch, yaw, roll) in radians, Tait-Bryan YXZ.
 inline Mat4 view_from_euler(const Vec3 &position, const Vec3 &rotation) {
 	const F32 c3 = std::cos(rotation.z);
 	const F32 s3 = std::sin(rotation.z);
@@ -271,6 +280,7 @@ inline Mat4 view_from_euler(const Vec3 &position, const Vec3 &rotation) {
 
 // Geometry utilities
 
+/// World space corners. x changes fastest, then y, then z. The first four are the near plane.
 inline std::array<Vec4, 8> extract_frustum_corners(const Mat4 &proj_view) {
 	const Mat4 inv = inverse(proj_view);
 	std::array<Vec4, 8> corners{};
@@ -295,6 +305,7 @@ inline void compute_aabb(const std::array<Vec3, 8> &points, Vec3 &out_min, Vec3 
 	}
 }
 
+/// Bounds of the frustum corners as seen from the light.
 inline void compute_light_space_aabb(const std::array<Vec4, 8> &corners, const Mat4 &light_view, Vec3 &out_min,
 									 Vec3 &out_max) {
 	out_min = Vec3(std::numeric_limits<F32>::max());
@@ -307,6 +318,7 @@ inline void compute_light_space_aabb(const std::array<Vec4, 8> &corners, const M
 	}
 }
 
+/// View of a directional light, placed `distance` back from `focus_point` along the light.
 inline Mat4 build_light_view_matrix(const Vec3 &light_direction, const Vec3 &focus_point, const F32 distance = 100.0F) {
 	const Vec3 light_dir = normalize(light_direction);
 	Vec3 world_up = Vec3(0.F, 1.F, 0.F);
@@ -322,11 +334,14 @@ inline Mat4 build_light_view_matrix(const Vec3 &light_direction, const Vec3 &foc
 	return view_from_basis(u, v, w, light_pos);
 }
 
+/// Snaps the bounds to whole shadow texels so shadows don't shimmer when the camera moves.
 inline void snap_to_texel_grid(F32 &min, F32 &max, const F32 world_units_per_texel) {
 	min = std::floor(min / world_units_per_texel) * world_units_per_texel;
 	max = std::floor(max / world_units_per_texel) * world_units_per_texel;
 }
 
+/// Shifts the depth range so near is never negative, and keeps far past near.
+/// @return the offset to add to light space z
 inline F32 fix_z_bounds_for_shadows(const F32 min_z, const F32 max_z, F32 &out_near, F32 &out_far) {
 	F32 z_translation = 0.0F;
 	if (min_z < 0.0F) {
@@ -343,6 +358,7 @@ inline F32 fix_z_bounds_for_shadows(const F32 min_z, const F32 max_z, F32 &out_n
 	return z_translation;
 }
 
+/// Signed, positive on the side the normal points to. `normal` must be unit length.
 AQUILA_FORCE_INLINE F32 distance_to_plane(const Vec3 &point, const Vec3 &normal, const Vec3 &plane_point) {
 	return dot(normal, point - plane_point);
 }
@@ -358,6 +374,7 @@ AQUILA_FORCE_INLINE F32 distance_to_segment(const Vec2 &point, const Vec2 &a, co
 	return length(point - (a + (ab * t)));
 }
 
+/// Weights of a, b and c. Zero for a degenerate triangle.
 AQUILA_FORCE_INLINE Vec3 barycentric(const Vec3 &p, const Vec3 &a, const Vec3 &b, const Vec3 &c) {
 	const Vec3 v0 = b - a, v1 = c - a, v2 = p - a;
 	const F32 d00 = dot(v0, v0), d01 = dot(v0, v1), d11 = dot(v1, v1);
@@ -371,6 +388,7 @@ AQUILA_FORCE_INLINE Vec3 barycentric(const Vec3 &p, const Vec3 &a, const Vec3 &b
 	return Vec3(1.0F - vv - ww, vv, ww);
 }
 
+/// Volume of the tetrahedron abcd. The sign tells which side of triangle abc the point d is on.
 AQUILA_FORCE_INLINE F32 signed_volume(const Vec3 &a, const Vec3 &b, const Vec3 &c, const Vec3 &d) {
 	return dot(cross(b - a, c - a), d - a) / 6.0F;
 }

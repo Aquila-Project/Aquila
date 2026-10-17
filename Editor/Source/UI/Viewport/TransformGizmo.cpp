@@ -9,7 +9,6 @@
 #include "Core/EditorContext.h"
 
 #include <cstdio>
-#include <limits>
 
 namespace Editor {
 

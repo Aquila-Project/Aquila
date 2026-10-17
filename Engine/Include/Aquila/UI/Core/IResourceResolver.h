@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
-#include <string>
 
 namespace Aquila::GFX {
 class GfxTexture;
@@ -9,6 +8,7 @@ class GfxTexture;
 
 namespace Aquila::UI::Core {
 
+/// What markup can reference by name: textures for src="" and commands for on-click="".
 class IResourceResolver {
   public:
 	virtual ~IResourceResolver() = default;

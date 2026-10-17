@@ -4,6 +4,7 @@
 
 namespace Aquila::Rendering {
 
+/// The camera a frame renders from. `fov` is vertical, in degrees. `valid` false means there's no camera.
 struct RenderView {
 	Mat4 view = Mat4(1.F);
 	Mat4 projection = Mat4(1.F);

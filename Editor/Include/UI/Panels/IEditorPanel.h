@@ -8,6 +8,7 @@ class View;
 
 namespace Editor {
 
+/// The older panel interface. The *Window classes wrap these panels as EditorWindows.
 class IEditorPanel {
   public:
 	virtual ~IEditorPanel() = default;

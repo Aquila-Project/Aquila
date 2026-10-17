@@ -8,6 +8,8 @@ enum class TransformTool { Translate, Rotate, Scale };
 enum class TransformSpace { World, Local };
 enum class TransformKey { X, Y, Z, Confirm, Cancel };
 
+/// The transform tool state shared by the viewport toolbar, the gizmo and the shortcuts.
+/// Snapping is 0.5 m, 15 degrees and 0.1 scale. Holding Ctrl while dragging flips it.
 class EditorTools {
   public:
 	void set_tool(TransformTool tool) {

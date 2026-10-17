@@ -6,6 +6,7 @@
 
 namespace Aquila::Rendering {
 
+/// Assigns lights to the clusters, so shading only loops over the lights near each pixel.
 class LightCullingSystem : public RenderingSystemBase {
   public:
 	LightCullingSystem() = default;

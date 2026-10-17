@@ -4,8 +4,6 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/Foundation/Math/Rect.h"
 
-#include <string>
-
 namespace Aquila::UI::Rendering {
 class DrawList;
 }

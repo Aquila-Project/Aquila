@@ -14,8 +14,6 @@
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Foundation/FrameScheduler.h"
 
-#include <algorithm>
-
 namespace Aquila::Rendering {
 
 using namespace Graphics;

@@ -2,9 +2,6 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
-#include <string>
-#include <vector>
-
 namespace Editor {
 
 struct ProjectInfo {
@@ -20,6 +17,7 @@ struct ProjectInfo {
 
 enum class ProjectTemplate : Uint8 { Empty, Sandbox };
 
+/// Projects live under K_ROOT in the VFS. open() mounts the project at /project and creates its Content folder.
 class ProjectManager {
   public:
 	static constexpr const char *K_ROOT = "/projects";
@@ -27,13 +25,16 @@ class ProjectManager {
 	ProjectManager();
 
 	Option<ProjectInfo> create(const std::string &name, ProjectTemplate project_template = ProjectTemplate::Empty);
+	/// Empty when the name is fine, otherwise the reason to show the user.
 	[[nodiscard]] std::string validate_name(const std::string &name) const;
 	[[nodiscard]] static std::string sanitize(const std::string &name);
 	static const char *template_name(ProjectTemplate project_template);
 	static const char *template_description(ProjectTemplate project_template);
+	/// Marks it as just opened, for the recent list.
 	void touch(ProjectInfo &project) const;
 	bool rename(ProjectInfo &project, const std::string &name) const;
 	bool remove(const ProjectInfo &project) const;
+	/// Most recently used first.
 	[[nodiscard]] std::vector<ProjectInfo> list() const;
 	[[nodiscard]] Option<ProjectInfo> load(const std::string &directory) const;
 };

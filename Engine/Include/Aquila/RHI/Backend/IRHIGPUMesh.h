@@ -13,6 +13,7 @@ struct GPUMeshPrimitive {
 	Uint32 vertex_count = 0;
 };
 
+/// The data is uploaded at creation, the vectors only need to live during the call.
 struct GPUMeshDesc {
 	const std::vector<Vertex> *vertices = nullptr;
 	const std::vector<Uint32> *indices = nullptr;
@@ -27,6 +28,7 @@ class IRHIGPUMesh {
 	AQUILA_NONMOVEABLE(IRHIGPUMesh);
 
 	virtual void bind(IRHICommandList &cmd) const = 0;
+	/// One draw per primitive.
 	virtual void draw(IRHICommandList &cmd) const = 0;
 
 	[[nodiscard]] virtual bool is_valid() const = 0;

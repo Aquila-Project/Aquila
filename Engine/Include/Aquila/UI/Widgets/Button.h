@@ -6,6 +6,8 @@
 
 namespace Aquila::UI::Core {
 
+/// In markup, on-click names a command registered on the LayoutLoader:
+/// `<Button on-click="file.save">Save</Button>`.
 class Button : public Control {
   public:
 	Button();
@@ -16,7 +18,9 @@ class Button : public Control {
 	void set_text(std::string text);
 	void set_font(Text::FontAtlas *font) override;
 	void set_icon(GFX::GfxTexture *texture);
+	/// Text on the right side, like a menu item's key.
 	void set_shortcut(std::string shortcut);
+	/// Keeps the icon slot even without an icon, so menu items line up.
 	void set_reserve_icon_space(bool reserve);
 	void set_trailing_icon(GFX::GfxTexture *texture);
 	[[nodiscard]] IconLabel *get_content() const { return m_content; }

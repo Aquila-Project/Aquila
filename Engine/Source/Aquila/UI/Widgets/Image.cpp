@@ -2,7 +2,6 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/UI/Core/IResourceResolver.h"
 #include "Aquila/UI/Style/StyleParserHelper.h"
-#include <sstream>
 
 namespace Aquila::UI::Core {
 

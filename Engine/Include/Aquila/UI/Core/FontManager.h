@@ -4,10 +4,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/UI/Text/FontAtlas.h"
 
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 namespace Aquila::GFX {
 class GfxContext;
 }
@@ -29,6 +25,7 @@ class FontManager {
 	void shutdown();
 
 	[[nodiscard]] bool is_initialized() const { return m_initialized; }
+	/// "regular", "medium", "bold" or "mono". Null for anything else.
 	[[nodiscard]] Text::FontAtlas *get_font(const std::string &name) const;
 
   private:

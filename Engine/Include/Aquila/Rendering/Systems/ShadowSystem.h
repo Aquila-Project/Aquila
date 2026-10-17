@@ -5,6 +5,8 @@
 
 namespace Aquila::Rendering {
 
+/// Cascaded shadow maps. Adds no passes when nothing casts shadows, Show > Shadows is off,
+/// or the debug view doesn't need them.
 class ShadowSystem : public RenderingSystemBase {
   public:
 	ShadowSystem() = default;

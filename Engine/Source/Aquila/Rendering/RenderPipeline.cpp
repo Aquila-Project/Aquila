@@ -11,8 +11,6 @@
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 
-#include <algorithm>
-
 namespace Aquila::Rendering {
 
 using namespace SceneManagement::Components;

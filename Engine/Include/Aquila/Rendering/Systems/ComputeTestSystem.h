@@ -7,6 +7,7 @@
 
 namespace Aquila::Rendering {
 
+/// Builds the cluster AABBs (CLUSTER_GRID_X * Y * Z) that LightCullingSystem fills with lights.
 class ClusterComputeSystem : public RenderingSystemBase {
 	struct GridData {
 		Ivec3 grid;
