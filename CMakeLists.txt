@@ -316,6 +316,7 @@ if (AQUILA_BUILD_EDITOR)
     add_subdirectory(Editor)
 endif ()
 
+include(AquilaLint)
 if (AQUILA_BUILD_EDITOR)
     install(TARGETS AquilaEditor
             RUNTIME DESTINATION bin
