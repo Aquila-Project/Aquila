@@ -24,6 +24,7 @@ class ViewportPanel : public IEditorPanel {
 	[[nodiscard]] Rect get_content_rect() const;
 	[[nodiscard]] const Aquila::UI::Core::View *get_view() const;
 
+	/// Where the image was clicked, 0..1 on both axes.
 	Signal<void(Vec2)> on_clicked_uv;
 
   private:

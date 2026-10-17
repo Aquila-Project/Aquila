@@ -14,6 +14,9 @@ class View;
 
 namespace Editor {
 
+/// `id` is also the dock panel id, so content ids inside the window must not reuse it.
+/// Windows that aren't single instance get panel ids like "id#2".
+/// `group` is the section of the editor switcher menu.
 struct EditorWindowType {
 	std::string id;
 	std::string title;
@@ -23,6 +26,8 @@ struct EditorWindowType {
 	Delegate<Unique<EditorWindow>(EditorContext &)> create{};
 };
 
+/// The window types and the open windows. Plugs into the DockSpace as its panel factory,
+/// tab bar decorator (editor switcher and +) and closable tabs.
 class EditorWindows {
   public:
 	explicit EditorWindows(EditorContext &context);
@@ -41,7 +46,9 @@ class EditorWindows {
 	void update(F32 delta_time);
 	void shutdown();
 
+	/// A single instance window that's already open is moved to `target` and focused instead.
 	EditorWindow *open(std::string_view type_id, Aquila::UI::Core::DockNode *target = nullptr);
+	/// Swaps the active tab of `node` for another window type, what the editor switcher does.
 	void replace(Aquila::UI::Core::DockNode *node, std::string_view type_id);
 	void apply_layout(const Aquila::UI::Core::DockLayoutDesc &layout);
 	[[nodiscard]] Aquila::UI::Core::DockLayoutDesc capture() const;

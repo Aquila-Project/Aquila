@@ -32,6 +32,7 @@ class InspectorPanel : public IEditorPanel {
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_renamed;
 	Signal<void(Aquila::SceneManagement::Entity)> on_components_changed;
 	void show_entity(Aquila::SceneManagement::Entity entity);
+	/// Reads the values again without rebuilding the sections, cheap enough while the gizmo drags.
 	void refresh_values(Aquila::SceneManagement::Entity entity);
 	void clear();
 	void open_add_search(Vec2 canvas_pos);

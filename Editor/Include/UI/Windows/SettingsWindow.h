@@ -21,6 +21,8 @@ class TextureCache;
 
 namespace Editor {
 
+/// Preferences in their own OS window. Edits a working copy, apply() copies it into the live
+/// preferences and fires on_applied.
 class SettingsWindow {
   public:
 	SettingsWindow();

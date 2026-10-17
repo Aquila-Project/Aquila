@@ -13,6 +13,7 @@ namespace Editor {
 
 class EditorWindows;
 
+/// Named dock layouts. Switching away remembers the current arrangement, reset_active() goes back to the preset.
 class Workspaces {
   public:
 	explicit Workspaces(EditorWindows &windows) : m_windows(windows) {}

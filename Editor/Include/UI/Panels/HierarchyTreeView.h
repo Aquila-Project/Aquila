@@ -51,6 +51,7 @@ class HierarchyTreeView : public Aquila::UI::Core::TreeView {
 	[[nodiscard]] HierarchyTreeNode *find_node_for_entity(Aquila::SceneManagement::Entity entity) const;
 	[[nodiscard]] Aquila::SceneManagement::EntityManager &get_entity_manager() { return m_entity_manager; }
 	[[nodiscard]] const EntityIcons &get_icons() const { return m_icons; }
+	/// The group an entity is listed under.
 	[[nodiscard]] static EntityGroup group_for(Aquila::SceneManagement::Entity entity);
 
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_selected;

@@ -35,6 +35,7 @@ struct UISettings {
 
 enum class Theme { Aquila, Aquila2, Dark, Light, Custom };
 
+/// Saved as JSON at preference_file_path.
 struct EditorPreferences {
 	WindowSettings window;
 	FontSettings fonts;

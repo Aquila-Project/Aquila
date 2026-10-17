@@ -9,6 +9,7 @@ namespace Editor {
 
 class EditorContext;
 
+/// Axis widget, selection label, safe frame and the debug panel over the viewport. Never hit tested.
 class ViewportOverlay final : public ViewportCanvas {
   public:
 	struct Options {
@@ -35,6 +36,7 @@ class ViewportOverlay final : public ViewportCanvas {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "ViewportOverlay"; }
 
+	/// Call it every frame. It compares and only redraws when something it shows changed.
 	void sync(const Rect &viewport, const Aquila::Rendering::RenderView &view);
 	[[nodiscard]] const Options &options() const { return m_options; }
 	void set_option(bool Options::*flag, bool enabled);
