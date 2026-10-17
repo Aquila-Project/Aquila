@@ -7,6 +7,7 @@ namespace Editor {
 struct ProjectInfo {
 	std::string name;
 	std::string directory;
+	std::string native_directory;
 	std::string project_file;
 	std::vector<std::string> scenes;
 	Uint64 created = 0;
@@ -24,6 +25,8 @@ class ProjectManager {
 
 	ProjectManager();
 
+	bool open(const ProjectInfo &project) const;
+
 	Option<ProjectInfo> create(const std::string &name, ProjectTemplate project_template = ProjectTemplate::Empty);
 	/// Empty when the name is fine, otherwise the reason to show the user.
 	[[nodiscard]] std::string validate_name(const std::string &name) const;
@@ -32,11 +35,18 @@ class ProjectManager {
 	static const char *template_description(ProjectTemplate project_template);
 	/// Marks it as just opened, for the recent list.
 	void touch(ProjectInfo &project) const;
+	/// Lists a scene file (relative to the project root, like "Scenes/Level.aqscene") in the project file.
+	bool add_scene(ProjectInfo &project, const std::string &scene) const;
 	bool rename(ProjectInfo &project, const std::string &name) const;
 	bool remove(const ProjectInfo &project) const;
 	/// Most recently used first.
 	[[nodiscard]] std::vector<ProjectInfo> list() const;
 	[[nodiscard]] Option<ProjectInfo> load(const std::string &directory) const;
+
+  private:
+	[[nodiscard]] std::string to_native(const std::string &directory) const;
+
+	std::string m_native_root;
 };
 
 } // namespace Editor

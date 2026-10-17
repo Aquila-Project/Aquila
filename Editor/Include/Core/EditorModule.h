@@ -35,7 +35,9 @@ class ProjectManager;
 /// The editor as an engine module: project launcher, dock shell, menus, shortcuts and preferences.
 class EditorModule final : public Aquila::Application::IModule {
   public:
-	EditorModule();
+	/// `project` is a project name or folder under ProjectManager::K_ROOT. Set, it opens that project and skips
+	/// the launcher (`--project` on the command line).
+	explicit EditorModule(std::string project = {});
 	~EditorModule() override;
 
 	void on_attach(Aquila::Application::EngineContext &engine) override;
@@ -76,6 +78,11 @@ class EditorModule final : public Aquila::Application::IModule {
 	void enter_editor(const ProjectInfo &project);
 	void apply_font_settings();
 	void set_ui_scale(F32 scale);
+	void save_scene();
+	void save_scene_as();
+	void open_scene();
+	bool load_scene(const std::string &path);
+	bool write_scene(const std::string &path);
 
 	Aquila::Application::EngineContext *m_engine = nullptr;
 	Aquila::SceneManagement::StatisticsCollector m_statistics;
@@ -101,6 +108,9 @@ class EditorModule final : public Aquila::Application::IModule {
 	Aquila::Rendering::RenderWindowId m_launcher_window = nullptr;
 	bool m_editor_entered = false;
 	Option<ProjectInfo> m_pending_project;
+	std::string m_startup_project;
+	ProjectInfo m_project;
+	std::string m_scene_path;
 
 	Aquila::SceneManagement::Entity m_outlined_entity;
 	Option<Aquila::SceneManagement::Entity> m_pending_pick;

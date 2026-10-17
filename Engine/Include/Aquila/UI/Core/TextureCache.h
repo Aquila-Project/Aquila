@@ -19,6 +19,7 @@ class TextureCache {
 
 	void evict(const std::string &path);
 
+	void evict_project_assets();
 	void clear();
 
 	/// For an SVG, its raster at exactly this pixel size (made on first use, then cached).

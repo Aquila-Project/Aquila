@@ -1,6 +1,7 @@
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
@@ -68,7 +69,7 @@ Uint32 size_key(Uint32 width, Uint32 height) {
 	return (width << 16U) | (height & 0xFFFFU);
 }
 
-}
+} // namespace
 
 struct TextureCache::VectorSource {
 	std::unique_ptr<lunasvg::Document> document;
@@ -76,7 +77,8 @@ struct TextureCache::VectorSource {
 	std::unordered_map<Uint32, Ref<GFX::GfxTexture>> sizes;
 };
 
-TextureCache::TextureCache(GFX::GfxContext &ctx, std::string base_path) : m_ctx(ctx), m_base_path(std::move(base_path)) {}
+TextureCache::TextureCache(GFX::GfxContext &ctx, std::string base_path)
+	: m_ctx(ctx), m_base_path(std::move(base_path)) {}
 
 TextureCache::~TextureCache() {
 	clear();
@@ -97,7 +99,8 @@ GFX::GfxTexture *TextureCache::load(const std::string &path) {
 		return it->second.get();
 	}
 
-	auto vfile = Platform::Filesystem::VirtualFileSystem::get()->open_file(resolved, AccessMode::Read, OpenMode::Binary);
+	auto vfile =
+		Platform::Filesystem::VirtualFileSystem::get()->open_file(resolved, AccessMode::Read, OpenMode::Binary);
 	if (!vfile || !vfile->is_valid()) {
 		AQUILA_LOG_ERROR("TextureCache: cannot open '{}'", resolved);
 		return nullptr;
@@ -181,7 +184,8 @@ Ref<GFX::GfxTexture> TextureCache::rasterize(VectorSource &source, Uint32 width,
 	std::vector<Uint8> pixels(static_cast<Usize>(width) * height * 4U);
 	for (Uint32 row = 0; row < height; ++row) {
 		const Uint8 *src = bitmap.data() + (static_cast<Usize>(row) * static_cast<Usize>(bitmap.stride()));
-		std::copy_n(src, static_cast<Usize>(width) * 4U, pixels.begin() + (static_cast<std::ptrdiff_t>(row) * width * 4));
+		std::copy_n(src, static_cast<Usize>(width) * 4U,
+					pixels.begin() + (static_cast<std::ptrdiff_t>(row) * width * 4));
 	}
 
 	RHI::TextureDesc desc{};
@@ -261,4 +265,14 @@ void TextureCache::clear() {
 	m_cache.clear();
 }
 
+void TextureCache::evict_project_assets() {
+	for (auto it = m_cache.begin(); it != m_cache.end();) {
+		if (it->first.starts_with(SharedConstants::PROJECT_MOUNT)) {
+			forget_vector(it->second.get());
+			it = m_cache.erase(it);
+		} else {
+			++it;
+		}
+	}
+}
 } // namespace Aquila::UI::Core

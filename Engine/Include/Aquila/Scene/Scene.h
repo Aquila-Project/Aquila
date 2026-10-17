@@ -7,6 +7,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/UUID.h"
 #include "Aquila/Foundation/Invalidation/DirtySet.h"
+#include "Aquila/Foundation/Signal.h"
 #include "Components/CameraComponent.h"
 
 namespace Aquila::Assets {
@@ -45,9 +46,16 @@ class Scene final {
 	/// Transform setters already call it.
 	void mark_transform_dirty(entt::entity entity);
 
+	void set_scene_name(std::string name) { m_scene_name = std::move(name); }
+
+	/// `filepath` is a VFS path.
 	bool serialize(const std::string &filepath);
+	/// Replaces everything in the scene with the file's entities and makes the primary camera active.
+	/// GPU materials aren't created here (no GfxContext), the Application does it from on_loaded.
 	bool deserialize(const std::string &filepath);
 
+	/// Fires after deserialize() succeeded.
+	Signal<void()> on_loaded;
 	void set_active_camera(Entity camera_entity);
 
   protected:

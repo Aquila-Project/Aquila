@@ -1,7 +1,7 @@
 #include "Aquila/Scene/Scene.h"
 
-#include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -13,6 +13,62 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
 namespace Aquila::SceneManagement {
+
+namespace {
+
+
+std::string snake_case(std::string_view name) {
+	auto upper = [](char c) { return std::isupper(static_cast<unsigned char>(c)) != 0; };
+	auto lower = [](char c) { return std::islower(static_cast<unsigned char>(c)) != 0; };
+	std::string out;
+	for (Usize i = 0; i < name.size(); ++i) {
+		const char c = name[i];
+		if (upper(c)) {
+			const bool after_lower = i > 0 && lower(name[i - 1]);
+			const bool acronym_end = i > 0 && upper(name[i - 1]) && i + 1 < name.size() && lower(name[i + 1]);
+			if (after_lower || acronym_end) {
+				out += '_';
+			}
+			out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		} else {
+			out += c;
+		}
+	}
+	return out;
+}
+
+nlohmann::ordered_json snake_case_keys(const nlohmann::ordered_json &value) {
+	if (value.is_object()) {
+		nlohmann::ordered_json out = nlohmann::ordered_json::object();
+		for (const auto &[key, child] : value.items()) {
+			out[snake_case(key)] = snake_case_keys(child);
+		}
+		return out;
+	}
+	if (value.is_array()) {
+		nlohmann::ordered_json out = nlohmann::ordered_json::array();
+		for (const auto &child : value) {
+			out.push_back(snake_case_keys(child));
+		}
+		return out;
+	}
+	return value;
+}
+
+void upgrade_legacy_scene(nlohmann::ordered_json &scene_json) {
+	if (!scene_json.contains("Entities") || scene_json.contains("entities")) {
+		return;
+	}
+	nlohmann::ordered_json upgraded = nlohmann::ordered_json::object();
+	upgraded["scene_name"] = scene_json.value("SceneName", "Untitled Scene");
+	upgraded["entities"] = nlohmann::ordered_json::object();
+	for (const auto &[id, entity] : scene_json["Entities"].items()) {
+		upgraded["entities"][id]["components"] = snake_case_keys(entity);
+	}
+	scene_json = std::move(upgraded);
+}
+
+} // namespace
 Scene::Scene() : m_scene_name("Unnamed scene"), m_scene_id(Foundation::UUID::generate()) {
 	on_start();
 }
@@ -206,55 +262,74 @@ Entity Scene::find_primary_camera() const {
 bool Scene::serialize(const std::string &filepath) {
 	nlohmann::ordered_json scene_json;
 
-	scene_json["SceneName"] = m_scene_name;
+	scene_json["scene_name"] = m_scene_name;
 
 	auto &registry = get_registry();
-	scene_json["Entities"] = nlohmann::ordered_json::object();
+	scene_json["entities"] = nlohmann::ordered_json::object();
 
 	auto view = registry.view<Components::MetadataComponent>();
 
 	for (auto entity_handle : view) {
 		Entity entity(entity_handle, this);
 		nlohmann::ordered_json entity_json;
+		entity_json["components"] = nlohmann::ordered_json::object();
 
 		// Serialize MetadataComponent
 		if (entity.has_component<Components::MetadataComponent>()) {
 			auto &meta = entity.get_component<Components::MetadataComponent>();
-			entity_json["MetadataComponent"] = { { "Name", meta.get_name() },
-												 { "UUID", meta.get_id().to_string() },
-												 { "Enabled", meta.is_visible() },
-												 { "Selected", meta.is_selected() } };
+			entity_json["components"]["metadata_component"] = { { "name", meta.get_name() },
+																{ "uuid", meta.get_id().to_string() },
+																{ "enabled", meta.is_visible() },
+																{ "selected", meta.is_selected() } };
 		}
 
 		// Serialize TransformComponent
 		if (entity.has_component<Components::TransformComponent>()) {
 			auto &transform = entity.get_component<Components::TransformComponent>();
-			entity_json["TransformComponent"] = {
-				{ "Position",
-				  { transform.get_local_position().x, transform.get_local_position().y,
-					transform.get_local_position().z } },
-				{ "Rotation",
-				  { transform.get_local_rotation().x, transform.get_local_rotation().y,
-					transform.get_local_rotation().z } },
-				{ "Scale",
-				  { transform.get_local_scale().x, transform.get_local_scale().y, transform.get_local_scale().z } }
+			entity_json["components"]["transform_component"] = {
+				{
+					"position",
+					{
+						transform.get_local_position().x,
+						transform.get_local_position().y,
+						transform.get_local_position().z,
+					},
+				},
+				{
+					"rotation",
+					{
+						transform.get_local_rotation().x,
+						transform.get_local_rotation().y,
+						transform.get_local_rotation().z,
+					},
+				},
+				{
+					"scale",
+					{
+						transform.get_local_scale().x,
+						transform.get_local_scale().y,
+						transform.get_local_scale().z,
+					},
+				},
 			};
 		}
 
 		// Serialize SceneNodeComponent
 		if (entity.has_component<Components::SceneNodeComponent>()) {
 			auto &node = entity.get_component<Components::SceneNodeComponent>();
-			entity_json["SceneNodeComponent"] = {
-				{ "Parent",
-				  node.parent.is_null()
-					  ? "null"
-					  : node.parent.get_component<Components::MetadataComponent>().get_id().to_string() },
-				{ "Children", nlohmann::ordered_json::array() }
+			entity_json["components"]["scene_node_component"] = {
+				{
+					"parent",
+					node.parent.is_null()
+						? "null"
+						: node.parent.get_component<Components::MetadataComponent>().get_id().to_string(),
+				},
+				{ "children", nlohmann::ordered_json::array() },
 			};
 
 			for (auto &child : node.children) {
 				if (!child.is_null() && child.has_component<Components::MetadataComponent>()) {
-					entity_json["SceneNodeComponent"]["Children"].push_back(
+					entity_json["components"]["scene_node_component"]["children"].push_back(
 						child.get_component<Components::MetadataComponent>().get_id().to_string());
 				}
 			}
@@ -263,35 +338,36 @@ bool Scene::serialize(const std::string &filepath) {
 		// Serialize MeshComponent
 		if (entity.has_component<Components::MeshComponent>()) {
 			auto &mesh = entity.get_component<Components::MeshComponent>();
-			entity_json["MeshComponent"] = { { "Path", mesh.data ? mesh.data->get_path() : std::string() },
-											 { "DebugName", mesh.data ? mesh.data->get_debug_name() : std::string() },
-											 { "CastShadows", mesh.cast_shadows } };
+			entity_json["components"]["mesh_component"] = { { "path", mesh.data ? mesh.data->get_path() : std::string() },
+															{ "debug_name", mesh.data ? mesh.data->get_debug_name() : std::string() },
+															{ "cast_shadows", mesh.cast_shadows } };
 		}
 
 		// Serialize LightComponent with shadow settings
 		if (entity.has_component<Components::LightComponent>()) {
 			auto &light = entity.get_component<Components::LightComponent>();
 
-			entity_json["LightComponent"] = { { "Type", static_cast<int>(light.m_type) },
-											  { "Color", { light.m_color.r, light.m_color.g, light.m_color.b } },
-											  { "Intensity", light.m_intensity },
-											  { "Range", light.m_range },
-											  { "InnerConeAngle", light.m_inner_cone_angle },
-											  { "OuterConeAngle", light.m_outer_cone_angle },
-											  { "Direction",
-												{ light.m_direction.x, light.m_direction.y, light.m_direction.z } },
-											  { "IsActive", light.m_is_active } };
+			entity_json["components"]["light_component"] = {
+				{ "type", static_cast<int>(light.m_type) },
+				{ "color", { light.m_color.r, light.m_color.g, light.m_color.b } },
+				{ "intensity", light.m_intensity },
+				{ "range", light.m_range },
+				{ "inner_cone_angle", light.m_inner_cone_angle },
+				{ "outer_cone_angle", light.m_outer_cone_angle },
+				{ "direction", { light.m_direction.x, light.m_direction.y, light.m_direction.z } },
+				{ "is_active", light.m_is_active },
+			};
 
 			// Serialize shadow settings for directional lights
 			if (light.m_type == Components::LightComponent::Type::Directional) {
 				const auto &shadow_settings = light.m_shadow_settings;
-				entity_json["LightComponent"]["ShadowSettings"] = {
-					{ "LightSize", shadow_settings.light_size },
-					{ "ShadowBias", shadow_settings.shadow_bias },
-					{ "NormalBias", shadow_settings.normal_bias },
-					{ "PCFSamples", shadow_settings.pcf_samples },
-					{ "CascadeSplitLambda", shadow_settings.cascade_split_lambda },
-					{ "BlockerSearchSamples", shadow_settings.blocker_search_samples }
+				entity_json["components"]["light_component"]["shadow_settings"] = {
+					{ "light_size", shadow_settings.light_size },
+					{ "shadow_bias", shadow_settings.shadow_bias },
+					{ "normal_bias", shadow_settings.normal_bias },
+					{ "pcf_samples", shadow_settings.pcf_samples },
+					{ "cascade_split_lambda", shadow_settings.cascade_split_lambda },
+					{ "blocker_search_samples", shadow_settings.blocker_search_samples },
 				};
 			}
 		}
@@ -299,55 +375,61 @@ bool Scene::serialize(const std::string &filepath) {
 		// Serialize CameraComponent
 		if (entity.has_component<Components::CameraComponent>()) {
 			auto &cam = entity.get_component<Components::CameraComponent>();
-			entity_json["CameraComponent"] = { { "Primary", cam.primary },
-											   { "IsOrthographic", cam.is_orthographic },
-											   { "FOV", cam.fov },
-											   { "AspectRatio", cam.aspect_ratio },
-											   { "NearPlane", cam.near_plane },
-											   { "FarPlane", cam.far_plane },
-											   { "OrthoLeft", cam.ortho_left },
-											   { "OrthoRight", cam.ortho_right },
-											   { "OrthoTop", cam.ortho_top },
-											   { "OrthoBottom", cam.ortho_bottom } };
+			entity_json["components"]["camera_component"] = {
+				{ "primary", cam.primary },
+				{ "is_orthographic", cam.is_orthographic },
+				{ "fov", cam.fov },
+				{ "aspect_ratio", cam.aspect_ratio },
+				{ "near_plane", cam.near_plane },
+				{ "far_plane", cam.far_plane },
+				{ "ortho_left", cam.ortho_left },
+				{ "ortho_right", cam.ortho_right },
+				{ "ortho_top", cam.ortho_top },
+				{ "ortho_bottom", cam.ortho_bottom },
+			};
 		}
 
+		// Serialize SkyLightComponent
 		if (entity.has_component<Components::SkyLightComponent>()) {
 			const auto &sky = entity.get_component<Components::SkyLightComponent>();
 			const Vec3 tint = sky.get_tint();
 			const Vec3 ground = sky.get_ground_albedo();
-			entity_json["SkyLightComponent"] = { { "Active", sky.is_active() },
-												 { "Source", static_cast<int>(sky.get_source()) },
-												 { "SunElevation", sky.get_sun_elevation() },
-												 { "SunAzimuth", sky.get_sun_azimuth() },
-												 { "Turbidity", sky.get_turbidity() },
-												 { "GroundAlbedo", { ground.x, ground.y, ground.z } },
-												 { "Intensity", sky.get_intensity() },
-												 { "Tint", { tint.x, tint.y, tint.z } },
-												 { "RenderSkybox", sky.get_render_skybox() },
-												 { "SkyboxLod", sky.get_skybox_lod() } };
+			entity_json["components"]["sky_light_component"] = {
+				{ "active", sky.is_active() },
+				{ "source", static_cast<int>(sky.get_source()) },
+				{ "sun_elevation", sky.get_sun_elevation() },
+				{ "sun_azimuth", sky.get_sun_azimuth() },
+				{ "turbidity", sky.get_turbidity() },
+				{ "ground_albedo", { ground.x, ground.y, ground.z } },
+				{ "intensity", sky.get_intensity() },
+				{ "tint", { tint.x, tint.y, tint.z } },
+				{ "render_skybox", sky.get_render_skybox() },
+				{ "skybox_lod", sky.get_skybox_lod() },
+			};
 		}
 
 		// Serialize MaterialComponent
 		if (entity.has_component<Components::MaterialComponent>()) {
 			auto &mat_comp = entity.get_component<Components::MaterialComponent>();
 			const auto &surface = mat_comp.surface_properties;
-			entity_json["MaterialComponent"] = {
-				{ "Type", static_cast<int>(mat_comp.type) },
-				{ "Albedo", { surface.albedo.x, surface.albedo.y, surface.albedo.z, surface.albedo.w } },
-				{ "Emissive", { surface.emissive.x, surface.emissive.y, surface.emissive.z, surface.emissive.w } },
-				{ "Metallic", surface.metallic },
-				{ "Roughness", surface.roughness },
-				{ "NormalStrength", surface.normal_strength },
-				{ "AoStrength", surface.ao_strength },
+			entity_json["components"]["material_component"] = {
+				{ "type", static_cast<int>(mat_comp.type) },
+				{ "albedo", { surface.albedo.x, surface.albedo.y, surface.albedo.z, surface.albedo.w } },
+				{ "emissive", { surface.emissive.x, surface.emissive.y, surface.emissive.z, surface.emissive.w } },
+				{ "metallic", surface.metallic },
+				{ "roughness", surface.roughness },
+				{ "normal_strength", surface.normal_strength },
+				{ "ao_strength", surface.ao_strength },
 			};
 		}
 
-		scene_json["Entities"][std::to_string(static_cast<int>(entity_handle))] = entity_json;
+		scene_json["entities"][std::to_string(static_cast<int>(entity_handle))] = entity_json;
 	}
 
 	const auto vfs_file = Aquila::Platform::Filesystem::VirtualFileSystem::get()->open_file(filepath, AccessMode::Write,
 																							OpenMode::Binary);
 	if (!vfs_file || !vfs_file->is_valid()) {
+		AQUILA_LOG_ERROR("VFS could not open file. Verify you are passing a VIRTUAL file and not a folder");
 		return false;
 	}
 
@@ -370,75 +452,91 @@ bool Scene::deserialize(const std::string &filepath) {
 	vfs_file->read(buffer.data(), buffer.size());
 	vfs_file->close();
 
-	nlohmann::ordered_json scene_json;
-	scene_json = nlohmann::ordered_json::parse(buffer.begin(), buffer.end());
+	nlohmann::ordered_json scene_json = nlohmann::ordered_json::parse(buffer.begin(), buffer.end(), nullptr, false);
+	if (scene_json.is_discarded() || !scene_json.is_object()) {
+		AQUILA_LOG_ERROR("Scene: {} is not valid JSON", filepath);
+		return false;
+	}
+	upgrade_legacy_scene(scene_json);
 
-	m_scene_name = scene_json.value("SceneName", "Untitled Scene");
-
-	auto &registry = get_registry();
-	registry.clear();
-
-	if (!scene_json.contains("Entities")) {
+	if (!scene_json.contains("entities")) {
 		return false;
 	}
 
-	const auto &entities_json = scene_json["Entities"];
+	m_scene_name = scene_json.value("scene_name", "Untitled Scene");
+	clear();
+
+	const auto &entities_json = scene_json["entities"];
 
 	std::unordered_map<std::string, Entity> uuid_to_entity;
 
 	// First pass: Create all entities with metadata
-	for (auto &[idStr, entityData] : entities_json.items()) {
-		if (entityData.contains("MetadataComponent")) {
-			const auto &meta = entityData["MetadataComponent"];
-			Components::MetadataComponent metadata;
-			metadata.set_name(meta.value("Name", ""));
-			metadata.set_id(Foundation::UUID::from_string(meta.value("UUID", "")));
-			metadata.set_visible(meta.value("Enabled", true));
-			metadata.set_selected(meta.value("Selected", false));
-
-			Entity entity = m_entity_manager->create_entity(metadata.get_name());
-			uuid_to_entity[metadata.get_id().to_string()] = entity;
+	for (auto &[id_str, entity_data] : entities_json.items()) {
+		if (entity_data.contains("components")) {
+			const auto &components = entity_data["components"];
+			if (components.contains("metadata_component")) {
+				const auto &meta = components["metadata_component"];
+				const std::string uuid = meta.value("uuid", "");
+				Entity entity = m_entity_manager->create_entity(meta.value("name", ""));
+				auto &metadata = entity.get_component<Components::MetadataComponent>();
+				if (!uuid.empty()) {
+					metadata.set_id(Foundation::UUID::from_string(uuid));
+				}
+				metadata.set_visible(meta.value("enabled", true));
+				metadata.set_selected(meta.value("selected", false));
+				uuid_to_entity[uuid] = entity;
+			}
 		}
 	}
 
 	// Second pass: Add all components
-	for (auto &[idStr, entityData] : entities_json.items()) {
-		const auto &meta = entityData["MetadataComponent"];
-		std::string uuid_str = meta.value("UUID", "");
+	for (auto &[id_str, entity_data] : entities_json.items()) {
+		if (!entity_data.contains("components")) {
+			continue;
+		}
+
+		const auto &components = entity_data["components"];
+
+		if (!components.contains("metadata_component")) {
+			continue;
+		}
+
+		std::string uuid_str = components["metadata_component"].value("uuid", "");
+		if (!uuid_to_entity.contains(uuid_str)) {
+			continue;
+		}
 		Entity entity = uuid_to_entity.at(uuid_str);
 
 		// Deserialize TransformComponent
-		if (entityData.contains("TransformComponent")) {
-			const auto &transform_json = entityData["TransformComponent"];
+		if (components.contains("transform_component")) {
+			const auto &transform_json = components["transform_component"];
 			Vec3 position =
-				Vec3(transform_json["Position"][0], transform_json["Position"][1], transform_json["Position"][2]);
+				Vec3(transform_json["position"][0], transform_json["position"][1], transform_json["position"][2]);
 			Vec3 rotation =
-				Vec3(transform_json["Rotation"][0], transform_json["Rotation"][1], transform_json["Rotation"][2]);
-			Vec3 scale = Vec3(transform_json["Scale"][0], transform_json["Scale"][1], transform_json["Scale"][2]);
+				Vec3(transform_json["rotation"][0], transform_json["rotation"][1], transform_json["rotation"][2]);
+			Vec3 scale = Vec3(transform_json["scale"][0], transform_json["scale"][1], transform_json["scale"][2]);
 
-			Components::TransformComponent transform;
+			auto &transform = entity.get_or_emplace<Components::TransformComponent>();
 			transform.set_local_position(position);
 			transform.set_local_rotation(rotation);
 			transform.set_local_scale(scale);
 			transform.update_world_matrix();
-
-			entity.add_or_replace_component<Components::TransformComponent>(transform);
 		}
 
 		// Deserialize SceneNodeComponent
-		if (entityData.contains("SceneNodeComponent")) {
-			const auto &node_json = entityData["SceneNodeComponent"];
+		if (components.contains("scene_node_component")) {
+			const auto &node_json = components["scene_node_component"];
 			Components::SceneNodeComponent node;
 			node.ent = entity;
 
-			if (std::string parent_uuid = node_json.value("Parent", "null"); parent_uuid == "null") {
+			if (std::string parent_uuid = node_json.value("parent", "null"); parent_uuid == "null") {
 				node.parent = Entity::null();
 			} else {
 				node.parent = uuid_to_entity.contains(parent_uuid) ? uuid_to_entity.at(parent_uuid) : Entity::null();
 			}
 
-			if (node_json.contains("Children")) {
-				for (const auto &child_uuid_json : node_json["Children"]) {
+			if (node_json.contains("children")) {
+				for (const auto &child_uuid_json : node_json["children"]) {
 					if (auto child_uuid = child_uuid_json.get<std::string>(); uuid_to_entity.contains(child_uuid)) {
 						node.children.push_back(uuid_to_entity.at(child_uuid));
 					}
@@ -449,12 +547,12 @@ bool Scene::deserialize(const std::string &filepath) {
 		}
 
 		// Deserialize MeshComponent
-		if (entityData.contains("MeshComponent")) {
-			const auto &mesh_json = entityData["MeshComponent"];
+		if (components.contains("mesh_component")) {
+			const auto &mesh_json = components["mesh_component"];
 			auto &mesh_comp = entity.get_or_emplace<Components::MeshComponent>();
 
-			if (std::string mesh_path = mesh_json.value("Path", ""); !mesh_path.empty()) {
-				auto mesh = std::make_shared<Graphics::Resources::Mesh>(mesh_json.value("DebugName", mesh_path));
+			if (std::string mesh_path = mesh_json.value("path", ""); !mesh_path.empty()) {
+				auto mesh = std::make_shared<Graphics::Resources::Mesh>(mesh_json.value("debug_name", mesh_path));
 				if (Option<Graphics::Resources::MeshData> generated =
 						Graphics::Resources::Mesh::generate_from_path(mesh_path)) {
 					mesh->load_from_data(*generated);
@@ -469,39 +567,43 @@ bool Scene::deserialize(const std::string &filepath) {
 				}
 			}
 
-			mesh_comp.cast_shadows = mesh_json.value("CastShadows", true);
+			mesh_comp.cast_shadows = mesh_json.value("cast_shadows", true);
 		}
 
 		// Deserialize LightComponent with shadow settings
-		if (entityData.contains("LightComponent")) {
-			const auto &light_json = entityData["LightComponent"];
+		if (components.contains("light_component")) {
+			const auto &light_json = components["light_component"];
 			Components::LightComponent light;
 
-			if (light_json.contains("Type")) {
-				light.m_type = static_cast<Components::LightComponent::Type>(light_json["Type"].get<int>());
+			if (light_json.contains("type")) {
+				light.m_type = static_cast<Components::LightComponent::Type>(light_json["type"].get<int>());
 			}
 
-			if (light_json.contains("Color")) {
-				light.m_color = Vec3(light_json["Color"][0].get<F32>(), light_json["Color"][1].get<F32>(),
-									 light_json["Color"][2].get<F32>());
+			if (light_json.contains("color")) {
+				light.m_color = Vec3(light_json["color"][0].get<F32>(), light_json["color"][1].get<F32>(),
+									 light_json["color"][2].get<F32>());
 			}
 
-			if (light_json.contains("Intensity")) {
-				light.m_intensity = light_json["Intensity"].get<F32>();
+			if (light_json.contains("intensity")) {
+				light.m_intensity = light_json["intensity"].get<F32>();
 			}
-			if (light_json.contains("Range")) {
-				light.m_range = light_json["Range"].get<F32>();
+			if (light_json.contains("range")) {
+				light.m_range = light_json["range"].get<F32>();
 			}
-			if (light_json.contains("InnerConeAngle")) {
-				light.m_inner_cone_angle = light_json["InnerConeAngle"].get<F32>();
+			if (light_json.contains("inner_cone_angle")) {
+				light.m_inner_cone_angle = light_json["inner_cone_angle"].get<F32>();
 			}
-			if (light_json.contains("OuterConeAngle")) {
-				light.m_outer_cone_angle = light_json["OuterConeAngle"].get<F32>();
+			if (light_json.contains("outer_cone_angle")) {
+				light.m_outer_cone_angle = light_json["outer_cone_angle"].get<F32>();
 			}
 
-			if (light_json.contains("Direction")) {
-				light.m_direction = Vec3(light_json["Direction"][0].get<F32>(), light_json["Direction"][1].get<F32>(),
-										 light_json["Direction"][2].get<F32>());
+			if (light_json.contains("direction")) {
+				light.m_direction = Vec3(light_json["direction"][0].get<F32>(), light_json["direction"][1].get<F32>(),
+										 light_json["direction"][2].get<F32>());
+			}
+
+			if (light_json.contains("is_active")) {
+				light.m_is_active = light_json["is_active"].get<bool>();
 			}
 
 			if (light_json.contains("IsActive")) {
@@ -510,64 +612,64 @@ bool Scene::deserialize(const std::string &filepath) {
 
 			// Deserialize shadow settings for directional lights
 			if (light.m_type == Components::LightComponent::Type::Directional &&
-				light_json.contains("ShadowSettings")) {
-				const auto &shadow_json = light_json["ShadowSettings"];
+				light_json.contains("shadow_settings")) {
+				const auto &shadow_json = light_json["shadow_settings"];
 
-				light.m_shadow_settings.light_size = shadow_json.value("LightSize", 8.0F);
-				light.m_shadow_settings.shadow_bias = shadow_json.value("ShadowBias", 0.0005F);
-				light.m_shadow_settings.normal_bias = shadow_json.value("NormalBias", 1.0F);
-				light.m_shadow_settings.pcf_samples = shadow_json.value("PCFSamples", 32);
-				light.m_shadow_settings.cascade_split_lambda = shadow_json.value("CascadeSplitLambda", 0.95F);
-				light.m_shadow_settings.blocker_search_samples = shadow_json.value("BlockerSearchSamples", 16);
+				light.m_shadow_settings.light_size = shadow_json.value("light_size", 8.0F);
+				light.m_shadow_settings.shadow_bias = shadow_json.value("shadow_bias", 0.0005F);
+				light.m_shadow_settings.normal_bias = shadow_json.value("normal_bias", 1.0F);
+				light.m_shadow_settings.pcf_samples = shadow_json.value("pcf_samples", 32);
+				light.m_shadow_settings.cascade_split_lambda = shadow_json.value("cascade_split_lambda", 0.95F);
+				light.m_shadow_settings.blocker_search_samples = shadow_json.value("blocker_search_samples", 16);
 			}
 
 			entity.add_or_replace_component<Components::LightComponent>(light);
 		}
 
 		// Deserialize CameraComponent
-		if (entityData.contains("CameraComponent")) {
-			const auto &cam_json = entityData["CameraComponent"];
+		if (components.contains("camera_component")) {
+			const auto &cam_json = components["camera_component"];
 			Components::CameraComponent cam;
 
-			cam.primary = cam_json.value("Primary", false);
-			cam.is_orthographic = cam_json.value("IsOrthographic", false);
-			cam.fov = cam_json.value("FOV", 45.0F);
-			cam.aspect_ratio = cam_json.value("AspectRatio", 16.0F / 9.0F);
-			cam.near_plane = cam_json.value("NearPlane", 0.1F);
-			cam.far_plane = cam_json.value("FarPlane", 1000.0F);
-			cam.ortho_left = cam_json.value("OrthoLeft", -10.0F);
-			cam.ortho_right = cam_json.value("OrthoRight", 10.0F);
-			cam.ortho_top = cam_json.value("OrthoTop", 10.0F);
-			cam.ortho_bottom = cam_json.value("OrthoBottom", -10.0F);
+			cam.primary = cam_json.value("primary", false);
+			cam.is_orthographic = cam_json.value("is_orthographic", false);
+			cam.fov = cam_json.value("fov", 45.0F);
+			cam.aspect_ratio = cam_json.value("aspect_ratio", 16.0F / 9.0F);
+			cam.near_plane = cam_json.value("near_plane", 0.1F);
+			cam.far_plane = cam_json.value("far_plane", 1000.0F);
+			cam.ortho_left = cam_json.value("ortho_left", -10.0F);
+			cam.ortho_right = cam_json.value("ortho_right", 10.0F);
+			cam.ortho_top = cam_json.value("ortho_top", 10.0F);
+			cam.ortho_bottom = cam_json.value("ortho_bottom", -10.0F);
 
 			entity.add_or_replace_component<Components::CameraComponent>(cam);
 		}
 
 		// Deserialize SkyLightComponent
-		if (entityData.contains("SkyLightComponent")) {
-			const auto &sky_light_json = entityData["SkyLightComponent"];
+		if (components.contains("sky_light_component")) {
+			const auto &sky_light_json = components["sky_light_component"];
 			auto &sky_light = entity.get_or_emplace<Components::SkyLightComponent>();
 
-			sky_light.set_active(sky_light_json.value("Active", true));
-			sky_light.set_source(static_cast<Components::SkySource>(sky_light_json.value("Source", 0)));
-			sky_light.set_sun_elevation(sky_light_json.value("SunElevation", sky_light.get_sun_elevation()));
-			sky_light.set_sun_azimuth(sky_light_json.value("SunAzimuth", sky_light.get_sun_azimuth()));
-			sky_light.set_turbidity(sky_light_json.value("Turbidity", sky_light.get_turbidity()));
-			sky_light.set_skybox_lod(sky_light_json.value("SkyboxLod", sky_light.get_skybox_lod()));
-			sky_light.set_intensity(sky_light_json.value("Intensity", 1.0F));
+			sky_light.set_active(sky_light_json.value("active", true));
+			sky_light.set_source(static_cast<Components::SkySource>(sky_light_json.value("source", 0)));
+			sky_light.set_sun_elevation(sky_light_json.value("sun_elevation", sky_light.get_sun_elevation()));
+			sky_light.set_sun_azimuth(sky_light_json.value("sun_azimuth", sky_light.get_sun_azimuth()));
+			sky_light.set_turbidity(sky_light_json.value("turbidity", sky_light.get_turbidity()));
+			sky_light.set_skybox_lod(sky_light_json.value("skybox_lod", sky_light.get_skybox_lod()));
+			sky_light.set_intensity(sky_light_json.value("intensity", 1.0F));
 
-			if (sky_light_json.contains("GroundAlbedo")) {
-				const auto &ground = sky_light_json["GroundAlbedo"];
+			if (sky_light_json.contains("ground_albedo")) {
+				const auto &ground = sky_light_json["ground_albedo"];
 				sky_light.set_ground_albedo(Vec3(ground[0].get<F32>(), ground[1].get<F32>(), ground[2].get<F32>()));
 			}
 
-			if (sky_light_json.contains("Tint")) {
-				Vec3 tint = Vec3(sky_light_json["Tint"][0].get<F32>(), sky_light_json["Tint"][1].get<F32>(),
-								 sky_light_json["Tint"][2].get<F32>());
+			if (sky_light_json.contains("tint")) {
+				Vec3 tint = Vec3(sky_light_json["tint"][0].get<F32>(), sky_light_json["tint"][1].get<F32>(),
+								 sky_light_json["tint"][2].get<F32>());
 				sky_light.set_tint(tint);
 			}
 
-			sky_light.set_render_skybox(sky_light_json.value("RenderSkybox", true));
+			sky_light.set_render_skybox(sky_light_json.value("render_skybox", true));
 
 			if (std::string hdr_path = sky_light_json.value("HDRTexturePath", ""); !hdr_path.empty()) {
 				// if (auto hdrTexture = assetManager.LoadHDRTexture(hdrPath)) {
@@ -577,10 +679,10 @@ bool Scene::deserialize(const std::string &filepath) {
 		}
 
 		// Deserialize MaterialComponent
-		if (entityData.contains("MaterialComponent")) {
-			const auto &mat_json = entityData["MaterialComponent"];
+		if (components.contains("material_component")) {
+			const auto &mat_json = components["material_component"];
 			auto &mat_comp = entity.get_or_emplace<Components::MaterialComponent>();
-			mat_comp.type = static_cast<Graphics::MaterialType>(mat_json.value("Type", 0));
+			mat_comp.type = static_cast<Graphics::MaterialType>(mat_json.value("type", 0));
 
 			auto &surface = mat_comp.surface_properties;
 			auto read_vec4 = [&mat_json](const char *key, Vec4 &out) {
@@ -589,15 +691,19 @@ bool Scene::deserialize(const std::string &filepath) {
 					out = Vec4(v[0].get<F32>(), v[1].get<F32>(), v[2].get<F32>(), v[3].get<F32>());
 				}
 			};
-			read_vec4("Albedo", surface.albedo);
-			read_vec4("Emissive", surface.emissive);
-			surface.metallic = mat_json.value("Metallic", surface.metallic);
-			surface.roughness = mat_json.value("Roughness", surface.roughness);
-			surface.normal_strength = mat_json.value("NormalStrength", surface.normal_strength);
-			surface.ao_strength = mat_json.value("AoStrength", surface.ao_strength);
+			read_vec4("albedo", surface.albedo);
+			read_vec4("emissive", surface.emissive);
+			surface.metallic = mat_json.value("metallic", surface.metallic);
+			surface.roughness = mat_json.value("roughness", surface.roughness);
+			surface.normal_strength = mat_json.value("normal_strength", surface.normal_strength);
+			surface.ao_strength = mat_json.value("ao_strength", surface.ao_strength);
 		}
 	}
 
+	if (Entity camera = find_primary_camera(); camera.is_valid()) {
+		set_active_camera(camera);
+	}
+	on_loaded();
 	return true;
 }
 } // namespace Aquila::SceneManagement

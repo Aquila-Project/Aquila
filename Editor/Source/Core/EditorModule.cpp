@@ -53,7 +53,7 @@ using namespace Aquila::SceneManagement::Components;
 using namespace Aquila::Application;
 namespace Events = Aquila::Platform::Events;
 
-EditorModule::EditorModule() = default;
+EditorModule::EditorModule(std::string project) : m_startup_project(std::move(project)) {}
 
 EditorModule::~EditorModule() = default;
 
@@ -78,6 +78,16 @@ void EditorModule::on_attach(EngineContext &engine) {
 	m_texture_cache = std::make_unique<Aquila::UI::Core::TextureCache>(m_engine->get_context(),
 																	   Config::get_preferences().ui.resources_path);
 
+	if (!m_startup_project.empty()) {
+		const std::string directory = std::string(ProjectManager::K_ROOT) + "/" +
+			ProjectManager::sanitize(std::filesystem::path(m_startup_project).filename().string());
+		if (Option<ProjectInfo> project = m_project_manager->load(directory)) {
+			m_pending_project = *project;
+			Aquila::Foundation::FrameScheduler::get()->request_frame();
+			return;
+		}
+		AQUILA_LOG_ERROR("EditorModule: no project at {}", directory);
+	}
 	open_project_launcher();
 }
 
@@ -103,7 +113,12 @@ void EditorModule::open_project_launcher() {
 void EditorModule::enter_editor(const ProjectInfo &project) {
 	AQUILA_LOG_INFO("EditorModule: opening project '{}' ({})", project.name, project.directory);
 
+	if (m_texture_cache) {
+		m_texture_cache->evict_project_assets();
+	}
 	m_editor_entered = true;
+	m_project = project;
+	m_project_manager->open(m_project);
 	if (m_launcher_window != nullptr) {
 		m_engine->get_window_host().request_close(m_launcher_window);
 	}
@@ -111,6 +126,14 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 	m_engine->get_window().show();
 	m_editor_camera = std::make_unique<Aquila::Rendering::CameraController>();
 	setup_editor_ui();
+
+
+	const bool loaded = !m_project.scenes.empty() &&
+		load_scene(std::string{ SharedConstants::PROJECT_SCENES_DIR } + "/" + m_project.scenes.front());
+	if (!loaded) {
+		new_empty_scene();
+	}
+
 }
 
 void EditorModule::on_detach() {
@@ -232,9 +255,84 @@ void EditorModule::scene_replaced() {
 
 void EditorModule::new_empty_scene() {
 	m_engine->get_scene().clear();
+	m_engine->get_scene().set_scene_name("Untitled");
+	m_scene_path.clear();
 	SceneManagement::spawn_default_camera(m_engine->get_scene(), window_aspect());
 	scene_replaced();
 	AQUILA_LOG_INFO("EditorModule: new empty scene");
+}
+
+void EditorModule::save_scene() {
+	if (m_scene_path.empty()) {
+		save_scene_as();
+		return;
+	}
+	write_scene(m_scene_path);
+}
+
+void EditorModule::save_scene_as() {
+	const std::array filters = { FileDialog::Filter{ .name = "Aquila scene", .extensions = "aqscene" } };
+	const std::string folder = m_context->to_native(std::string(SharedConstants::PROJECT_SCENES_DIR));
+	Option<std::string> native =
+		FileDialog::save_file(filters, folder, m_engine->get_scene().get_scene_name() + ".aqscene");
+	if (!native) {
+		return;
+	}
+	std::filesystem::path file(*native);
+	if (file.extension() != ".aqscene") {
+		file += ".aqscene";
+	}
+	const Option<std::string> path = m_context->to_project_path(file.string());
+	if (!path) {
+		AQUILA_LOG_ERROR("EditorModule: scenes have to be saved inside the project folder ({})",
+						 m_project.native_directory);
+		return;
+	}
+	m_engine->get_scene().set_scene_name(file.stem().string());
+	write_scene(*path);
+}
+
+bool EditorModule::write_scene(const std::string &path) {
+	std::error_code error;
+	std::filesystem::create_directories(std::filesystem::path(m_context->to_native(path)).parent_path(), error);
+	if (!m_engine->get_scene().serialize(path)) {
+		AQUILA_LOG_ERROR("EditorModule: couldn't save the scene to {}", path);
+		return false;
+	}
+	m_scene_path = path;
+	const std::string mount = SharedConstants::PROJECT_MOUNT + "/";
+	if (path.starts_with(mount)) {
+		m_project_manager->add_scene(m_project, path.substr(mount.size()));
+		m_context->set_project(m_project);
+	}
+	AQUILA_LOG_INFO("EditorModule: scene saved at {}", path);
+	return true;
+}
+
+void EditorModule::open_scene() {
+	const std::array filters = { FileDialog::Filter{ .name = "Aquila scene", .extensions = "aqscene" } };
+	const Option<std::string> native =
+		FileDialog::open_file(filters, m_context->to_native(std::string(SharedConstants::PROJECT_SCENES_DIR)));
+	if (!native) {
+		return;
+	}
+	const Option<std::string> path = m_context->to_project_path(*native);
+	if (!path) {
+		AQUILA_LOG_ERROR("EditorModule: {} isn't inside the project folder", *native);
+		return;
+	}
+	load_scene(*path);
+}
+
+bool EditorModule::load_scene(const std::string &path) {
+	if (!m_engine->get_scene().deserialize(path)) {
+		AQUILA_LOG_ERROR("EditorModule: couldn't open the scene {}", path);
+		return false;
+	}
+	m_scene_path = path;
+	scene_replaced();
+	AQUILA_LOG_INFO("EditorModule: scene opened from {}", path);
+	return true;
 }
 
 void EditorModule::reset_to_demo_scene() {
@@ -332,6 +430,7 @@ void EditorModule::setup_editor_ui() {
 	m_context =
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
+	m_context->set_project(m_project);
 	register_content_creators();
 	bind_default_shortcuts(m_context->shortcuts);
 
@@ -468,6 +567,16 @@ void EditorModule::register_commands() {
 	shortcuts.add_command(
 		{ .id = "scene.new", .title = "New scene", .run = [this] { new_empty_scene(); }, .enabled = editing });
 	shortcuts.add_command({
+		.id = "scene.open",
+		.title = "Open scene",
+		.run = [this] { open_scene(); },
+		.enabled = editing,
+	});
+	shortcuts.add_command(
+		{ .id = "scene.save", .title = "Save scene", .run = [this] { save_scene(); }, .enabled = editing });
+	shortcuts.add_command(
+		{ .id = "scene.save_as", .title = "Save scene as", .run = [this] { save_scene_as(); }, .enabled = editing });
+	shortcuts.add_command({
 		.id = "scene.reset_demo",
 		.title = "Reset demo scene",
 		.run = [this] { reset_to_demo_scene(); },
@@ -595,9 +704,10 @@ void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
 	};
 
 	PopupMenu *file_menu = m_main_menu->add_submenu("File", m_context->icon("folder-open"));
-	file_menu->add_item("Open scene", "Ctrl+O", m_context->icon("folder-open"),
-						[] { AQUILA_LOG_INFO("EditorModule: opening scenes is not available yet"); });
 	add(file_menu, "scene.new", "layers-plus");
+	add(file_menu, "scene.open", "folder-open");
+	add(file_menu, "scene.save", "save");
+	add(file_menu, "scene.save_as", "save");
 	file_menu->add_separator();
 	add(file_menu, "editor.quit", "x");
 
