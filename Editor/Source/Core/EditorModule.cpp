@@ -1,5 +1,6 @@
 #include "Core/EditorModule.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Core/DefaultShortcuts.h"
 #include "Core/EditorContext.h"
 #include "Core/EditorWindows.h"
 #include "Core/ProjectManager.h"
@@ -21,6 +22,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Platform/Events/InputEvent.h"
+#include "Aquila/Platform/Events/KeyChord.h"
 #include "Aquila/Platform/Input.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Scene/Components/OutlineComponent.h"
@@ -172,8 +174,6 @@ void EditorModule::on_event(Events::Event &event) {
 	}
 	const bool from_main = event.get_source() == m_engine->get_window_host().get_main_window();
 
-	Events::EventDispatcher dispatcher(event);
-
 	if (m_editor_camera) {
 		m_editor_camera->on_event(event);
 	}
@@ -182,97 +182,17 @@ void EditorModule::on_event(Events::Event &event) {
 		return;
 	}
 
-	dispatcher.dispatch<Events::KeyPressedEvent>([this](Events::KeyPressedEvent &e) {
-		if (e.get_key_code() == Events::KeyCode::F5) {
-			m_layout_loader.load_file(Config::get_preferences().ui.layout_path);
-			AQUILA_LOG_INFO("Editor layout reloaded");
-			return true;
-		}
-
-		if (e.get_key_code() == Events::KeyCode::F6) {
-			load_styles();
-			AQUILA_LOG_INFO("Stylesheet reloaded");
-			return true;
-		}
-		return false;
-	});
-
 	if (from_main) {
 		m_ui_host->on_event(event);
 	}
 
-	Events::EventDispatcher post(event);
-	post.dispatch<Events::KeyPressedEvent>([this](Events::KeyPressedEvent &e) {
-		if (e.get_mods() != Events::MODIFIER_CONTROL) {
+	Events::EventDispatcher dispatcher(event);
+	dispatcher.dispatch<Events::KeyPressedEvent>([this, source_canvas](Events::KeyPressedEvent &e) {
+		if (!m_context) {
 			return false;
 		}
-		const auto &prefs = Config::get_preferences();
-		switch (e.get_key_code()) {
-		case Events::KeyCode::Equal:
-		case Events::KeyCode::KeypadAdd:
-			set_ui_scale(prefs.ui_scale + 0.05F);
-			return true;
-		case Events::KeyCode::Minus:
-		case Events::KeyCode::KeypadSubtract:
-			set_ui_scale(prefs.ui_scale - 0.05F);
-			return true;
-		case Events::KeyCode::Num0:
-			set_ui_scale(1.F);
-			return true;
-		default:
-			return false;
-		}
-	});
-	post.dispatch<Events::KeyPressedEvent>([this, source_canvas](Events::KeyPressedEvent &e) {
-		if (!m_context || e.get_mods() != 0 ||
-			Aquila::Platform::Input::is_mouse_button_pressed(Events::MouseButton::Right)) {
-			return false;
-		}
-		if (Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view())) {
-			return false;
-		}
-		switch (e.get_key_code()) {
-		case Events::KeyCode::W:
-			m_context->tools.set_tool(TransformTool::Translate);
-			return true;
-		case Events::KeyCode::E:
-			m_context->tools.set_tool(TransformTool::Rotate);
-			return true;
-		case Events::KeyCode::R:
-			m_context->tools.set_tool(TransformTool::Scale);
-			return true;
-		case Events::KeyCode::X:
-			return m_context->tools.key_handler && m_context->tools.key_handler(TransformKey::X);
-		case Events::KeyCode::Y:
-			return m_context->tools.key_handler && m_context->tools.key_handler(TransformKey::Y);
-		case Events::KeyCode::Z:
-			return m_context->tools.key_handler && m_context->tools.key_handler(TransformKey::Z);
-		case Events::KeyCode::Enter:
-		case Events::KeyCode::KeypadEnter:
-			return m_context->tools.key_handler && m_context->tools.key_handler(TransformKey::Confirm);
-		case Events::KeyCode::Escape:
-			return m_context->tools.key_handler && m_context->tools.key_handler(TransformKey::Cancel);
-		default:
-			return false;
-		}
-	});
-	post.dispatch<Events::KeyPressedEvent>([this, source_canvas](Events::KeyPressedEvent &e) {
-		if (e.get_key_code() != Events::KeyCode::S || e.get_mods() != Events::MODIFIER_SHIFT) {
-			return false;
-		}
-		if (Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view())) {
-			return false;
-		}
-		if (Aquila::Platform::Input::is_mouse_button_pressed(Events::MouseButton::Right) ||
-			Aquila::Platform::Input::is_mouse_button_pressed(Events::MouseButton::Left)) {
-			return false;
-		}
-		auto *inspector = m_windows ? m_windows->find<InspectorWindow>() : nullptr;
-		if (inspector == nullptr) {
-			return false;
-		}
-		inspector->open_add_search(Aquila::Platform::Input::get_mouse_position());
-		return true;
+		const bool typing = Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view());
+		return m_context->shortcuts.handle(Events::KeyChord::from(e), e.is_repeat(), typing);
 	});
 }
 
@@ -335,6 +255,7 @@ void EditorModule::register_windows() {
 
 void EditorModule::add_window_type(EditorWindowType type) {
 	if (m_windows) {
+		add_window_command(type);
 		m_windows->add(std::move(type));
 		return;
 	}
@@ -411,12 +332,9 @@ void EditorModule::setup_editor_ui() {
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
 	register_content_creators();
+	bind_default_shortcuts(m_context->shortcuts);
 
-	m_layout_loader.register_command("entity.create", [this] {
-		auto entity = m_engine->get_scene().get_entity_manager()->create_entity("New Entity");
-		m_context->selection.on_entity_created(entity);
-		m_context->selection.select(entity);
-	});
+	m_layout_loader.register_command("entity.create", [this] { m_context->shortcuts.execute("entity.create"); });
 	m_layout_loader.register_command("console.clear", [this] {
 		if (auto *console = m_windows->find<ConsoleWindow>()) {
 			console->clear();
@@ -445,6 +363,8 @@ void EditorModule::setup_editor_ui() {
 	}
 	m_pending_window_types.clear();
 	m_windows->attach(*m_dock_space);
+	m_context->shortcuts.set_scope_resolver(
+		[this](std::string_view scope) { return m_windows && m_windows->is_scope_active(scope); });
 
 	m_dock_manager =
 		std::make_unique<Aquila::UI::Core::DockWindowManager>(m_engine->get_window_host(), cfg.ui.style_paths);
@@ -467,6 +387,7 @@ void EditorModule::setup_editor_ui() {
 	}
 	m_workspaces->activate("Scene");
 
+	register_commands();
 	wire_main_menu(layout_root);
 	m_status_bar = std::make_unique<StatusBar>();
 	m_status_bar->build(layout_root);
@@ -539,6 +460,117 @@ void EditorModule::apply_font_settings() {
 	reload_styles();
 }
 
+void EditorModule::register_commands() {
+	Aquila::UI::Core::Shortcuts &shortcuts = m_context->shortcuts;
+
+	const auto editing = [] { return true; };
+	shortcuts.add_command(
+		{ .id = "scene.new", .title = "New scene", .run = [this] { new_empty_scene(); }, .enabled = editing });
+	shortcuts.add_command({
+		.id = "scene.reset_demo",
+		.title = "Reset demo scene",
+		.run = [this] { reset_to_demo_scene(); },
+		.enabled = editing,
+	});
+
+
+	shortcuts.add_command(
+		{ .id = "editor.preferences", .title = "Preferences", .run = [this] { open_settings_window(); } });
+	shortcuts.add_command({ .id = "editor.quit", .title = "Quit", .run = [this] { m_engine->request_close(); } });
+
+	shortcuts.add_command({
+		.id = "editor.reload_layout",
+		.title = "Reload layout",
+		.run =
+			[this] {
+				m_layout_loader.load_file(Config::get_preferences().ui.layout_path);
+				AQUILA_LOG_INFO("Editor layout reloaded");
+			},
+	});
+	shortcuts.add_command({
+		.id = "editor.reload_styles",
+		.title = "Reload styles",
+		.run =
+			[this] {
+				load_styles();
+				AQUILA_LOG_INFO("Stylesheet reloaded");
+			},
+	});
+
+	shortcuts.add_command({
+		.id = "ui.zoom_in",
+		.title = "Zoom in",
+		.run = [this] { set_ui_scale(Config::get_preferences().ui_scale + 0.05F); },
+		.repeatable = true,
+	});
+	shortcuts.add_command({
+		.id = "ui.zoom_out",
+		.title = "Zoom out",
+		.run = [this] { set_ui_scale(Config::get_preferences().ui_scale - 0.05F); },
+		.repeatable = true,
+	});
+	shortcuts.add_command({ .id = "ui.zoom_reset", .title = "Reset zoom", .run = [this] { set_ui_scale(1.F); } });
+
+	shortcuts.add_command(
+		{ .id = "workspace.next", .title = "Next workspace", .run = [this] { m_workspaces->activate_relative(1); } });
+	shortcuts.add_command({
+		.id = "workspace.previous",
+		.title = "Previous workspace",
+		.run = [this] { m_workspaces->activate_relative(-1); },
+	});
+	shortcuts.add_command(
+		{ .id = "workspace.reset", .title = "Reset workspace", .run = [this] { m_workspaces->reset_active(); } });
+	shortcuts.add_command({
+		.id = "view.status_bar",
+		.title = "Status bar",
+		.run =
+			[this] {
+				if (m_status_bar) {
+					m_status_bar->set_visible(!m_status_bar->is_visible());
+				}
+			},
+	});
+
+	shortcuts.add_command({
+		.id = "devtools.ui_inspector",
+		.title = "UI inspector",
+		.run = [this] { m_devtools->open_inspector_window(); },
+		.enabled = [this] { return m_devtools != nullptr; },
+	});
+	shortcuts.add_command({
+		.id = "devtools.widget_gallery",
+		.title = "Widget gallery",
+		.run = [this] { m_devtools->open_widget_gallery(m_engine->get_context(), m_texture_cache.get()); },
+		.enabled = [this] { return m_devtools != nullptr; },
+	});
+
+	shortcuts.add_command({
+		.id = "entity.create",
+		.title = "Create entity",
+		.run =
+			[this] {
+				auto entity = m_engine->get_scene().get_entity_manager()->create_entity("New Entity");
+				m_context->selection.on_entity_created(entity);
+				m_context->selection.select(entity);
+			},
+	});
+	shortcuts.add_command({
+		.id = "entity.delete",
+		.title = "Delete entity",
+		.run = [this] { m_context->destroy_entity(m_context->selection.get()); },
+		.enabled = [this] { return m_context->selection.has(); },
+	});
+
+	for (const EditorWindowType &type : m_windows->get_types()) {
+		add_window_command(type);
+	}
+}
+
+void EditorModule::add_window_command(const EditorWindowType &type) {
+	m_context->shortcuts.add_command(
+		{ .id = "window.open." + type.id, .title = type.title, .run = [this, id = type.id] { m_windows->open(id); } });
+}
+
 void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
 	using Aquila::UI::Core::PopupMenu;
 
@@ -551,35 +583,38 @@ void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
 	popup->set_submenu_icon(m_context->icon("chevron-right"));
 	m_main_menu = dynamic_cast<PopupMenu *>(layout_root->add_child(std::move(popup)));
 
+	const auto add = [this](PopupMenu *menu, std::string_view command_id, std::string_view icon) {
+		const Aquila::UI::Core::Command *command = m_context->shortcuts.find_command(command_id);
+		if (command == nullptr) {
+			AQUILA_LOG_WARNING("EditorModule: menu command '{}' is not registered", command_id);
+			return;
+		}
+		menu->add_item(command->title, m_context->shortcuts.get_label(command_id), m_context->icon(icon),
+					   [this, id = std::string(command_id)] { m_context->shortcuts.execute(id); });
+	};
+
 	PopupMenu *file_menu = m_main_menu->add_submenu("File", m_context->icon("folder-open"));
-	file_menu->add_item("New scene", "Ctrl+N", m_context->icon("layers-plus"), [this] { new_empty_scene(); });
 	file_menu->add_item("Open scene", "Ctrl+O", m_context->icon("folder-open"),
 						[] { AQUILA_LOG_INFO("EditorModule: opening scenes is not available yet"); });
+	add(file_menu, "scene.new", "layers-plus");
 	file_menu->add_separator();
-	file_menu->add_item("Quit", "Ctrl+X", m_context->icon("x"), [this] { m_engine->request_close(); });
+	add(file_menu, "editor.quit", "x");
 
 	PopupMenu *edit_menu = m_main_menu->add_submenu("Edit", m_context->icon("pencil"));
-	edit_menu->add_item("Preferences", "Ctrl+,", m_context->icon("settings"), [this] { open_settings_window(); });
+	add(edit_menu, "editor.preferences", "settings");
 	edit_menu->add_separator();
-	edit_menu->add_item("Reset demo scene", {}, m_context->icon("refresh-cw"), [this] { reset_to_demo_scene(); });
+	add(edit_menu, "scene.reset_demo", "refresh-cw");
 
 	PopupMenu *window_menu = m_main_menu->add_submenu("Window", m_context->icon("panel-left"));
 	for (const EditorWindowType &type : m_windows->get_types()) {
-		window_menu->add_item(type.title, {}, m_context->icon(type.icon),
-							  [this, id = type.id] { m_windows->open(id); });
+		add(window_menu, "window.open." + type.id, type.icon);
 	}
 	window_menu->add_separator();
-	window_menu->add_item("Reset workspace", {}, m_context->icon("refresh-cw"),
-						  [this] { m_workspaces->reset_active(); });
-	window_menu->add_item("Status bar", {}, m_context->icon("info"), [this] {
-		if (m_status_bar) {
-			m_status_bar->set_visible(!m_status_bar->is_visible());
-		}
-	});
+	add(window_menu, "workspace.reset", "refresh-cw");
+	add(window_menu, "view.status_bar", "info");
 	window_menu->add_separator();
-	window_menu->add_item("UI inspector", {}, m_context->icon("bug"), [this] { m_devtools->open_inspector_window(); });
-	window_menu->add_item("Widget gallery", {}, m_context->icon("layers"),
-						  [this] { m_devtools->open_widget_gallery(m_engine->get_context(), m_texture_cache.get()); });
+	add(window_menu, "devtools.ui_inspector", "bug");
+	add(window_menu, "devtools.widget_gallery", "layers");
 
 	menu_button->on_click.connect([this, menu_button] {
 		const Rect rect = menu_button->get_absolute_rect();

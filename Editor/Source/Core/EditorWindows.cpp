@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Math/Rect.h"
+#include "Aquila/Platform/Input.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockPanel.h"
@@ -110,6 +111,16 @@ const EditorWindows::Live *EditorWindows::find_live(std::string_view type_id) co
 
 bool EditorWindows::is_open(std::string_view type_id) const {
 	return find_live(type_id) != nullptr;
+}
+
+bool EditorWindows::is_scope_active(std::string_view type_id) const {
+	const Vec2 mouse = Platform::Input::get_mouse_position();
+	return std::ranges::any_of(m_live, [type_id, mouse](const Live &live) {
+		if (live.window->get_type_id() != type_id || live.panel == nullptr || !live.panel->is_visible()) {
+			return false;
+		}
+		return live.window->accepts_shortcuts(live.panel->get_absolute_rect().contains(mouse));
+	});
 }
 
 void EditorWindows::forget(EditorWindow *window) {

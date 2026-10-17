@@ -6,7 +6,6 @@ namespace Editor {
 
 enum class TransformTool { Translate, Rotate, Scale };
 enum class TransformSpace { World, Local };
-enum class TransformKey { X, Y, Z, Confirm, Cancel };
 
 /// The transform tool state shared by the viewport toolbar, the gizmo and the shortcuts.
 /// Snapping is 0.5 m, 15 degrees and 0.1 scale. Holding Ctrl while dragging flips it.
@@ -50,8 +49,6 @@ class EditorTools {
 	Signal<void(TransformTool)> on_tool_changed;
 	Signal<void(TransformSpace)> on_space_changed;
 	Signal<void(bool)> on_snapping_changed;
-
-	Delegate<bool(TransformKey)> key_handler;
 
   private:
 	TransformTool m_tool = TransformTool::Translate;

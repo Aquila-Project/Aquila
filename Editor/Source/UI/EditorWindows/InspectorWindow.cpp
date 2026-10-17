@@ -1,5 +1,6 @@
 #include "UI/EditorWindows/InspectorWindow.h"
 
+#include "Aquila/Platform/Input.h"
 #include "UI/Panels/InspectorPanel.h"
 
 namespace Editor {
@@ -31,6 +32,19 @@ void InspectorWindow::build(Aquila::UI::Core::View &content) {
 		}
 	});
 
+	add_command({
+		.id = "inspector.add_component",
+		.title = "Add component",
+		.run = [this] { open_add_search(Aquila::Platform::Input::get_mouse_position()); },
+		.enabled =
+			[] {
+				using Aquila::Platform::Input;
+				using Aquila::Platform::Events::MouseButton;
+				return !Input::is_mouse_button_pressed(MouseButton::Left) &&
+					!Input::is_mouse_button_pressed(MouseButton::Right);
+			},
+	});
+
 	if (selection.has()) {
 		show(selection.get());
 	}
@@ -48,4 +62,4 @@ void InspectorWindow::open_add_search(Vec2 canvas_pos) {
 	m_panel->open_add_search(canvas_pos);
 }
 
-}
+} // namespace Editor

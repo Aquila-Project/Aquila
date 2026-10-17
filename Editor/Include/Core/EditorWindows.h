@@ -56,6 +56,8 @@ class EditorWindows {
 	[[nodiscard]] const std::vector<EditorWindowType> &get_types() const { return m_types; }
 	[[nodiscard]] const EditorWindowType *find_type(std::string_view type_id) const;
 	[[nodiscard]] bool is_open(std::string_view type_id) const;
+	/// Shortcut scopes are window type ids. Active when that window is visible and accepts shortcuts.
+	[[nodiscard]] bool is_scope_active(std::string_view type_id) const;
 
 	template <typename T> [[nodiscard]] T *find() const {
 		for (const Live &live : m_live) {

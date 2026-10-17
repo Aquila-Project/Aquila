@@ -162,13 +162,24 @@ void HierarchyPanel::populate_hierarchy_context_menu(){
 
 	m_node_context_menu->add_item("Delete entity", [this] {
 		if (m_selected_node != nullptr) {
-			auto current_entity = m_selected_node->get_entity();
-			m_tree_view->deselect();
-			m_tree_view->delete_entity_node(current_entity);
-			m_entity_manager.destroy_entity(current_entity);
-			m_tree_view->queue_redraw();
+			on_delete_requested(m_selected_node->get_entity());
 		}
 	});
+}
+
+void HierarchyPanel::remove_entity(Entity entity) {
+	if (m_tree_view == nullptr) {
+		return;
+	}
+	if (m_selected_node != nullptr) {
+		const Entity selected = m_selected_node->get_entity();
+		if (selected == entity || m_entity_manager.is_descendant(entity, selected)) {
+			m_tree_view->select_node(nullptr);
+			m_selected_node = nullptr;
+		}
+	}
+	m_tree_view->delete_entity_node(entity);
+	m_tree_view->queue_redraw();
 }
 
 void HierarchyPanel::refresh_entity(Entity entity) {

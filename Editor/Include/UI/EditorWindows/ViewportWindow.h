@@ -25,6 +25,8 @@ class ViewportWindow final : public EditorWindow {
 
 	void build(Aquila::UI::Core::View &content) override;
 	void update(F32 delta_time) override;
+	/// While hovered or while the gizmo drags, never while the camera is flying.
+	[[nodiscard]] bool accepts_shortcuts(bool hovered) const override;
 
   private:
 	void wire_tools(Aquila::UI::Core::View &content);
@@ -36,7 +38,8 @@ class ViewportWindow final : public EditorWindow {
 	[[nodiscard]] Aquila::Rendering::RenderView current_view() const;
 	void refresh_tools();
 	void request_pick(Vec2 uv);
-	bool handle_transform_key(TransformKey key);
+	void register_commands();
+	[[nodiscard]] bool can_constrain() const;
 
 	Unique<ViewportPanel> m_panel;
 	TransformGizmo *m_gizmo = nullptr;
