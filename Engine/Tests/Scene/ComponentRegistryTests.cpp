@@ -80,19 +80,56 @@ TEST_SUITE("ComponentRegistry") {
 		CHECK(registry.find("Light")->get_changed_signal(entity) == nullptr);
 	}
 
-	TEST_CASE("light range is only visible for point lights") {
+	TEST_CASE("light properties follow the light type") {
 		Scene scene("Test");
 		Entity entity = scene.get_entity_manager()->create_entity("Thing");
 		auto &light = entity.add_component<LightComponent>();
 
 		const ComponentDescriptor &descriptor = *ComponentRegistry::instance().find("Light");
 		const Reflection::Property &range = *descriptor.get_type().find("Range");
+		const Reflection::Property &direction = *descriptor.get_type().find("Direction");
+		const Reflection::Property &cone = *descriptor.get_type().find("Outer Cone");
 		void *instance = descriptor.get(entity);
 
 		light.set_type(LightComponent::Type::Directional);
 		CHECK_FALSE(range.is_visible(instance));
+		CHECK(direction.is_visible(instance));
+		CHECK_FALSE(cone.is_visible(instance));
+
 		light.set_type(LightComponent::Type::Point);
 		CHECK(range.is_visible(instance));
+		CHECK_FALSE(direction.is_visible(instance));
+		CHECK_FALSE(cone.is_visible(instance));
+
+		light.set_type(LightComponent::Type::Spot);
+		CHECK(range.is_visible(instance));
+		CHECK(direction.is_visible(instance));
+		CHECK(cone.is_visible(instance));
+	}
+
+	TEST_CASE("the light type is editable through the registry") {
+		Scene scene("Test");
+		Entity entity = scene.get_entity_manager()->create_entity("Thing");
+		auto &light = entity.add_component<LightComponent>();
+
+		const ComponentDescriptor &descriptor = *ComponentRegistry::instance().find("Light");
+		const Reflection::Property &type = *descriptor.get_type().find("Type");
+		CHECK(type.kind == Reflection::PropertyKind::Enum);
+		CHECK(type.options.size() == 3);
+
+		type.set(descriptor.get(entity), Reflection::PropertyValue{ static_cast<Int32>(LightComponent::Type::Point) });
+		CHECK(light.get_type() == LightComponent::Type::Point);
+	}
+
+	TEST_CASE("a zero light direction is ignored") {
+		Scene scene("Test");
+		Entity entity = scene.get_entity_manager()->create_entity("Thing");
+		auto &light = entity.add_component<LightComponent>();
+		light.set_direction(Vec3(0.F, -1.F, 0.F));
+
+		const ComponentDescriptor &descriptor = *ComponentRegistry::instance().find("Light");
+		descriptor.get_type().find("Direction")->set(descriptor.get(entity), Reflection::PropertyValue{ Vec3(0.F) });
+		CHECK(light.get_direction() == Vec3(0.F, -1.F, 0.F));
 	}
 
 	TEST_CASE("components can be removed through their descriptor, except the transform") {
