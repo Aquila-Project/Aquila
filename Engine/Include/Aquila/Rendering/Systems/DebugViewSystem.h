@@ -6,6 +6,7 @@
 
 namespace Aquila::Rendering {
 
+/// The non-Lit views from the Shading dropdown (albedo, normals, depth, wireframe...).
 class DebugViewSystem : public RenderingSystemBase {
   public:
 	DebugViewSystem() = default;

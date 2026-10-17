@@ -19,6 +19,7 @@ class Event;
 
 namespace Aquila::Rendering {
 
+/// Opaque, only compare it and pass it back.
 using RenderWindowId = const void *;
 
 struct RenderWindowCallbacks {
@@ -27,9 +28,11 @@ struct RenderWindowCallbacks {
 	Delegate<void(Platform::Events::Event &)> on_event;
 	Delegate<void()> on_close;
 	Delegate<Platform::CursorType()> cursor;
+	/// Also send this window's events to the modules, like floating dock panels need.
 	bool forward_events = false;
 };
 
+/// Opens extra OS windows that render through the shared Renderer2D. Application implements it.
 class IRenderWindowHost {
   public:
 	virtual ~IRenderWindowHost() = default;
@@ -44,6 +47,13 @@ class IRenderWindowHost {
 	virtual void set_window_position(RenderWindowId window, Vec2 position) = 0;
 };
 
+/// Opens a window around `content`, which needs update(dt), render(r2d, cmd) and on_event(event).
+/// get_cursor() and set_frame_target(window) are used when it has them.
+/// `content` must outlive the window.
+///
+/// @code
+/// m_window = open_content_window(host, *m_settings, 640, 480, "Settings", [this] { m_settings_open = false; });
+/// @endcode
 template <typename Content>
 RenderWindowId open_content_window(IRenderWindowHost &host, Content &content, Uint32 width, Uint32 height,
 								   const std::string &title, Delegate<void()> on_close) {

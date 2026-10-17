@@ -3,6 +3,7 @@
 
 namespace Aquila::Rendering {
 
+/// Draws every mesh with its material. Keeps requesting frames while a drawn material uses time.
 class GeometrySystem : public RenderingSystemBase {
   public:
 	GeometrySystem() = default;

@@ -11,11 +11,14 @@ class Event;
 
 namespace Aquila::Rendering {
 
+/// The editor camera. Hold RMB to fly (WASDQE, mouse to look), Alt+LMB to orbit, scroll to dolly.
+/// It requests frames itself while it moves.
 class CameraController {
   public:
 	CameraController();
 
 	void set_viewport_size(Uint32 width, Uint32 height);
+	/// Navigation only starts when the mouse is inside this rect.
 	void set_viewport_rect(Vec2 position, Vec2 size);
 	void set_navigation_blocked(bool blocked) { m_navigation_blocked = blocked; }
 
@@ -23,6 +26,7 @@ class CameraController {
 	void on_event(Platform::Events::Event &event);
 
 	[[nodiscard]] RenderView get_render_view() const;
+	/// The view of a scene camera with this world matrix (+Z forward, +Y up). Same conventions as the editor camera.
 	[[nodiscard]] RenderView render_view_from(const Mat4 &world, F32 fov_degrees, F32 near_plane, F32 far_plane) const;
 
 	void set_fov(F32 fov_degrees);

@@ -13,6 +13,7 @@ struct RenderSettings {
 	bool show_sky = true;
 	bool show_shadows = true;
 	bool show_outline = true;
+	/// Render every frame even when nothing changed, like Godot's "Update Continuously".
 	bool realtime = false;
 };
 

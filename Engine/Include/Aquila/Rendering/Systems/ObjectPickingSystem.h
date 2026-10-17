@@ -14,6 +14,8 @@ class ObjectPickingSystem : public RenderingSystemBase {
 	void on_init(GFX::GfxContext &ctx) override;
 	void add_passes(Graphics::RG::RenderGraph &graph, FrameContext &ctx) override;
 
+	/// Pixel in the render target. The answer comes a couple of frames later through on_picked,
+	/// with a null entity when nothing was hit.
 	void request_pick(Uint32 x, Uint32 y);
 
 	[[nodiscard]] bool has_pending_pick() const { return m_pending_request.has_value(); }

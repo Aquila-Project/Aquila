@@ -17,8 +17,10 @@ struct alignas(16) GpuSkyData {
 
 class HosekWilkieSky {
   public:
+	/// Hosek-Wilkie coefficients for these conditions, the shader evaluates the sky per pixel from them.
 	static GpuSkyData build(F32 sun_elevation_rad, F32 turbidity, Vec3 albedo, Vec3 sun_direction);
 	static Vec3 evaluate(const GpuSkyData &data, Vec3 direction);
+	/// Projects the sky onto 9 SH coefficients for the ambient light. Not cheap, bake only when the sky changes.
 	static SceneManagement::Components::SHCoefficients bake_sh(const GpuSkyData &data, int samples = 8192);
 };
 

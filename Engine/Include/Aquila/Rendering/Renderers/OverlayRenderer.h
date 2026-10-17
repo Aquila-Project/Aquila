@@ -8,6 +8,7 @@ class GfxSwapchain;
 
 namespace Aquila::Rendering {
 
+/// Draws 2D on top of the scene, straight into the swapchain image (the UI lives here).
 class OverlayRenderer : public IRenderer {
   public:
 	OverlayRenderer() = default;
