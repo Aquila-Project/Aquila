@@ -77,6 +77,8 @@ class StyleSheet {
 
 	[[nodiscard]] Usize get_rule_count() const { return m_rules.size(); }
 
+	[[nodiscard]] static bool supports_pseudo_class(std::string_view pseudo_class);
+
 	AQUILA_INLINE void clear() {
 		m_rules.clear();
 		m_media_blocks.clear();

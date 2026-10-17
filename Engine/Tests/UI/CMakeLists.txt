@@ -21,6 +21,8 @@ target_link_libraries(${TEST_NAME}
     UI
 )
 
+target_compile_definitions(${TEST_NAME} PRIVATE AQUILA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
 aquila_deploy_runtime(${TEST_NAME})
 
 add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})

@@ -66,6 +66,9 @@ std::string strip_comments(std::string_view src) {
 				}
 				++i;
 			}
+			if (i + 1 >= src.size()) {
+				AQUILA_LOG_WARNING("StyleParser: a '/*' comment is never closed, the rest of the file is ignored");
+			}
 			i += 2;
 		} else if (i + 1 < src.size() && src[i] == '/' && src[i + 1] == '/') {
 			while (i < src.size() && src[i] != '\n') {
@@ -630,26 +633,46 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 
 void parse_block(std::string_view selector_list, std::string_view body, StyleSheet &sheet) {
 	StyleProperties props;
+	const std::string selectors = trim(selector_list);
 
 	for (const auto &decl : split(body, ';')) {
-		size_t colon = decl.find(':');
+		const size_t colon = decl.find(':');
 		if (colon == std::string::npos) {
+			AQUILA_LOG_WARNING("StyleParser: '{}': declaration '{}' is missing ':'", selectors, decl);
 			continue;
 		}
-		apply_declaration(props, std::string_view(decl).substr(0, colon), std::string_view(decl).substr(colon + 1));
+		const std::string_view property = trim_sv(std::string_view(decl).substr(0, colon));
+		const std::string_view value = trim_sv(std::string_view(decl).substr(colon + 1));
+		if (property.empty() || value.empty()) {
+			AQUILA_LOG_WARNING("StyleParser: '{}': declaration '{}' needs 'property: value'", selectors, decl);
+			continue;
+		}
+		apply_declaration(props, property, value);
 	}
 
 	for (const auto &sel : split(selector_list, ',')) {
-		std::string s = trim(sel);
-		if (s.empty()) {
+		if (sel.find_first_of(" \t\r\n>+~*[") != std::string::npos) {
+			AQUILA_LOG_WARNING(
+				"StyleParser: unsupported selector '{}', use Type, .class or #id with an optional :state", sel);
 			continue;
 		}
 
+		std::string s = sel;
 		std::string pseudo_class;
-		size_t pseudo_pos = s.find(':');
-		if (pseudo_pos != std::string::npos) {
+		if (const size_t pseudo_pos = s.find(':'); pseudo_pos != std::string::npos) {
 			pseudo_class = to_lower(s.substr(pseudo_pos + 1));
-			s = s.substr(0, pseudo_pos);
+			s.resize(pseudo_pos);
+		}
+
+		if (pseudo_class == "root") {
+			if (!s.empty()) {
+				AQUILA_LOG_WARNING("StyleParser: unsupported selector '{}', ':root' stands alone", sel);
+			}
+			continue;
+		}
+		if (!pseudo_class.empty() && !StyleSheet::supports_pseudo_class(pseudo_class)) {
+			AQUILA_LOG_WARNING("StyleParser: unknown state ':{}' in '{}'", pseudo_class, sel);
+			continue;
 		}
 
 		StyleRule::SelectorType type;
@@ -663,6 +686,11 @@ void parse_block(std::string_view selector_list, std::string_view body, StyleShe
 		} else {
 			type = StyleRule::SelectorType::Type;
 			name = s;
+		}
+
+		if (name.empty()) {
+			AQUILA_LOG_WARNING("StyleParser: selector '{}' needs a type, class or id", sel);
+			continue;
 		}
 
 		sheet.add_rule(type, std::move(name), std::move(pseudo_class), props);
