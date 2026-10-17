@@ -22,6 +22,7 @@ class TextureCache;
 
 namespace Aquila::UI::DevTools {
 
+/// Every widget on one page. Meant for open_content_window().
 class WidgetGalleryWindow {
   public:
 	WidgetGalleryWindow();

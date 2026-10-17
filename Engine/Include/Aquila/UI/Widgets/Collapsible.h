@@ -9,6 +9,7 @@ class GfxTexture;
 
 namespace Aquila::UI::Core {
 
+/// A titled section that folds. Reorderable ones can be dragged by their grip among their siblings.
 class Collapsible : public View {
   public:
 	explicit Collapsible(std::string title = "");
@@ -28,12 +29,14 @@ class Collapsible : public View {
 	void apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver = nullptr) override;
 	void set_expanded(bool expanded);
 	[[nodiscard]] bool is_expanded() const { return m_expanded; }
+	/// A small icon button on the right of the header.
 	Button *add_header_action(GFX::GfxTexture *icon, std::string tooltip, Delegate<void()> on_click);
 	void set_state_icons(GFX::GfxTexture *collapsed, GFX::GfxTexture *expanded, bool leading = false);
 	Signal<void(bool)> on_toggled;
 	Signal<void()> on_reordered;
 
 	using View::add_child;
+	/// Goes into the body.
 	View *add_child(Unique<View> child) override;
 
 	void begin_drag();

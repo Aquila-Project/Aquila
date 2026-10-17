@@ -20,6 +20,7 @@ class LabeledDragFloat : public View {
 
 template <int N, typename VecT> class VecFieldBase : public Control {
   public:
+	/// Doesn't fire on_changed.
 	void set_value(VecT v) {
 		for (int i = 0; i < N; ++i) {
 			m_components[i]->set_value(v[i]);
@@ -46,6 +47,7 @@ template <int N, typename VecT> class VecFieldBase : public Control {
 		}
 	}
 
+	/// One row per axis with X/Y/Z inside the fields, the Blender look.
 	void set_stacked(bool stacked) {
 		constexpr const char *k_axes[] = { "X", "Y", "Z", "W" };
 		set_class("vec-field-stacked", stacked);

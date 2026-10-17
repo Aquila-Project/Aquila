@@ -8,6 +8,7 @@
 
 namespace Aquila::UI::Core {
 
+/// One file in the content browser: thumbnail, type and name. Dragging it drags its AssetPayload.
 class AssetCard : public View {
   public:
 	AssetCard();

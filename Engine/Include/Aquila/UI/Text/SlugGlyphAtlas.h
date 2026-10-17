@@ -27,6 +27,7 @@ class SlugGlyphAtlas {
 
 	static Unique<SlugGlyphAtlas> create(GFX::GfxContext &ctx);
 
+	/// nullopt when the reserved texture rows are full. Call upload() after adding.
 	[[nodiscard]] Option<Uint32> add_glyph(const GlyphOutline &outline);
 	void upload();
 

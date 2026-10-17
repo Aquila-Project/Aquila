@@ -13,16 +13,26 @@ namespace Aquila::UI::Core {
 
 class PropertyGrid;
 
+/// Fills a PropertyGrid from a TypeInfo: one widget per property, picked from its kind and hints.
+/// Edits go through the property setters.
+///
+/// @code
+/// ReflectedPropertyGrid fields(grid, fog_type, &ctx);
+/// fields.bind(&fog, [this] { m_dirty = true; });
+/// @endcode
 class ReflectedPropertyGrid {
   public:
+	/// `ctx` is only for color pickers. Without it colors show up as number fields.
 	ReflectedPropertyGrid(PropertyGrid &grid, const Reflection::TypeInfo &type, GFX::GfxContext *ctx);
 	~ReflectedPropertyGrid();
 
 	AQUILA_NONCOPYABLE(ReflectedPropertyGrid);
 	AQUILA_NONMOVEABLE(ReflectedPropertyGrid);
 
+	/// `on_edited` runs after every edit the user makes.
 	void bind(void *instance, Delegate<void()> on_edited = {});
 
+	/// Reads the values into the widgets again, when the instance changed somewhere else.
 	void refresh();
 
 	[[nodiscard]] View *get_widget(std::string_view property_name) const;

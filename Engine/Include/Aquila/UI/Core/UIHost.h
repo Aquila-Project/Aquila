@@ -25,6 +25,8 @@ struct UIHostDesc {
 	std::function<void(const std::string &)> clipboard_set{};
 };
 
+/// Boots the UI for an app: the canvas layers, the overlay rendering system and the clipboard.
+/// The owner forwards update() and on_event() to it.
 class UIHost {
   public:
 	explicit UIHost(const UIHostDesc &desc);

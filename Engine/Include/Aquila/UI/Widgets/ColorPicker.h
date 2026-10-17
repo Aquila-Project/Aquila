@@ -11,6 +11,7 @@
 
 namespace Aquila::UI::Core {
 
+/// A swatch that opens an RGB / HSV / hex picker. Needs the GfxContext for its gradient textures.
 class ColorPicker : public Control {
   public:
 	class PickerArea;

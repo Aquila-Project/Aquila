@@ -11,8 +11,10 @@ class ScrollView : public View {
 	[[nodiscard]] std::string_view get_type_name() const override { return "ScrollView"; }
 
 	using View::add_child;
+	/// Goes into the scrolled content, not the view itself.
 	View *add_child(Unique<View> child) override;
 
+	/// Drops the first child, for log style lists that grow at the bottom.
 	void remove_oldest_content();
 	void scroll_to_bottom();
 	[[nodiscard]] bool is_at_bottom() const;

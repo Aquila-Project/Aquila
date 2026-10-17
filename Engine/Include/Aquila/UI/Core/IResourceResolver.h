@@ -8,6 +8,7 @@ class GfxTexture;
 
 namespace Aquila::UI::Core {
 
+/// What markup can reference by name: textures for src="" and commands for on-click="".
 class IResourceResolver {
   public:
 	virtual ~IResourceResolver() = default;

@@ -7,6 +7,8 @@
 
 namespace Aquila::UI::Rendering {
 
+/// Draws the Editor and ScreenOverlay canvases into the swapchain with 4x MSAA.
+/// When no canvas changed it replays last frame's draws instead of rebuilding them.
 class ViewRenderingSystem final : public Aquila::Rendering::IRenderingSystem {
   public:
 	ViewRenderingSystem() = default;

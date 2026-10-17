@@ -40,6 +40,16 @@ struct StyleResolveContext {
 	Vec2 container_size = {};
 };
 
+/// Rules match one selector: a type, .class or #id, plus at most one :hover, :pressed, :focus or :disabled.
+/// No descendant selectors. More specific rules win (id, then class, then type, a pseudo class adds to it),
+/// later rules win ties.
+///
+/// @code
+/// :root { --accent: #4a9e5f; }
+/// .button { background-color: var(--accent); border-radius: 4px; }
+/// .button:hover { opacity: 0.85; }
+/// #viewport { flex-grow: 1; }
+/// @endcode
 class StyleSheet {
   public:
 	using ResolveContext = StyleResolveContext;
@@ -47,6 +57,7 @@ class StyleSheet {
 	void add_rule(StyleRule::SelectorType type, std::string selector, std::string pseudo_class, StyleProperties props);
 
 	void add_media_block(MediaBlock block);
+	/// Like a media block but tested against the container size, not the viewport.
 	void add_container_block(MediaBlock block);
 
 	void add_variable(std::string name, std::string value);
@@ -60,6 +71,7 @@ class StyleSheet {
 	[[nodiscard]] bool has_media_blocks() const { return !m_media_blocks.empty(); }
 	[[nodiscard]] bool has_container_blocks() const { return !m_container_blocks.empty(); }
 
+	/// The view's final style. Inherited properties (color, font) come from `parent_computed`.
 	[[nodiscard]] ComputedStyle resolve(const Core::View &view, const ComputedStyle *parent_computed,
 										const ResolveContext &ctx = {}) const;
 

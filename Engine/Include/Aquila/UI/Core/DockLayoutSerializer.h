@@ -13,6 +13,7 @@ struct DockNodeDesc {
 	Int32 active_index = -1;
 	std::vector<std::string> panel_ids;
 
+	/// 0 is a row, 1 is a column.
 	Uint8 direction = 0;
 	std::vector<DockNodeDesc> children;
 };
@@ -25,6 +26,7 @@ class DockLayoutSerializer {
   public:
 	static DockLayoutDesc capture(const DockSpace &space);
 
+	/// Compact binary form, decode() reads it back.
 	static std::vector<Uint8> encode(const DockLayoutDesc &desc);
 	static Option<DockLayoutDesc> decode(const Uint8 *data, Usize size);
 

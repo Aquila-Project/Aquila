@@ -23,8 +23,10 @@ struct TextSelection {
 	[[nodiscard]] TextPosition end() const { return std::max(anchor, focus); }
 };
 
+/// The selected text, lines joined with '\n'.
 [[nodiscard]] std::string extract_text(std::span<const std::string> lines, const TextSelection &selection);
 
+/// The column closest to `x`. `measure` returns the width of a piece of the line.
 [[nodiscard]] Int32 column_at(std::string_view line, F32 x, const std::function<F32(std::string_view)> &measure);
 
 [[nodiscard]] TextSelection select_all(std::span<const std::string> lines);

@@ -5,6 +5,7 @@
 
 namespace Aquila::UI::Core {
 
+/// The text and selection behind an editable field. cursor and select_anchor are byte offsets into UTF-8 text.
 struct TextInputState {
 	std::string text;
 	size_t cursor = 0;
@@ -33,6 +34,7 @@ struct TextInputState {
 		select_anchor = lo;
 	}
 
+	/// @return true when it used the key
 	bool handle_key_press(Platform::KeyCode key, int mods);
 	bool handle_char_input(Uint32 codepoint);
 

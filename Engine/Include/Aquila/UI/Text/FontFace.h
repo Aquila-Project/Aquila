@@ -14,6 +14,7 @@ struct GlyphInfo {
 	F32 advance_em;
 };
 
+/// Glyph outlines and metrics from a TTF. Everything is in em, multiply by the font size for pixels.
 class FontFace {
   public:
 	~FontFace() = default;

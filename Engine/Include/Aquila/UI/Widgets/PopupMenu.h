@@ -22,9 +22,11 @@ class PopupMenu : public FloatingOverlay {
 	void add_separator();
 	PopupMenu *add_submenu(std::string text, GFX::GfxTexture *icon = nullptr);
 
+	/// A search field on top that filters the items as you type.
 	TextInput *enable_search(std::string placeholder);
 
 	void set_submenu_icon(GFX::GfxTexture *texture) { m_submenu_icon = texture; }
+	/// Runs after any item ran and the menu closed.
 	void set_on_activate(Delegate<void()> callback) { m_on_activate = std::move(callback); }
 
 	void clear_items();

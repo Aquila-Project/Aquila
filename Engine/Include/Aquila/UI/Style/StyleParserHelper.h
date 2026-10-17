@@ -23,7 +23,10 @@ float parse_float(std::string_view s);
 float parse_duration_ms(std::string_view s);
 
 std::optional<TransitionEasing> parse_easing(std::string_view s);
+/// "auto", "grow" (or "1fr"), px, %, vw, vh. A bare number is pixels.
 Option<StyleLength> parse_length(std::string_view raw);
+/// "transparent", #rrggbb, #rrggbbaa, rgb() and rgba().
+/// @note rgb() is 0-255, but when no channel is above 1 it's read as 0-1, so rgb(1, 1, 1) is white.
 Option<Vec4> parse_color(std::string_view raw);
 
 Option<StyleEdges> parse_edges(std::string_view s);

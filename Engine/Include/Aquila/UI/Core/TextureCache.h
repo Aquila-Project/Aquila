@@ -14,12 +14,15 @@ class TextureCache {
 	AQUILA_NONCOPYABLE(TextureCache);
 	AQUILA_NONMOVEABLE(TextureCache);
 
+	/// Relative paths resolve against the base path. Cached by path, an SVG is parsed once.
 	[[nodiscard]] GFX::GfxTexture *load(const std::string &path);
 
 	void evict(const std::string &path);
 
 	void clear();
 
+	/// For an SVG, its raster at exactly this pixel size (made on first use, then cached).
+	/// Anything else comes back as it is.
 	[[nodiscard]] static GFX::GfxTexture *resolve_for_size(GFX::GfxTexture *texture, Vec2 pixel_size);
 
   private:

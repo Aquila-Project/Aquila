@@ -45,6 +45,8 @@ enum class FloatingAttachPoint : Uint8 {
 	RightBottom,
 };
 
+/// Puts a view outside the normal flow, pinned to its parent or the root (popups, tooltips).
+/// `element_point` of the view sits on `parent_point` of the target, then `offset` moves it.
 struct FloatingConfig {
 	Vec2 offset = {};
 	int16_t z_index = 10;

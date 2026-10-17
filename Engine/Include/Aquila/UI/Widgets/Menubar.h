@@ -12,9 +12,11 @@ class MenuBar : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "MenuBar"; }
 
+	/// Fill the returned menu with items.
 	PopupMenu *add_menu(std::string title);
 	void close_all();
 	void open_dropdown(PopupMenu *dropdown, Vec2 button_abs_pos, float button_height);
+	/// The dropdowns are added under this view so they draw above the rest of the UI.
 	void set_overlay_root(View *root);
 
   private:

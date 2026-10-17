@@ -79,6 +79,7 @@ class TreeNode : public View {
 	[[nodiscard]] View *get_actions() const { return m_actions; }
 	[[nodiscard]] Button *get_header() const { return m_header; }
 	[[nodiscard]] View *get_children_container() const { return m_children; }
+	/// Counts hover over extra views on the row, like action buttons, so the row stays hovered.
 	void track_row_hover(View *view);
 
 	Signal<void(bool)> on_row_hover_changed;

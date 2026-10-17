@@ -6,6 +6,7 @@
 
 namespace Aquila::UI::Core {
 
+/// A number you drag sideways, or click to type in. on_changed only fires for user edits.
 class DragFloat : public Control {
   public:
 	struct Config {
@@ -22,14 +23,18 @@ class DragFloat : public Control {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "DragFloat"; }
 
+	/// Clamps and snaps to the step. Doesn't fire on_changed.
 	void set_value(float value);
 	void set_range(float min, float max);
 	void set_step(float step);
+	/// Value change per pixel dragged, despite the parameter name.
 	void set_speed(float pixels_per_unit);
 	void set_precision(int decimals);
 	void set_prefix(std::string prefix);
+	/// Drawn inside the field on the left, like X/Y/Z in stacked vectors.
 	void set_label(std::string label);
 	void set_suffix(std::string suffix);
+	/// Draws a fill bar between min and max.
 	void set_slider(bool slider);
 	Signal<void(float)> on_changed;
 

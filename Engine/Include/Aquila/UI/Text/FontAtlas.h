@@ -8,6 +8,8 @@
 
 namespace Aquila::UI::Text {
 
+/// A TTF font drawn with Slug: glyphs are rendered from their curves, so text stays sharp at any size.
+/// Glyphs are added on demand.
 class FontAtlas {
   public:
 	~FontAtlas() = default;
@@ -20,8 +22,11 @@ class FontAtlas {
 	[[nodiscard]] const GlyphInfo *get_glyph(Uint32 codepoint) const;
 	[[nodiscard]] const SlugGlyphData *get_slug_data(Uint32 glyph_id) const;
 
+	/// Glyphs that aren't loaded yet count as zero width, call ensure_glyphs() first for new text.
+	/// font_size 0 means FONT_DEFAULT_SIZE.
 	[[nodiscard]] Vec2 measure_text(std::string_view text, F32 font_size) const;
 
+	/// Adds the glyphs of `text` that aren't in the atlas yet.
 	void ensure_glyphs(std::string_view text);
 
 	[[nodiscard]] GFX::GfxTexture *get_curve_texture() const { return m_glyph_atlas->get_curve_texture(); }
