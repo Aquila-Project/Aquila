@@ -220,12 +220,16 @@ static GpuCameraData build_camera_data(const RenderView &view, Uint32 index, Uin
 	return data;
 }
 
+static Vec3 light_direction(const LightComponent &light) {
+	const F32 length = Math::length(light.m_direction);
+	return length > 1e-6F ? light.m_direction / length : Vec3(0.F, -1.F, 0.F);
+}
 static GpuLightData build_light_data(const LightComponent &light, const TransformComponent &transform) {
 	GpuLightData data{};
 
 	data.m_position_and_range = Vec4(transform.get_world_position(), light.m_range);
 	data.m_color_and_intensity = Vec4(light.m_color, light.m_intensity);
-	data.m_direction_and_type = Vec4(light.m_direction, static_cast<float>(light.m_type));
+	data.m_direction_and_type = Vec4(light_direction(light), static_cast<float>(light.m_type));
 	data.m_shadow_index = -1;
 	data.m_flags = 0;
 
@@ -376,7 +380,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			lights[light_count++] = build_light_data(light, transform);
 			if (caster_index < 0 && light.m_type == LightComponent::Type::Directional) {
 				caster_index = static_cast<int>(index);
-				caster_dir = light.m_direction;
+				caster_dir = light_direction(light);
 			}
 		}
 	}

@@ -1,5 +1,6 @@
 #include "Aquila/Scene/ComponentRegistry.h"
 
+#include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Graphics/Material/Material.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
@@ -49,13 +50,45 @@ void register_builtin_components(ComponentRegistry &registry) {
 		.property("Primary", &CameraComponent::primary, PropertyHints{ .toggle = true })
 		.property("Orthographic", &CameraComponent::is_orthographic);
 
+	using LightType = LightComponent::Type;
+	const auto is_directional = [](const LightComponent &light) { return light.get_type() == LightType::Directional; };
+	const auto has_range = [](const LightComponent &light) {
+		return light.get_type() == LightType::Point || light.get_type() == LightType::Spot;
+	};
+	const auto has_direction = [](const LightComponent &light) {
+		return light.get_type() == LightType::Directional || light.get_type() == LightType::Spot;
+	};
+	const auto is_spot = [](const LightComponent &light) { return light.get_type() == LightType::Spot; };
+
 	registry.register_component<LightComponent>("Light")
+		.property("Type", &LightComponent::get_type,
+				  [](LightComponent &light, LightType type) {
+					  light.set_type(type);
+				  })
+		.options({ { .name = "Directional", .value = static_cast<Int32>(LightType::Directional) },
+				   { .name = "Point", .value = static_cast<Int32>(LightType::Point) },
+				   { .name = "Spot", .value = static_cast<Int32>(LightType::Spot) } })
 		.property("Color", &LightComponent::get_color, &LightComponent::set_color, PropertyHints{ .color = true })
 		.property("Intensity", &LightComponent::get_intensity, &LightComponent::set_intensity,
 				  PropertyHints{ .min = 0.F, .max = 100.F, .speed = 0.5F })
 		.property("Range", &LightComponent::get_range, &LightComponent::set_range,
 				  PropertyHints{ .min = 0.F, .max = 200.F, .speed = 0.5F, .unit = "m" })
-		.visible_if([](const LightComponent &light) { return light.get_type() == LightComponent::Type::Point; })
+		.visible_if(has_range)
+		.property(
+			"Direction", &LightComponent::get_direction,
+			[](LightComponent &light, const Vec3 &direction) {
+				if (Math::length_sq(direction) > 1e-8F) {
+					light.set_direction(direction);
+				}
+			},
+			PropertyHints{ .speed = 0.01F, .precision = 3 })
+		.visible_if(has_direction)
+		.property("Inner Cone", &LightComponent::get_inner_cone_angle, &LightComponent::set_inner_cone_angle,
+				  PropertyHints{ .min = 0.F, .max = 89.F, .speed = 0.5F, .precision = 1, .unit = "°" })
+		.visible_if(is_spot)
+		.property("Outer Cone", &LightComponent::get_outer_cone_angle, &LightComponent::set_outer_cone_angle,
+				  PropertyHints{ .min = 0.F, .max = 89.F, .speed = 0.5F, .precision = 1, .unit = "°" })
+		.visible_if(is_spot)
 		.property("Active", &LightComponent::is_active, &LightComponent::set_active, PropertyHints{ .toggle = true });
 
 	registry.register_component<SkyLightComponent>("Sky Light")
