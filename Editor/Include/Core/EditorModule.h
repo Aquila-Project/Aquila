@@ -101,6 +101,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Aquila::Rendering::RenderWindowId m_launcher_window = nullptr;
 	bool m_editor_entered = false;
 	Option<ProjectInfo> m_pending_project;
+	ProjectInfo m_project;
 
 	Aquila::SceneManagement::Entity m_outlined_entity;
 	Option<Aquila::SceneManagement::Entity> m_pending_pick;

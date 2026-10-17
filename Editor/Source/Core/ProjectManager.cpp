@@ -1,6 +1,7 @@
 #include "Core/ProjectManager.h"
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
@@ -61,9 +62,40 @@ std::string trim(const std::string &text) {
 
 } // namespace
 
-ProjectManager::ProjectManager() {
-	const std::string root = Aquila::Platform::Filesystem::path_executable_dir() + "/Projects";
-	VirtualFileSystem::get()->mount(K_ROOT, std::make_shared<NativeFileSystem>(root));
+ProjectManager::ProjectManager() : m_native_root(Aquila::Platform::Filesystem::path_executable_dir() + "/Projects") {
+	VirtualFileSystem::get()->mount(K_ROOT, std::make_shared<NativeFileSystem>(m_native_root));
+}
+
+std::string ProjectManager::to_native(const std::string &directory) const {
+	const std::string_view root = K_ROOT;
+	std::string_view relative = directory;
+	if (relative.starts_with(root)) {
+		relative.remove_prefix(root.size());
+	}
+	return m_native_root + std::string(relative);
+}
+
+bool ProjectManager::open(const ProjectInfo &project) const {
+	using namespace Aquila::SharedConstants;
+	auto *vfs = VirtualFileSystem::get();
+
+	for (std::string_view folder : { PROJECT_CONTENT_FOLDER, PROJECT_SCENES_FOLDER }) {
+		const std::string directory = project.directory + "/" + std::string(folder);
+		if (!vfs->is_directory(directory) && !vfs->create_dir(directory)) {
+			AQUILA_LOG_ERROR("ProjectManager: failed to create {}", directory);
+			return false;
+		}
+	}
+
+	const std::string mount(PROJECT_MOUNT);
+	vfs->unmount(mount);
+	if (!vfs->mount(mount, std::make_shared<NativeFileSystem>(project.native_directory))) {
+		AQUILA_LOG_ERROR("ProjectManager: failed to mount {} at {}", project.directory, mount);
+		return false;
+	}
+
+	AQUILA_LOG_INFO("ProjectManager: '{}' mounted at {}", project.name, mount);
+	return true;
 }
 
 std::string ProjectManager::sanitize(const std::string &name) {
@@ -152,6 +184,7 @@ Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTempl
 	ProjectInfo info;
 	info.name = name;
 	info.directory = std::string(K_ROOT) + "/" + safe;
+	info.native_directory = to_native(info.directory);
 	info.project_file = info.directory + "/project.aqproject";
 	info.created = now_seconds();
 
@@ -167,6 +200,8 @@ Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTempl
 		AQUILA_LOG_ERROR("ProjectManager: failed to create directory {}", info.directory);
 		return std::nullopt;
 	}
+	vfs->create_dir(info.directory + "/" + std::string(Aquila::SharedConstants::PROJECT_CONTENT_FOLDER));
+	vfs->create_dir(info.directory + "/" + std::string(Aquila::SharedConstants::PROJECT_SCENES_FOLDER));
 
 	Aquila::SceneManagement::Scene scene(name);
 	auto *entity_manager = scene.get_entity_manager();
@@ -239,6 +274,7 @@ Option<ProjectInfo> ProjectManager::load(const std::string &directory) const {
 
 	ProjectInfo info;
 	info.directory = directory;
+	info.native_directory = to_native(directory);
 	info.project_file = project_file;
 	info.name = root.value("name", std::string());
 	info.created = root.value("created", static_cast<Uint64>(0));

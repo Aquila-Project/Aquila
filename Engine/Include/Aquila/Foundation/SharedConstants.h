@@ -9,6 +9,13 @@ namespace Aquila::SharedConstants {
 /// Native paths baked in by CMake at configure time.
 AQUILA_INLINE const std::string SHADERS_DIR = AQUILA_SHADERS_DIR;
 AQUILA_INLINE const std::string RESOURCES_DIR = AQUILA_RESOURCES_DIR;
+/// Where the open project is mounted in the VFS. Asset paths in scenes start with PROJECT_CONTENT_DIR.
+constexpr std::string PROJECT_MOUNT = "/project";
+constexpr std::string_view PROJECT_CONTENT_FOLDER = "Content";
+constexpr std::string_view PROJECT_CONTENT_DIR = "/project/Content";
+/// Scene files of the open project, the project file lists them relative to the project root.
+constexpr std::string_view PROJECT_SCENES_FOLDER = "Scenes";
+constexpr std::string_view PROJECT_SCENES_DIR = "/project/Scenes";
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 

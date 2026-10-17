@@ -6,6 +6,7 @@
 #include "Aquila/UI/Core/Shortcuts.h"
 #include "Core/ContentCreators.h"
 #include "Core/EditorTools.h"
+#include "Core/ProjectManager.h"
 
 namespace Aquila::GFX {
 class GfxTexture;
@@ -63,6 +64,8 @@ class EditorContext {
 	[[nodiscard]] Aquila::UI::Core::View *overlay_root() const { return m_overlay_root; }
 	void set_overlay_root(Aquila::UI::Core::View *root) { m_overlay_root = root; }
 
+	[[nodiscard]] const ProjectInfo &project() const { return m_project; }
+	void set_project(ProjectInfo project) { m_project = std::move(project); }
 	[[nodiscard]] Aquila::Rendering::CameraController *camera() const { return m_camera; }
 	void set_camera(Aquila::Rendering::CameraController *camera) { m_camera = camera; }
 
@@ -89,6 +92,7 @@ class EditorContext {
 	std::string m_layout_dir;
 	Aquila::UI::Core::View *m_overlay_root = nullptr;
 	Aquila::Rendering::CameraController *m_camera = nullptr;
+	ProjectInfo m_project;
 };
 
 } // namespace Editor

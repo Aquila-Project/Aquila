@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/GFX/GfxTexture.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Core/TextureCache.h"
@@ -18,13 +19,13 @@ namespace Editor {
 
 using namespace Aquila::UI::Core;
 using Aquila::Platform::KeyCode;
+using Aquila::Platform::Filesystem::VirtualFileSystem;
 using Aquila::UI::StyleLength;
 using Aquila::UI::StyleProperties;
-using Aquila::Platform::Filesystem::VirtualFileSystem;
 
 namespace {
 
-constexpr std::string_view k_root = "/resources";
+constexpr std::string_view k_root = Aquila::SharedConstants::PROJECT_CONTENT_DIR;
 constexpr Usize k_line_length = 12;
 constexpr std::chrono::milliseconds k_double_click{ 400 };
 constexpr F32 k_thumbnail_size = 48.F;
@@ -236,7 +237,7 @@ void clear_children(View &view) {
 	}
 }
 
-}
+} // namespace
 
 ContentBrowserWindow::ContentBrowserWindow(EditorContext &context) : EditorWindow(context), m_directory(k_root) {}
 
@@ -300,7 +301,8 @@ void ContentBrowserWindow::defer(Delegate<void()> action) {
 }
 
 void ContentBrowserWindow::open(const std::string &directory) {
-	m_directory = VirtualFileSystem::get()->is_directory(directory) ? directory : std::string(k_root);
+	const bool inside = directory == k_root || directory.starts_with(std::string(k_root) + "/");
+	m_directory = inside && VirtualFileSystem::get()->is_directory(directory) ? directory : std::string(k_root);
 	build_path();
 	build_grid();
 	if (!m_rename_after_open.empty()) {
@@ -315,18 +317,21 @@ void ContentBrowserWindow::open(const std::string &directory) {
 void ContentBrowserWindow::build_path() {
 	clear_children(*m_path);
 
-	Usize start = 1;
-	while (start <= m_directory.size()) {
-		const Usize end = std::min(m_directory.find('/', start), m_directory.size());
-		const std::string path = m_directory.substr(0, end);
-		if (start > 1) {
+	const auto add_crumb = [this](std::string label, std::string path) {
+		if (!m_path->get_children().empty()) {
 			m_path->add_child<Image>(context().icon("chevron-right"))->add_class("content-crumb-separator");
 		}
-
-		auto *crumb = m_path->add_child<Button>(start == 1 ? "Resources" : m_directory.substr(start, end - start));
+		auto *crumb = m_path->add_child<Button>(std::move(label));
 		crumb->add_class("content-crumb");
-		crumb->set_class("content-crumb-current", end == m_directory.size());
-		crumb->on_click.connect([this, path] { navigate(path); });
+		crumb->set_class("content-crumb-current", path == m_directory);
+		crumb->on_click.connect([this, path = std::move(path)] { navigate(path); });
+	};
+
+	add_crumb(std::string(Aquila::SharedConstants::PROJECT_CONTENT_FOLDER), std::string(k_root));
+	Usize start = k_root.size() + 1;
+	while (start <= m_directory.size()) {
+		const Usize end = std::min(m_directory.find('/', start), m_directory.size());
+		add_crumb(m_directory.substr(start, end - start), m_directory.substr(0, end));
 		start = end + 1;
 	}
 }

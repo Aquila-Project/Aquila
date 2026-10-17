@@ -7,6 +7,7 @@ namespace Editor {
 struct ProjectInfo {
 	std::string name;
 	std::string directory;
+	std::string native_directory;
 	std::string project_file;
 	std::vector<std::string> scenes;
 	Uint64 created = 0;
@@ -24,6 +25,8 @@ class ProjectManager {
 
 	ProjectManager();
 
+	bool open(const ProjectInfo &project) const;
+
 	Option<ProjectInfo> create(const std::string &name, ProjectTemplate project_template = ProjectTemplate::Empty);
 	/// Empty when the name is fine, otherwise the reason to show the user.
 	[[nodiscard]] std::string validate_name(const std::string &name) const;
@@ -37,6 +40,11 @@ class ProjectManager {
 	/// Most recently used first.
 	[[nodiscard]] std::vector<ProjectInfo> list() const;
 	[[nodiscard]] Option<ProjectInfo> load(const std::string &directory) const;
+
+  private:
+	[[nodiscard]] std::string to_native(const std::string &directory) const;
+
+	std::string m_native_root;
 };
 
 } // namespace Editor

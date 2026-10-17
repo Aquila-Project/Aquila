@@ -103,7 +103,12 @@ void EditorModule::open_project_launcher() {
 void EditorModule::enter_editor(const ProjectInfo &project) {
 	AQUILA_LOG_INFO("EditorModule: opening project '{}' ({})", project.name, project.directory);
 
+	if (m_texture_cache) {
+		m_texture_cache->evict_project_assets();
+	}
 	m_editor_entered = true;
+	m_project = project;
+	m_project_manager->open(m_project);
 	if (m_launcher_window != nullptr) {
 		m_engine->get_window_host().request_close(m_launcher_window);
 	}
@@ -332,6 +337,7 @@ void EditorModule::setup_editor_ui() {
 	m_context =
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
+	m_context->set_project(m_project);
 	register_content_creators();
 	bind_default_shortcuts(m_context->shortcuts);
 
