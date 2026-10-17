@@ -3,6 +3,7 @@
 #include "Core/DefaultShortcuts.h"
 #include "Core/EditorContext.h"
 #include "Core/EditorWindows.h"
+#include "Core/FileDialog.h"
 #include "Core/ProjectManager.h"
 #include "Core/Workspaces.h"
 
