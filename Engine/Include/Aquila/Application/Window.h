@@ -24,17 +24,22 @@ class Window {
 	~Window();
 
 	void poll_events();
+	/// Sleeps until an event comes in or the timeout runs out. No timeout waits forever.
 	void wait_events(Option<F64> timeout_seconds = std::nullopt);
+	/// Wakes wait_events() up, from any thread.
 	static void wake();
+	/// Of all connected monitors. Frames are paced to it.
 	[[nodiscard]] static F64 highest_refresh_rate();
 	bool should_close() const;
 	[[nodiscard]] bool is_visible() const;
+	/// Sends the merged mouse move. Call it after polling.
 	void flush_pending_events();
 
 	Uint32 get_width() const { return m_data.width; }
 	Uint32 get_height() const { return m_data.height; }
 	void set_title(const std::string &text) const;
 	void set_cursor(Platform::CursorType type);
+	/// For windows created with start_hidden.
 	void show();
 	void request_close() const;
 	[[nodiscard]] Vec2 get_position() const;

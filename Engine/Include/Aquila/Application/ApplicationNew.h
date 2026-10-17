@@ -20,6 +20,7 @@ struct ApplicationSpec {
 	std::string name = "Aquila";
 	Uint32 width = 1920;
 	Uint32 height = 1080;
+	/// The main window stays hidden until Window::show(), the project launcher uses it.
 	bool start_hidden = false;
 };
 
@@ -49,6 +50,13 @@ struct RenderWindow {
 	bool forward_events = false;
 };
 
+/// Owns the window, GPU context, scene and render pipeline. Everything else plugs in as a module.
+///
+/// @code
+/// Application app({ .name = "Aquila Studio" });
+/// app.add_module<Editor::EditorModule>();
+/// app.run();
+/// @endcode
 class Application : public Rendering::IRenderWindowHost {
   public:
 	explicit Application(const ApplicationSpec &spec);
@@ -57,6 +65,7 @@ class Application : public Rendering::IRenderWindowHost {
 	AQUILA_NONCOPYABLE(Application);
 	AQUILA_NONMOVEABLE(Application);
 
+	/// Before run() the module attaches when the loop starts, after that it attaches right away.
 	template <typename T, typename... Args> T &add_module(Args &&...args) {
 		static_assert(std::is_base_of_v<IModule, T>, "T must derive from IModule");
 		auto module = std::make_unique<T>(std::forward<Args>(args)...);
@@ -68,7 +77,9 @@ class Application : public Rendering::IRenderWindowHost {
 		return ref;
 	}
 
+	/// Blocks until the app closes.
 	void run();
+	/// The loop stops after the current iteration.
 	void close();
 
 	Window &get_window() { return *m_window; }
@@ -82,6 +93,7 @@ class Application : public Rendering::IRenderWindowHost {
 	void set_window_position(Rendering::RenderWindowId window, Vec2 position) override;
 
   protected:
+	/// Old hooks from when Application was subclassed, nothing uses them. Write an IModule instead.
 	virtual void on_init() {}
 	virtual void on_shutdown() {}
 	virtual void on_pre_render(F32 delta_time) {}
