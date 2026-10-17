@@ -429,6 +429,7 @@ bool Scene::serialize(const std::string &filepath) {
 	const auto vfs_file = Aquila::Platform::Filesystem::VirtualFileSystem::get()->open_file(filepath, AccessMode::Write,
 																							OpenMode::Binary);
 	if (!vfs_file || !vfs_file->is_valid()) {
+		AQUILA_LOG_ERROR("VFS could not open file. Verify you are passing a VIRTUAL file and not a folder");
 		return false;
 	}
 
@@ -699,6 +700,10 @@ bool Scene::deserialize(const std::string &filepath) {
 		}
 	}
 
+	if (Entity camera = find_primary_camera(); camera.is_valid()) {
+		set_active_camera(camera);
+	}
+	on_loaded();
 	return true;
 }
 } // namespace Aquila::SceneManagement

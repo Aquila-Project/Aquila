@@ -146,6 +146,15 @@ std::string ProjectManager::validate_name(const std::string &name) const {
 	return {};
 }
 
+bool ProjectManager::add_scene(ProjectInfo &project, const std::string &scene) const {
+	if (std::ranges::find(project.scenes, scene) != project.scenes.end()) {
+		return true;
+	}
+	project.scenes.push_back(scene);
+	const std::vector<std::string> scenes = project.scenes;
+	return update_project_file(project, [&scenes](nlohmann::ordered_json &root) { root["scenes"] = scenes; });
+}
+
 void ProjectManager::touch(ProjectInfo &project) const {
 	project.last_opened = now_seconds();
 	const Uint64 stamp = project.last_opened;
@@ -188,7 +197,8 @@ Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTempl
 	info.project_file = info.directory + "/project.aqproject";
 	info.created = now_seconds();
 
-	const std::string scene_file = safe + ".aqscene";
+	const std::string scene_file =
+		std::string(Aquila::SharedConstants::PROJECT_SCENES_FOLDER) + "/" + safe + ".aqscene";
 	info.scenes = { scene_file };
 
 	if (vfs->exists(info.project_file)) {

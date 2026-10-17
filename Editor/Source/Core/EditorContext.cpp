@@ -1,5 +1,6 @@
 #include "Core/EditorContext.h"
 
+#include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
@@ -59,6 +60,33 @@ void EditorContext::destroy_entity(Entity entity) {
 	}
 	selection.on_entity_destroying(entity);
 	entities.destroy_entity(entity);
+}
+
+std::string EditorContext::to_native(const std::string &project_path) const {
+	const std::string &mount = Aquila::SharedConstants::PROJECT_MOUNT;
+	if (project_path != mount && !project_path.starts_with(mount + "/")) {
+		return project_path;
+	}
+	const std::string relative = project_path.substr(std::min(project_path.size(), mount.size() + 1));
+	return (std::filesystem::path(m_project.native_directory) / relative).lexically_normal().string();
+}
+
+Option<std::string> EditorContext::to_project_path(const std::string &native_path) const {
+	namespace fs = std::filesystem;
+	std::error_code error;
+	const fs::path root = fs::weakly_canonical(m_project.native_directory, error);
+	const fs::path file = fs::weakly_canonical(native_path, error);
+	if (error) {
+		return std::nullopt;
+	}
+	const fs::path relative = file.lexically_relative(root);
+	if (relative.empty() || *relative.begin() == "..") {
+		return std::nullopt;
+	}
+	if (relative == ".") {
+		return Aquila::SharedConstants::PROJECT_MOUNT;
+	}
+	return Aquila::SharedConstants::PROJECT_MOUNT + "/" + relative.generic_string();
 }
 
 } // namespace Editor

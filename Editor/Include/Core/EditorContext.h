@@ -66,6 +66,11 @@ class EditorContext {
 
 	[[nodiscard]] const ProjectInfo &project() const { return m_project; }
 	void set_project(ProjectInfo project) { m_project = std::move(project); }
+	/// "/project/Content/a.png" to the file on disk. Other VFS paths come back unchanged.
+	[[nodiscard]] std::string to_native(const std::string &project_path) const;
+	/// The other way, nullopt for files outside the open project (scenes can only reference files inside it).
+	[[nodiscard]] Option<std::string> to_project_path(const std::string &native_path) const;
+
 	[[nodiscard]] Aquila::Rendering::CameraController *camera() const { return m_camera; }
 	void set_camera(Aquila::Rendering::CameraController *camera) { m_camera = camera; }
 

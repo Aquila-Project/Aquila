@@ -76,6 +76,11 @@ class EditorModule final : public Aquila::Application::IModule {
 	void enter_editor(const ProjectInfo &project);
 	void apply_font_settings();
 	void set_ui_scale(F32 scale);
+	void save_scene();
+	void save_scene_as();
+	void open_scene();
+	bool load_scene(const std::string &path);
+	bool write_scene(const std::string &path);
 
 	Aquila::Application::EngineContext *m_engine = nullptr;
 	Aquila::SceneManagement::StatisticsCollector m_statistics;
@@ -102,6 +107,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	bool m_editor_entered = false;
 	Option<ProjectInfo> m_pending_project;
 	ProjectInfo m_project;
+	std::string m_scene_path;
 
 	Aquila::SceneManagement::Entity m_outlined_entity;
 	Option<Aquila::SceneManagement::Entity> m_pending_pick;

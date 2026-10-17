@@ -35,6 +35,8 @@ class ProjectManager {
 	static const char *template_description(ProjectTemplate project_template);
 	/// Marks it as just opened, for the recent list.
 	void touch(ProjectInfo &project) const;
+	/// Lists a scene file (relative to the project root, like "Scenes/Level.aqscene") in the project file.
+	bool add_scene(ProjectInfo &project, const std::string &scene) const;
 	bool rename(ProjectInfo &project, const std::string &name) const;
 	bool remove(const ProjectInfo &project) const;
 	/// Most recently used first.
