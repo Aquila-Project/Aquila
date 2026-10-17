@@ -4,7 +4,9 @@
 
 namespace Aquila::UI {
 
-static size_t find_matching_close(const std::string &src, size_t open_pos) {
+using Variables = std::unordered_map<std::string, std::string>;
+
+static size_t find_matching_close(std::string_view src, size_t open_pos) {
 	int depth = 1;
 	size_t i = open_pos + 1;
 	while (i < src.size() && depth > 0) {
@@ -15,52 +17,112 @@ static size_t find_matching_close(const std::string &src, size_t open_pos) {
 		}
 		++i;
 	}
-	return depth == 0 ? i - 1 : std::string::npos;
+	return depth == 0 ? i - 1 : std::string_view::npos;
 }
 
-static std::unordered_map<std::string, std::string> extract_variables(std::string_view src) {
-	std::unordered_map<std::string, std::string> vars;
+static bool is_variable_name(std::string_view name) {
+	return name.size() > 2 && name.starts_with("--") && std::ranges::all_of(name, [](char c) {
+			   return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '-' || c == '_';
+		   });
+}
+
+static bool starts_declaration(std::string_view src, size_t pos) {
+	while (pos > 0 && std::isspace(static_cast<unsigned char>(src[pos - 1])) != 0) {
+		--pos;
+	}
+	return pos == 0 || src[pos - 1] == '{' || src[pos - 1] == ';';
+}
+
+static Variables extract_variables(std::string_view src) {
+	Variables vars;
 	size_t i = 0;
 	while (i < src.size()) {
-		size_t dash_pos = src.find("--", i);
+		const size_t dash_pos = src.find("--", i);
 		if (dash_pos == std::string_view::npos) {
 			break;
 		}
 
-		size_t colon_pos = src.find(':', dash_pos);
-		size_t semi_pos = src.find(';', dash_pos);
-		size_t close_pos = src.find('}', dash_pos);
-
-		if (colon_pos == std::string_view::npos || semi_pos == std::string_view::npos) {
+		const size_t colon_pos = src.find(':', dash_pos);
+		const size_t end_pos = std::min(src.find(';', dash_pos), src.find('}', dash_pos));
+		if (colon_pos == std::string_view::npos || end_pos == std::string_view::npos) {
 			break;
 		}
 
-		if (colon_pos > semi_pos || colon_pos > close_pos) {
+		std::string name = ParserHelper::trim(src.substr(dash_pos, colon_pos - dash_pos));
+		if (colon_pos > end_pos || !is_variable_name(name) || !starts_declaration(src, dash_pos)) {
 			i = dash_pos + 2;
 			continue;
 		}
 
-		std::string name = ParserHelper::trim(src.substr(dash_pos, colon_pos - dash_pos));
-		std::string value = ParserHelper::trim(src.substr(colon_pos + 1, semi_pos - colon_pos - 1));
-
-		if (name.size() > 2 && name[0] == '-' && name[1] == '-') {
-			vars[std::move(name)] = std::move(value);
-		}
-		i = semi_pos + 1;
+		vars[std::move(name)] = ParserHelper::trim(src.substr(colon_pos + 1, end_pos - colon_pos - 1));
+		i = end_pos;
 	}
 	return vars;
 }
 
-static std::string substitute_variables(std::string src, const std::unordered_map<std::string, std::string> &vars) {
-	for (const auto &[name, value] : vars) {
-		std::string needle = "var(" + name + ")";
-		size_t pos = 0;
-		while ((pos = src.find(needle, pos)) != std::string::npos) {
-			src.replace(pos, needle.size(), value);
-			pos += value.size();
+namespace {
+
+class VariableResolver {
+  public:
+	explicit VariableResolver(const Variables &vars) : m_vars(vars) {}
+
+	std::string resolve(std::string_view text, int depth = 0) {
+		if (depth > k_max_depth) {
+			AQUILA_LOG_WARNING("StyleParser: variables reference each other in a cycle near '{}'", text);
+			return std::string(text);
+		}
+
+		std::string out;
+		size_t i = 0;
+		while (true) {
+			const size_t start = text.find("var(", i);
+			if (start == std::string_view::npos) {
+				out.append(text.substr(i));
+				return out;
+			}
+
+			size_t close = start + 4;
+			size_t comma = std::string_view::npos;
+			int nesting = 1;
+			for (; close < text.size(); ++close) {
+				if (text[close] == '(') {
+					++nesting;
+				} else if (text[close] == ')' && --nesting == 0) {
+					break;
+				} else if (text[close] == ',' && nesting == 1 && comma == std::string_view::npos) {
+					comma = close;
+				}
+			}
+			if (close >= text.size()) {
+				AQUILA_LOG_WARNING("StyleParser: 'var(' is never closed near '{}'", text.substr(start, 32));
+				out.append(text.substr(i));
+				return out;
+			}
+
+			out.append(text.substr(i, start - i));
+			const size_t name_end = comma == std::string_view::npos ? close : comma;
+			const std::string name = ParserHelper::trim(text.substr(start + 4, name_end - start - 4));
+			if (const auto it = m_vars.find(name); it != m_vars.end()) {
+				out += resolve(it->second, depth + 1);
+			} else if (comma != std::string_view::npos) {
+				out += resolve(ParserHelper::trim_sv(text.substr(comma + 1, close - comma - 1)), depth + 1);
+			} else {
+				if (m_reported.insert(name).second) {
+					AQUILA_LOG_WARNING("StyleParser: undefined variable '{}'", name);
+				}
+				out.append(text.substr(start, close - start + 1));
+			}
+			i = close + 1;
 		}
 	}
-	return src;
+
+  private:
+	static constexpr int k_max_depth = 16;
+
+	const Variables &m_vars;
+	std::unordered_set<std::string> m_reported;
+};
+
 }
 
 static Option<MediaCondition> parse_media_condition(std::string_view raw) {
@@ -153,9 +215,11 @@ static void parse_at_block(std::string_view cond_text, std::string_view body, St
 			if (close_p == std::string::npos) {
 				break;
 			}
-			auto cond = parse_media_condition(std::string_view(cond_str).substr(j + 1, close_p - j - 1));
-			if (cond) {
+			const std::string_view raw = std::string_view(cond_str).substr(j + 1, close_p - j - 1);
+			if (auto cond = parse_media_condition(raw)) {
 				conditions.push_back(*cond);
+			} else {
+				AQUILA_LOG_WARNING("StyleParser: unsupported condition '({})'", raw);
 			}
 			j = close_p + 1;
 		} else {
@@ -185,12 +249,15 @@ static void parse_at_block(std::string_view cond_text, std::string_view body, St
 
 		const std::string inner_sel = ParserHelper::trim(body.substr(k, inner_open - k));
 
-		const size_t inner_close = body.find('}', inner_open + 1);
+		const size_t inner_close = find_matching_close(body, inner_open);
 		if (inner_close == std::string_view::npos) {
+			AQUILA_LOG_ERROR("StyleParser: unclosed block for selector '{}'", inner_sel);
 			break;
 		}
 
-		if (!inner_sel.empty() && inner_sel[0] != '@') {
+		if (inner_sel.starts_with('@')) {
+			AQUILA_LOG_WARNING("StyleParser: nested at-rules are not supported, skipping '{}'", inner_sel);
+		} else if (!inner_sel.empty()) {
 			const std::string_view inner_body = body.substr(inner_open + 1, inner_close - inner_open - 1);
 			ParserHelper::parse_block(inner_sel, inner_body, temp_sheet);
 		}
@@ -246,10 +313,7 @@ bool StyleParser::LoadString(std::string_view css, StyleSheet &sheet, bool clear
 		sheet.add_variable(name, value);
 	}
 
-	const auto &all_vars = sheet.get_variables();
-	if (!all_vars.empty()) {
-		src = substitute_variables(std::move(src), all_vars);
-	}
+	src = VariableResolver(sheet.get_variables()).resolve(src);
 
 	size_t i = 0;
 	while (i < src.size()) {
@@ -262,6 +326,8 @@ bool StyleParser::LoadString(std::string_view css, StyleSheet &sheet, bool clear
 
 		const size_t brace_open = src.find('{', i);
 		if (brace_open == std::string::npos) {
+			AQUILA_LOG_WARNING("StyleParser: ignoring '{}' at the end of the file, it has no '{{' block",
+							   ParserHelper::trim(std::string_view(src).substr(i)));
 			break;
 		}
 
@@ -280,7 +346,9 @@ bool StyleParser::LoadString(std::string_view css, StyleSheet &sheet, bool clear
 				parse_at_block(std::string_view(selector).substr(6), body, sheet, false);
 			} else if (selector.size() > 10 && selector.substr(0, 10) == "@container") {
 				parse_at_block(std::string_view(selector).substr(10), body, sheet, true);
-			} else if (selector[0] != '@') {
+			} else if (selector[0] == '@') {
+				AQUILA_LOG_WARNING("StyleParser: unsupported at-rule '{}'", selector);
+			} else {
 				ParserHelper::parse_block(selector, body, sheet);
 			}
 		}

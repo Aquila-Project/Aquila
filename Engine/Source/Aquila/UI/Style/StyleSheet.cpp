@@ -162,6 +162,11 @@ bool StyleSheet::matches(const StyleRule &rule, const Core::View &view) const {
 	return false;
 }
 
+bool StyleSheet::supports_pseudo_class(std::string_view pseudo_class) {
+	return pseudo_class == "hover" || pseudo_class == "pressed" || pseudo_class == "focus" ||
+		pseudo_class == "disabled";
+}
+
 namespace {
 
 StyleLength scale_length(StyleLength length, float scale) {
