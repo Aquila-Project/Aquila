@@ -29,6 +29,12 @@ target_precompile_headers(AquilaEditor PRIVATE
 
 aquila_link_engine(AquilaEditor)
 
+set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
+set(NFD_WAYLAND OFF CACHE BOOL "" FORCE)
+add_subdirectory(${CMAKE_SOURCE_DIR}/Engine/Vendor/nativefiledialog-extended ${CMAKE_BINARY_DIR}/Vendor/nfd SYSTEM)
+target_link_libraries(AquilaEditor PRIVATE nfd::nfd)
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(AquilaEditor PRIVATE
         ${AQUILA_CLANG_WALL} -Wextra

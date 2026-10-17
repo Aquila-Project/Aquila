@@ -19,3 +19,6 @@
 [submodule "Engine/Vendor/aquiLua"]
 	path = Engine/Vendor/aquiLua
 	url = git@github.com:Aquila-Project/AquiLua.git
+[submodule "Engine/Vendor/nativefiledialog-extended"]
+	path = Engine/Vendor/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git
