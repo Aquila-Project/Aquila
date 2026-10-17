@@ -8,6 +8,7 @@ namespace Aquila::Scripting {
 
 class ScriptSystem;
 
+/// Runs every ScriptComponent in the scene. Writes the Luau type definitions on attach.
 class ScriptModule final : public Application::IModule {
   public:
 	ScriptModule();

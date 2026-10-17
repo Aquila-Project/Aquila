@@ -16,8 +16,11 @@ class ScriptSystem {
 	AQUILA_NONCOPYABLE(ScriptSystem);
 	AQUILA_NONMOVEABLE(ScriptSystem);
 
+	/// Starts scripts on new or changed paths, stops removed ones, then calls on_update.
+	/// A script that errors stops being called until its path changes.
 	void update(F32 delta_time);
 
+	/// Luau type definitions of the engine API, for autocomplete in an editor.
 	bool write_types(const std::string &directory) const;
 
   private:

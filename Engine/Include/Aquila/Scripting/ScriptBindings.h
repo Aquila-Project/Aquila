@@ -12,10 +12,12 @@ class Scene;
 
 namespace Aquila::Scripting {
 
+/// What scripts see as `Entity`, just the EnTT id.
 struct ScriptEntity {
 	Uint32 id;
 };
 
+/// Exposes `@native` (log, request_frame), the `@aquila` module and the Entity methods to scripts.
 void register_engine_api(aquiLua::Runtime &runtime, SceneManagement::Scene &scene);
 
 } // namespace Aquila::Scripting
