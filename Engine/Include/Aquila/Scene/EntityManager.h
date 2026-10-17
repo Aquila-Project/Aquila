@@ -13,6 +13,7 @@ class EntityManager {
 
 	entt::registry &get_registry();
 
+	/// A bare entity, no components. create_entity() is the one with name, transform and scene node.
 	static Entity create(Scene *scene) {
 		const auto handle = scene->get_registry().create();
 		return Entity(handle, scene);
@@ -31,9 +32,17 @@ class EntityManager {
 		return entities;
 	}
 
+	/// With Metadata (new UUID, unique name), SceneNode and Transform.
 	Entity create_entity(const std::string &name);
 	void apply_preset(Entity &entity, EntityPreset preset);
 
+	/// `func` can take (Entity, Components &...), (Components &...) or just (Entity).
+	///
+	/// @code
+	/// manager.for_each<TransformComponent, LightComponent>([](TransformComponent &transform, LightComponent &light) {
+	///     light.set_direction(transform.get_world_rotation() * Vec3(0.F, 0.F, 1.F));
+	/// });
+	/// @endcode
 	template <typename... Components, typename Func> void for_each(Func &&func) {
 		AQUILA_ASSERT(m_scene, "There should be an active scene");
 		for (auto view = m_registry.view<Components...>(); auto entity_handle : view) {
@@ -118,15 +127,21 @@ class EntityManager {
 	[[nodiscard]] bool exists(const Foundation::UUID &uuid);
 	[[nodiscard]] bool is_valid(Entity entity) const;
 	[[nodiscard]] bool is_registry_empty();
+	/// Children too.
 	void destroy_entity(Entity entity);
+	/// Destroyed on the next flush_deletion_queue(), safe while iterating.
 	void queue_for_kill(Entity entity);
 	void flush_deletion_queue();
 
 	void construct_scene_graph();
+	/// Keeps the child's local transform, so it moves with the new parent.
 	void add_child(Entity parent, Entity child);
+	/// Keeps the node's world transform, so it stays where it is on screen.
 	void attach_to(Entity parent, Entity node);
 	void remove_child(Entity parent, Entity child);
+	/// Destroys the children, it doesn't just detach them.
 	void remove_all_children(Entity parent);
+	/// True when `entity_to_check` is somewhere under `potential_parent`.
 	bool is_descendant(Entity potential_parent, Entity entity_to_check);
 	std::string generate_unique_name(const std::string &base_name);
 

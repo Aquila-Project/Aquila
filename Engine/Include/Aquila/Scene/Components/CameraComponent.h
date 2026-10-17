@@ -9,6 +9,8 @@
 namespace Aquila::SceneManagement::Components {
 using namespace glm;
 
+/// `fov` is vertical, in degrees. +Z is forward and -Y is up (Vulkan y-down).
+/// `primary` marks the camera find_primary_camera() returns.
 struct CameraComponent {
 	F32 fov = 80.0F;
 	F32 near_plane = 0.1F;
@@ -35,6 +37,7 @@ struct CameraComponent {
 
 	F32 get_far_plane() const { return far_plane; }
 
+	/// The perspective one is y-flipped for Vulkan, the orthographic one isn't.
 	Mat4 get_projection_matrix() const {
 		if (is_orthographic) {
 			return Math::ortho_vulkan(ortho_left, ortho_right, ortho_bottom, ortho_top, near_plane, far_plane);

@@ -9,6 +9,7 @@ namespace Aquila::SceneManagement {
 
 enum class ComponentCategory : Uint8 { Object, General, Rendering };
 
+/// What the editor knows about one component type, without knowing the type.
 class ComponentDescriptor {
   public:
 	explicit ComponentDescriptor(std::string name) : m_type(std::move(name)) {}
@@ -26,7 +27,9 @@ class ComponentDescriptor {
 			m_add(entity);
 		}
 	}
+	/// The component as void *, null when the entity doesn't have it.
 	[[nodiscard]] void *get(Entity entity) const { return m_get(entity); }
+	/// The component's `on_changed`, null when it has none. The inspector fires it after every edit.
 	[[nodiscard]] Signal<void()> *get_changed_signal(Entity entity) const { return m_get_changed(entity); }
 
   private:
@@ -42,10 +45,19 @@ class ComponentDescriptor {
 	Delegate<Signal<void()> *(Entity)> m_get_changed;
 };
 
+/// Built-in components register in ComponentRegistry.cpp on first use.
+///
+/// @code
+/// ComponentRegistry::instance()
+///     .register_component<FogComponent>("Fog", true, ComponentCategory::Rendering)
+///     .property("Density", &FogComponent::density, { .min = 0.F, .max = 1.F, .slider = true });
+/// @endcode
 class ComponentRegistry {
   public:
 	[[nodiscard]] static ComponentRegistry &instance();
 
+	/// `category` picks the inspector tab. Add Component only offers default constructible types.
+	/// A `Signal<void()> on_changed` member is found on its own.
 	template <typename T>
 	Reflection::TypeBuilder<T> register_component(std::string name, bool removable = true,
 												  ComponentCategory category = ComponentCategory::General) {

@@ -3,6 +3,8 @@
 
 #include "Aquila/Scene/Entity.h"
 namespace Aquila::SceneManagement::Components {
+/// Parent and children links. `ent` is the entity that owns this component.
+/// Change them through EntityManager, not by hand.
 struct SceneNodeComponent {
 	Entity ent;
 	Entity parent;

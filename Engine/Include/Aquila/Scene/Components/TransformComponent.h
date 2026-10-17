@@ -7,6 +7,8 @@
 #include "glm/gtc/quaternion.hpp"
 #include "glm/trigonometric.hpp"
 namespace Aquila::SceneManagement::Components {
+/// Setters mark the transform dirty and tell the scene.
+/// Scene::update_transform_hierarchy() recomputes the world matrices once per frame.
 struct TransformComponent {
   public:
 	Signal<void()> on_changed;
@@ -25,6 +27,7 @@ struct TransformComponent {
 		mark_world_matrix_dirty();
 	}
 
+	/// Degrees.
 	void set_local_rotation_euler(const Vec3 &rotation){
 		m_local_rotation = Quaternion(Math::radians(rotation));
 		mark_world_matrix_dirty();
@@ -37,6 +40,7 @@ struct TransformComponent {
 
 	[[nodiscard]] const Vec3 &get_local_position() const { return m_local_position; }
 	[[nodiscard]] const Quaternion &get_local_rotation() const { return m_local_rotation; }
+	/// Degrees.
 	[[nodiscard]] Vec3 get_local_rotation_euler() const { return Math::degrees(glm::eulerAngles(m_local_rotation)); }
 	[[nodiscard]] const Vec3 &get_local_scale() const { return m_local_scale; }
 
@@ -111,6 +115,7 @@ struct TransformComponent {
 		return Math::transpose(Math::inverse(normal_matrix));
 	}
 
+	/// Only right with uniform scale.
 	[[nodiscard]] Mat3 get_normal_matrix_fast() const { return Mat3(m_world_matrix); }
 
 	void set_parent_matrix(const Mat4 &parent_matrix) {
@@ -120,6 +125,7 @@ struct TransformComponent {
 
 	[[nodiscard]] bool is_world_matrix_dirty() const { return m_world_matrix_dirty; }
 
+	/// The scene sets this to track dirty transforms, don't replace it.
 	void set_dirty_callback(std::function<void()> fn) { m_on_dirty = std::move(fn); }
 
   private:

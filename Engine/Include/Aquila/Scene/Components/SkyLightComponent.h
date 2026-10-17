@@ -23,6 +23,9 @@ enum class SkySource {
 	HdrImage,
 };
 
+/// Procedural sky from the sun angles, or an HDR image. Sun angles are in degrees.
+/// Anything that changes the lighting marks it dirty so the irradiance gets baked again,
+/// set_irradiance() marks it clean.
 struct SkyLightComponent {
 	Ref<GFX::GfxTexture> m_hdr_texture;
 	SHCoefficients m_irradiance;
@@ -55,6 +58,7 @@ struct SkyLightComponent {
 	[[nodiscard]] bool should_render_skybox() const noexcept { return m_render_skybox && m_is_active; }
 	[[nodiscard]] bool get_render_skybox() const noexcept { return m_render_skybox; }
 
+	/// Unit vector toward the sun, y up.
 	[[nodiscard]] Vec3 get_sun_direction() const noexcept {
 		const F32 elevation = Math::radians(m_sun_elevation);
 		const F32 azimuth = Math::radians(m_sun_azimuth);

@@ -24,6 +24,15 @@ enum class EntityPreset {
 	SkyLight
 };
 
+/// A handle: EnTT id plus scene. Cheap to copy, it doesn't own anything.
+///
+/// @code
+/// Entity lamp = scene.get_entity_manager()->create_entity("Lamp");
+/// lamp.add_component<LightComponent>(LightComponent::Type::Point, Vec3(1.F), 10.F);
+/// if (auto *light = lamp.try_get_component<LightComponent>()) {
+///     light->set_range(5.F);
+/// }
+/// @endcode
 class Entity {
   public:
 	Entity() = default;
@@ -119,6 +128,7 @@ class Entity {
 		return m_scene->get_registry().replace<T>(m_entity_handle, std::forward<Args>(args)...);
 	}
 
+	/// Edits in place and fires the registry's update listeners.
 	template <typename T, typename... Args> T &patch_component(Args &&...args) {
 		return m_scene->get_registry().patch<T>(m_entity_handle, std::forward<Args>(args)...);
 	}
@@ -134,8 +144,11 @@ class Entity {
 	[[nodiscard]] const std::string &get_name() const;
 	void set_name(const std::string &new_name);
 
+	/// Destroys it now. Its children are queued and go on the next flush_deletion_queue(),
+	/// EntityManager::destroy_entity() takes them right away.
 	void kill() const;
 
+	/// Non-null and still alive in the registry. is_null() only checks the handle.
 	[[nodiscard]] bool is_valid() const;
 	[[nodiscard]] bool is_null() const;
 
@@ -163,6 +176,7 @@ class Entity {
 		return "Entity(" + std::to_string(static_cast<uint32_t>(m_entity_handle)) + ")";
 	}
 
+	/// Not implemented yet, it only asserts.
 	void copy_from(const Entity &other) const {
 		AQUILA_ASSERT(m_scene && other.m_scene, "Both entities must have valid scenes");
 	}
