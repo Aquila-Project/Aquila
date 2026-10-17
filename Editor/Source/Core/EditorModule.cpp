@@ -53,7 +53,7 @@ using namespace Aquila::SceneManagement::Components;
 using namespace Aquila::Application;
 namespace Events = Aquila::Platform::Events;
 
-EditorModule::EditorModule() = default;
+EditorModule::EditorModule(std::string project) : m_startup_project(std::move(project)) {}
 
 EditorModule::~EditorModule() = default;
 
@@ -78,6 +78,16 @@ void EditorModule::on_attach(EngineContext &engine) {
 	m_texture_cache = std::make_unique<Aquila::UI::Core::TextureCache>(m_engine->get_context(),
 																	   Config::get_preferences().ui.resources_path);
 
+	if (!m_startup_project.empty()) {
+		const std::string directory = std::string(ProjectManager::K_ROOT) + "/" +
+			ProjectManager::sanitize(std::filesystem::path(m_startup_project).filename().string());
+		if (Option<ProjectInfo> project = m_project_manager->load(directory)) {
+			m_pending_project = *project;
+			Aquila::Foundation::FrameScheduler::get()->request_frame();
+			return;
+		}
+		AQUILA_LOG_ERROR("EditorModule: no project at {}", directory);
+	}
 	open_project_launcher();
 }
 
