@@ -34,6 +34,8 @@ class EditorWindow : public Aquila::UI::Core::DockPanelContent {
 	virtual void build(Aquila::UI::Core::View &content) = 0;
 	/// Every frame while it's open.
 	virtual void update(F32 delta_time) {}
+	/// Whether this window's scoped shortcuts run right now. By default while the mouse is over it.
+	[[nodiscard]] virtual bool accepts_shortcuts(bool hovered) const { return hovered; }
 
 	[[nodiscard]] EditorContext &context() const { return m_context; }
 	[[nodiscard]] const std::string &get_type_id() const { return m_type_id; }
@@ -43,6 +45,13 @@ class EditorWindow : public Aquila::UI::Core::DockPanelContent {
 	template <typename... Args, typename Slot> void listen(Signal<void(Args...)> &signal, Slot slot) {
 		auto connection = signal.connect(std::move(slot));
 		m_disconnects.emplace_back([&signal, connection] { signal.disconnect(connection); });
+	}
+
+	/// The command exists while the window is open.
+	void add_command(Aquila::UI::Core::Command command) {
+		std::string id = command.id;
+		m_context.shortcuts.add_command(std::move(command));
+		m_disconnects.emplace_back([this, id = std::move(id)] { m_context.shortcuts.remove_command(id); });
 	}
 
 	[[nodiscard]] Unique<Aquila::UI::Core::View> load_layout(std::string_view file_name) const {

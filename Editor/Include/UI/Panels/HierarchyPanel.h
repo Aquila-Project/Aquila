@@ -26,12 +26,14 @@ class HierarchyPanel : public IEditorPanel {
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_selected;
 	Signal<void()> on_entity_deselected;
 	Signal<void()> on_create_requested;
+	Signal<void(Aquila::SceneManagement::Entity)> on_delete_requested;
 	Signal<void(Aquila::SceneManagement::Entity)> on_visibility_changed;
 	Signal<void(Aquila::SceneManagement::Entity, const Aquila::UI::Core::AssetPayload &)> on_asset_dropped;
 	void add_entity(Aquila::SceneManagement::Entity entity);
 	void select_entity(Aquila::SceneManagement::Entity entity);
 	void deselect_entity();
 	void refresh_entity(Aquila::SceneManagement::Entity entity);
+	void remove_entity(Aquila::SceneManagement::Entity entity);
 	void rebuild();
 	void set_tree_icons(Aquila::GFX::GfxTexture *collapsed, Aquila::GFX::GfxTexture *expanded);
 	void set_entity_icons(const EntityIcons &icons);

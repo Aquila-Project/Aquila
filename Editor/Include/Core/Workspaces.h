@@ -25,6 +25,8 @@ class Workspaces {
 	void build_tabs(Aquila::UI::Core::View &container);
 
 	void activate(std::string_view name);
+	/// Next or previous workspace, wraps around.
+	void activate_relative(int offset);
 	void reset_active();
 
 	[[nodiscard]] const std::string &get_active() const { return m_active; }

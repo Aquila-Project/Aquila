@@ -65,7 +65,6 @@ constexpr std::array<ShowToggle, 5> k_show_toggles = { {
 ViewportWindow::ViewportWindow(EditorContext &context) : EditorWindow(context) {}
 
 ViewportWindow::~ViewportWindow() {
-	context().tools.key_handler = {};
 }
 
 void ViewportWindow::build(UI::Core::View &content) {
@@ -100,38 +99,65 @@ void ViewportWindow::build(UI::Core::View &content) {
 		m_scene_cameras.clear();
 	});
 
-	context().tools.key_handler = [this](TransformKey key) { return handle_transform_key(key); };
+	register_commands();
 }
 
-bool ViewportWindow::handle_transform_key(TransformKey key) {
+void ViewportWindow::register_commands() {
+	EditorTools &tools = context().tools;
+	add_command({ .id = "transform.translate", .title = "Move", .run = [&tools] {
+					 tools.set_tool(TransformTool::Translate);
+				 } });
+	add_command(
+		{ .id = "transform.rotate", .title = "Rotate", .run = [&tools] { tools.set_tool(TransformTool::Rotate); } });
+	add_command(
+		{ .id = "transform.scale", .title = "Scale", .run = [&tools] { tools.set_tool(TransformTool::Scale); } });
+	add_command({ .id = "transform.toggle_space", .title = "Toggle world/local space", .run = [&tools] {
+					 tools.toggle_space();
+				 } });
+	add_command({ .id = "transform.toggle_snapping", .title = "Toggle snapping", .run = [&tools] {
+					 tools.toggle_snapping();
+				 } });
+
+	constexpr std::array<std::pair<std::string_view, std::string_view>, 3> axes{ {
+		{ "transform.axis_x", "Constrain to X" },
+		{ "transform.axis_y", "Constrain to Y" },
+		{ "transform.axis_z", "Constrain to Z" },
+	} };
+	for (int axis = 0; axis < 3; ++axis) {
+		const auto &[id, title] = axes[static_cast<Usize>(axis)];
+		add_command({
+			.id = std::string(id),
+			.title = std::string(title),
+			.run = [this, axis] { m_gizmo->constrain_to_axis(axis); },
+			.enabled = [this] { return can_constrain(); },
+		});
+	}
+
+	add_command({
+		.id = "transform.confirm",
+		.title = "Confirm transform",
+		.run = [this] { m_gizmo->confirm(); },
+		.enabled = [this] { return m_gizmo != nullptr && m_gizmo->is_modal(); },
+	});
+	add_command({
+		.id = "transform.cancel",
+		.title = "Cancel transform",
+		.run = [this] { m_gizmo->cancel(); },
+		.enabled = [this] { return m_gizmo != nullptr && m_gizmo->is_active(); },
+	});
+}
+
+bool ViewportWindow::can_constrain() const {
 	if (m_gizmo == nullptr || m_panel == nullptr) {
 		return false;
 	}
-	switch (key) {
-	case TransformKey::X:
-	case TransformKey::Y:
-	case TransformKey::Z: {
-		const bool over_viewport = m_panel->get_content_rect().contains(Platform::Input::get_mouse_position());
-		if (!over_viewport && !m_gizmo->is_modal()) {
-			return false;
-		}
-		m_gizmo->constrain_to_axis(static_cast<int>(key) - static_cast<int>(TransformKey::X));
-		return true;
-	}
-	case TransformKey::Confirm:
-		if (!m_gizmo->is_modal()) {
-			return false;
-		}
-		m_gizmo->confirm();
-		return true;
-	case TransformKey::Cancel:
-		if (!m_gizmo->is_active()) {
-			return false;
-		}
-		m_gizmo->cancel();
-		return true;
-	}
-	return false;
+	return m_gizmo->is_modal() || m_panel->get_content_rect().contains(Platform::Input::get_mouse_position());
+}
+
+bool ViewportWindow::accepts_shortcuts(bool hovered) const {
+	const bool transforming = m_gizmo != nullptr && m_gizmo->is_active();
+	const bool navigating = Platform::Input::is_mouse_button_pressed(Platform::Events::MouseButton::Right);
+	return (hovered || transforming) && !navigating;
 }
 
 void ViewportWindow::update(F32 delta_time) {

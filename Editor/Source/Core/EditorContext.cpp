@@ -1,5 +1,7 @@
 #include "Core/EditorContext.h"
 
+#include "Aquila/Scene/EntityManager.h"
+#include "Aquila/Scene/Scene.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/View.h"
@@ -44,6 +46,19 @@ Aquila::GFX::GfxTexture *EditorContext::icon(std::string_view name) const {
 
 Unique<Aquila::UI::Core::View> EditorContext::load_layout(std::string_view file_name) const {
 	return m_layouts.load_file(m_layout_dir + std::string(file_name));
+}
+
+void EditorContext::destroy_entity(Entity entity) {
+	if (!entity.is_valid() || !entity.exists()) {
+		return;
+	}
+	auto &entities = *m_engine.get_scene().get_entity_manager();
+	const Entity selected = selection.get();
+	if (selected.is_valid() && (selected == entity || entities.is_descendant(entity, selected))) {
+		selection.clear();
+	}
+	selection.on_entity_destroying(entity);
+	entities.destroy_entity(entity);
 }
 
 } // namespace Editor

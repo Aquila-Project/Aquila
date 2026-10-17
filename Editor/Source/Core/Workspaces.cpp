@@ -52,6 +52,17 @@ void Workspaces::activate(std::string_view name) {
 	on_activated(m_active);
 }
 
+void Workspaces::activate_relative(int offset) {
+	if (m_entries.empty()) {
+		return;
+	}
+	const auto count = static_cast<int>(m_entries.size());
+	const auto it = std::ranges::find(m_entries, m_active, &Entry::name);
+	const int current = it == m_entries.end() ? 0 : static_cast<int>(it - m_entries.begin());
+	const std::string target = m_entries[static_cast<Usize>((((current + offset) % count) + count) % count)].name;
+	activate(target);
+}
+
 void Workspaces::reset_active() {
 	Entry *current = find(m_active);
 	if (current == nullptr) {

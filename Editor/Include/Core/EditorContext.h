@@ -3,6 +3,7 @@
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Scene/Entity.h"
+#include "Aquila/UI/Core/Shortcuts.h"
 #include "Core/ContentCreators.h"
 #include "Core/EditorTools.h"
 
@@ -19,7 +20,7 @@ class Canvas;
 class LayoutLoader;
 class TextureCache;
 class View;
-}
+} // namespace Aquila::UI::Core
 
 namespace Editor {
 
@@ -34,6 +35,7 @@ class EditorSelection {
 
 	Signal<void(Aquila::SceneManagement::Entity)> on_changed;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_created;
+	Signal<void(Aquila::SceneManagement::Entity)> on_entity_destroying;
 	/// Once an edit is done: gizmo released, inspector field changed.
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_modified;
 	/// Over and over while the gizmo drags, so the inspector can follow.
@@ -50,7 +52,8 @@ class EditorSelection {
 class EditorContext {
   public:
 	EditorContext(Aquila::Application::EngineContext &engine, Aquila::UI::Core::Canvas &canvas,
-				  Aquila::UI::Core::LayoutLoader &layouts, Aquila::UI::Core::TextureCache &textures, std::string layout_dir);
+				  Aquila::UI::Core::LayoutLoader &layouts, Aquila::UI::Core::TextureCache &textures,
+				  std::string layout_dir);
 
 	[[nodiscard]] Aquila::Application::EngineContext &engine() const { return m_engine; }
 	[[nodiscard]] Aquila::UI::Core::Canvas &canvas() const { return m_canvas; }
@@ -68,8 +71,13 @@ class EditorContext {
 	/// A file from the editor's layout folder, by name.
 	[[nodiscard]] Unique<Aquila::UI::Core::View> load_layout(std::string_view file_name) const;
 
+	/// Clears the selection when it or one of its parents is selected, fires on_entity_destroying,
+	/// then destroys it with its children. Always delete entities through this.
+	void destroy_entity(Aquila::SceneManagement::Entity entity);
+
 	EditorSelection selection;
 	EditorTools tools;
+	Aquila::UI::Core::Shortcuts shortcuts;
 	std::vector<ContentCreator> content_creators;
 	Signal<void()> on_render_output_changed;
 
@@ -83,4 +91,4 @@ class EditorContext {
 	Aquila::Rendering::CameraController *m_camera = nullptr;
 };
 
-}
+} // namespace Editor

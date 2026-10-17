@@ -39,6 +39,8 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 		context().selection.select(entity);
 	});
 
+	m_panel->on_delete_requested.connect([this](Entity entity) { context().destroy_entity(entity); });
+
 	m_panel->on_entity_selected.connect([this](Entity entity) {
 		if (!m_syncing) {
 			context().selection.select(entity);
@@ -61,6 +63,7 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 	EditorSelection &selection = context().selection;
 	listen(selection.on_changed, [this](Entity entity) { show_selection(entity); });
 	listen(selection.on_entity_created, [this](Entity entity) { m_panel->add_entity(entity); });
+	listen(selection.on_entity_destroying, [this](Entity entity) { m_panel->remove_entity(entity); });
 	listen(selection.on_entity_modified, [this](Entity entity) { m_panel->refresh_entity(entity); });
 	listen(selection.on_scene_replaced, [this] { m_panel->rebuild(); });
 
@@ -79,4 +82,4 @@ void HierarchyWindow::show_selection(Entity entity) {
 	m_syncing = false;
 }
 
-}
+} // namespace Editor
