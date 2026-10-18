@@ -2,6 +2,7 @@
 #define AQUILA_VULKAN_SHADER_COMPILER_H
 
 #include "GraphicsPCH.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include <slang/slang-com-ptr.h>
 #include <slang/slang.h>
@@ -43,7 +44,7 @@ class VulkanShaderCompiler {
 		target_desc.format = SLANG_SPIRV;
 		target_desc.profile = s_GlobalSession->findProfile(K_SPIRV_PROFILE);
 
-		const char *search_paths[] = { AQUILA_SHADERS_DIR };
+		const char *search_paths[] = { Foundation::EnginePaths::shaders_dir().c_str() };
 		slang::SessionDesc session_desc{};
 		session_desc.targets = &target_desc;
 		session_desc.targetCount = 1;
@@ -168,7 +169,7 @@ class VulkanShaderCompiler {
 		target_desc.format = SLANG_SPIRV;
 		target_desc.profile = s_GlobalSession->findProfile(K_SPIRV_PROFILE);
 
-		const char *search_paths[] = { AQUILA_SHADERS_DIR };
+		const char *search_paths[] = { Foundation::EnginePaths::shaders_dir().c_str() };
 		slang::SessionDesc session_desc{};
 		session_desc.targets = &target_desc;
 		session_desc.targetCount = 1;

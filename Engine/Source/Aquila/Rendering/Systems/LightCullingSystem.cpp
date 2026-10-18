@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/LightCullingSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxCommandList.h"
 #include "Aquila/Graphics/RenderGraph/RGTypes.h"
@@ -13,7 +14,7 @@
 
 namespace Aquila::Rendering {
 
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 void LightCullingSystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
@@ -28,10 +29,10 @@ void LightCullingSystem::on_init(GFX::GfxContext &ctx) {
 	});
 
 	m_pipeline = Graphics::Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "LightCullCompute.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "LightCullCompute.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "LightCullCompute.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "LightCullCompute.slang", stages, err)) {
 				AQUILA_LOG_ERROR("LightCullingSystem: shader compile failed: {}", err);
 				return nullptr;
 			}

@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/ShadowSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/Rendering/FrameContext.h"
 #include "Aquila/Rendering/SceneFrameData.h"
@@ -17,7 +18,7 @@ namespace Aquila::Rendering {
 
 using namespace SceneManagement::Components;
 using namespace Graphics;
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 struct ShadowPushConstants {
 	Mat4 model;
@@ -28,10 +29,10 @@ void ShadowSystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
 
 	m_pipeline = Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "ShadowDepth.slang", [](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "ShadowDepth.slang", [](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "ShadowDepth.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "ShadowDepth.slang", stages, err)) {
 				AQUILA_LOG_ERROR("ShadowSystem: shader compile failed: {}", err);
 				return nullptr;
 			}

@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/Graphics/RenderGraph/RGTypes.h"
 #include "Aquila/RHI/Vulkan/VulkanShaderCompiler.h"
@@ -19,7 +20,7 @@ namespace Aquila::Rendering {
 using namespace Graphics;
 using namespace SceneManagement::Components;
 
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 struct PickingPushConstants {
 	Mat4 model;
@@ -39,11 +40,11 @@ void ObjectPickingSystem::on_init(GFX::GfxContext &ctx) {
 	}
 
 	m_pipeline = Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "ObjectPicking.slang", [](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "ObjectPicking.slang", [](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
 
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "ObjectPicking.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "ObjectPicking.slang", stages, err)) {
 				AQUILA_LOG_ERROR("ObjectPickingSystem: shader compile failed: {}", err);
 				return nullptr;
 			}

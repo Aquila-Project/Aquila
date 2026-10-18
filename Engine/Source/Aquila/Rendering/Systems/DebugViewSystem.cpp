@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/DebugViewSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
@@ -19,7 +20,7 @@ namespace Aquila::Rendering {
 
 using namespace SceneManagement::Components;
 using namespace Graphics;
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 namespace {
 
@@ -31,7 +32,7 @@ struct DebugPushConstants {
 };
 
 Ref<Shader::ReloadablePipeline> make_pipeline(GFX::GfxContext &ctx, RHI::FillMode fill) {
-	const std::string path = SHADERS_DIR + "DebugView.slang";
+	const std::string path = shaders_dir() + "DebugView.slang";
 	return Shader::ReloadablePipeline::create(
 		ctx, path, [path, fill](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;

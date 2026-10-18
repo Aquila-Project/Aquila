@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Renderers/Renderer.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxSwapchain.h"
 #include "Aquila/RHI/Vulkan/VulkanShaderCompiler.h"
@@ -7,7 +8,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
 
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 namespace Aquila::Rendering {
 
@@ -25,10 +26,10 @@ void Renderer::on_init(GFX::GfxContext &ctx) {
 	});
 
 	m_blit_pipeline = Graphics::Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "Blit.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "Blit.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "Blit.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "Blit.slang", stages, err)) {
 				AQUILA_LOG_ERROR("Renderer: blit shader compile failed: {}", err);
 				return nullptr;
 			}

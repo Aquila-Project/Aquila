@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/ComputeTestSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxCommandList.h"
 #include "Aquila/RHI/Vulkan/VulkanShaderCompiler.h"
@@ -11,7 +12,7 @@
 
 namespace Aquila::Rendering {
 
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 using AABB = Math::Geometry::AABB::AABB;
 
 static constexpr Uint32 K_ELEMENT_COUNT = 3456; // cluster size so 16x9x24
@@ -44,10 +45,10 @@ void ClusterComputeSystem::on_init(GFX::GfxContext &ctx) {
 	});
 
 	m_pipeline = Graphics::Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "ClusterCompute.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "ClusterCompute.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "ClusterCompute.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "ClusterCompute.slang", stages, err)) {
 				AQUILA_LOG_ERROR("ClusterComputeSystem: shader compile failed: {}", err);
 				return nullptr;
 			}

@@ -208,7 +208,7 @@ class Renderer2D {
 	void start_batch();
 	void register_shader_hot_reload();
 	[[nodiscard]] Mat4 build_quad_transform(Vec2 position, Vec2 size, float rotation, float depth) const;
-	GFX::GfxPipeline &get_or_create_pipeline(PipelineCache &cache, const char *shader_path,
+	GFX::GfxPipeline &get_or_create_pipeline(PipelineCache &cache, std::string_view shader_file,
 											 GFX::GfxDescriptorSetLayout *set_layout,
 											 RHI::VertexBindingDesc (*vertex_layout)(), RHI::PrimitiveTopology topology,
 											 const PipelineKey &key);

@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/OutlineSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Scene/Visibility.h"
 
 #include "Aquila/Foundation/Macros.h"
@@ -20,15 +21,15 @@ namespace Aquila::Rendering {
 using namespace Aquila::Graphics;
 using namespace Aquila::SceneManagement::Components;
 
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 namespace {
 std::string mask_shader_path() {
-	return SHADERS_DIR + "OutlineMask.slang";
+	return shaders_dir() + "OutlineMask.slang";
 }
 
 std::string outline_shader_path() {
-	return SHADERS_DIR + "Outline.slang";
+	return shaders_dir() + "Outline.slang";
 }
 
 struct MaskPushConstants {

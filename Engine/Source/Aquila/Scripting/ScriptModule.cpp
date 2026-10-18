@@ -1,4 +1,5 @@
 #include "Aquila/Scripting/ScriptModule.h"
+#include "Aquila/Foundation/EnginePaths.h"
 
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Foundation/SharedConstants.h"
@@ -15,7 +16,7 @@ ScriptModule::~ScriptModule() = default;
 
 void ScriptModule::on_attach(Application::EngineContext &engine) {
 	m_system = std::make_unique<ScriptSystem>(engine.get_scene());
-	m_system->write_types(SharedConstants::RESOURCES_DIR + "Engine/Types");
+	m_system->write_types(Foundation::EnginePaths::resources_dir() + "Engine/Types");
 }
 
 void ScriptModule::on_detach() {
