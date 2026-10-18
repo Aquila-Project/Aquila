@@ -402,15 +402,16 @@
     color: var(--text-bright);
 }
 
+.launcher-tips {
+    flex-direction: column;
+    width: 100%;
+    gap: 14px;
+}
+
 .launcher-tip {
     flex-direction: column;
     width: 100%;
-    padding: 12px 14px;
-    gap: 4px;
-    background-color: var(--bg-panel);
-    border-color: var(--border-ui);
-    border-width: 1px;
-    border-radius: 6px;
+    gap: 2px;
 }
 
 .launcher-tip-title {
@@ -423,4 +424,31 @@
     font-family: regular;
     font-size: 13px;
     color: var(--text-dim);
+}
+
+.launcher-link {
+    flex-direction: column;
+    width: 100%;
+    padding: 12px 14px;
+    gap: 4px;
+    background-color: var(--bg-panel);
+    border-color: var(--border-ui);
+    border-width: 1px;
+    border-radius: 6px;
+    transition: 80ms ease-out;
+}
+
+.launcher-link:hover {
+    background-color: var(--bg-surface);
+    border-color: var(--border-lit);
+}
+
+.launcher-link:pressed {
+    background-color: var(--bg-muted);
+}
+
+.launcher-link-url {
+    font-family: regular;
+    font-size: 12px;
+    color: var(--accent);
 }

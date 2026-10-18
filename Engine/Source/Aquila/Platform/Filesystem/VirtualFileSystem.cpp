@@ -97,15 +97,15 @@ bool VirtualFileSystem::unmount(const std::string &virtual_path) {
 }
 
 Unique<VirtualFile> VirtualFileSystem::open_file(const std::string &virtual_path, AccessMode access_mode,
-												OpenMode open_mode) {
+												 OpenMode open_mode) {
 	std::string relative_path;
 	MountPoint *mount = find_mount_point(virtual_path, relative_path);
 	if (mount == nullptr) {
 		return nullptr;
 	}
 
-	bool is_writing =
-		access_mode == AccessMode::Write || access_mode == AccessMode::ReadWrite || has_flag(open_mode, OpenMode::Append);
+	bool is_writing = access_mode == AccessMode::Write || access_mode == AccessMode::ReadWrite ||
+		has_flag(open_mode, OpenMode::Append);
 
 	if (is_writing && (mount->read_only || mount->file_system->is_read_only())) {
 		return nullptr;
@@ -193,7 +193,8 @@ bool VirtualFileSystem::delete_directory(const std::string &virtual_path, bool r
 		return false;
 	}
 
-	return recursive ? mount->file_system->dir_remove_all(relative_path) : mount->file_system->dir_remove(relative_path);
+	return recursive ? mount->file_system->dir_remove_all(relative_path)
+					 : mount->file_system->dir_remove(relative_path);
 }
 
 bool VirtualFileSystem::rename_file(const std::string &old_virtual_path, const std::string &new_virtual_path) {
@@ -273,6 +274,15 @@ bool VirtualFileSystem::write_text_file(const std::string &virtual_path, const s
 	}
 
 	return file->write(reinterpret_cast<const Uint8 *>(content.data()), content.size()) == content.size();
+}
+
+Option<std::string> VirtualFileSystem::to_native_path(const std::string &virtual_path) {
+	std::string relative_path;
+	MountPoint *mount = find_mount_point(virtual_path, relative_path);
+	if (mount == nullptr) {
+		return std::nullopt;
+	}
+	return mount->file_system->native_path(relative_path);
 }
 
 std::string VirtualFileSystem::read_text_file(const std::string &virtual_path) {

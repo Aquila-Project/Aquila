@@ -56,6 +56,8 @@ class VirtualFileSystem : public Foundation::Singleton<VirtualFileSystem> {
 	bool write_text_file(const std::string &virtual_path, const std::string &content);
 	/// Empty on failure, you can't tell it apart from an empty file.
 	std::string read_text_file(const std::string &virtual_path);
+	/// "/project/Content/a.png" to the file on disk. nullopt when no mount matches or the mount isn't a folder.
+	Option<std::string> to_native_path(const std::string &virtual_path);
 	std::vector<std::string> get_mount_points() const;
 	bool is_mounted(const std::string &virtual_path) const;
 };

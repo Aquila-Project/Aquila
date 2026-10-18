@@ -37,6 +37,7 @@ class NativeFileSystem final : public IFileSystem {
 
 	[[nodiscard]] bool is_read_only() const override { return false; }
 	[[nodiscard]] std::string get_display_name() const override { return "Native: " + m_root_path; }
+	[[nodiscard]] Option<std::string> native_path(const std::string &path) const override { return resolve_path(path); }
 };
 
 } // namespace Aquila::Platform::Filesystem
