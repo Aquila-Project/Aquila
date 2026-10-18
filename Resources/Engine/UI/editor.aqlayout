@@ -5,6 +5,10 @@
         <View class="topbar-sep"/>
         <View id="workspace-tabs" class="workspace-tabs"/>
         <View class="topbar-spacer"/>
+        <Button id="topbar-play" class="topbar-btn" src="Engine/UI/Icons/play.svg" tooltip="Play"/>
+        <Button id="topbar-pause" class="topbar-btn" src="Engine/UI/Icons/pause.svg" tooltip="Pause"/>
+        <Button id="topbar-stop" class="topbar-btn" src="Engine/UI/Icons/square.svg" tooltip="Stop"/>
+        <View class="topbar-spacer"/>
         <Button id="topbar-reset" class="topbar-btn" src="Engine/UI/Icons/refresh-cw.svg" tooltip="Reset this workspace"/>
         <Button id="topbar-settings" class="topbar-btn" src="Engine/UI/Icons/settings.svg" tooltip="Preferences"/>
     </View>

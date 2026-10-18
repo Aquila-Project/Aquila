@@ -16,6 +16,7 @@
 #include "Aquila/UI/Core/DockLayoutSerializer.h"
 
 namespace Aquila::UI::Core {
+class Button;
 class Canvas;
 class DockSpace;
 class DockWindowManager;
@@ -46,6 +47,10 @@ class EditorModule final : public Aquila::Application::IModule {
 	void on_event(Aquila::Platform::Events::Event &event) override;
 	void on_resize(Uint32 width, Uint32 height) override;
 	void on_render_resize(Uint32 width, Uint32 height) override;
+	void on_play() override;
+	void on_pause() override;
+	void on_resume() override;
+	void on_stop() override;
 
 	/// add_window, add_workspace and add_content_creator also work before on_attach(), they're queued.
 	template <typename T> void add_window(EditorWindowType type) {
@@ -83,6 +88,12 @@ class EditorModule final : public Aquila::Application::IModule {
 	void open_scene();
 	bool load_scene(const std::string &path);
 	bool write_scene(const std::string &path);
+	[[nodiscard]] bool is_editing() const;
+	void start_playing();
+	void toggle_pause();
+	void restore_edit_scene();
+	void wire_play_controls(Aquila::UI::Core::View *layout_root);
+	void sync_play_controls();
 
 	Aquila::Application::EngineContext *m_engine = nullptr;
 	Aquila::SceneManagement::StatisticsCollector m_statistics;
@@ -111,6 +122,16 @@ class EditorModule final : public Aquila::Application::IModule {
 	std::string m_startup_project;
 	ProjectInfo m_project;
 	std::string m_scene_path;
+
+	/// The scene as it was when Play was pressed, copied back over the played one on stop.
+	Unique<Aquila::SceneManagement::Scene> m_edit_scene;
+	/// Set by on_stop(), the restore waits for the next frame so every module has stopped first.
+	bool m_restore_pending = false;
+	Aquila::UI::Core::Button *m_play_button = nullptr;
+	Aquila::UI::Core::Button *m_pause_button = nullptr;
+	Aquila::UI::Core::Button *m_stop_button = nullptr;
+	/// Views that take the play-mode tint: top bar, status bar and the gaps between docked panels.
+	std::vector<Aquila::UI::Core::View *> m_play_tinted;
 
 	Aquila::SceneManagement::Entity m_outlined_entity;
 	Option<Aquila::SceneManagement::Entity> m_pending_pick;
