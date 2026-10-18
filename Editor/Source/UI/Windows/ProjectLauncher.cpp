@@ -1,8 +1,10 @@
 #include "UI/Windows/ProjectLauncher.h"
 
+#include "Aquila/Foundation/Macros.h"
 #include "Aquila/Platform/Events/Event.h"
 #include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/Platform/Input.h"
+#include "Aquila/Platform/Process.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/View.h"
@@ -23,6 +25,7 @@ namespace {
 
 constexpr int K_CARDS_PER_ROW = 3;
 constexpr int K_THUMB_PALETTE = 6;
+constexpr const char *K_WIKI_URL = "https://github.com/Aquila-Project/Aquila/wiki";
 
 class ClickableView : public View {
   public:
@@ -275,23 +278,35 @@ void ProjectLauncher::build_learn_page(View *content) {
 
 	add_label(page, "Learn", "launcher-page-title");
 
+	add_label(page, "Documentation", "launcher-section");
+	auto *docs = page->add_child<ClickableView>();
+	docs->add_class("launcher-link");
+	add_label(docs, "Aquila wiki", "launcher-tip-title");
+	add_label(docs, "Guides and reference for the engine and the editor.", "launcher-tip-text");
+	add_label(docs, "github.com/Aquila-Project/Aquila/wiki", "launcher-link-url");
+	docs->on_click.connect([] {
+		if (!Platform::open_url(K_WIKI_URL)) {
+			AQUILA_LOG_ERROR("ProjectLauncher: could not open {}", K_WIKI_URL);
+		}
+	});
+
 	struct Tip {
 		const char *title;
 		const char *text;
 	};
 	const Tip tips[] = {
 		{ .title = "Build a scene",
-		  .text = "Add entities from the hierarchy card and edit their components in the inspector." },
+		  .text = "Add entities from the Hierarchy panel and edit their components in the Inspector." },
 		{ .title = "Move around",
 		  .text = "Hold the right mouse button in the viewport to fly. Use W, E and R for the transform tools." },
 		{ .title = "Scale the interface", .text = "Ctrl plus, Ctrl minus and Ctrl zero change the interface scale." },
-		{ .title = "Read the docs",
-		  .text = "The Documentation folder in the repository describes the engine modules and conventions." },
 	};
+	add_label(page, "Tips", "launcher-section");
+	auto *list = add_view(page, "launcher-tips");
 	for (const Tip &tip : tips) {
-		auto *card = add_view(page, "launcher-tip");
-		add_label(card, tip.title, "launcher-tip-title");
-		add_label(card, tip.text, "launcher-tip-text");
+		auto *row = add_view(list, "launcher-tip");
+		add_label(row, tip.title, "launcher-tip-title");
+		add_label(row, tip.text, "launcher-tip-text");
 	}
 }
 
