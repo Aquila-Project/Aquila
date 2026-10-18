@@ -400,6 +400,8 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 			props.overflow = Overflow::Hidden;
 		} else if (value_lower == "scroll") {
 			props.overflow = Overflow::Scroll;
+		} else if (value_lower == "clip") {
+			props.overflow = Overflow::Clip;
 		}
 
 		// ── sizing ──

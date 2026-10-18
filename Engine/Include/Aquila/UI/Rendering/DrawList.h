@@ -22,8 +22,10 @@ class DrawList {
 	void draw_text(Rect bounds, std::string_view text, Text::FontAtlas *font, Vec4 color, float font_size = 0.F,
 				   TextAlign align = TextAlign::Left, Int32 z = 0, bool wrap = false);
 	/// Replaces the current clip until pop_clip(), it isn't intersected with it.
-	void push_clip(Rect clip_rect);
-	void pop_clip();
+	/// @note A view's own commands get sorted by z, so give the push the lowest z it clips and the pop the highest.
+	/// The compositor intersects a view's clips with the clip it inherits.
+	void push_clip(Rect clip_rect, Int32 z = 0);
+	void pop_clip(Int32 z = 0);
 
 	void sort();
 

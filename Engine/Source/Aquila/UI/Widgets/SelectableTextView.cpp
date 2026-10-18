@@ -171,7 +171,7 @@ Rect SelectableTextView::visible_rect() const {
 	Rect visible = get_absolute_rect();
 	for (const View *ancestor = get_parent(); ancestor != nullptr; ancestor = ancestor->get_parent()) {
 		const UI::Overflow overflow = ancestor->get_display_style().overflow;
-		if (overflow == UI::Overflow::Scroll || overflow == UI::Overflow::Hidden) {
+		if (overflow != UI::Overflow::Visible) {
 			visible = visible.intersect(ancestor->get_absolute_rect());
 		}
 	}

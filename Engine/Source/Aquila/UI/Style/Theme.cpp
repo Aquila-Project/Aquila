@@ -133,6 +133,8 @@ static void append_declarations(std::string &out, const StyleProperties &p) {
 			v = "hidden";
 		} else if (*p.overflow == Overflow::Scroll) {
 			v = "scroll";
+		} else if (*p.overflow == Overflow::Clip) {
+			v = "clip";
 		}
 		decl(out, "overflow", v);
 	}

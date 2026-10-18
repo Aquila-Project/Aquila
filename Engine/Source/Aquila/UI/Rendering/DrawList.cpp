@@ -105,20 +105,22 @@ void DrawList::draw_image(Rect rect, GFX::GfxTexture *tex, Vec4 tint, Vec2 uv_mi
 	m_commands.emplace_back(command);
 }
 
-void DrawList::push_clip(Rect clip_rect) {
+void DrawList::push_clip(Rect clip_rect, Int32 z) {
 	m_clip_stack.push_back(clip_rect);
 	ClipPushCmd cmd;
 	cmd.rect = clip_rect;
+	cmd.z_order = z;
 	m_commands.emplace_back(cmd);
 }
 
-void DrawList::pop_clip() {
+void DrawList::pop_clip(Int32 z) {
 	if (!m_clip_stack.empty()) {
 		m_clip_stack.pop_back();
 	}
 
 	ClipPopCmd cmd;
 	cmd.rect = m_clip_stack.empty() ? Rect{} : m_clip_stack.back();
+	cmd.z_order = z;
 	m_commands.emplace_back(cmd);
 }
 

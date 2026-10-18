@@ -22,6 +22,37 @@ static Rendering::DrawCmd with_opacity(const Rendering::DrawCmd &cmd, F32 opacit
 	return faded;
 }
 
+template <typename Emit>
+static void emit_own_commands(const std::vector<Rendering::DrawCmd> &cmds, const Rect *clip_rect, F32 opacity,
+							  Emit &&emit) {
+	std::vector<Rect> stack;
+	for (const Rendering::DrawCmd &cmd : cmds) {
+		if (const auto *push = std::get_if<Rendering::ClipPushCmd>(&cmd)) {
+			Rect rect = push->rect;
+			if (!stack.empty()) {
+				rect = stack.back().intersect(rect);
+			} else if (clip_rect != nullptr) {
+				rect = clip_rect->intersect(rect);
+			}
+			stack.push_back(rect);
+			Rendering::ClipPushCmd adjusted;
+			adjusted.rect = rect;
+			emit(Rendering::DrawCmd(adjusted));
+			continue;
+		}
+		if (std::holds_alternative<Rendering::ClipPopCmd>(cmd)) {
+			if (!stack.empty()) {
+				stack.pop_back();
+			}
+			Rendering::ClipPopCmd adjusted;
+			adjusted.rect = !stack.empty() ? stack.back() : (clip_rect != nullptr ? *clip_rect : Rect{});
+			emit(Rendering::DrawCmd(adjusted));
+			continue;
+		}
+		emit(opacity < 1.F ? with_opacity(cmd, opacity) : cmd);
+	}
+}
+
 static F32 node_opacity(const View *node) {
 	return Math::clamp(node->get_display_style().opacity, 0.F, 1.F);
 }
@@ -142,14 +173,16 @@ void DrawCompositor::cull(View *node, Int32 parent_effective_z, const Rect *clip
 
 	const Int32 effective_z = parent_effective_z + node->get_computed_style().z_index;
 	const F32 opacity = parent_opacity * node_opacity(node);
+	if (opacity <= 0.F) {
+		return;
+	}
 	const Int32 bucket_idx =
 		Math::clamp(effective_z, SharedConstants::Z_MIN, SharedConstants::Z_MAX) - SharedConstants::Z_MIN;
 
 	if (clip_rect == nullptr || clip_rect->overlaps(node->get_absolute_rect())) {
 		if (auto it = m_per_node_cmds.find(node); it != m_per_node_cmds.end()) {
-			for (const DrawCmd &cmd : it->second) {
-				m_z_buckets[bucket_idx].push_back(opacity < 1.F ? with_opacity(cmd, opacity) : cmd);
-			}
+			emit_own_commands(it->second, clip_rect, opacity,
+							  [&](const DrawCmd &cmd) { m_z_buckets[bucket_idx].push_back(cmd); });
 		}
 		const Rect item_clip = clip_rect != nullptr
 			? *clip_rect
@@ -161,7 +194,7 @@ void DrawCompositor::cull(View *node, Int32 parent_effective_z, const Rect *clip
 	Rect own_clip;
 	bool clips_children = false;
 	const Overflow overflow = node->get_display_style().overflow;
-	if (overflow == Overflow::Scroll || overflow == Overflow::Hidden) {
+	if (overflow != Overflow::Visible) {
 		own_clip = node->get_absolute_rect();
 		if (clip_rect != nullptr) {
 			own_clip = clip_rect->intersect(own_clip);
@@ -203,7 +236,7 @@ void DrawCompositor::collect_layer_subtree(View *node, const Rect *clip_rect) {
 	const Rect *child_clip = clip_rect;
 	Rect own_clip;
 	const Overflow overflow = node->get_display_style().overflow;
-	if (overflow == Overflow::Scroll || overflow == Overflow::Hidden) {
+	if (overflow != Overflow::Visible) {
 		own_clip = node->get_absolute_rect();
 		if (clip_rect != nullptr) {
 			own_clip = clip_rect->intersect(own_clip);
@@ -227,17 +260,18 @@ void DrawCompositor::emit_floating_layer(View *node, const Rect *clip_rect, F32 
 	}
 
 	const F32 opacity = parent_opacity * node_opacity(node);
+	if (opacity <= 0.F) {
+		return;
+	}
 	if (auto it = m_per_node_cmds.find(node); it != m_per_node_cmds.end()) {
-		for (const DrawCmd &cmd : it->second) {
-			m_draw_list.append_cmd(opacity < 1.F ? with_opacity(cmd, opacity) : cmd);
-		}
+		emit_own_commands(it->second, clip_rect, opacity, [&](const DrawCmd &cmd) { m_draw_list.append_cmd(cmd); });
 	}
 
 	const Rect *child_clip = clip_rect;
 	Rect own_clip;
 	bool clips_children = false;
 	const Overflow overflow = node->get_display_style().overflow;
-	if (overflow == Overflow::Scroll || overflow == Overflow::Hidden) {
+	if (overflow != Overflow::Visible) {
 		own_clip = node->get_absolute_rect();
 		if (clip_rect != nullptr) {
 			own_clip = clip_rect->intersect(own_clip);
