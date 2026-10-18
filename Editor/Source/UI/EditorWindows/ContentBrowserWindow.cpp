@@ -512,6 +512,11 @@ void ContentBrowserWindow::press(const std::string &path) {
 		if (double_click && tile.path == path && tile.is_directory) {
 			navigate(path);
 		}
+
+		if (double_click && tile.path == path &&
+			asset_type(std::filesystem::path(tile.path).filename().string()) == "script") {
+			Aquila::Platform::launch_detached("vscodium", { *VirtualFileSystem::get()->to_native_path(path) });
+		}
 	}
 }
 

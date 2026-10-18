@@ -32,6 +32,8 @@ class IFileSystem {
 	// Filesystem properties
 	[[nodiscard]] virtual bool is_read_only() const = 0;
 	[[nodiscard]] virtual std::string get_display_name() const = 0;
+	/// The file on disk behind `path`, nullopt when the backend isn't a plain folder.
+	[[nodiscard]] virtual Option<std::string> native_path(const std::string &path) const { return std::nullopt; }
 };
 } // namespace Aquila::Platform::Filesystem
 
