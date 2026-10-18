@@ -36,6 +36,7 @@ class ContentBrowserWindow final : public EditorWindow {
 	void open_background_menu(Vec2 position);
 	void open_item_menu(const std::string &path, Vec2 position);
 	void create(const ContentCreator &creator);
+	void import_files();
 	void begin_rename(const std::string &path);
 	void rename(const std::string &path, const std::string &name);
 	void confirm_delete(const std::string &path, Vec2 position);
