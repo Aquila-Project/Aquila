@@ -48,7 +48,7 @@
 .hierarchy-group-header {
     font-size: 11px;
     color: var(--text-muted);
-    height: 26px;
+    min-height: 26px;
 }
 
 .hierarchy-group-header:hover {
@@ -134,7 +134,7 @@
 .content-crumb {
     font-size: 12px;
     color: var(--text-dim);
-    height: 22px;
+    min-height: 22px;
     padding: 0px 6px;
     background-color: transparent;
     border-width: 0px;
@@ -157,7 +157,9 @@
 }
 
 .content-filter {
-    width: 160px;
+    width: grow;
+    max-width: 160px;
+    min-width: 0px;
     height: 24px;
     font-size: 12px;
 }
@@ -236,7 +238,7 @@
 
 #toolbar {
     width: 100%;
-    height: 40px;
+    min-height: 40px;
     flex-direction: row;
     align-items: center;
     background-color: var(--bg-deep);
@@ -319,7 +321,7 @@
     flex-direction: row;
     align-items: center;
     width: 100%;
-    height: 32px;
+    min-height: 32px;
     padding: 0px 6px;
     gap: 6px;
     background-color: var(--bg-panel);
@@ -419,9 +421,16 @@
 }
 
 .props-root {
-    flex-direction: row;
+    flex-direction: column;
     width: 100%;
     height: grow;
+    overflow: clip;
+}
+
+.props-frame {
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
 }
 
 .props-tabs {
@@ -475,7 +484,7 @@
     flex-direction: row;
     align-items: center;
     width: 100%;
-    height: 30px;
+    min-height: 30px;
     gap: 6px;
     padding: 0px 8px 0px 10px;
 }
@@ -542,7 +551,7 @@
 }
 
 .props-panel-header {
-    height: 26px;
+    min-height: 26px;
     padding: 0px 2px 0px 0px;
     background-color: transparent;
 }
@@ -593,7 +602,7 @@
 
 .props-add-component {
     width: 100%;
-    height: 24px;
+    min-height: 24px;
     gap: 6px;
     padding: 0px 8px;
     justify-content: start;
@@ -616,12 +625,12 @@
 }
 
 .props-dropdown {
-    height: 20px;
+    min-height: 20px;
     min-width: 0px;
 }
 
 .props-dropdown-header {
-    height: 20px;
+    min-height: 20px;
     gap: 6px;
     padding: 0px 6px;
     font-family: regular;
@@ -773,7 +782,7 @@
 
 @media (max-width: 500px) {
     #toolbar {
-        height: 36px;
+        min-height: 36px;
         padding: 0px 4px;
     }
 
@@ -805,7 +814,7 @@
 }
 
 .card-header {
-    height: 30px;
+    min-height: 30px;
     padding: 0px 4px 0px 2px;
     background-color: transparent;
 }
@@ -876,7 +885,7 @@
 }
 
 .component-header {
-    height: 28px;
+    min-height: 28px;
     padding: 0px 2px 0px 2px;
     background-color: transparent;
 }
@@ -899,7 +908,7 @@
     flex-direction: row;
     align-items: center;
     width: 100vw;
-    height: 24px;
+    min-height: 24px;
     padding: 0px 12px;
     gap: 16px;
     background-color: var(--bg-deep);
@@ -947,7 +956,7 @@
     flex-direction: row;
     align-items: center;
     width: 100%;
-    height: 36px;
+    min-height: 36px;
     padding: 0px 6px;
     gap: 2px;
     background-color: var(--bg-deep);
@@ -991,7 +1000,7 @@
     font-family: regular;
     font-size: 13px;
     color: var(--text-dim);
-    height: 26px;
+    min-height: 26px;
     padding: 0px 12px;
     align-items: center;
     justify-content: center;

@@ -1,16 +1,18 @@
 <View id="inspector-root" class="props-root">
-    <View id="props-tabs" class="props-tabs"/>
-    <View class="props-main">
-        <View id="props-head" class="props-head">
-            <Image id="props-head-icon" class="props-head-icon"/>
-            <TextInput id="inspector-name" class="props-name"/>
-            <Label id="inspector-uuid" class="props-uuid"/>
+    <View class="props-frame">
+        <View id="props-tabs" class="props-tabs"/>
+        <View class="props-main">
+            <View id="props-head" class="props-head">
+                <Image id="props-head-icon" class="props-head-icon"/>
+                <TextInput id="inspector-name" class="props-name"/>
+                <Label id="inspector-uuid" class="props-uuid"/>
+            </View>
+            <View id="inspector-empty" class="props-empty">
+                <Label class="inspector-empty-text">Select an entity in the Hierarchy to inspect it.</Label>
+            </View>
+            <ScrollView id="inspector-scroll">
+                <View id="inspector-pages" class="props-pages"/>
+            </ScrollView>
         </View>
-        <View id="inspector-empty" class="props-empty">
-            <Label class="inspector-empty-text">Select an entity in the Hierarchy to inspect it.</Label>
-        </View>
-        <ScrollView id="inspector-scroll">
-            <View id="inspector-pages" class="props-pages"/>
-        </ScrollView>
     </View>
 </View>

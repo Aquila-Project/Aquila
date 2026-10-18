@@ -79,7 +79,17 @@ const char *str(Display d) {
 	return d == Display::Flex ? "flex" : "none";
 }
 const char *str(Overflow o) {
-	return o == Overflow::Visible ? "visible" : (o == Overflow::Hidden ? "hidden" : "scroll");
+	switch (o) {
+	case Overflow::Visible:
+		return "visible";
+	case Overflow::Hidden:
+		return "hidden";
+	case Overflow::Scroll:
+		return "scroll";
+	case Overflow::Clip:
+		return "clip";
+	}
+	return "visible";
 }
 const char *str(Position p) {
 	switch (p) {

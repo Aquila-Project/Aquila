@@ -1,9 +1,13 @@
 #include "Aquila/UI/Widgets/Dropdown.h"
-#include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/UI/Core/IResourceResolver.h"
-#include "Aquila/UI/Text/FontAtlas.h"
 
 namespace Aquila::UI::Core {
+
+namespace {
+
+constexpr F32 k_sizer_height = 0.001F;
+
+}
 
 Dropdown::Dropdown() {
 	auto header = std::make_unique<Button>();
@@ -16,6 +20,23 @@ Dropdown::Dropdown() {
 	m_popup = dynamic_cast<Popup *>(add_child(std::move(popup)));
 
 	update_header();
+
+	StyleProperties header_style;
+	header_style.flex_direction = FlexDirection::Column;
+	header_style.align_items = AlignItems::Stretch;
+	header_style.justify_content = JustifyContent::Center;
+	header_style.gap = 0.F;
+	m_header->merge_style(header_style);
+
+	m_sizer = m_header->add_child<View>();
+	m_sizer->add_class("dropdown-sizer");
+	StyleProperties sizer_style;
+	sizer_style.flex_direction = FlexDirection::Column;
+	sizer_style.height = StyleLength::pixel(k_sizer_height);
+	sizer_style.overflow = Overflow::Clip;
+	sizer_style.opacity = 0.F;
+	m_sizer->merge_style(sizer_style);
+	rebuild_sizer();
 }
 
 void Dropdown::add_option(std::string value, std::string display, GFX::GfxTexture *icon) {
@@ -49,11 +70,13 @@ void Dropdown::clear_selection() {
 void Dropdown::set_icon(GFX::GfxTexture *icon) {
 	m_icon = icon;
 	update_header();
+	rebuild_sizer();
 }
 
 void Dropdown::set_chevron(GFX::GfxTexture *chevron) {
 	m_chevron = chevron;
 	m_header->set_trailing_icon(chevron);
+	rebuild_sizer();
 }
 
 void Dropdown::set_variant(const std::string &variant) {
@@ -89,6 +112,7 @@ void Dropdown::apply_xml_attribute(std::string_view name, std::string_view value
 void Dropdown::set_placeholder(std::string text) {
 	m_placeholder = std::move(text);
 	update_header();
+	rebuild_sizer();
 }
 
 void Dropdown::rebuild() {
@@ -109,61 +133,35 @@ void Dropdown::rebuild() {
 		});
 		m_option_buttons.push_back(m_popup->add_child(std::move(btn)));
 	}
+	rebuild_sizer();
+}
+
+void Dropdown::rebuild_sizer() {
+	if (m_sizer == nullptr) {
+		return;
+	}
+	while (!m_sizer->get_children().empty()) {
+		m_sizer->remove_child(m_sizer->get_children().back().get());
+	}
+	const bool reserve_icon = has_any_icon() || m_icon != nullptr;
+	auto add_row = [&](const std::string &text) {
+		if (text.empty()) {
+			return;
+		}
+		auto *row = m_sizer->add_child<IconLabel>(text);
+		row->set_reserve_icon_space(reserve_icon);
+		row->set_trailing_icon(m_chevron);
+	};
+	add_row(m_placeholder);
+	for (const auto &opt : m_options) {
+		add_row(opt.label());
+	}
 }
 
 void Dropdown::select(const std::string &value) {
 	m_value = value;
 	update_header();
 	on_changed(m_value);
-}
-
-Vec2 Dropdown::get_intrinsic_size() const {
-	Text::FontAtlas *font = get_resolved_font();
-	if (font == nullptr && m_header != nullptr) {
-		font = m_header->get_resolved_font();
-	}
-	if (font == nullptr) {
-		return { -1.F, -1.F };
-	}
-
-	const F32 font_size = get_display_style().font_size;
-
-	F32 widest = 0.F;
-	auto consider = [&](const std::string &text) {
-		if (text.empty()) {
-			return;
-		}
-		font->ensure_glyphs(text);
-		widest = Math::max(widest, font->measure_text(text, font_size).x);
-	};
-
-	consider(m_placeholder);
-	for (const auto &opt : m_options) {
-		consider(opt.label());
-	}
-
-	if (widest <= 0.F) {
-		return { -1.F, -1.F };
-	}
-
-	F32 chrome = 0.F;
-	if (m_header != nullptr) {
-		const ComputedStyle &header_style = m_header->get_display_style();
-		chrome += header_style.padding.left.resolve(0.F) + header_style.padding.right.resolve(0.F);
-		chrome += header_style.border_width * 2.F;
-
-		if (const IconLabel *content = m_header->get_content()) {
-			const F32 gap = content->get_display_style().gap;
-			if (m_icon != nullptr || has_any_icon()) {
-				chrome += Math::max(content->get_icon()->get_display_style().width.resolve(0.F), font_size) + gap;
-			}
-			if (m_chevron != nullptr) {
-				chrome += Math::max(content->get_icon()->get_display_style().width.resolve(0.F), font_size) + gap;
-			}
-		}
-	}
-
-	return { widest + chrome, -1.F };
 }
 
 void Dropdown::toggle_popup() {

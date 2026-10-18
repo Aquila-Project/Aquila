@@ -308,9 +308,13 @@ std::vector<Uint32> LayoutEngine::compute_wrap_lines(View *node) const {
 	for (View *child : children) {
 		const ComputedStyle &child_style = child->get_display_style();
 		const StyleLength &main_len = row ? child_style.width : child_style.height;
-		const F32 extent = main_len.unit == LengthUnit::Pixel
-			? main_len.value
-			: (row ? child->get_layout_rect().size.x : child->get_layout_rect().size.y);
+		const StyleLength &main_min = row ? child_style.min_width : child_style.min_height;
+		F32 extent = row ? child->get_layout_rect().size.x : child->get_layout_rect().size.y;
+		if (main_len.unit == LengthUnit::Pixel) {
+			extent = main_len.value;
+		} else if (main_len.unit == LengthUnit::Grow || child_style.flex_grow > 0.F) {
+			extent = pixels(main_min);
+		}
 		const F32 needed = count == 0 ? extent : used + cs.gap + extent;
 		if (count > 0 && needed > available) {
 			lines.push_back(count);
@@ -546,16 +550,16 @@ void LayoutEngine::layout_pass(View *node) {
 				 { .layout = layout,
 				   .aspectRatio = aspect_cfg,
 				   .floating = float_cfg,
-				   .clip = { .horizontal = true, .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
+				   .clip = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
 				emit_content();
 			}
 			break;
-		case Overflow::Hidden:
+		case Overflow::Clip:
 			CLAY(clay_id,
 				 { .layout = layout,
 				   .aspectRatio = aspect_cfg,
 				   .floating = float_cfg,
-				   .clip = { .horizontal = true, .vertical = false } }) {
+				   .clip = { .horizontal = true, .vertical = true } }) {
 				emit_content();
 			}
 			break;
@@ -609,16 +613,16 @@ void LayoutEngine::layout_pass(View *node) {
 				 { .layout = layout,
 				   .aspectRatio = aspect_cfg,
 				   .floating = float_cfg,
-				   .clip = { .horizontal = true, .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
+				   .clip = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
 				emit_content();
 			}
 			break;
-		case Overflow::Hidden:
+		case Overflow::Clip:
 			CLAY(clay_id,
 				 { .layout = layout,
 				   .aspectRatio = aspect_cfg,
 				   .floating = float_cfg,
-				   .clip = { .horizontal = true, .vertical = false } }) {
+				   .clip = { .horizontal = true, .vertical = true } }) {
 				emit_content();
 			}
 			break;
@@ -637,18 +641,18 @@ void LayoutEngine::layout_pass(View *node) {
 			 {
 				 .layout = layout,
 				 .aspectRatio = aspect_cfg,
-				 .clip = { .horizontal = true, .vertical = true, .childOffset = Clay_GetScrollOffset() },
+				 .clip = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() },
 			 }) {
 			emit_content();
 		}
 		break;
 
-	case Overflow::Hidden:
+	case Overflow::Clip:
 		CLAY(clay_id,
 			 {
 				 .layout = layout,
 				 .aspectRatio = aspect_cfg,
-				 .clip = { .horizontal = true, .vertical = false },
+				 .clip = { .horizontal = true, .vertical = true },
 			 }) {
 			emit_content();
 		}

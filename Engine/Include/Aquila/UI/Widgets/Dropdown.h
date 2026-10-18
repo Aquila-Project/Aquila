@@ -6,6 +6,10 @@
 
 namespace Aquila::UI::Core {
 
+/// Wants the width of its widest option but shrinks below it when there's no room, wrapping the header text.
+/// The header is a column: the visible IconLabel, then a transparent, almost zero high "sizer" with one copy per
+/// option. It has overflow: clip, so it adds the widest option to the header's natural width but nothing to its
+/// minimum. Clay treats a height of exactly 0 as unbounded, hence "almost".
 class Dropdown : public Control {
   public:
 	Dropdown();
@@ -27,7 +31,6 @@ class Dropdown : public Control {
 	void set_variant(const std::string &variant);
 	Signal<void(const std::string &)> on_changed;
 
-	[[nodiscard]] Vec2 get_intrinsic_size() const override;
 	void apply_xml_attribute(std::string_view name, std::string_view value,
 							 IResourceResolver *resolver = nullptr) override;
 
@@ -40,6 +43,7 @@ class Dropdown : public Control {
 	};
 
 	void rebuild();
+	void rebuild_sizer();
 	void select(const std::string &value);
 	void update_header();
 	[[nodiscard]] const Option *find_option(const std::string &value) const;
@@ -48,6 +52,7 @@ class Dropdown : public Control {
 
 	Button *m_header = nullptr;
 	Popup *m_popup = nullptr;
+	View *m_sizer = nullptr;
 	std::vector<Option> m_options;
 	std::string m_value;
 	std::string m_placeholder = "Select…";

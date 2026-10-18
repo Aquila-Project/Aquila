@@ -225,6 +225,12 @@ void TextInput::on_draw_self(Rendering::DrawList &draw_list) {
         line_h,
     },
 };
+	const Rect clip = {
+		.position = { rect.position.x + k_pad_x - 1.F, rect.position.y },
+		.size = { Math::max(rect.size.x - (k_pad_x * 2.F) + 2.F, 0.F), rect.size.y },
+	};
+	draw_list.push_clip(clip, z + 1);
+
 	if (m_is_focused && m_state.has_selection()) {
 		const float x0 = text_rect.position.x + m_state.measure_to_pos(*font, scale, m_state.selection_min());
 		const float x1 = text_rect.position.x + m_state.measure_to_pos(*font, scale, m_state.selection_max());
@@ -249,6 +255,8 @@ void TextInput::on_draw_self(Rendering::DrawList &draw_list) {
 
 		draw_list.draw_line({ cx, cy }, { cx, cy + line_h }, 0.5F, style.color, z + 2);
 	}
+
+	draw_list.pop_clip(z + 2);
 }
 
 } // namespace Aquila::UI::Core

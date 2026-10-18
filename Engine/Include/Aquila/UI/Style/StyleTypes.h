@@ -12,7 +12,9 @@ enum class AlignItems : Uint8 { Start, End, Center, Stretch };
 enum class FlexWrap : Uint8 { NoWrap, Wrap };
 
 enum class Display : Uint8 { Flex, None };
-enum class Overflow : Uint8 { Visible, Hidden, Scroll };
+/// Hidden and Scroll still lay children out in the box, so they shrink and their text wraps. Clip keeps children at
+/// their natural size and cuts them off, and doesn't count them in its own minimum size.
+enum class Overflow : Uint8 { Visible, Hidden, Scroll, Clip };
 enum class Position : Uint8 { Static, Relative, Absolute };
 enum class BorderStyle : Uint8 { Solid, Dashed, Dotted };
 
