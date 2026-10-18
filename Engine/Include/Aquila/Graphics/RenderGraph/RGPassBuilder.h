@@ -28,11 +28,13 @@ struct RGDepthAttachment {
 
 // Per-resource access records (used by the executor for barrier emission)
 struct RGTextureAccess {
+	RGTextureAccess(RGTextureHandle handle, ResourceState state) : handle(handle), state(state) {}
 	RGTextureHandle handle;
 	ResourceState state;
 };
 
 struct RGBufferAccess {
+	RGBufferAccess(RGBufferHandle handle, ResourceState state) : handle(handle), state(state) {}
 	RGBufferHandle handle;
 	ResourceState state;
 };
@@ -74,7 +76,7 @@ class RGPassBuilder {
 	/// Declare a texture write and returns the NEW versioned handle.
 	/// The caller MUST replace their local handle with the returned one.
 	[[nodiscard]] RGTextureHandle write_texture(RGTextureHandle handle,
-											   ResourceState state = ResourceState::ColorAttachment);
+												ResourceState state = ResourceState::ColorAttachment);
 
 	/// Declare a buffer  read.
 	RGBufferHandle read_buffer(RGBufferHandle handle, ResourceState state = ResourceState::ShaderRead);
@@ -82,23 +84,23 @@ class RGPassBuilder {
 	/// Declare a buffer write.
 	/// Returns the NEW versioned handle; caller must replace their local copy.
 	[[nodiscard]] RGBufferHandle write_buffer(RGBufferHandle handle,
-											 ResourceState state = ResourceState::UnorderedAccess);
+											  ResourceState state = ResourceState::UnorderedAccess);
 
 	/// Declare a depth-stencil attachment.
 	/// readOnly = true -> DepthRead layout, still usable as SRV in the same pass.
 	/// Returns handle (no version bump for read-only; bumps for read-write).
 	RGTextureHandle set_depth_attachment(RGTextureHandle handle, AttachmentLoadOp depth_load = AttachmentLoadOp::Clear,
-									   AttachmentStoreOp depth_store = AttachmentStoreOp::Store,
-									   AttachmentLoadOp stencil_load = AttachmentLoadOp::DontCare,
-									   AttachmentStoreOp stencil_store = AttachmentStoreOp::DontCare,
-									   bool read_only = false, ClearDepth clear = {});
+										 AttachmentStoreOp depth_store = AttachmentStoreOp::Store,
+										 AttachmentLoadOp stencil_load = AttachmentLoadOp::DontCare,
+										 AttachmentStoreOp stencil_store = AttachmentStoreOp::DontCare,
+										 bool read_only = false, ClearDepth clear = {});
 
 	/// Declare a color attachment at a given slot index.
 	/// Internally calls WriteTexture — returns the new versioned handle.
 	[[nodiscard]] RGTextureHandle set_color_attachment(Uint32 slot, RGTextureHandle handle,
-													 AttachmentLoadOp load_op = AttachmentLoadOp::Clear,
-													 AttachmentStoreOp store_op = AttachmentStoreOp::Store,
-													 ClearColor clear = {});
+													   AttachmentLoadOp load_op = AttachmentLoadOp::Clear,
+													   AttachmentStoreOp store_op = AttachmentStoreOp::Store,
+													   ClearColor clear = {});
 
 	// Mark this pass as having an external side effect (e.g. swapchain present).
 	// Prevents the culling step from removing it even when it has no tracked outputs.

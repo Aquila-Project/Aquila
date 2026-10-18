@@ -1044,13 +1044,6 @@ void VulkanDevice::create_logical_device() {
 	create_info.enabledExtensionCount = static_cast<Uint32>(DEVICE_EXTENSIONS.size());
 	create_info.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
 
-	if (enableValidationLayers) {
-		create_info.enabledLayerCount = static_cast<Uint32>(VALIDATION_LAYERS.size());
-		create_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
-	} else {
-		create_info.enabledLayerCount = 0;
-	}
-
 	if (vkCreateDevice(m_physical_device, &create_info, nullptr, &m_device) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create logical device!");
 	}
