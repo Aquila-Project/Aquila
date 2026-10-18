@@ -3,7 +3,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Scripting/ScriptBindings.h"
-#include "Aquila/Scripting/ScriptComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 
 namespace Aquila::Scripting {
 
@@ -29,7 +29,7 @@ void ScriptSystem::update(F32 delta_time) {
 	auto &registry = m_scene.get_registry();
 
 	for (auto it = m_instances.begin(); it != m_instances.end();) {
-		if (registry.valid(it->first) && registry.all_of<ScriptComponent>(it->first)) {
+		if (registry.valid(it->first) && registry.all_of<SceneManagement::Components::ScriptComponent>(it->first)) {
 			++it;
 			continue;
 		}
@@ -37,7 +37,7 @@ void ScriptSystem::update(F32 delta_time) {
 		it = m_instances.erase(it);
 	}
 
-	for (auto [entity, component] : registry.view<ScriptComponent>().each()) {
+	for (auto [entity, component] : registry.view<SceneManagement::Components::ScriptComponent>().each()) {
 		Instance &instance = m_instances[entity];
 		if (instance.path != component.path) {
 			start(entity, instance, component.path);

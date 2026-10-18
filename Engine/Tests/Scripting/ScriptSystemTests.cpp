@@ -5,10 +5,10 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
-#include "Aquila/Scripting/ScriptComponent.h"
 #include "Aquila/Scripting/ScriptSystem.h"
 
 using namespace Aquila;

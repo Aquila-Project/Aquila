@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/Defines.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 
 #include "runtime.h"
 

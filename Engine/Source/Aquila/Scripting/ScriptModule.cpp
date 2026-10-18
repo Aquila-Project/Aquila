@@ -3,13 +3,13 @@
 
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Foundation/SharedConstants.h"
-#include "Aquila/Scripting/ScriptComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scripting/ScriptSystem.h"
 
 namespace Aquila::Scripting {
 
 ScriptModule::ScriptModule() {
-	register_script_component();
+	SceneManagement::Components::register_script_component();
 }
 
 ScriptModule::~ScriptModule() = default;

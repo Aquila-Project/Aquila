@@ -1,8 +1,8 @@
 #include "UI/EditorWindows/HierarchyWindow.h"
 
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
-#include "Aquila/Scripting/ScriptComponent.h"
 #include "UI/ComponentIcons.h"
 #include "UI/Panels/HierarchyPanel.h"
 #include "UI/Panels/HierarchyTreeView.h"
@@ -50,7 +50,7 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 		if (asset.asset_type != "script") {
 			return;
 		}
-		entity.get_or_emplace<Aquila::Scripting::ScriptComponent>().path = asset.asset_path;
+		entity.get_or_emplace<Aquila::SceneManagement::Components::ScriptComponent>().path = asset.asset_path;
 		context().selection.select(entity);
 		context().selection.on_components_changed(entity);
 	});
