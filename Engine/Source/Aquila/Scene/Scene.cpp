@@ -345,6 +345,14 @@ Entity Scene::find_primary_camera() const {
 	return {}; // Return invalid entity if no primary camera found
 }
 
+Entity Scene::find_game_camera() const {
+	if (Entity primary = find_primary_camera(); primary.is_valid()) {
+		return primary;
+	}
+	auto cameras = get_registry().view<Components::CameraComponent>();
+	return cameras.empty() ? Entity{} : Entity(cameras.front(), const_cast<Scene *>(this));
+}
+
 bool Scene::serialize(const std::string &filepath) {
 	nlohmann::ordered_json scene_json;
 

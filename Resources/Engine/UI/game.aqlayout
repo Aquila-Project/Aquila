@@ -1,0 +1,12 @@
+<View id="game-root" class="game-root">
+    <View class="game-toolbar">
+        <Button id="game-pause" class="topbar-btn" src="Engine/UI/Icons/pause.svg" tooltip="Pause"/>
+        <View class="game-toolbar-spacer"/>
+        <Label id="game-camera" class="game-camera"/>
+    </View>
+    <View id="game-stage" class="game-stage">
+        <Image id="game-image" class="game-image"/>
+        <Label id="game-idle" class="game-message">Press Play to run the game</Label>
+        <Label id="game-no-camera" class="game-message hidden">No camera to look through. Add a camera, or mark one Primary.</Label>
+    </View>
+</View>

@@ -58,6 +58,9 @@ class EditorWindows {
 	[[nodiscard]] bool is_open(std::string_view type_id) const;
 	/// Shortcut scopes are window type ids. Active when that window is visible and accepts shortcuts.
 	[[nodiscard]] bool is_scope_active(std::string_view type_id) const;
+	/// A window of this type is open and on screen: its tab is the active one, nothing above it is hidden.
+	/// Follows the computed style, so it lags one frame behind a tab switch.
+	[[nodiscard]] bool is_visible(std::string_view type_id) const;
 
 	template <typename T> [[nodiscard]] T *find() const {
 		for (const Live &live : m_live) {

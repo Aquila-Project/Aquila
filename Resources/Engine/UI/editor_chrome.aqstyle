@@ -1050,6 +1050,57 @@
     font-family: mono;
     font-size: 12px;
 }
+.game-root {
+    width: grow;
+    height: grow;
+    flex-direction: column;
+}
+
+.game-toolbar {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 32px;
+    padding: 0px 6px;
+    gap: 2px;
+    background-color: var(--bg-base);
+}
+
+.game-toolbar-spacer {
+    width: grow;
+}
+
+.game-camera {
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.game-stage {
+    width: grow;
+    height: grow;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-deep);
+    border-width: 1px;
+    border-color: transparent;
+}
+
+
+.game-image {
+    width: grow;
+    height: grow;
+    flex-grow: 1;
+}
+
+.game-message {
+    font-family: regular;
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 12px;
+}
+
 .play-tint {
     background-color: var(--play-tint);
 }

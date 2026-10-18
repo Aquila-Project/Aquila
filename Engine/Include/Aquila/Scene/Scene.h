@@ -37,6 +37,8 @@ class Scene final {
 	[[nodiscard]] Entity get_active_camera_entity() const;
 	[[nodiscard]] bool has_active_camera() const;
 	[[nodiscard]] Entity find_primary_camera() const;
+	/// The primary camera, else the first camera, else an invalid entity. What a built game looks through.
+	[[nodiscard]] Entity find_game_camera() const;
 	[[nodiscard]] Foundation::UUID get_handle() const;
 
 	/// Recomputes world matrices for dirty transforms and their children, parents first.

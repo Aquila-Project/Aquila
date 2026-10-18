@@ -90,6 +90,8 @@ class EditorModule final : public Aquila::Application::IModule {
 	bool write_scene(const std::string &path);
 	[[nodiscard]] bool is_editing() const;
 	void start_playing();
+	/// Switches to the Game workspace on the next frame, unless a Game view is on screen already.
+	void show_game_view();
 	void toggle_pause();
 	void restore_edit_scene();
 	void wire_play_controls(Aquila::UI::Core::View *layout_root);
@@ -132,6 +134,10 @@ class EditorModule final : public Aquila::Application::IModule {
 	Aquila::UI::Core::Button *m_stop_button = nullptr;
 	/// Views that take the play-mode tint: top bar, status bar and the gaps between docked panels.
 	std::vector<Aquila::UI::Core::View *> m_play_tinted;
+	/// Where Play came from, Stop goes back there if the Game workspace is still the active one.
+	std::string m_workspace_before_play;
+	/// Applied at the start of the next frame, so no panel is destroyed while one of its buttons is being clicked.
+	Option<std::string> m_pending_workspace;
 
 	Aquila::SceneManagement::Entity m_outlined_entity;
 	Option<Aquila::SceneManagement::Entity> m_pending_pick;

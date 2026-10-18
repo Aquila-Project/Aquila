@@ -15,6 +15,9 @@ struct RenderSettings {
 	bool show_outline = true;
 	/// Render every frame even when nothing changed, like Godot's "Update Continuously".
 	bool realtime = false;
+
+	/// What a built game draws with: lit, no grid, no selection outline. The editor's Game view uses it too.
+	[[nodiscard]] static RenderSettings game() { return { .show_grid = false, .show_outline = false }; }
 };
 
 } // namespace Aquila::Rendering
