@@ -154,13 +154,12 @@ std::optional<Entity> EntityManager::find_entity_by_name(const std::string &name
 }
 
 void EntityManager::clear() {
-	m_deletion_queue.clear();
-
 	for (auto [entity] : m_registry.storage<entt::entity>().each()) {
 		m_registry.destroy(entity);
 	}
 
 	m_registry.clear();
+	m_deletion_queue.clear();
 }
 
 /**

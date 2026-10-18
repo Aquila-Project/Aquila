@@ -81,6 +81,14 @@ class ComponentRegistry {
 			}
 		};
 
+		if constexpr (std::is_copy_constructible_v<T>) {
+			add_copier(entt::type_hash<T>::value(), [](Entity from, Entity to) {
+				if (const T *component = from.try_get_component<T>()) {
+					to.add_or_replace_component<T>(*component);
+				}
+			});
+		}
+
 		Reflection::TypeInfo &type = descriptor->m_type;
 		m_descriptors.push_back(std::move(descriptor));
 		return Reflection::TypeBuilder<T>(type);
@@ -89,10 +97,17 @@ class ComponentRegistry {
 	[[nodiscard]] const ComponentDescriptor *find(std::string_view name) const;
 	[[nodiscard]] const std::vector<Unique<ComponentDescriptor>> &get_all() const { return m_descriptors; }
 
+	/// Copies every registered, copy constructible component `from` has onto `to`, once per type even when
+	/// several descriptors share it. Entity fields inside the components still point at `from`'s scene.
+	void copy_components(Entity from, Entity to) const;
+
   private:
 	ComponentRegistry();
 
+	void add_copier(entt::id_type type, Delegate<void(Entity, Entity)> copy);
+
 	std::vector<Unique<ComponentDescriptor>> m_descriptors;
+	std::vector<std::pair<entt::id_type, Delegate<void(Entity, Entity)>>> m_copiers;
 };
 
 }
