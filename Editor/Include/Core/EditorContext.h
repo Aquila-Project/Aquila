@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Aquila/Application/EngineContext.h"
+#include "Aquila/Foundation/Math/Rect.h"
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/UI/Core/Shortcuts.h"
@@ -74,6 +75,19 @@ class EditorContext {
 	[[nodiscard]] Aquila::Rendering::CameraController *camera() const { return m_camera; }
 	void set_camera(Aquila::Rendering::CameraController *camera) { m_camera = camera; }
 
+	/// See EditorWindows::is_visible(). False until the editor module hands over the window registry.
+	[[nodiscard]] bool is_window_visible(std::string_view type_id) const {
+		return m_window_visible && m_window_visible(type_id);
+	}
+	void set_window_visibility(Delegate<bool(std::string_view)> resolver) { m_window_visible = std::move(resolver); }
+
+	/// Where the Game view shows the game while it's live, in main window pixels. GameWindow keeps it current.
+	[[nodiscard]] Option<Rect> get_game_view() const { return m_game_view; }
+	void set_game_view(Option<Rect> rect) { m_game_view = rect; }
+	/// The game gets the keyboard and mouse: the Game view was clicked last. EditorModule keeps it.
+	[[nodiscard]] bool is_game_focused() const { return m_game_focused; }
+	void set_game_focused(bool focused) { m_game_focused = focused; }
+
 	/// A Lucide icon by name, like "list-tree" (Resources/Engine/UI/Icons/list-tree.svg).
 	[[nodiscard]] Aquila::GFX::GfxTexture *icon(std::string_view name) const;
 	/// A file from the editor's layout folder, by name.
@@ -97,6 +111,9 @@ class EditorContext {
 	std::string m_layout_dir;
 	Aquila::UI::Core::View *m_overlay_root = nullptr;
 	Aquila::Rendering::CameraController *m_camera = nullptr;
+	Delegate<bool(std::string_view)> m_window_visible;
+	Option<Rect> m_game_view;
+	bool m_game_focused = false;
 	ProjectInfo m_project;
 };
 

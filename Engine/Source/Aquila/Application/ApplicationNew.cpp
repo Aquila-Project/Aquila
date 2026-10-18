@@ -252,6 +252,9 @@ void Application::detach_modules() {
 
 void Application::set_play_state(PlayState state) {
 	const PlayState previous = std::exchange(m_play_state, state);
+	if (previous == PlayState::Stopped) {
+		m_game_input.clear();
+	}
 	const Usize count = m_attached_modules;
 	for (Usize i = 0; i < count; ++i) {
 		IModule &module = *m_modules[state == PlayState::Stopped ? count - 1 - i : i];
@@ -481,6 +484,7 @@ void Application::run_pre_render(F32 delta_time) {
 		module->on_pre_render(delta_time);
 	}
 	m_scene->get_entity_manager()->flush_deletion_queue();
+	m_game_input.end_frame();
 	if (m_play_state == PlayState::Playing) {
 		Foundation::FrameScheduler::get()->request_frame();
 	}

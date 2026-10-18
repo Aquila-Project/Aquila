@@ -19,6 +19,7 @@
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/Popup.h"
+#include "UI/EditorWindows/GameWindow.h"
 #include "UI/Panels/ViewportPanel.h"
 #include "UI/Viewport/TransformGizmo.h"
 #include "UI/Viewport/ViewportOverlay.h"
@@ -65,6 +66,9 @@ constexpr std::array<ShowToggle, 5> k_show_toggles = { {
 ViewportWindow::ViewportWindow(EditorContext &context) : EditorWindow(context) {}
 
 ViewportWindow::~ViewportWindow() {
+	if (Rendering::CameraController *camera = context().camera()) {
+		camera->set_navigation_blocked(true);
+	}
 }
 
 void ViewportWindow::build(UI::Core::View &content) {
@@ -168,6 +172,18 @@ void ViewportWindow::update(F32 delta_time) {
 
 	const Rect viewport = m_panel->get_content_rect();
 	if (viewport.size.x <= 1.F || viewport.size.y <= 1.F) {
+		return;
+	}
+
+	const bool game_live = GameWindow::is_live(context());
+	if (m_gizmo != nullptr) {
+		m_gizmo->set_hidden(game_live);
+	}
+	if (m_overlay != nullptr) {
+		m_overlay->set_hidden(game_live);
+	}
+	if (game_live) {
+		camera->set_navigation_blocked(true);
 		return;
 	}
 

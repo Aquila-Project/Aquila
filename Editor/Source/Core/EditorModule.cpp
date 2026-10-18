@@ -13,6 +13,7 @@
 #include "Aquila/UI/DevTools/UIDevTools.h"
 #include "UI/EditorWindows/ConsoleWindow.h"
 #include "UI/EditorWindows/ContentBrowserWindow.h"
+#include "UI/EditorWindows/GameWindow.h"
 #include "UI/EditorWindows/HierarchyWindow.h"
 #include "UI/EditorWindows/InspectorWindow.h"
 #include "UI/EditorWindows/ViewportWindow.h"
@@ -25,6 +26,7 @@
 #include "Aquila/Platform/Events/InputEvent.h"
 #include "Aquila/Platform/Events/KeyChord.h"
 #include "Aquila/Platform/Input.h"
+#include "Aquila/Platform/InputState.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Scene/Components/OutlineComponent.h"
 #include "Aquila/Scene/DefaultScenes.h"
@@ -52,6 +54,10 @@ using namespace Aquila::SceneManagement;
 using namespace Aquila::SceneManagement::Components;
 using namespace Aquila::Application;
 namespace Events = Aquila::Platform::Events;
+
+namespace {
+constexpr std::string_view k_game_workspace = "Game";
+}
 
 EditorModule::EditorModule(std::string project) : m_startup_project(std::move(project)) {}
 
@@ -164,6 +170,14 @@ void EditorModule::on_pre_render(F32 delta_time) {
 	if (m_restore_pending) {
 		restore_edit_scene();
 	}
+	if (m_context && !m_context->get_game_view()) {
+		set_game_focus(false);
+	}
+	if (m_pending_workspace && m_workspaces) {
+		const std::string workspace = std::move(*m_pending_workspace);
+		m_pending_workspace.reset();
+		m_workspaces->activate(workspace);
+	}
 
 
 	if (m_pending_pick && m_context) {
@@ -203,8 +217,10 @@ void EditorModule::on_event(Events::Event &event) {
 		return;
 	}
 	const bool from_main = event.get_source() == m_engine->get_window_host().get_main_window();
+	const bool to_game = from_main && route_to_game(event);
+	const bool game_keys = to_game && (event.get_category() & Events::EventCategory::Keyboard);
 
-	if (m_editor_camera) {
+	if (m_editor_camera && !to_game) {
 		m_editor_camera->on_event(event);
 	}
 
@@ -212,18 +228,47 @@ void EditorModule::on_event(Events::Event &event) {
 		return;
 	}
 
-	if (from_main) {
+	if (from_main && !game_keys) {
 		m_ui_host->on_event(event);
 	}
 
 	Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Events::KeyPressedEvent>([this, source_canvas](Events::KeyPressedEvent &e) {
+	dispatcher.dispatch<Events::KeyPressedEvent>([this, source_canvas, to_game](Events::KeyPressedEvent &e) {
 		if (!m_context) {
 			return false;
 		}
-		const bool typing = Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view());
+		const bool typing =
+			to_game || Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view());
 		return m_context->shortcuts.handle(Events::KeyChord::from(e), e.is_repeat(), typing);
 	});
+}
+
+bool EditorModule::route_to_game(Events::Event &event) {
+	const Option<Rect> view = m_context ? m_context->get_game_view() : std::nullopt;
+	if (!view) {
+		set_game_focus(false);
+		return false;
+	}
+	Events::EventDispatcher dispatcher(event);
+	dispatcher.dispatch<Events::MouseButtonPressedEvent>([this, &view](Events::MouseButtonPressedEvent &) {
+		set_game_focus(view->contains(Platform::Input::get_mouse_position()));
+		return false;
+	});
+	if (!m_context->is_game_focused()) {
+		return false;
+	}
+	m_engine->get_game_input().on_event(event);
+	return true;
+}
+
+void EditorModule::set_game_focus(bool focused) {
+	if (!m_context || m_context->is_game_focused() == focused) {
+		return;
+	}
+	m_context->set_game_focused(focused);
+	if (!focused) {
+		m_engine->get_game_input().release_all();
+	}
 }
 
 void EditorModule::set_outlined_entity(Entity entity) {
@@ -262,6 +307,13 @@ void EditorModule::on_resume() {
 
 void EditorModule::on_stop() {
 	m_restore_pending = m_edit_scene != nullptr;
+	const std::string back = std::exchange(m_workspace_before_play, {});
+	if (m_pending_workspace) {
+		m_pending_workspace.reset();
+	} else if (!back.empty() && m_workspaces &&
+			   m_workspaces->get_active() == k_game_workspace) {
+		m_pending_workspace = back;
+	}
 	sync_play_controls();
 }
 
@@ -278,8 +330,22 @@ void EditorModule::start_playing() {
 	Scene &scene = m_engine->get_scene();
 	m_edit_scene = std::make_unique<Scene>();
 	m_edit_scene->copy_from(scene);
+	if (const Entity camera = scene.find_game_camera(); camera.is_valid()) {
+		scene.set_active_camera(camera);
+	}
 	m_engine->play();
+	show_game_view();
 	AQUILA_LOG_INFO("EditorModule: playing '{}'", scene.get_scene_name());
+}
+
+void EditorModule::show_game_view() {
+	if (!m_workspaces ||
+		m_context->is_window_visible(GameWindow::k_type_id) ||
+		m_workspaces->get_active() == k_game_workspace) {
+		return;
+	}
+	m_workspace_before_play = m_workspaces->get_active();
+	m_pending_workspace = std::string(k_game_workspace);
 }
 
 void EditorModule::toggle_pause() {
@@ -453,6 +519,8 @@ void EditorModule::register_windows() {
 	m_windows->add<ContentBrowserWindow>(
 		{ .id = "content", .title = "Content", .icon = "folder-open", .group = "Scene" });
 	m_windows->add<ConsoleWindow>({ .id = "console", .title = "Console", .icon = "terminal", .group = "Diagnostics" });
+	m_windows->add<GameWindow>(
+		{ .id = std::string(GameWindow::k_type_id), .title = "Game", .icon = "gamepad-2", .group = "Scene" });
 }
 
 void EditorModule::add_window_type(EditorWindowType type) {
@@ -514,6 +582,15 @@ void EditorModule::register_workspaces() {
 			{ 0.60F, row({ { 0.68F, tabs({ "viewport" }) }, { 0.32F, tabs({ "inspector", "hierarchy" }) } }) },
 			{ 0.40F, tabs({ "console", "content" }) },
 		})));
+
+	m_workspaces->add(std::string(k_game_workspace),
+					  layout(row({
+						  { 0.18F, tabs({ "hierarchy" }) },
+						  { 0.60F,
+							column({ { 0.70F, tabs({ std::string(GameWindow::k_type_id) }) },
+									 { 0.30F, tabs({ "console", "content" }) } }) },
+						  { 0.22F, tabs({ "inspector" }) },
+					  })));
 }
 
 void EditorModule::setup_editor_ui() {
@@ -568,6 +645,8 @@ void EditorModule::setup_editor_ui() {
 	m_windows->attach(*m_dock_space);
 	m_context->shortcuts.set_scope_resolver(
 		[this](std::string_view scope) { return m_windows && m_windows->is_scope_active(scope); });
+	m_context->set_window_visibility(
+		[this](std::string_view type_id) { return m_windows && m_windows->is_visible(type_id); });
 
 	m_dock_manager =
 		std::make_unique<Aquila::UI::Core::DockWindowManager>(m_engine->get_window_host(), cfg.ui.style_paths);

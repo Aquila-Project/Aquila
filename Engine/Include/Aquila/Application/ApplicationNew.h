@@ -10,6 +10,7 @@
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxSwapchain.h"
 #include "Aquila/GFX/GfxTexture.h"
+#include "Aquila/Platform/InputState.h"
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/Rendering/IRenderWindowHost.h"
 #include "Aquila/Rendering/RenderPipeline.h"
@@ -147,6 +148,7 @@ class Application : public Rendering::IRenderWindowHost {
 	bool m_modules_attached = false;
 	Usize m_attached_modules = 0;
 	PlayState m_play_state = PlayState::Stopped;
+	Platform::InputState m_game_input;
 
 	ApplicationSpec m_spec;
 	Unique<Window> m_window;

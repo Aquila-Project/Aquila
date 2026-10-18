@@ -123,6 +123,20 @@ bool EditorWindows::is_scope_active(std::string_view type_id) const {
 	});
 }
 
+bool EditorWindows::is_visible(std::string_view type_id) const {
+	return std::ranges::any_of(m_live, [type_id](const Live &live) {
+		if (live.window->get_type_id() != type_id || live.panel == nullptr) {
+			return false;
+		}
+		for (const View *view = live.panel; view != nullptr; view = view->get_parent()) {
+			if (view->get_computed_style().display == Aquila::UI::Display::None) {
+				return false;
+			}
+		}
+		return true;
+	});
+}
+
 void EditorWindows::forget(EditorWindow *window) {
 	std::erase_if(m_live, [window](const Live &live) { return live.window == window; });
 }
