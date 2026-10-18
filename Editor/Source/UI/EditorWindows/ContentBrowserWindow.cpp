@@ -5,6 +5,7 @@
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/GFX/GfxTexture.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+#include "Aquila/Platform/Process.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/Button.h"
@@ -12,6 +13,7 @@
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/TextInput.h"
+#include "Core/FileDialog.h"
 
 #include <initializer_list>
 
@@ -398,8 +400,33 @@ void ContentBrowserWindow::open_background_menu(Vec2 position) {
 						 [this, i] { create(context().content_creators[i]); });
 	}
 	m_menu->add_separator();
+	m_menu->add_item("Import Files...", {}, context().icon("plus"), [this] { defer([this] { import_files(); }); });
+	m_menu->add_item(Aquila::Platform::file_manager_action_name(), {}, context().icon("folder-open"),
+					 [this] { Aquila::Platform::show_in_file_manager(context().to_native(m_directory)); });
 	m_menu->add_item("Refresh", {}, context().icon("refresh-cw"), [this] { navigate(m_directory); });
 	m_menu->open_at(position);
+}
+
+void ContentBrowserWindow::import_files() {
+	const std::vector<std::string> files = FileDialog::open_files({}, {});
+	if (files.empty()) {
+		return;
+	}
+	std::string last;
+	for (const std::string &file : files) {
+		const std::string target = unique_path(m_directory, std::filesystem::path(file).filename().string());
+		std::error_code error;
+		std::filesystem::copy(file, context().to_native(target), std::filesystem::copy_options::recursive, error);
+		if (error) {
+			AQUILA_LOG_WARNING("ContentBrowserWindow: couldn't import {}: {}", file, error.message());
+			continue;
+		}
+		last = target;
+	}
+	if (!last.empty()) {
+		m_selected = last;
+	}
+	navigate(m_directory);
 }
 
 void ContentBrowserWindow::create(const ContentCreator &creator) {
@@ -419,6 +446,9 @@ void ContentBrowserWindow::open_item_menu(const std::string &path, Vec2 position
 	m_menu->add_item("Rename", "F2", context().icon("pencil"), [this, path] { begin_rename(path); });
 	m_menu->add_item("Delete", "Del", context().icon("trash"),
 					 [this, path, position] { defer([this, path, position] { confirm_delete(path, position); }); });
+	m_menu->add_separator();
+	m_menu->add_item(Aquila::Platform::file_manager_action_name(), {}, context().icon("folder-open"),
+					 [this, path] { Aquila::Platform::show_in_file_manager(context().to_native(path)); });
 	m_menu->open_at(position);
 }
 
