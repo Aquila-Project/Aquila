@@ -10,6 +10,10 @@ namespace Aquila::SceneManagement {
 class Scene;
 }
 
+namespace Aquila::Platform {
+class InputState;
+}
+
 namespace Aquila::Scripting {
 
 /// What scripts see as `Entity`, just the EnTT id.

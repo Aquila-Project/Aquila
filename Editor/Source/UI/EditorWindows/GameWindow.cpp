@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Platform/InputState.h"
 #include "Aquila/Rendering/CameraController.h"
 #include "Aquila/Rendering/RenderPipeline.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
@@ -18,6 +19,7 @@ using Application::PlayState;
 GameWindow::GameWindow(EditorContext &context) : EditorWindow(context) {}
 
 GameWindow::~GameWindow() {
+	context().set_game_view(std::nullopt);
 	set_live(false);
 }
 
@@ -68,10 +70,14 @@ void GameWindow::update(F32) {
 	const bool live = is_live(context());
 	set_live(live);
 	if (!live) {
+		context().set_game_view(std::nullopt);
 		return;
 	}
 
 	const Rect view = has_camera ? m_image->get_absolute_rect() : m_stage->get_absolute_rect();
+	context().set_game_view(view);
+	context().engine().get_game_input().set_view(view.position, view.size);
+	m_stage->set_class("game-stage-focused", context().is_game_focused());
 
 	if (Rendering::CameraController *camera = context().camera()) {
 		camera->set_navigation_blocked(true);

@@ -26,6 +26,7 @@
 #include "Aquila/Platform/Events/InputEvent.h"
 #include "Aquila/Platform/Events/KeyChord.h"
 #include "Aquila/Platform/Input.h"
+#include "Aquila/Platform/InputState.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Scene/Components/OutlineComponent.h"
 #include "Aquila/Scene/DefaultScenes.h"
@@ -169,6 +170,9 @@ void EditorModule::on_pre_render(F32 delta_time) {
 	if (m_restore_pending) {
 		restore_edit_scene();
 	}
+	if (m_context && !m_context->get_game_view()) {
+		set_game_focus(false);
+	}
 	if (m_pending_workspace && m_workspaces) {
 		const std::string workspace = std::move(*m_pending_workspace);
 		m_pending_workspace.reset();
@@ -213,8 +217,10 @@ void EditorModule::on_event(Events::Event &event) {
 		return;
 	}
 	const bool from_main = event.get_source() == m_engine->get_window_host().get_main_window();
+	const bool to_game = from_main && route_to_game(event);
+	const bool game_keys = to_game && (event.get_category() & Events::EventCategory::Keyboard);
 
-	if (m_editor_camera) {
+	if (m_editor_camera && !to_game) {
 		m_editor_camera->on_event(event);
 	}
 
@@ -222,18 +228,47 @@ void EditorModule::on_event(Events::Event &event) {
 		return;
 	}
 
-	if (from_main) {
+	if (from_main && !game_keys) {
 		m_ui_host->on_event(event);
 	}
 
 	Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Events::KeyPressedEvent>([this, source_canvas](Events::KeyPressedEvent &e) {
+	dispatcher.dispatch<Events::KeyPressedEvent>([this, source_canvas, to_game](Events::KeyPressedEvent &e) {
 		if (!m_context) {
 			return false;
 		}
-		const bool typing = Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view());
+		const bool typing =
+			to_game || Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view());
 		return m_context->shortcuts.handle(Events::KeyChord::from(e), e.is_repeat(), typing);
 	});
+}
+
+bool EditorModule::route_to_game(Events::Event &event) {
+	const Option<Rect> view = m_context ? m_context->get_game_view() : std::nullopt;
+	if (!view) {
+		set_game_focus(false);
+		return false;
+	}
+	Events::EventDispatcher dispatcher(event);
+	dispatcher.dispatch<Events::MouseButtonPressedEvent>([this, &view](Events::MouseButtonPressedEvent &) {
+		set_game_focus(view->contains(Platform::Input::get_mouse_position()));
+		return false;
+	});
+	if (!m_context->is_game_focused()) {
+		return false;
+	}
+	m_engine->get_game_input().on_event(event);
+	return true;
+}
+
+void EditorModule::set_game_focus(bool focused) {
+	if (!m_context || m_context->is_game_focused() == focused) {
+		return;
+	}
+	m_context->set_game_focused(focused);
+	if (!focused) {
+		m_engine->get_game_input().release_all();
+	}
 }
 
 void EditorModule::set_outlined_entity(Entity entity) {

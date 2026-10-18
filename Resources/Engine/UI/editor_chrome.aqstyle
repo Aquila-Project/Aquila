@@ -1087,6 +1087,9 @@
     border-color: transparent;
 }
 
+.game-stage-focused {
+    border-color: var(--accent);
+}
 
 .game-image {
     width: grow;

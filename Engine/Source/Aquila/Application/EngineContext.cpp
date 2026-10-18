@@ -77,4 +77,8 @@ PlayState EngineContext::get_play_state() const {
 	return m_application.m_play_state;
 }
 
+Platform::InputState &EngineContext::get_game_input() const {
+	return m_application.m_game_input;
+}
+
 }

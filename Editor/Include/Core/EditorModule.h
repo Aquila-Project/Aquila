@@ -95,6 +95,11 @@ class EditorModule final : public Aquila::Application::IModule {
 	void toggle_pause();
 	void restore_edit_scene();
 	void wire_play_controls(Aquila::UI::Core::View *layout_root);
+	/// Feeds the event to the game input while the game has focus, a press inside the Game view gives it focus.
+	/// @return true when the game took it.
+	bool route_to_game(Aquila::Platform::Events::Event &event);
+	/// Losing focus lets go of everything the game had held.
+	void set_game_focus(bool focused);
 	void sync_play_controls();
 
 	Aquila::Application::EngineContext *m_engine = nullptr;

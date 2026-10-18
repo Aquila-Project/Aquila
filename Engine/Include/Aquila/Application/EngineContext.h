@@ -12,6 +12,10 @@ namespace Aquila::SceneManagement {
 class Scene;
 }
 
+namespace Aquila::Platform {
+class InputState;
+}
+
 namespace Aquila::Rendering {
 class IRenderWindowHost;
 class ObjectPickingSystem;
@@ -58,6 +62,12 @@ class EngineContext {
 	/// Modules get IModule::on_stop() in reverse order. The engine doesn't put the scene back, the editor does.
 	void stop() const;
 	[[nodiscard]] PlayState get_play_state() const;
+
+	/// The input the game reads (scripts, plugins). Nothing feeds it on its own: whatever shows the game passes it
+	/// the events the game should get and sets its view (PlayerModule: the whole window, the editor: its Game view).
+	/// Just pressed/released and motion are cleared after every on_pre_render(), and it's cleared on play().
+	[[nodiscard]] Platform::InputState &get_game_input() const;
+
   private:
 	Application &m_application;
 };
