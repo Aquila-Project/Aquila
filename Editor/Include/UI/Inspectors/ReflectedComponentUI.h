@@ -29,6 +29,9 @@ class ReflectedComponentUI : public IComponentUI {
 	void remove(Aquila::SceneManagement::Entity entity) override;
 
   protected:
+	/// Runs after the user edits a reflected property, before on_edited.
+	virtual void on_reflected_edit(Aquila::SceneManagement::Entity entity) {}
+
 	[[nodiscard]] const Aquila::SceneManagement::ComponentDescriptor &get_descriptor() const { return m_descriptor; }
 	[[nodiscard]] Aquila::UI::Core::ReflectedPropertyGrid *get_properties() { return m_properties.get(); }
 

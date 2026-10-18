@@ -30,6 +30,7 @@ void ReflectedComponentUI::remove(Entity entity) {
 void ReflectedComponentUI::show(Entity entity) {
 	const ComponentDescriptor &descriptor = m_descriptor;
 	m_properties->bind(descriptor.get(entity), [this, &descriptor, entity] {
+		on_reflected_edit(entity);
 		if (Signal<void()> *changed = descriptor.get_changed_signal(entity)) {
 			(*changed)();
 		}

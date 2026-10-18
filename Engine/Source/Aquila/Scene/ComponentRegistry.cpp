@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Graphics/Material/Material.h"
+#include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
@@ -112,7 +113,24 @@ void register_builtin_components(ComponentRegistry &registry) {
 			"Render Skybox", [](const SkyLightComponent &sky) { return sky.m_render_skybox; },
 			&SkyLightComponent::set_render_skybox, PropertyHints{ .toggle = true });
 
-	registry.register_component<MeshComponent>("Mesh");
+	registry.register_component<MeshComponent>("Mesh").property(
+		"Model",
+		[](const MeshComponent &mesh) {
+			using Graphics::Resources::MeshSourceKind;
+			const bool is_model = mesh.data && mesh.data->get_source().kind == MeshSourceKind::Asset;
+			return is_model ? mesh.data->get_source().path : std::string();
+		},
+		[](MeshComponent &mesh, const std::string &path) {
+			if (path.empty()) {
+				mesh.set_mesh(nullptr);
+				return;
+			}
+			if (Ref<Graphics::Resources::Mesh> model =
+					Graphics::Resources::MeshLibrary::instance().load(Graphics::Resources::MeshSource::asset(path))) {
+				mesh.set_mesh(model);
+			}
+		},
+		PropertyHints{ .asset_type = "model" });
 
 	registry.register_component<MeshComponent>("Shadows", false, ComponentCategory::Rendering)
 		.property("Cast Shadows", &MeshComponent::cast_shadows)
