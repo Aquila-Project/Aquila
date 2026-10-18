@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/SkySystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/Rendering/FrameContext.h"
 #include "Aquila/Rendering/SceneFrameData.h"
@@ -17,7 +18,7 @@ namespace Aquila::Rendering {
 
 using namespace Graphics;
 using namespace SceneManagement::Components;
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 void SkySystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
@@ -43,10 +44,10 @@ void SkySystem::on_init(GFX::GfxContext &ctx) {
 	}
 
 	m_pipeline = Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "HosekWilkieSky.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "HosekWilkieSky.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "HosekWilkieSky.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "HosekWilkieSky.slang", stages, err)) {
 				AQUILA_LOG_ERROR("SkySystem: shader compile failed: {}", err);
 				return nullptr;
 			}

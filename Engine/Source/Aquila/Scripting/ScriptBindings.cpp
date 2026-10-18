@@ -1,4 +1,5 @@
 #include "Aquila/Scripting/ScriptBindings.h"
+#include "Aquila/Foundation/EnginePaths.h"
 
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Macros.h"
@@ -41,7 +42,7 @@ template <typename T> T *check_component(lua_State *state) {
 void register_engine_api(aquiLua::Runtime &runtime, SceneManagement::Scene &scene) {
 	runtime.bind<log>("native.log", "Writes message to the engine log.");
 	runtime.bind<request_frame>("native.request_frame", "Requests another frame.");
-	runtime.add_alias("aquila", SharedConstants::RESOURCES_DIR + "Engine/API");
+	runtime.add_alias("aquila", Foundation::EnginePaths::resources_dir() + "Engine/API");
 
 	runtime.register_type<ScriptEntity>(
 		{

@@ -1,5 +1,6 @@
 #include "Aquila/Graphics/Core/Renderer2D.h"
 #include "Aquila/Foundation/SharedConstants.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/GFX/GfxDescriptorSet.h"
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
@@ -9,12 +10,16 @@
 using namespace Aquila;
 using namespace Aquila::Graphics;
 
-static constexpr const char *K_FLAT_SHADER = AQUILA_SHADERS_DIR "2D/Flat2D.slang";
-static constexpr const char *K_TEXTURE_SHADER = AQUILA_SHADERS_DIR "2D/Sprite2D.slang";
-static constexpr const char *K_GUI_SHADER = AQUILA_SHADERS_DIR "2D/GUI2D.slang";
-static constexpr const char *K_POINT_SHADER = AQUILA_SHADERS_DIR "2D/Point2D.slang";
-static constexpr const char *K_TEXT_SHADER = AQUILA_SHADERS_DIR "2D/Text2D.slang";
-static constexpr const char *K_SHADOW_SHADER = AQUILA_SHADERS_DIR "2D/Shadow2D.slang";
+static constexpr std::string_view K_FLAT_SHADER = "2D/Flat2D.slang";
+static constexpr std::string_view K_TEXTURE_SHADER = "2D/Sprite2D.slang";
+static constexpr std::string_view K_GUI_SHADER = "2D/GUI2D.slang";
+static constexpr std::string_view K_POINT_SHADER = "2D/Point2D.slang";
+static constexpr std::string_view K_TEXT_SHADER = "2D/Text2D.slang";
+static constexpr std::string_view K_SHADOW_SHADER = "2D/Shadow2D.slang";
+
+static std::string shader_path(std::string_view file) {
+	return Foundation::EnginePaths::shaders_dir() + std::string(file);
+}
 
 static constexpr Uint32 K_MAX_PRIMITIVE_VERTICES = SharedConstants::MAX_QUADS * SharedConstants::VERTS_PER_QUAD;
 
@@ -219,32 +224,32 @@ Renderer2D::~Renderer2D() {
 void Renderer2D::register_shader_hot_reload() {
 	auto *hot_reload = Shader::ShaderHotReload::get();
 
-	m_watch_ids.push_back(hot_reload->register_reloadable(K_FLAT_SHADER, [this]() {
+	m_watch_ids.push_back(hot_reload->register_reloadable(shader_path(K_FLAT_SHADER), [this]() {
 		m_ctx.wait_idle();
 		m_flat_pipelines.clear();
 		m_last_bound_pipeline = nullptr;
 	}));
-	m_watch_ids.push_back(hot_reload->register_reloadable(K_TEXTURE_SHADER, [this]() {
+	m_watch_ids.push_back(hot_reload->register_reloadable(shader_path(K_TEXTURE_SHADER), [this]() {
 		m_ctx.wait_idle();
 		m_texture_pipelines.clear();
 		m_last_bound_pipeline = nullptr;
 	}));
-	m_watch_ids.push_back(hot_reload->register_reloadable(K_GUI_SHADER, [this]() {
+	m_watch_ids.push_back(hot_reload->register_reloadable(shader_path(K_GUI_SHADER), [this]() {
 		m_ctx.wait_idle();
 		m_gui_pipelines.clear();
 		m_last_bound_pipeline = nullptr;
 	}));
-	m_watch_ids.push_back(hot_reload->register_reloadable(K_TEXT_SHADER, [this]() {
+	m_watch_ids.push_back(hot_reload->register_reloadable(shader_path(K_TEXT_SHADER), [this]() {
 		m_ctx.wait_idle();
 		m_text_pipelines.clear();
 		m_last_bound_pipeline = nullptr;
 	}));
-	m_watch_ids.push_back(hot_reload->register_reloadable(K_SHADOW_SHADER, [this]() {
+	m_watch_ids.push_back(hot_reload->register_reloadable(shader_path(K_SHADOW_SHADER), [this]() {
 		m_ctx.wait_idle();
 		m_shadow_pipelines.clear();
 		m_last_bound_pipeline = nullptr;
 	}));
-	m_watch_ids.push_back(hot_reload->register_reloadable(K_POINT_SHADER, [this]() {
+	m_watch_ids.push_back(hot_reload->register_reloadable(shader_path(K_POINT_SHADER), [this]() {
 		m_ctx.wait_idle();
 		m_point_pipelines.clear();
 		m_last_bound_pipeline = nullptr;
@@ -354,7 +359,7 @@ void Renderer2D::execute_replay(GFX::GfxCommandList &cmd) {
 	}
 }
 
-GFX::GfxPipeline &Renderer2D::get_or_create_pipeline(PipelineCache &cache, const char *shader_path,
+GFX::GfxPipeline &Renderer2D::get_or_create_pipeline(PipelineCache &cache, std::string_view shader_file,
 													  GFX::GfxDescriptorSetLayout *set_layout,
 													  RHI::VertexBindingDesc (*vertex_layout)(),
 													  RHI::PrimitiveTopology topology, const PipelineKey &key) {
@@ -366,7 +371,8 @@ GFX::GfxPipeline &Renderer2D::get_or_create_pipeline(PipelineCache &cache, const
 	if (set_layout != nullptr) {
 		set_layouts.push_back(set_layout);
 	}
-	cache[key] = build_pipeline(m_ctx, shader_path, set_layouts, sizeof(QuadPushConstants), key.color_format,
+	const std::string path = shader_path(shader_file);
+	cache[key] = build_pipeline(m_ctx, path.c_str(), set_layouts, sizeof(QuadPushConstants), key.color_format,
 								key.sample_count, key.depth_format, vertex_layout(), topology);
 	return *cache[key];
 }

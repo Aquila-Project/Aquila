@@ -1,4 +1,5 @@
 #include "Aquila/Rendering/Systems/GridSystem.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Rendering/FrameContext.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/GFX/GfxContext.h"
@@ -12,16 +13,16 @@
 namespace Aquila::Rendering {
 
 using namespace Graphics;
-using Aquila::SharedConstants::SHADERS_DIR;
+using Aquila::Foundation::EnginePaths::shaders_dir;
 
 void GridSystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
 
 	m_pipeline = Shader::ReloadablePipeline::create(
-		ctx, SHADERS_DIR + "Grid.slang", [](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
+		ctx, shaders_dir() + "Grid.slang", [](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
 			std::vector<RHI::VulkanCompiledStage> stages;
 			std::string err;
-			if (!RHI::VulkanShaderCompiler::compile_file(SHADERS_DIR + "Grid.slang", stages, err)) {
+			if (!RHI::VulkanShaderCompiler::compile_file(shaders_dir() + "Grid.slang", stages, err)) {
 				AQUILA_LOG_ERROR("GridSystem: shader compile failed: {}", err);
 				return nullptr;
 			}

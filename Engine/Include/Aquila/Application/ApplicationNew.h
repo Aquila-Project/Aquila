@@ -22,6 +22,9 @@ struct ApplicationSpec {
 	Uint32 height = 1080;
 	/// The main window stays hidden until Window::show(), the project launcher uses it.
 	bool start_hidden = false;
+	/// Native folders for the engine's own shaders and resources. Empty keeps the source tree, see EnginePaths.
+	std::string shaders_dir;
+	std::string resources_dir;
 };
 
 namespace Aquila::Graphics {

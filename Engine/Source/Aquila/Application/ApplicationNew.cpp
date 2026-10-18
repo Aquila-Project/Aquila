@@ -1,4 +1,6 @@
 #include "Aquila/Application/ApplicationNew.h"
+
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Profiler.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/Input.h"
@@ -49,6 +51,13 @@ struct FrameGuard {
 } // namespace
 
 Application::Application(const ApplicationSpec &spec) : m_spec(spec) {
+	if (!spec.shaders_dir.empty()) {
+		Foundation::EnginePaths::set_shaders_dir(spec.shaders_dir);
+	}
+	if (!spec.resources_dir.empty()) {
+		Foundation::EnginePaths::set_resources_dir(spec.resources_dir);
+	}
+
 	m_timer = std::make_unique<Foundation::Stopwatch>();
 	m_window = std::make_unique<Window>(spec.width, spec.height, spec.name, true, spec.start_hidden);
 	Foundation::Profiler::Profiler::init();
@@ -64,7 +73,7 @@ Application::Application(const ApplicationSpec &spec) : m_spec(spec) {
 void Application::route_window_event(Platform::Events::Event &event) {
 	Platform::Input::on_event(event);
 
-	auto *source = event.get_source();
+	const auto *source = event.get_source();
 
 	if (source == nullptr) {
 		return;
@@ -195,8 +204,7 @@ F64 Application::seconds_until_frame_slot() const {
 Option<F64> Application::idle_timeout() const {
 	Option<F64> timeout = Foundation::FrameScheduler::get()->seconds_until_deadline();
 	if (Graphics::Shader::ShaderHotReload::get()->is_enabled()) {
-		const F64 until_check =
-			std::max(Foundation::elapsed_seconds(Foundation::now(), m_next_hot_reload_check), 0.0);
+		const F64 until_check = std::max(Foundation::elapsed_seconds(Foundation::now(), m_next_hot_reload_check), 0.0);
 		timeout = timeout ? std::min(*timeout, until_check) : until_check;
 	}
 	return timeout;
@@ -240,8 +248,10 @@ void Application::init_rendering(Uint32 width, Uint32 height) {
 	Foundation::FrameScheduler::get()->set_wake([] { Window::wake(); });
 
 	using namespace Platform::Filesystem;
-	VirtualFileSystem::get()->mount("/resources", std::make_shared<NativeFileSystem>(SharedConstants::RESOURCES_DIR));
-	VirtualFileSystem::get()->mount("/shaders", std::make_shared<NativeFileSystem>(SharedConstants::SHADERS_DIR));
+	VirtualFileSystem::get()->mount("/resources",
+									std::make_shared<NativeFileSystem>(Foundation::EnginePaths::resources_dir()));
+	VirtualFileSystem::get()->mount("/shaders",
+									std::make_shared<NativeFileSystem>(Foundation::EnginePaths::shaders_dir()));
 	VirtualFileSystem::get()->mount("/app",
 									std::make_shared<NativeFileSystem>(Platform::Filesystem::path_executable_dir()));
 
