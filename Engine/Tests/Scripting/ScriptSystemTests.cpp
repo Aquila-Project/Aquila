@@ -195,4 +195,65 @@ TEST_SUITE("ScriptSystem") {
 		system.update(0.F);
 		CHECK(entity.get_component<TransformComponent>().get_local_position().x == doctest::Approx(2.F));
 	}
+
+	TEST_CASE("stop() runs on_stop once per running script, the next update starts them again") {
+		std::string path = write_script("lifetime.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set_name("started")
+			end
+			function M.on_stop(self)
+				self:set_name("stopped")
+				self:set_position(self:get_position() + vector.create(1, 0, 0))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		auto x = [&entity] { return entity.get_component<TransformComponent>().get_local_position().x; };
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "started");
+
+		system.stop();
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "stopped");
+		CHECK(x() == doctest::Approx(1.F));
+
+		system.stop();
+		CHECK(x() == doctest::Approx(1.F));
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "started");
+	}
+
+	TEST_CASE("on_stop runs when the script is removed or replaced, not when its entity is destroyed") {
+		std::string path = write_script("stop-moves.luau", R"(
+			local M = {}
+			function M.on_stop(self)
+				self:set_position(self:get_position() + vector.create(1, 0, 0))
+			end
+			return M
+		)");
+		std::string other = write_script("empty.luau", "return {}");
+		Scene scene("Test");
+		Entity removed = scripted_entity(scene, path);
+		Entity replaced = scripted_entity(scene, path);
+		Entity destroyed = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		auto x = [](Entity entity) { return entity.get_component<TransformComponent>().get_local_position().x; };
+
+		system.update(0.F);
+		removed.remove_component<ScriptComponent>();
+		replaced.get_component<ScriptComponent>().path = other;
+		scene.get_entity_manager()->destroy_entity(destroyed);
+		system.update(0.F);
+
+		CHECK(x(removed) == doctest::Approx(1.F));
+		CHECK(x(replaced) == doctest::Approx(1.F));
+
+		system.stop();
+		CHECK(x(replaced) == doctest::Approx(1.F));
+	}
+
 }

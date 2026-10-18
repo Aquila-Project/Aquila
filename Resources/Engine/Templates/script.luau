@@ -10,4 +10,6 @@ end
 
 function M.on_update(self: Entity, dt: number) end
 
+function M.on_stop(self: Entity) end
+
 return M

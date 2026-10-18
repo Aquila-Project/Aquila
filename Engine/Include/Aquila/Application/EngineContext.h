@@ -6,7 +6,7 @@
 namespace Aquila::GFX {
 class GfxContext;
 class GfxTexture;
-}
+} // namespace Aquila::GFX
 
 namespace Aquila::SceneManagement {
 class Scene;
@@ -18,12 +18,15 @@ class ObjectPickingSystem;
 class RenderPipeline;
 class Renderer;
 class OverlayRenderer;
-}
+} // namespace Aquila::Rendering
 
 namespace Aquila::Application {
 
 class Application;
 class Window;
+
+/// Stopped is edit time, nothing simulates. A built game starts playing on its own, the editor on Play.
+enum class PlayState : Uint8 { Stopped, Playing, Paused };
 
 /// Everything a module can reach in the engine. Valid from on_attach() to on_detach().
 class EngineContext {
@@ -45,10 +48,20 @@ class EngineContext {
 	void request_render_resize(Uint32 width, Uint32 height) const;
 	void request_close() const;
 
+	/// Only from stopped. Modules get IModule::on_play(), then frames render back to back until pause() or stop().
+	/// The scene isn't copied here, the editor does that around it.
+	void play() const;
+	/// Only while playing. Frames go back to on demand.
+	void pause() const;
+	/// Only while paused.
+	void resume() const;
+	/// Modules get IModule::on_stop() in reverse order. The engine doesn't put the scene back, the editor does.
+	void stop() const;
+	[[nodiscard]] PlayState get_play_state() const;
   private:
 	Application &m_application;
 };
 
-}
+} // namespace Aquila::Application
 
 #endif

@@ -1,5 +1,6 @@
 #include "Aquila/Application/ApplicationNew.h"
 
+#include <ranges>
 #include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Profiler.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
@@ -183,6 +184,9 @@ void Application::run() {
 	}
 
 	m_ctx->wait_idle();
+	if (m_play_state != PlayState::Stopped) {
+		set_play_state(PlayState::Stopped);
+	}
 	detach_modules();
 	on_shutdown();
 }
@@ -221,17 +225,53 @@ void Application::poll_shader_hot_reload() {
 
 void Application::attach_modules() {
 	m_modules_attached = true;
-	for (auto &module : m_modules) {
-		module->on_attach(m_engine_context);
+	while (m_attached_modules < m_modules.size()) {
+		attach_module(*m_modules[m_attached_modules]);
+		++m_attached_modules;
+	}
+}
+
+void Application::attach_module(IModule &module) {
+	module.on_attach(m_engine_context);
+	if (m_play_state != PlayState::Stopped) {
+		module.on_play();
+	}
+	if (m_play_state == PlayState::Paused) {
+		module.on_pause();
 	}
 }
 
 void Application::detach_modules() {
-	for (auto it = m_modules.rbegin(); it != m_modules.rend(); ++it) {
-		(*it)->on_detach();
+	for (auto &m_module : std::views::reverse(m_modules)) {
+		m_module->on_detach();
 	}
 	m_modules.clear();
 	m_modules_attached = false;
+	m_attached_modules = 0;
+}
+
+void Application::set_play_state(PlayState state) {
+	const PlayState previous = std::exchange(m_play_state, state);
+	const Usize count = m_attached_modules;
+	for (Usize i = 0; i < count; ++i) {
+		IModule &module = *m_modules[state == PlayState::Stopped ? count - 1 - i : i];
+		switch (state) {
+		case PlayState::Playing:
+			if (previous == PlayState::Paused) {
+				module.on_resume();
+			} else {
+				module.on_play();
+			}
+			break;
+		case PlayState::Paused:
+			module.on_pause();
+			break;
+		case PlayState::Stopped:
+			module.on_stop();
+			break;
+		}
+	}
+	Foundation::FrameScheduler::get()->request_frame();
 }
 
 void Application::close() {
@@ -441,6 +481,9 @@ void Application::run_pre_render(F32 delta_time) {
 		module->on_pre_render(delta_time);
 	}
 	m_scene->get_entity_manager()->flush_deletion_queue();
+	if (m_play_state == PlayState::Playing) {
+		Foundation::FrameScheduler::get()->request_frame();
+	}
 }
 
 void Application::internal_update(F32 delta_time) {

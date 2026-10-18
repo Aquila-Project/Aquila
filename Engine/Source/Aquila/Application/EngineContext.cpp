@@ -49,4 +49,32 @@ void EngineContext::request_close() const {
 	m_application.close();
 }
 
+void EngineContext::play() const {
+	if (m_application.m_play_state == PlayState::Stopped) {
+		m_application.set_play_state(PlayState::Playing);
+	}
+}
+
+void EngineContext::pause() const {
+	if (m_application.m_play_state == PlayState::Playing) {
+		m_application.set_play_state(PlayState::Paused);
+	}
+}
+
+void EngineContext::resume() const {
+	if (m_application.m_play_state == PlayState::Paused) {
+		m_application.set_play_state(PlayState::Playing);
+	}
+}
+
+void EngineContext::stop() const {
+	if (m_application.m_play_state != PlayState::Stopped) {
+		m_application.set_play_state(PlayState::Stopped);
+	}
+}
+
+PlayState EngineContext::get_play_state() const {
+	return m_application.m_play_state;
+}
+
 }
