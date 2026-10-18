@@ -4,7 +4,7 @@
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/Graphics/Material/MaterialFactory.h"
-#include "Aquila/Graphics/Resources/Mesh.h"
+#include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
@@ -46,12 +46,12 @@ void populate_demo_scene(Scene &scene, GFX::GfxContext &ctx, F32 aspect_ratio) {
 	spawn_default_camera(scene, aspect_ratio);
 
 	auto lit_mat = make_default_material(ctx);
+	const Ref<Graphics::Resources::Mesh> cube =
+		Graphics::Resources::MeshLibrary::instance().load(Graphics::Resources::MeshSource::procedural("cube"));
 
 	auto add_cube = [&](const char *name, Vec3 pos) {
 		auto entity = em->create_entity(name);
-		auto mesh = std::make_shared<Graphics::Resources::Mesh>(name);
-		mesh->load_from_data(Graphics::Resources::Mesh::generate_cube(0.5F));
-		entity.add_component<MeshComponent>().set_mesh(mesh);
+		entity.add_component<MeshComponent>().set_mesh(cube);
 		entity.get_component<TransformComponent>().set_local_position(pos);
 		auto &mat = entity.add_component<MaterialComponent>(lit_mat);
 		mat.surface_properties.albedo = Vec4(0.8F, 0.6F, 0.4F, 1.F);

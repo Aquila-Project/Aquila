@@ -10,12 +10,16 @@
 #include "Aquila/Scene/Components/SkyLightComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
+#include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
 namespace Aquila::SceneManagement {
 
 namespace {
 
+using Graphics::Resources::MeshParams;
+using Graphics::Resources::MeshSource;
+using Graphics::Resources::MeshSourceKind;
 
 std::string snake_case(std::string_view name) {
 	auto upper = [](char c) { return std::isupper(static_cast<unsigned char>(c)) != 0; };
@@ -66,6 +70,49 @@ void upgrade_legacy_scene(nlohmann::ordered_json &scene_json) {
 		upgraded["entities"][id]["components"] = snake_case_keys(entity);
 	}
 	scene_json = std::move(upgraded);
+}
+
+nlohmann::ordered_json mesh_source_to_json(const MeshSource &source) {
+	switch (source.kind) {
+	case MeshSourceKind::Procedural: {
+		nlohmann::ordered_json params = nlohmann::ordered_json::object();
+		for (const auto &[name, value] : source.params) {
+			params[name] = value;
+		}
+		return { { "type", "procedural" }, { "generator", source.generator }, { "params", params } };
+	}
+	case MeshSourceKind::Asset:
+		return { { "type", "asset" }, { "path", source.path } };
+	case MeshSourceKind::None:
+		break;
+	}
+	return nullptr;
+}
+
+Option<MeshSource> mesh_source_from_json(const nlohmann::ordered_json &mesh_json) {
+	if (!mesh_json.contains("source")) {
+		return MeshSource::from_legacy_path(mesh_json.value("path", ""));
+	}
+	const auto &source = mesh_json["source"];
+	if (!source.is_object()) {
+		return std::nullopt;
+	}
+	const std::string type = source.value("type", "");
+	if (type == "procedural") {
+		MeshParams params;
+		if (source.contains("params") && source["params"].is_object()) {
+			for (const auto &[name, value] : source["params"].items()) {
+				if (value.is_number()) {
+					params[name] = value.get<F32>();
+				}
+			}
+		}
+		return MeshSource::procedural(source.value("generator", ""), std::move(params));
+	}
+	if (type == "asset") {
+		return MeshSource::asset(source.value("path", ""));
+	}
+	return std::nullopt;
 }
 
 } // namespace
@@ -338,9 +385,13 @@ bool Scene::serialize(const std::string &filepath) {
 		// Serialize MeshComponent
 		if (entity.has_component<Components::MeshComponent>()) {
 			auto &mesh = entity.get_component<Components::MeshComponent>();
-			entity_json["components"]["mesh_component"] = { { "path", mesh.data ? mesh.data->get_path() : std::string() },
-															{ "debug_name", mesh.data ? mesh.data->get_debug_name() : std::string() },
-															{ "cast_shadows", mesh.cast_shadows } };
+			nlohmann::ordered_json mesh_json = nlohmann::ordered_json::object();
+			if (mesh.data && mesh.data->get_source().kind != MeshSourceKind::None) {
+				mesh_json["source"] = mesh_source_to_json(mesh.data->get_source());
+			}
+			mesh_json["cast_shadows"] = mesh.cast_shadows;
+			mesh_json["receive_shadows"] = mesh.receive_shadows;
+			entity_json["components"]["mesh_component"] = std::move(mesh_json);
 		}
 
 		// Serialize LightComponent with shadow settings
@@ -551,23 +602,14 @@ bool Scene::deserialize(const std::string &filepath) {
 			const auto &mesh_json = components["mesh_component"];
 			auto &mesh_comp = entity.get_or_emplace<Components::MeshComponent>();
 
-			if (std::string mesh_path = mesh_json.value("path", ""); !mesh_path.empty()) {
-				auto mesh = std::make_shared<Graphics::Resources::Mesh>(mesh_json.value("debug_name", mesh_path));
-				if (Option<Graphics::Resources::MeshData> generated =
-						Graphics::Resources::Mesh::generate_from_path(mesh_path)) {
-					mesh->load_from_data(*generated);
+			if (Option<MeshSource> source = mesh_source_from_json(mesh_json)) {
+				if (Ref<Graphics::Resources::Mesh> mesh = Graphics::Resources::MeshLibrary::instance().load(*source)) {
 					mesh_comp.set_mesh(mesh);
-				} else {
-					try {
-						mesh->load(mesh_path);
-						mesh_comp.set_mesh(mesh);
-					} catch (const std::exception &error) {
-						AQUILA_LOG_ERROR("Scene: failed to load mesh '{}': {}", mesh_path, error.what());
-					}
 				}
 			}
 
 			mesh_comp.cast_shadows = mesh_json.value("cast_shadows", true);
+			mesh_comp.receive_shadows = mesh_json.value("receive_shadows", true);
 		}
 
 		// Deserialize LightComponent with shadow settings

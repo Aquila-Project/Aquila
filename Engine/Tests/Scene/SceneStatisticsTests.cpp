@@ -1,6 +1,7 @@
 #include <doctest.h>
 
 #include "Aquila/Graphics/Resources/Mesh.h"
+#include "Aquila/Graphics/Resources/ProceduralMeshes.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/EntityManager.h"
@@ -16,7 +17,8 @@ namespace {
 
 Ref<Mesh> make_cube(const char *name) {
 	auto mesh = std::make_shared<Mesh>(name);
-	mesh->load_from_data(Mesh::generate_cube(1.F));
+	mesh->set_data(*Graphics::Resources::MeshGenerators::instance().generate(
+		Graphics::Resources::MeshSource::procedural("cube")));
 	return mesh;
 }
 
