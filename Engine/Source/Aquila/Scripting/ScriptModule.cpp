@@ -3,20 +3,20 @@
 
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Foundation/SharedConstants.h"
-#include "Aquila/Scripting/ScriptComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scripting/ScriptSystem.h"
 
 namespace Aquila::Scripting {
 
 ScriptModule::ScriptModule() {
-	register_script_component();
+	SceneManagement::Components::register_script_component();
 }
 
 ScriptModule::~ScriptModule() = default;
 
 void ScriptModule::on_attach(Application::EngineContext &engine) {
-	m_system = std::make_unique<ScriptSystem>(engine.get_scene());
-	m_system->write_types(Foundation::EnginePaths::resources_dir() + "Engine/Types");
+	m_engine = &engine;
+	ScriptSystem(engine.get_scene()).write_types(Foundation::EnginePaths::resources_dir() + "Engine/Types");
 }
 
 void ScriptModule::on_detach() {
@@ -24,9 +24,20 @@ void ScriptModule::on_detach() {
 }
 
 void ScriptModule::on_pre_render(F32 delta_time) {
-	if (m_system) {
+	if (m_system && m_engine->get_play_state() == Application::PlayState::Playing) {
 		m_system->update(delta_time);
 	}
+}
+
+void ScriptModule::on_play() {
+	m_system = std::make_unique<ScriptSystem>(m_engine->get_scene());
+}
+
+void ScriptModule::on_stop() {
+	if (m_system) {
+		m_system->stop();
+	}
+	m_system.reset();
 }
 
 } // namespace Aquila::Scripting

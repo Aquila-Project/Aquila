@@ -3,7 +3,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Scripting/ScriptBindings.h"
-#include "Aquila/Scripting/ScriptComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 
 namespace Aquila::Scripting {
 
@@ -29,15 +29,19 @@ void ScriptSystem::update(F32 delta_time) {
 	auto &registry = m_scene.get_registry();
 
 	for (auto it = m_instances.begin(); it != m_instances.end();) {
-		if (registry.valid(it->first) && registry.all_of<ScriptComponent>(it->first)) {
+		const bool alive = registry.valid(it->first);
+		if (alive && registry.all_of<SceneManagement::Components::ScriptComponent>(it->first)) {
 			++it;
 			continue;
+		}
+		if (alive) {
+			finish(it->first, it->second);
 		}
 		m_runtime.unload(it->second.script);
 		it = m_instances.erase(it);
 	}
 
-	for (auto [entity, component] : registry.view<ScriptComponent>().each()) {
+	for (auto [entity, component] : registry.view<SceneManagement::Components::ScriptComponent>().each()) {
 		Instance &instance = m_instances[entity];
 		if (instance.path != component.path) {
 			start(entity, instance, component.path);
@@ -51,7 +55,25 @@ void ScriptSystem::update(F32 delta_time) {
 	}
 }
 
+void ScriptSystem::stop() {
+	auto &registry = m_scene.get_registry();
+	for (auto &[entity, instance] : m_instances) {
+		if (registry.valid(entity)) {
+			finish(entity, instance);
+		}
+		m_runtime.unload(instance.script);
+	}
+	m_instances.clear();
+}
+
+void ScriptSystem::finish(entt::entity entity, Instance &instance) {
+	if (instance.has_stop && !instance.failed) {
+		m_runtime.call(instance.script, "on_stop", to_script(entity));
+	}
+}
+
 void ScriptSystem::start(entt::entity entity, Instance &instance, const std::string &path) {
+	finish(entity, instance);
 	m_runtime.unload(instance.script);
 	instance = Instance{};
 	instance.path = path;
@@ -71,6 +93,7 @@ void ScriptSystem::start(entt::entity entity, Instance &instance, const std::str
 	}
 
 	instance.has_update = m_runtime.has_function(instance.script, "on_update");
+	instance.has_stop = m_runtime.has_function(instance.script, "on_stop");
 	if (m_runtime.has_function(instance.script, "on_start")) {
 		instance.failed = !m_runtime.call(instance.script, "on_start", to_script(entity));
 	}

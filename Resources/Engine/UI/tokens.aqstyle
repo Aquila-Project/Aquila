@@ -28,6 +28,7 @@
     --accent-dark: #2c4a35;
     --accent-press: #23382a;
     --accent-muted: #3d7a4e;
+    --play-tint: #1c2c20;
 
     --danger: #e05a40;
     --success: #4ab870;

@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -211,6 +212,44 @@ void Scene::clear() {
 	m_entity_manager->clear();
 	m_active_camera_entity = entt::null;
 	m_dirty_transforms.clear();
+}
+
+void Scene::copy_from(const Scene &other) {
+	if (&other == this) {
+		return;
+	}
+	clear();
+	m_scene_name = other.m_scene_name;
+
+	entt::registry &source = other.get_registry();
+	entt::registry &target = get_registry();
+	for (auto [handle] : source.storage<entt::entity>().each()) {
+		[[maybe_unused]] const entt::entity created = target.create(handle);
+		AQUILA_ASSERT(created == handle, "Scene::copy_from needs a cleared registry to keep entity ids");
+	}
+
+	const ComponentRegistry &components = ComponentRegistry::instance();
+	Scene *source_scene = const_cast<Scene *>(&other);
+	for (auto [handle] : source.storage<entt::entity>().each()) {
+		components.copy_components(Entity(handle, source_scene), Entity(handle, this));
+	}
+
+	const auto here = [this](const Entity &entity) {
+		return entity.is_null() ? Entity::null() : Entity(entity.get_handle(), this);
+	};
+	for (auto [handle, node] : target.view<Components::SceneNodeComponent>().each()) {
+		const auto *original = source.try_get<Components::SceneNodeComponent>(handle);
+		node.ent = Entity(handle, this);
+		node.parent = original != nullptr ? here(original->parent) : Entity::null();
+		node.children.clear();
+		if (original != nullptr) {
+			for (const Entity &child : original->children) {
+				node.children.push_back(here(child));
+			}
+		}
+	}
+
+	m_active_camera_entity = other.m_active_camera_entity;
 }
 
 void Scene::update_transform_hierarchy() {

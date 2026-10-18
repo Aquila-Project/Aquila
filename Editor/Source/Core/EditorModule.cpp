@@ -141,6 +141,7 @@ void EditorModule::on_detach() {
 		m_windows->shutdown();
 	}
 	m_dock_manager.reset();
+	m_edit_scene.reset();
 	m_settings_window.reset();
 	m_project_launcher.reset();
 	m_devtools.reset();
@@ -159,6 +160,11 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		m_pending_project.reset();
 		enter_editor(project);
 	}
+
+	if (m_restore_pending) {
+		restore_edit_scene();
+	}
+
 
 	if (m_pending_pick && m_context) {
 		const Entity picked = *m_pending_pick;
@@ -239,6 +245,103 @@ void EditorModule::on_resize(Uint32, Uint32) {
 void EditorModule::on_render_resize(Uint32, Uint32) {
 	if (m_context) {
 		m_context->on_render_output_changed();
+	}
+}
+
+void EditorModule::on_play() {
+	sync_play_controls();
+}
+
+void EditorModule::on_pause() {
+	sync_play_controls();
+}
+
+void EditorModule::on_resume() {
+	sync_play_controls();
+}
+
+void EditorModule::on_stop() {
+	m_restore_pending = m_edit_scene != nullptr;
+	sync_play_controls();
+}
+
+bool EditorModule::is_editing() const {
+	return m_engine->get_play_state() == PlayState::Stopped;
+}
+
+void EditorModule::start_playing() {
+	if (m_engine->get_play_state() == PlayState::Paused) {
+		m_engine->resume();
+		return;
+	}
+	restore_edit_scene();
+	Scene &scene = m_engine->get_scene();
+	m_edit_scene = std::make_unique<Scene>();
+	m_edit_scene->copy_from(scene);
+	m_engine->play();
+	AQUILA_LOG_INFO("EditorModule: playing '{}'", scene.get_scene_name());
+}
+
+void EditorModule::toggle_pause() {
+	if (m_engine->get_play_state() == PlayState::Paused) {
+		m_engine->resume();
+	} else {
+		m_engine->pause();
+	}
+}
+
+void EditorModule::restore_edit_scene() {
+	m_restore_pending = false;
+	if (!m_edit_scene) {
+		return;
+	}
+	const Entity selected = m_context->selection.get();
+	m_engine->get_scene().copy_from(*m_edit_scene);
+	m_edit_scene.reset();
+	scene_replaced();
+	if (selected.exists()) {
+		m_context->selection.select(selected);
+	}
+	AQUILA_LOG_INFO("EditorModule: stopped, scene restored");
+}
+
+void EditorModule::wire_play_controls(Aquila::UI::Core::View *layout_root) {
+	const auto wire = [this, layout_root](std::string_view id, std::string_view command) {
+		auto *button = layout_root->find_by_id<Aquila::UI::Core::Button>(id);
+		if (button != nullptr) {
+			button->on_click.connect([this, command = std::string(command)] { m_context->shortcuts.execute(command); });
+		}
+		return button;
+	};
+	m_play_button = wire("topbar-play", "play.start");
+	m_pause_button = wire("topbar-pause", "play.pause");
+	m_stop_button = wire("topbar-stop", "play.stop");
+
+	for (std::string_view id : { "topbar", "dock-root", "hud-status" }) {
+		if (Aquila::UI::Core::View *view = layout_root->find_by_id(id)) {
+			m_play_tinted.push_back(view);
+		}
+	}
+	if (m_dock_space != nullptr) {
+		m_play_tinted.push_back(m_dock_space);
+	}
+	sync_play_controls();
+}
+
+void EditorModule::sync_play_controls() {
+	const PlayState state = m_engine->get_play_state();
+	if (m_play_button != nullptr) {
+		m_play_button->set_class("topbar-btn-active", state != PlayState::Stopped);
+	}
+	if (m_pause_button != nullptr) {
+		m_pause_button->set_enabled(state != PlayState::Stopped);
+		m_pause_button->set_class("topbar-btn-active", state == PlayState::Paused);
+	}
+	if (m_stop_button != nullptr) {
+		m_stop_button->set_enabled(state != PlayState::Stopped);
+	}
+	for (Aquila::UI::Core::View *view : m_play_tinted) {
+		view->set_class("play-tint", state != PlayState::Stopped);
 	}
 }
 
@@ -489,6 +592,7 @@ void EditorModule::setup_editor_ui() {
 
 	register_commands();
 	wire_main_menu(layout_root);
+	wire_play_controls(layout_root);
 	m_status_bar = std::make_unique<StatusBar>();
 	m_status_bar->build(layout_root);
 
@@ -563,7 +667,7 @@ void EditorModule::apply_font_settings() {
 void EditorModule::register_commands() {
 	Aquila::UI::Core::Shortcuts &shortcuts = m_context->shortcuts;
 
-	const auto editing = [] { return true; };
+	const auto editing = [this] { return is_editing(); };
 	shortcuts.add_command(
 		{ .id = "scene.new", .title = "New scene", .run = [this] { new_empty_scene(); }, .enabled = editing });
 	shortcuts.add_command({
@@ -583,6 +687,24 @@ void EditorModule::register_commands() {
 		.enabled = editing,
 	});
 
+	shortcuts.add_command({
+		.id = "play.start",
+		.title = "Play",
+		.run = [this] { start_playing(); },
+		.enabled = [this] { return m_engine->get_play_state() != PlayState::Playing; },
+	});
+	shortcuts.add_command({
+		.id = "play.pause",
+		.title = "Pause",
+		.run = [this] { toggle_pause(); },
+		.enabled = [this] { return !is_editing(); },
+	});
+	shortcuts.add_command({
+		.id = "play.stop",
+		.title = "Stop",
+		.run = [this] { m_engine->stop(); },
+		.enabled = [this] { return !is_editing(); },
+	});
 
 	shortcuts.add_command(
 		{ .id = "editor.preferences", .title = "Preferences", .run = [this] { open_settings_window(); } });
@@ -713,6 +835,10 @@ void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
 
 	PopupMenu *edit_menu = m_main_menu->add_submenu("Edit", m_context->icon("pencil"));
 	add(edit_menu, "editor.preferences", "settings");
+	edit_menu->add_separator();
+	add(edit_menu, "play.start", "play");
+	add(edit_menu, "play.pause", "pause");
+	add(edit_menu, "play.stop", "square");
 	edit_menu->add_separator();
 	add(edit_menu, "scene.reset_demo", "refresh-cw");
 

@@ -15,7 +15,7 @@
 
 .dock-split {
     gap: 2px;
-    background-color: var(--bg-deep);
+    background-color: transparent;
 }
 
 .dock-leaf {

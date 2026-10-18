@@ -173,4 +173,17 @@ const ComponentDescriptor *ComponentRegistry::find(std::string_view name) const 
 	return nullptr;
 }
 
+void ComponentRegistry::copy_components(Entity from, Entity to) const {
+	for (const auto &[type, copy] : m_copiers) {
+		copy(from, to);
+	}
+}
+
+void ComponentRegistry::add_copier(entt::id_type type, Delegate<void(Entity, Entity)> copy) {
+	const bool known = std::ranges::any_of(m_copiers, [type](const auto &copier) { return copier.first == type; });
+	if (!known) {
+		m_copiers.emplace_back(type, std::move(copy));
+	}
+}
+
 } // namespace Aquila::SceneManagement

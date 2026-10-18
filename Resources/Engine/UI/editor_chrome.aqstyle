@@ -978,6 +978,18 @@
     background-color: var(--bg-hover);
 }
 
+.topbar-btn:disabled {
+    opacity: 0.4;
+}
+
+.topbar-btn-active {
+    background-color: var(--accent-dark);
+}
+
+.topbar-btn-active:hover {
+    background-color: var(--accent-muted);
+}
+
 .topbar-sep {
     width: 1px;
     height: 18px;
@@ -1037,4 +1049,7 @@
 .viewport-canvas-layer {
     font-family: mono;
     font-size: 12px;
+}
+.play-tint {
+    background-color: var(--play-tint);
 }

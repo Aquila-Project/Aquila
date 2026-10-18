@@ -74,8 +74,9 @@ class Application : public Rendering::IRenderWindowHost {
 		auto module = std::make_unique<T>(std::forward<Args>(args)...);
 		T &ref = *module;
 		m_modules.push_back(std::move(module));
-		if (m_modules_attached) {
-			ref.on_attach(m_engine_context);
+		if (m_modules_attached && m_attached_modules + 1 == m_modules.size()) {
+			attach_module(ref);
+			++m_attached_modules;
 		}
 		return ref;
 	}
@@ -122,7 +123,9 @@ class Application : public Rendering::IRenderWindowHost {
 	friend class EngineContext;
 
 	void attach_modules();
+	void attach_module(IModule &module);
 	void detach_modules();
+	void set_play_state(PlayState state);
 	void route_window_event(Platform::Events::Event &event);
 	void internal_update(F32 delta_time);
 	void run_pre_render(F32 delta_time);
@@ -142,6 +145,8 @@ class Application : public Rendering::IRenderWindowHost {
 	EngineContext m_engine_context{ *this };
 	std::vector<Unique<IModule>> m_modules;
 	bool m_modules_attached = false;
+	Usize m_attached_modules = 0;
+	PlayState m_play_state = PlayState::Stopped;
 
 	ApplicationSpec m_spec;
 	Unique<Window> m_window;

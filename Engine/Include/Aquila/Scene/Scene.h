@@ -54,6 +54,12 @@ class Scene final {
 	/// GPU materials aren't created here (no GfxContext), the Application does it from on_loaded.
 	bool deserialize(const std::string &filepath);
 
+	/// Replaces everything in this scene with a copy of `other`. Entities keep their EnTT ids, so an Entity taken
+	/// from this scene before a copy_from() still points at the same entity after it, as long as `other` has it.
+	/// Only component types in the ComponentRegistry come along (the editor's OutlineComponent doesn't), and
+	/// meshes and materials are shared, not duplicated. The scene's handle stays, on_loaded doesn't fire.
+	void copy_from(const Scene &other);
+
 	/// Fires after deserialize() succeeded.
 	Signal<void()> on_loaded;
 	void set_active_camera(Entity camera_entity);

@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/Defines.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 
 #include "runtime.h"
 
@@ -16,9 +17,10 @@ class ScriptSystem {
 	AQUILA_NONCOPYABLE(ScriptSystem);
 	AQUILA_NONMOVEABLE(ScriptSystem);
 
-	/// Starts scripts on new or changed paths, stops removed ones, then calls on_update.
 	/// A script that errors stops being called until its path changes.
 	void update(F32 delta_time);
+	/// Calls on_stop on every running script and unloads them all. The next update() starts them again.
+	void stop();
 
 	/// Luau type definitions of the engine API, for autocomplete in an editor.
 	bool write_types(const std::string &directory) const;
@@ -28,10 +30,11 @@ class ScriptSystem {
 		std::string path;
 		aquiLua::ScriptId script;
 		bool has_update = false;
+		bool has_stop = false;
 		bool failed = false;
 	};
 
-	void start(entt::entity entity, Instance &instance, const std::string &path);
+	void finish(entt::entity entity, Instance &instance);
 
 	SceneManagement::Scene &m_scene;
 	aquiLua::Runtime m_runtime;
