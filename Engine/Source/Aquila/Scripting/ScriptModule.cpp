@@ -30,7 +30,7 @@ void ScriptModule::on_pre_render(F32 delta_time) {
 }
 
 void ScriptModule::on_play() {
-	m_system = std::make_unique<ScriptSystem>(m_engine->get_scene());
+	m_system = std::make_unique<ScriptSystem>(m_engine->get_scene(), &m_engine->get_game_input());
 }
 
 void ScriptModule::on_stop() {

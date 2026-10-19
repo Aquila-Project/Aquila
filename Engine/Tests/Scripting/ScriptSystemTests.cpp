@@ -3,8 +3,10 @@
 
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+#include "Aquila/Platform/InputState.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
+#include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
@@ -254,6 +256,176 @@ TEST_SUITE("ScriptSystem") {
 
 		system.stop();
 		CHECK(x(replaced) == doctest::Approx(1.F));
+	}
+
+	TEST_CASE("Aquila.Input reads the game input, Shift matches either side") {
+		std::string path = write_script("input.luau", R"(
+			local Input = require("@aquila").Input
+			local M = {}
+			function M.on_update(self, dt)
+				local move = Input.get_vector("A", "D", "S", "W")
+				self:set_position(move)
+				local name = ""
+				if Input.is_key_just_pressed("Space") then name ..= "jump " end
+				if Input.is_key_down("Shift") then name ..= "run " end
+				if Input.is_mouse_button_down("Left") then name ..= "fire " end
+				self:set_name(name)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		Platform::InputState input;
+		ScriptSystem system(scene, &input);
+		auto feed = [&input](Platform::Events::Event &&event) { input.on_event(event); };
+		auto position = [&entity] { return entity.get_component<TransformComponent>().get_local_position(); };
+
+		feed(Platform::Events::KeyPressedEvent(Platform::Events::KeyCode::W, 0));
+		feed(Platform::Events::KeyPressedEvent(Platform::Events::KeyCode::D, 0));
+		feed(Platform::Events::KeyPressedEvent(Platform::Events::KeyCode::Space, 0));
+		feed(Platform::Events::KeyPressedEvent(Platform::Events::KeyCode::RightShift, 0));
+		feed(Platform::Events::MouseButtonPressedEvent(Platform::Events::MouseButton::Left));
+		system.update(0.F);
+
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "jump run fire ");
+		CHECK(position().x == doctest::Approx(0.7071F).epsilon(0.001));
+		CHECK(position().y == doctest::Approx(0.7071F).epsilon(0.001));
+
+		input.end_frame();
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "run fire ");
+	}
+
+	TEST_CASE("an unknown key name is a script error") {
+		std::string path = write_script("typo.luau", R"(
+			local Input = require("@aquila/Input")
+			local M = {}
+			function M.on_start(self)
+				Input.is_key_down("Spcae")
+				self:set_name("reached")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		Platform::InputState input;
+		ScriptSystem system(scene, &input);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "Thing");
+	}
+
+	TEST_CASE("Aquila.Screen and the mouse follow the game input's view") {
+		std::string path = write_script("screen.luau", R"(
+			local Aquila = require("@aquila")
+			local M = {}
+			function M.on_update(self, dt)
+				local size = Aquila.Screen.get_size()
+				local mouse = Aquila.Input.get_mouse_position()
+				self:set_position(vector.create(size.x, size.y, 0))
+				self:set_scale(vector.create(mouse.x, mouse.y, 1))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		Platform::InputState input;
+		input.set_view(Vec2(10.F, 20.F), Vec2(640.F, 480.F));
+		Platform::Events::MouseMovedEvent moved(110.F, 70.F);
+		input.on_event(moved);
+		ScriptSystem system(scene, &input);
+
+		system.update(0.F);
+		const auto &transform = entity.get_component<TransformComponent>();
+		CHECK(transform.get_local_position() == Vec3(640.F, 480.F, 0.F));
+		CHECK(transform.get_local_scale() == Vec3(100.F, 50.F, 1.F));
+	}
+
+	TEST_CASE("Aquila.Time counts the seconds and frames played") {
+		std::string path = write_script("time.luau", R"(
+			local Time = require("@aquila").Time
+			local M = {}
+			function M.on_update(self, dt)
+				self:set_position(vector.create(Time.get_elapsed(), Time.get_frame(), Time.get_delta()))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.5F);
+		system.update(0.25F);
+		const Vec3 position = entity.get_component<TransformComponent>().get_local_position();
+		CHECK(position.x == doctest::Approx(0.75F));
+		CHECK(position.y == doctest::Approx(2.F));
+		CHECK(position.z == doctest::Approx(0.25F));
+	}
+
+	TEST_CASE("Aquila.Scene finds, creates and destroys entities") {
+		std::string path = write_script("scene.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_start(self)
+				local target = Scene.find("Target")
+				assert(target ~= nil and Scene.find("Nobody") == nil)
+				Scene.destroy(target)
+				local made = Scene.create("Made")
+				made:set_position(vector.create(1, 2, 3))
+				self:set_name(if target:is_valid() then "queued" else "gone")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		Entity target = scene.get_entity_manager()->create_entity("Target");
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "queued");
+		scene.get_entity_manager()->flush_deletion_queue();
+
+		CHECK_FALSE(target.exists());
+		const auto made = scene.get_entity_manager()->find_entity_by_name("Made");
+		REQUIRE(made.has_value());
+		CHECK(made->get_component<TransformComponent>().get_local_position() == Vec3(1.F, 2.F, 3.F));
+	}
+
+	TEST_CASE("Entity methods: ids, parent, world position, forward and visibility") {
+		std::string path = write_script("entity.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_start(self)
+				local parent = self:get_parent()
+				assert(parent ~= nil and parent:get_parent() == nil)
+				assert(parent:get_id() == Scene.find("Parent"):get_id())
+				assert(parent:get_id() ~= self:get_id())
+				local out = Scene.find("Out")
+				out:set_position(self:get_forward())
+				out:set_scale(self:get_world_position())
+				self:set_visible(false)
+				self:set_name(if self:is_visible() then "visible" else "hidden")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity parent = entities.create_entity("Parent");
+		Entity entity = scripted_entity(scene, path);
+		Entity out = entities.create_entity("Out");
+		entities.add_child(parent, entity);
+		parent.get_component<TransformComponent>().set_local_position(Vec3(1.F, 0.F, 0.F));
+		entity.get_component<TransformComponent>().set_local_position(Vec3(0.F, 2.F, 0.F));
+		entity.get_component<TransformComponent>().set_local_rotation_euler(Vec3(0.F, 90.F, 0.F));
+		scene.update_transform_hierarchy();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "hidden");
+		const auto &result = out.get_component<TransformComponent>();
+		CHECK(result.get_local_position().x == doctest::Approx(1.F));
+		CHECK(result.get_local_position().z == doctest::Approx(0.F).epsilon(0.0001));
+		CHECK(result.get_local_scale() == Vec3(1.F, 2.F, 0.F));
 	}
 
 }

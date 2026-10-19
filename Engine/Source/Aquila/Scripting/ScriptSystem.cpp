@@ -15,8 +15,9 @@ ScriptEntity to_script(entt::entity entity) {
 
 } // namespace
 
-ScriptSystem::ScriptSystem(SceneManagement::Scene &scene) : m_scene(scene) {
-	register_engine_api(m_runtime, m_scene);
+ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input)
+	: m_scene(scene), m_environment{ .scene = &scene, .input = input } {
+	register_engine_api(m_runtime, m_environment);
 }
 
 ScriptSystem::~ScriptSystem() = default;
@@ -26,6 +27,10 @@ bool ScriptSystem::write_types(const std::string &directory) const {
 }
 
 void ScriptSystem::update(F32 delta_time) {
+	m_environment.delta_time = delta_time;
+	m_environment.elapsed += delta_time;
+	++m_environment.frame;
+
 	auto &registry = m_scene.get_registry();
 
 	for (auto it = m_instances.begin(); it != m_instances.end();) {

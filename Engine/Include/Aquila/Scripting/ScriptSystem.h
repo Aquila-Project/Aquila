@@ -5,6 +5,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
+#include "Aquila/Scripting/ScriptBindings.h"
 
 #include "runtime.h"
 
@@ -12,11 +13,13 @@ namespace Aquila::Scripting {
 
 class ScriptSystem {
   public:
-	explicit ScriptSystem(SceneManagement::Scene &scene);
+	/// `input` is what Aquila.Input reads, null for no input. It must outlive the system.
+	explicit ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input = nullptr);
 	~ScriptSystem();
 	AQUILA_NONCOPYABLE(ScriptSystem);
 	AQUILA_NONMOVEABLE(ScriptSystem);
 
+	/// Advances Aquila.Time, starts scripts on new or changed paths, stops removed ones, then calls on_update.
 	/// A script that errors stops being called until its path changes.
 	void update(F32 delta_time);
 	/// Calls on_stop on every running script and unloads them all. The next update() starts them again.
@@ -37,6 +40,7 @@ class ScriptSystem {
 	void finish(entt::entity entity, Instance &instance);
 
 	SceneManagement::Scene &m_scene;
+	ScriptEnvironment m_environment;
 	aquiLua::Runtime m_runtime;
 	std::unordered_map<entt::entity, Instance> m_instances;
 };
