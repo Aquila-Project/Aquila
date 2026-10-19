@@ -140,7 +140,7 @@ float4 main(VSOutput IN) : SV_Target {
 			float3 L = normalize(-GetLightDirection(light));
 			float shadow = 1.0;
 			if (push.receivesShadows != 0 && light.shadowIndex >= 0) {
-				shadow = ComputeDirectionalShadow(IN.worldPos, N, L);
+				shadow = ComputeDirectionalShadow(IN.worldPos, N, L, IN.sv_position.xy);
 			}
 			Lo += ShadeLight(N, V, L, lightColor, albedo, metallic, roughness, F0) * shadow;
 		} else {
@@ -176,7 +176,7 @@ float4 main(VSOutput IN) : SV_Target {
 		float shadow = 1.0;
 
 		if (push.receivesShadows != 0) {
-			shadow = ComputeDirectionalShadow(IN.worldPos, N, Ldir);
+			shadow = ComputeDirectionalShadow(IN.worldPos, N, Ldir, IN.sv_position.xy);
 		}
 
 		return float4(CascadeDebugColor(IN.worldPos) * shadow, 1.0);

@@ -97,7 +97,7 @@ float4 main(VSOutput IN) : SV_Target {
 	}
 	if (push.mode == MODE_CASCADES) {
 		float3 L = normalize(-shadowData.lightDirection.xyz);
-		float shadow = ComputeDirectionalShadow(IN.worldPos, N, L);
+		float shadow = ComputeDirectionalShadow(IN.worldPos, N, L, IN.sv_position.xy);
 		return float4((CascadeDebugColor(IN.worldPos)) * (0.25 + 0.75 * shadow) * facing, 1.0);
 	}
 	if (push.mode == MODE_LIGHT_COMPLEXITY) {

@@ -136,7 +136,7 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 				.format = RHI::TextureFormat::Depth32,
 				.usage = RHI::TextureUsage::DepthAttachment | RHI::TextureUsage::Sampled,
 				.view_type = RHI::TextureViewType::Tex2D,
-				.sampler = RHI::SamplerDesc::shadow_map(),
+				.sampler = RHI::SamplerDesc::point_sample(),
 				.debug_name = "ShadowMap_" + std::to_string(i) + "_" + std::to_string(c),
 			});
 		}
@@ -281,18 +281,19 @@ static GpuLightData build_light_data(const LightComponent &light, const Transfor
 	return data;
 }
 
-static GpuShadowData compute_shadow_data(const RenderView &camera, const Vec3 &light_dir, Uint32 shadow_map_size,
-										 std::array<Mat4, SHADOW_CASCADE_COUNT> &out_vp) {
+static GpuShadowData compute_shadow_data(const RenderView &camera, const Vec3 &light_dir, F32 angular_diameter,
+										 Uint32 shadow_map_size, std::array<Mat4, SHADOW_CASCADE_COUNT> &out_vp) {
 	constexpr F32 kSplitLambda = 0.95F;
 	constexpr F32 kDepthBias = 0.0015F;
 	constexpr F32 kNormalBias = 0.03F;
-	constexpr F32 kPcfScale = 1.0F;
 	constexpr F32 kMaxShadowDistance = 100.0F;
+
+	const F32 light_tan = std::tan(Math::radians(Math::clamp(angular_diameter, 0.F, 20.F) * 0.5F));
 
 	GpuShadowData sd{};
 	sd.m_num_cascades = static_cast<Int32>(SHADOW_CASCADE_COUNT);
 	sd.m_light_direction = Vec4(Math::normalize(light_dir), 0.F);
-	sd.m_params = Vec4(kDepthBias, kNormalBias, kPcfScale, static_cast<F32>(shadow_map_size));
+	sd.m_params = Vec4(kDepthBias, kNormalBias, light_tan, static_cast<F32>(shadow_map_size));
 
 	const F32 near_plane = camera.near_plane;
 	const F32 far_plane = Math::min(camera.far_plane, kMaxShadowDistance);
@@ -386,6 +387,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 	Uint32 light_count = 0;
 	int caster_index = -1;
 	Vec3 caster_dir(0.F, -1.F, 0.F);
+	const LightComponent *caster = nullptr;
 	{
 		auto view = registry.view<LightComponent, TransformComponent>();
 		for (auto entity : view) {
@@ -405,6 +407,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			if (caster_index < 0 && light.m_type == LightComponent::Type::Directional) {
 				caster_index = static_cast<int>(index);
 				caster_dir = light_direction(light);
+				caster = &light;
 			}
 		}
 	}
@@ -413,7 +416,8 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 	GpuShadowData shadow_data{};
 	m_shadows_enabled = false;
 	if (shadows_allowed && primary_view.valid && caster_index >= 0) {
-		shadow_data = compute_shadow_data(primary_view, caster_dir, kShadowMapSize, m_cascade_view_proj);
+		shadow_data = compute_shadow_data(primary_view, caster_dir, caster->m_angular_diameter, kShadowMapSize,
+										  m_cascade_view_proj);
 		shadow_data.m_enabled = 1;
 		lights[caster_index].m_shadow_index = 0;
 		m_shadows_enabled = true;
