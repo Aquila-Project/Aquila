@@ -1,6 +1,7 @@
 #include "UI/ComponentIcons.h"
 
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
@@ -11,7 +12,7 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 9> k_component_icons = { {
+constexpr std::array<std::pair<std::string_view, std::string_view>, 10> k_component_icons = { {
 	{ "Transform", "move-3d" },
 	{ "Metadata", "info" },
 	{ "Scene Node", "folder-tree" },
@@ -20,6 +21,7 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 9> k_compone
 	{ "Material", "eclipse" },
 	{ "Light", "lightbulb" },
 	{ "Sky Light", "sun" },
+	{ "Fog", "cloud-fog" },
 	{ "Camera", "video" },
 } };
 
@@ -40,6 +42,9 @@ std::string_view entity_icon(Aquila::SceneManagement::Entity entity) {
 	}
 	if (entity.has_component<SkyLightComponent>()) {
 		return component_icon("Sky Light");
+	}
+	if (entity.has_component<FogComponent>()) {
+		return component_icon("Fog");
 	}
 	if (entity.has_component<LightComponent>()) {
 		return component_icon("Light");

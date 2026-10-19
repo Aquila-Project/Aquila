@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/Photometry.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/ComponentRegistry.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -607,6 +608,20 @@ bool Scene::serialize(const std::string &filepath) {
 			};
 		}
 
+		if (entity.has_component<Components::FogComponent>()) {
+			const auto &fog = entity.get_component<Components::FogComponent>();
+			entity_json["components"]["fog_component"] = {
+				{ "density", fog.density },
+				{ "height_falloff", fog.height_falloff },
+				{ "base_height", fog.base_height },
+				{ "color", { fog.color.r, fog.color.g, fog.color.b } },
+				{ "anisotropy", fog.anisotropy },
+				{ "max_opacity", fog.max_opacity },
+				{ "start_distance", fog.start_distance },
+				{ "active", fog.active },
+			};
+		}
+
 		// Serialize MaterialComponent
 		if (entity.has_component<Components::MaterialComponent>()) {
 			auto &mat_comp = entity.get_component<Components::MaterialComponent>();
@@ -879,12 +894,24 @@ bool Scene::deserialize(const std::string &filepath) {
 			}
 
 			sky_light.set_render_skybox(sky_light_json.value("render_skybox", true));
+		}
 
-			if (std::string hdr_path = sky_light_json.value("HDRTexturePath", ""); !hdr_path.empty()) {
-				// if (auto hdrTexture = assetManager.LoadHDRTexture(hdrPath)) {
-				// 	skyLight.SetHDRTexture(hdrTexture);
-				// }
+
+		if (components.contains("fog_component")) {
+			const auto &fog_json = components["fog_component"];
+			Components::FogComponent fog;
+			fog.density = fog_json.value("density", fog.density);
+			fog.height_falloff = fog_json.value("height_falloff", fog.height_falloff);
+			fog.base_height = fog_json.value("base_height", fog.base_height);
+			if (fog_json.contains("color")) {
+				fog.color = Vec3(fog_json["color"][0].get<F32>(), fog_json["color"][1].get<F32>(),
+								 fog_json["color"][2].get<F32>());
 			}
+			fog.anisotropy = fog_json.value("anisotropy", fog.anisotropy);
+			fog.max_opacity = fog_json.value("max_opacity", fog.max_opacity);
+			fog.start_distance = fog_json.value("start_distance", fog.start_distance);
+			fog.active = fog_json.value("active", fog.active);
+			entity.add_or_replace_component<Components::FogComponent>(fog);
 		}
 
 		// Deserialize MaterialComponent

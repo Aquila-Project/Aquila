@@ -29,6 +29,7 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 		.light = context().icon(component_icon("Light")),
 		.camera = context().icon(component_icon("Camera")),
 		.sky = context().icon(component_icon("Sky Light")),
+		.fog = context().icon(component_icon("Fog")),
 		.eye = context().icon("eye"),
 		.eye_off = context().icon("eye-off"),
 	});

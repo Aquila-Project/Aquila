@@ -6,6 +6,7 @@
 #include "Aquila/Graphics/Material/MaterialFactory.h"
 #include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -87,6 +88,10 @@ void populate_demo_scene(Scene &scene, GFX::GfxContext &ctx, F32 aspect_ratio) {
 	{
 		auto e = em->create_entity("Sky");
 		e.add_component<SkyLightComponent>();
+	}
+	{
+		auto e = em->create_entity("Fog");
+		e.add_component<FogComponent>();
 	}
 }
 

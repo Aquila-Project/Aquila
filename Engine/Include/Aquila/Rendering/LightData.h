@@ -26,14 +26,19 @@ struct alignas(16) GpuLightData {
 
 static_assert(sizeof(GpuLightData) == 112, "GpuLightData must be 112 bytes for std430 packing");
 
+/// The fog lives here because it's lit by the same sky. `m_fog_sun_illuminance.w` is 1 when there's fog.
 struct alignas(16) GpuEnvironmentData {
 	std::array<Vec4, 9> m_sh_coeffs;
 	Vec4 m_tint_and_intensity;
+	Vec4 m_fog_color_density;
+	Vec4 m_fog_params;
+	Vec4 m_fog_sun_direction;
+	Vec4 m_fog_sun_illuminance;
 	Int32 m_enabled;
 	std::array<Int32, 3> m_padding;
 };
 
-static_assert(sizeof(GpuEnvironmentData) == 176, "GpuEnvironmentData layout mismatch");
+static_assert(sizeof(GpuEnvironmentData) == 240, "GpuEnvironmentData layout mismatch");
 
 constexpr Uint32 SHADOW_CASCADE_COUNT = 4;
 

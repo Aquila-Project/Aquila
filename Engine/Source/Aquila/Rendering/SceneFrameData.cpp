@@ -5,6 +5,7 @@
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
@@ -569,6 +570,22 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			}
 			env_data.m_tint_and_intensity = Vec4(sky.get_tint(), sky.get_intensity());
 			env_data.m_enabled = 1;
+			break;
+		}
+	}
+	{
+		auto view = registry.view<FogComponent>();
+		for (auto entity : view) {
+			const auto &fog = view.get<FogComponent>(entity);
+			if (!fog.active || !SceneManagement::is_visible_in_hierarchy(registry, entity)) {
+				continue;
+			}
+			env_data.m_fog_color_density = Vec4(fog.color, Math::max(fog.density, 0.F));
+			env_data.m_fog_params = Vec4(Math::max(fog.height_falloff, 0.F), fog.base_height,
+										 Math::max(fog.start_distance, 0.F), Math::clamp(fog.max_opacity, 0.F, 1.F));
+			env_data.m_fog_sun_direction = Vec4(-caster_dir, Math::clamp(fog.anisotropy, -0.95F, 0.95F));
+			const Vec3 sun = caster != nullptr ? caster->get_emitted_color() * caster->m_intensity : Vec3(0.F);
+			env_data.m_fog_sun_illuminance = Vec4(sun, 1.F);
 			break;
 		}
 	}

@@ -3,6 +3,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -32,8 +33,8 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::string_view, 9> k_component_order = {
-	"Transform", "Metadata", "Scene Node", "Mesh", "Material", "Light", "Sky Light", "Camera", "Shadows",
+constexpr std::array<std::string_view, 10> k_component_order = {
+	"Transform", "Metadata", "Scene Node", "Mesh", "Material", "Light", "Sky Light", "Fog", "Camera", "Shadows",
 };
 
 }
@@ -319,6 +320,8 @@ void InspectorPanel::build_component_registry() {
 						  [](Entity e) { e.add_component<LightComponent>(); } });
 	m_addable.push_back({ "Sky Light", "Lighting", [](Entity e) { return e.has_component<SkyLightComponent>(); },
 						  [](Entity e) { e.add_component<SkyLightComponent>(); } });
+	m_addable.push_back({ "Fog", "Lighting", [](Entity e) { return e.has_component<FogComponent>(); },
+						  [](Entity e) { e.add_component<FogComponent>(); } });
 	m_addable.push_back({ "Camera", "Camera", [](Entity e) { return e.has_component<CameraComponent>(); },
 						  [](Entity e) { e.add_component<CameraComponent>(); } });
 
@@ -330,8 +333,8 @@ void InspectorPanel::build_component_registry() {
 			continue;
 		}
 		const ComponentDescriptor *other = descriptor.get();
-		m_addable.push_back({ name, "Other", [other](Entity e) { return other->has(e); },
-							  [other](Entity e) { other->add(e); } });
+		m_addable.push_back(
+			{ name, "Other", [other](Entity e) { return other->has(e); }, [other](Entity e) { other->add(e); } });
 		has_other = true;
 	}
 	if (has_other) {

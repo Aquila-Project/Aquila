@@ -26,6 +26,7 @@ struct EntityIcons {
 	Aquila::GFX::GfxTexture *light = nullptr;
 	Aquila::GFX::GfxTexture *camera = nullptr;
 	Aquila::GFX::GfxTexture *sky = nullptr;
+	Aquila::GFX::GfxTexture *fog = nullptr;
 	Aquila::GFX::GfxTexture *eye = nullptr;
 	Aquila::GFX::GfxTexture *eye_off = nullptr;
 };

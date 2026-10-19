@@ -5,6 +5,7 @@
 #include "Aquila/Graphics/Material/Material.h"
 #include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -72,6 +73,12 @@ constexpr std::array<PropertyMark, 6> k_exposure_marks = { {
 	{ .value = 15.F, .label = "Sunny day" },
 } };
 
+constexpr std::array<PropertyMark, 4> k_fog_density_marks = { {
+	{ .value = 0.002F, .label = "Light haze" },
+	{ .value = 0.02F, .label = "Mist" },
+	{ .value = 0.1F, .label = "Fog" },
+	{ .value = 0.5F, .label = "Dense fog" },
+} };
 
 constexpr F32 k_min_temperature = 1667.F;
 constexpr F32 k_max_temperature = 12000.F;
@@ -263,6 +270,29 @@ void register_builtin_components(ComponentRegistry &registry) {
 		.property(
 			"Render Skybox", [](const SkyLightComponent &sky) { return sky.m_render_skybox; },
 			&SkyLightComponent::set_render_skybox, PropertyHints{ .toggle = true });
+
+	registry.register_component<FogComponent>("Fog")
+		.property("Density", &FogComponent::density,
+				  PropertyHints{ .min = 0.F,
+								 .max = 1.F,
+								 .precision = 4,
+								 .unit = "/m",
+								 .logarithmic = true,
+								 .slider_min = 0.0001F,
+								 .slider_max = 1.F,
+								 .marks = k_fog_density_marks })
+		.property("Height Falloff", &FogComponent::height_falloff,
+				  PropertyHints{ .min = 0.F, .max = 5.F, .speed = 0.005F, .precision = 3, .unit = "/m" })
+		.property("Base Height", &FogComponent::base_height,
+				  PropertyHints{ .speed = 0.05F, .precision = 2, .unit = "m" })
+		.property("Color", &FogComponent::color, PropertyHints{ .color = true })
+		.property("Anisotropy", &FogComponent::anisotropy,
+				  PropertyHints{ .min = -0.9F, .max = 0.9F, .speed = 0.01F, .precision = 2, .slider = true })
+		.property("Max Opacity", &FogComponent::max_opacity,
+				  PropertyHints{ .min = 0.F, .max = 1.F, .speed = 0.01F, .precision = 2, .slider = true })
+		.property("Start Distance", &FogComponent::start_distance,
+				  PropertyHints{ .min = 0.F, .max = 10000.F, .speed = 0.1F, .precision = 1, .unit = "m" })
+		.property("Active", &FogComponent::active, PropertyHints{ .toggle = true });
 
 	registry.register_component<MeshComponent>("Mesh").property(
 		"Model",

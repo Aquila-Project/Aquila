@@ -2,6 +2,7 @@
 #define AQUILA_HOSEK_SKY_SLANG
 
 import Utility.FrameData;
+import Utility.EnvironmentData;
 import "Utils.slang";
 
 using namespace Aquila::Shading;
@@ -66,6 +67,8 @@ float4 fragmentMain(VSOutput IN) : SV_Target {
 	float horizonBlend = smoothstep(-0.02, 0.02, dir.y);
 	color = lerp(groundColor, color, horizonBlend);
 
+	float3 cameraPos = GetCameraPosition();
+	color = ApplyFog(color, cameraPos, cameraPos + dir * 100000.0);
 	return float4(color * GetExposure(), 1.0);
 }
 
