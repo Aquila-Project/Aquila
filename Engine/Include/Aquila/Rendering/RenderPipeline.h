@@ -21,7 +21,8 @@ class Scene;
 
 namespace Aquila::Rendering {
 
-/// Runs the renderers into one render graph every frame and owns the scene color, depth and picking targets.
+/// Runs the renderers into one render graph every frame and owns the scene color, display color, depth and picking
+/// targets.
 class RenderPipeline {
   public:
 	RenderPipeline(GFX::GfxContext &ctx, Uint32 width, Uint32 height);
@@ -56,7 +57,8 @@ class RenderPipeline {
 	[[nodiscard]] F32 get_exposure_ev100() const { return m_auto_exposure->get_ev100(); }
 	[[nodiscard]] const RenderView &get_last_view() const { return m_last_view; }
 
-	[[nodiscard]] GFX::GfxTexture &get_output() const { return *m_scene_color; }
+	/// The display color: tone mapped, sRGB encoded, with the overlays. Recreated on resize.
+	[[nodiscard]] GFX::GfxTexture &get_output() const { return *m_display_color; }
 	[[nodiscard]] Uint32 get_width() const { return m_width; }
 	[[nodiscard]] Uint32 get_height() const { return m_height; }
 
@@ -82,6 +84,7 @@ class RenderPipeline {
 	std::vector<Unique<IRenderer>> m_renderers;
 
 	Ref<GFX::GfxTexture> m_scene_color;
+	Ref<GFX::GfxTexture> m_display_color;
 	Ref<GFX::GfxTexture> m_depth_tex;
 	Ref<GFX::GfxTexture> m_object_picking;
 

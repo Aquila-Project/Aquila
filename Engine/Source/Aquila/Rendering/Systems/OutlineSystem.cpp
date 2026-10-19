@@ -133,7 +133,7 @@ void OutlineSystem::on_init(GFX::GfxContext &ctx) {
 				.dst_alpha = RHI::BlendFactor::OneMinusSrcAlpha,
 				.alpha_op = RHI::BlendOp::Add,
 			} };
-			pipeline_descriptor.color_formats = { RHI::TextureFormat::RGBA16F };
+			pipeline_descriptor.color_formats = { DISPLAY_COLOR_FORMAT };
 			pipeline_descriptor.depth_format = RHI::TextureFormat::None;
 
 			pipeline_descriptor.set_layouts = { &m_outline_layout->get_rhi() };
@@ -234,8 +234,8 @@ void OutlineSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		[h_mask_read, &ctx](RG::RGPassBuilder &builder) {
 			builder.read_texture(h_mask_read, RG::ResourceState::ShaderRead);
 
-			ctx.h_scene_color = builder.set_color_attachment(0, ctx.h_scene_color, RG::AttachmentLoadOp::Load,
-															RG::AttachmentStoreOp::Store);
+			ctx.h_display_color = builder.set_color_attachment(0, ctx.h_display_color, RG::AttachmentLoadOp::Load,
+															   RG::AttachmentStoreOp::Store);
 		},
 
 		[h_mask_read, set, outline_push, this](GFX::GfxCommandList &cmd, RG::RGRegistry &registry) {

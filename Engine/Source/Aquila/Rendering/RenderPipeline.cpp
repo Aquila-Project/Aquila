@@ -169,6 +169,7 @@ void RenderPipeline::build_frame_context(SceneManagement::Scene &scene, F32 delt
 	m_last_view = primary;
 
 	out.h_scene_color = m_graph.import_texture(m_scene_color.get(), "SceneColor");
+	out.h_display_color = m_graph.import_texture(m_display_color.get(), "DisplayColor");
 	out.h_depth = m_graph.import_texture(m_depth_tex.get(), "Depth");
 	out.h_object_picking = m_graph.import_texture(m_object_picking.get(), "ObjectPicking");
 
@@ -180,15 +181,26 @@ void RenderPipeline::build_frame_context(SceneManagement::Scene &scene, F32 delt
 
 void RenderPipeline::rebuild_targets() {
 	m_scene_color.reset();
+	m_display_color.reset();
 	m_depth_tex.reset();
+	m_object_picking.reset();
 
 	m_scene_color = m_ctx.create_texture({
 		.width = m_width,
 		.height = m_height,
-		.format = RHI::TextureFormat::RGBA16F,
+		.format = SCENE_COLOR_FORMAT,
 		.usage = RHI::TextureUsage::ColorAttachment | RHI::TextureUsage::Sampled,
 		.sampler = RHI::SamplerDesc::render_target(),
 		.debug_name = "SceneColor",
+	});
+
+	m_display_color = m_ctx.create_texture({
+		.width = m_width,
+		.height = m_height,
+		.format = DISPLAY_COLOR_FORMAT,
+		.usage = RHI::TextureUsage::ColorAttachment | RHI::TextureUsage::Sampled,
+		.sampler = RHI::SamplerDesc::render_target(),
+		.debug_name = "DisplayColor",
 	});
 
 	m_depth_tex = m_ctx.create_texture({

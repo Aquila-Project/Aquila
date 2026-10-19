@@ -54,7 +54,7 @@ void GridSystem::on_init(GFX::GfxContext &ctx) {
 				.dst_alpha = RHI::BlendFactor::OneMinusSrcAlpha,
 				.alpha_op = RHI::BlendOp::Add,
 			} };
-			pipeline_descriptor.color_formats = { RHI::TextureFormat::RGBA16F };
+			pipeline_descriptor.color_formats = { DISPLAY_COLOR_FORMAT };
 			pipeline_descriptor.depth_format = RHI::TextureFormat::Depth32;
 			pipeline_descriptor.set_layouts = { &SceneFrameData::get()->get_layout().get_rhi() };
 			return build_ctx.create_graphics_pipeline(pipeline_descriptor);
@@ -75,8 +75,8 @@ void GridSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 	graph.add_pass(
 		"Grid",
 		[&ctx](RG::RGPassBuilder &builder) {
-			ctx.h_scene_color = builder.set_color_attachment(0, ctx.h_scene_color, RG::AttachmentLoadOp::Load,
-															 RG::AttachmentStoreOp::Store);
+			ctx.h_display_color = builder.set_color_attachment(0, ctx.h_display_color, RG::AttachmentLoadOp::Load,
+															   RG::AttachmentStoreOp::Store);
 
 			ctx.h_depth = builder.set_depth_attachment(
 				ctx.h_depth, RG::AttachmentLoadOp::Load, RG::AttachmentStoreOp::Store,

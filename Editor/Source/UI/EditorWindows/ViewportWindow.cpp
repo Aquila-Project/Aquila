@@ -48,6 +48,18 @@ constexpr std::array<ShadingMode, 7> k_shading_modes = { {
 	{ .view = Rendering::DebugView::LightComplexity, .label = "Light Complexity", .icon = "flame" },
 } };
 
+struct ToneMapperOption {
+	Rendering::ToneMapper mapper;
+	const char *label;
+};
+
+constexpr std::array<ToneMapperOption, 4> k_tone_mappers = { {
+	{ .mapper = Rendering::ToneMapper::AgX, .label = "AgX" },
+	{ .mapper = Rendering::ToneMapper::Neutral, .label = "Khronos Neutral" },
+	{ .mapper = Rendering::ToneMapper::Aces, .label = "ACES" },
+	{ .mapper = Rendering::ToneMapper::None, .label = "None" },
+} };
+
 struct ShowToggle {
 	const char *label;
 	bool Rendering::RenderSettings::*flag;
@@ -430,6 +442,18 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 		}
 	});
 
+	Rendering::RenderSettings &settings = context().engine().get_render_pipeline().get_settings();
+	m_tone_mapper = grid->add_row<UI::Core::Dropdown>("Tone Mapping");
+	m_tone_mapper->set_variant("props-dropdown");
+	m_tone_mapper->set_chevron(context().icon("chevron-down"));
+	for (const ToneMapperOption &option : k_tone_mappers) {
+		m_tone_mapper->add_option(std::to_string(static_cast<Uint32>(option.mapper)), option.label);
+	}
+	m_tone_mapper->on_changed.connect([&settings](const std::string &value) {
+		settings.tone_mapper = static_cast<Rendering::ToneMapper>(std::stoul(value));
+		Foundation::FrameScheduler::get()->request_frame();
+	});
+
 	m_view_through = grid->add_row<UI::Core::Dropdown>("View Through");
 	m_view_through->set_variant("props-dropdown");
 	m_view_through->set_chevron(context().icon("chevron-down"));
@@ -462,6 +486,8 @@ void ViewportWindow::refresh_camera_menu() {
 		m_auto_exposure_check->set_checked(camera->get_auto_exposure());
 	}
 	refresh_exposure_rows();
+	const Rendering::ToneMapper tone_mapper = context().engine().get_render_pipeline().get_settings().tone_mapper;
+	m_tone_mapper->set_value(std::to_string(static_cast<Uint32>(tone_mapper)));
 
 	m_scene_cameras.clear();
 	context().engine().get_scene().get_entity_manager()->for_each<SceneManagement::Components::CameraComponent>(
