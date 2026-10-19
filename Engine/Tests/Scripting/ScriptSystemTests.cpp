@@ -4,6 +4,7 @@
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/InputState.h"
+#include "Aquila/Foundation/Log.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
@@ -427,6 +428,32 @@ TEST_SUITE("ScriptSystem") {
 		CHECK(result.get_local_position().x == doctest::Approx(1.F));
 		CHECK(result.get_local_position().z == doctest::Approx(0.F).epsilon(0.0001));
 		CHECK(result.get_local_scale() == Vec3(1.F, 2.F, 0.F));
+	}
+
+	TEST_CASE("script errors go to the engine log, with a traceback down to the script's line") {
+		std::string path = write_script("fails.luau", R"(
+			local Input = require("@aquila/Input")
+			local M = {}
+			function M.on_start(self)
+				Input.is_key_down("Nope")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		std::ostringstream log;
+		Foundation::Logger::set_sink(&log);
+		system.update(0.F);
+		Foundation::Logger::set_sink(nullptr);
+
+		const std::string text = log.str();
+		CHECK(text.find("[Luau]") != std::string::npos);
+		CHECK(text.find("unknown key 'Nope'") != std::string::npos);
+		CHECK(text.find("stack traceback:") != std::string::npos);
+		CHECK(text.find("/script-tests/fails.luau:5 function on_start") != std::string::npos);
+		CHECK(text.find("function traceback") == std::string::npos);
 	}
 
 	TEST_CASE("Aquila.Camera reads and changes cameras and maps between world and screen") {

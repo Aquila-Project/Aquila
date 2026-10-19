@@ -14,6 +14,7 @@ namespace Aquila::Scripting {
 class ScriptSystem {
   public:
 	/// `input` is what Aquila.Input reads, null for no input. It must outlive the system.
+	/// Script errors, with a Luau traceback, go to the engine log (so the editor's console).
 	explicit ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input = nullptr);
 	~ScriptSystem();
 	AQUILA_NONCOPYABLE(ScriptSystem);

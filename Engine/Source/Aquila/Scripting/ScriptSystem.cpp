@@ -17,6 +17,7 @@ ScriptEntity to_script(entt::entity entity) {
 
 ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input)
 	: m_scene(scene), m_environment{ .scene = &scene, .input = input } {
+	m_runtime.set_error_handler([](std::string_view message) { AQUILA_LOG_ERROR("[Luau] {}", message); });
 	register_engine_api(m_runtime, m_environment);
 }
 
