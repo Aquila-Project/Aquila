@@ -5,6 +5,7 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/InputState.h"
 #include "Aquila/Scene/ComponentRegistry.h"
+#include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
@@ -426,6 +427,59 @@ TEST_SUITE("ScriptSystem") {
 		CHECK(result.get_local_position().x == doctest::Approx(1.F));
 		CHECK(result.get_local_position().z == doctest::Approx(0.F).epsilon(0.0001));
 		CHECK(result.get_local_scale() == Vec3(1.F, 2.F, 0.F));
+	}
+
+	TEST_CASE("Aquila.Camera reads and changes cameras and maps between world and screen") {
+		std::string path = write_script("camera.luau", R"(
+			local Aquila = require("@aquila")
+			local Camera = Aquila.Camera
+			local M = {}
+			function M.on_start(self)
+				local camera = Camera.get_active()
+				assert(camera ~= nil and camera:get_id() == Aquila.Scene.find("Eye"):get_id())
+				Camera.set_fov(500)
+				assert(Camera.get_fov() == 179)
+				Camera.set_fov(60, camera)
+				Camera.set_near(0.5)
+				Camera.set_far(50)
+				local ahead = Camera.world_to_screen(vector.create(0, 0, 10))
+				assert(ahead ~= nil)
+				assert(Camera.world_to_screen(vector.create(0, 0, -10)) == nil)
+				local origin, direction = Camera.screen_to_ray(vector.create(100, 50, 0))
+				self:set_position(ahead)
+				self:set_scale(direction)
+				self:set_name(if pcall(Camera.get_fov, self) then "no error" else "error")
+				Camera.set_active(Aquila.Scene.find("Other"))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		auto make_camera = [&scene](const std::string &name) {
+			Entity camera = scene.get_entity_manager()->create_entity(name);
+			auto &lens = camera.add_component<CameraComponent>();
+			lens.aspect_ratio = 2.F;
+			return camera;
+		};
+		Entity eye = make_camera("Eye");
+		Entity other = make_camera("Other");
+		scene.set_active_camera(eye);
+		scene.update_transform_hierarchy();
+		Platform::InputState input;
+		input.set_view(Vec2(0.F), Vec2(200.F, 100.F));
+		ScriptSystem system(scene, &input);
+
+		system.update(0.F);
+		const auto &lens = eye.get_component<CameraComponent>();
+		CHECK(lens.fov == doctest::Approx(60.F));
+		CHECK(lens.near_plane == doctest::Approx(0.5F));
+		CHECK(lens.far_plane == doctest::Approx(50.F));
+		const auto &transform = entity.get_component<TransformComponent>();
+		CHECK(transform.get_local_position().x == doctest::Approx(100.F));
+		CHECK(transform.get_local_position().y == doctest::Approx(50.F));
+		CHECK(transform.get_local_scale().z == doctest::Approx(1.F));
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "error");
+		CHECK(scene.get_active_camera_entity() == other);
 	}
 
 }

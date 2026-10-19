@@ -56,6 +56,30 @@ template <> struct aquiLua::Converter<Vec3> {
 	}
 };
 
+/// `vector?`: nil or a vector.
+template <> struct aquiLua::Converter<Option<Vec3>> {
+	static constexpr const char *luau_type = "vector?";
+
+	static void push(lua_State *state, const Option<Vec3> &value) {
+		if (value) {
+			aquiLua::Converter<Vec3>::push(state, *value);
+		} else {
+			lua_pushnil(state);
+		}
+	}
+
+	static Option<Vec3> check(lua_State *state, int index) {
+		if (lua_isnoneornil(state, index)) {
+			return std::nullopt;
+		}
+		return aquiLua::Converter<Vec3>::check(state, index);
+	}
+
+	static Option<Vec3> get(lua_State *state, int index) {
+		return lua_isvector(state, index) ? check(state, index) : std::nullopt;
+	}
+};
+
 /// `Entity?`: nil or an Entity.
 template <> struct aquiLua::Converter<Option<Aquila::Scripting::ScriptEntity>> {
 	static constexpr const char *luau_type = "Entity?";

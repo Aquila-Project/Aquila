@@ -6,6 +6,9 @@
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Platform/Events/KeyChord.h"
 #include "Aquila/Platform/InputState.h"
+#include "Aquila/Rendering/SceneFrameData.h"
+#include "Aquila/Rendering/ViewMath.h"
+#include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
@@ -91,9 +94,53 @@ entt::entity from_script(ScriptEntity entity) {
 	return static_cast<entt::entity>(entity.id);
 }
 
+struct ScriptCamera {
+	SceneManagement::Entity entity;
+};
+
+} // namespace
+
+} // namespace Aquila::Scripting
+
+template <> struct aquiLua::Converter<Aquila::Scripting::ScriptCamera> {
+	using ScriptCamera = Aquila::Scripting::ScriptCamera;
+
+	static constexpr const char *luau_type = "Entity?";
+
+	static void push(lua_State *state, const ScriptCamera &camera) {
+		aquiLua::push(state, Aquila::Scripting::ScriptEntity{ entt::to_integral(camera.entity.get_handle()) });
+	}
+
+	static ScriptCamera check(lua_State *state, int index) {
+		auto &scene = *aquiLua::context<Aquila::Scripting::ScriptEnvironment>(state).scene;
+		if (lua_isnoneornil(state, index)) {
+			if (!scene.has_active_camera()) {
+				luaL_error(state, "the scene has no active camera");
+			}
+			return { scene.get_active_camera_entity() };
+		}
+		const auto handle = aquiLua::check<Aquila::Scripting::ScriptEntity>(state, index);
+		const Aquila::SceneManagement::Entity entity(Aquila::Scripting::from_script(handle), &scene);
+		if (!entity.is_valid()) {
+			luaL_error(state, "entity %u was destroyed", handle.id);
+		}
+		if (!entity.has_all_components<Aquila::SceneManagement::Components::CameraComponent,
+									   Aquila::SceneManagement::Components::TransformComponent>()) {
+			luaL_error(state, "entity %u has no Camera component", handle.id);
+		}
+		return { entity };
+	}
+
+	static ScriptCamera get(lua_State *state, int index) { return check(state, index); }
+};
+
+namespace Aquila::Scripting {
+
+namespace {
 
 using Platform::Events::KeyCode;
 using Platform::Events::MouseButton;
+using SceneManagement::Components::CameraComponent;
 using SceneManagement::Components::MetadataComponent;
 using SceneManagement::Components::SceneNodeComponent;
 using SceneManagement::Components::TransformComponent;
@@ -190,6 +237,74 @@ void destroy(ScriptEnvironment &environment, ScriptEntity entity) {
 	if (target.is_valid()) {
 		environment.scene->get_entity_manager()->queue_for_kill(target);
 	}
+}
+
+CameraComponent &lens(ScriptCamera &camera) {
+	return camera.entity.get_component<CameraComponent>();
+}
+
+Rendering::RenderView view_of(ScriptCamera &camera) {
+	return Rendering::render_view_from_entity(lens(camera), camera.entity.get_component<TransformComponent>());
+}
+
+Rect screen_rect(const ScriptEnvironment &environment) {
+	const Vec2 size = environment.input != nullptr ? environment.input->get_view_size() : Vec2(0.F);
+	return { .position = Vec2(0.F), .size = Vec2(Math::max(size.x, 1.F), Math::max(size.y, 1.F)) };
+}
+
+Option<ScriptEntity> active_camera(ScriptEnvironment &environment) {
+	if (!environment.scene->has_active_camera()) {
+		return std::nullopt;
+	}
+	return to_script(environment.scene->get_active_camera_entity().get_handle());
+}
+
+void set_active_camera(ScriptEnvironment &environment, ScriptCamera camera) {
+	environment.scene->set_active_camera(camera.entity);
+}
+
+F32 camera_fov(ScriptEnvironment &, ScriptCamera camera) {
+	return lens(camera).fov;
+}
+
+void set_camera_fov(ScriptEnvironment &, F32 degrees, ScriptCamera camera) {
+	lens(camera).set_fov(degrees);
+}
+
+F32 camera_near(ScriptEnvironment &, ScriptCamera camera) {
+	return lens(camera).near_plane;
+}
+
+void set_camera_near(ScriptEnvironment &, F32 distance, ScriptCamera camera) {
+	CameraComponent &camera_lens = lens(camera);
+	camera_lens.near_plane = Math::clamp(distance, 0.001F, camera_lens.far_plane * 0.999F);
+}
+
+F32 camera_far(ScriptEnvironment &, ScriptCamera camera) {
+	return lens(camera).far_plane;
+}
+
+void set_camera_far(ScriptEnvironment &, F32 distance, ScriptCamera camera) {
+	CameraComponent &camera_lens = lens(camera);
+	camera_lens.far_plane = Math::max(distance, camera_lens.near_plane * 1.001F);
+}
+
+Option<Vec3> world_to_screen(ScriptEnvironment &environment, Vec3 point, ScriptCamera camera) {
+	if (environment.input == nullptr || environment.input->get_view_size().x <= 0.F) {
+		return std::nullopt;
+	}
+	if (const Option<Vec2> screen = Rendering::project_to_screen(view_of(camera), screen_rect(environment), point)) {
+		return Vec3(*screen, 0.F);
+	}
+	return std::nullopt;
+}
+
+Vec3 screen_ray_origin(ScriptEnvironment &environment, Vec3 point, ScriptCamera camera) {
+	return Rendering::screen_ray(view_of(camera), screen_rect(environment), Vec2(point)).origin;
+}
+
+Vec3 screen_ray_direction(ScriptEnvironment &environment, Vec3 point, ScriptCamera camera) {
+	return Rendering::screen_ray(view_of(camera), screen_rect(environment), Vec2(point)).direction;
 }
 
 SceneManagement::Entity check_entity(lua_State *state) {
@@ -306,6 +421,18 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 
 	runtime.bind<screen_size>("screen.get_size", &environment, "Pixels the game is shown in.");
 
+	runtime.bind<active_camera>("camera.get_active", &environment, "The camera the game renders through.");
+	runtime.bind<set_active_camera>("camera.set_active", &environment, "Renders through this camera.");
+	runtime.bind<camera_fov>("camera.get_fov", &environment, "Vertical field of view in degrees.");
+	runtime.bind<set_camera_fov>("camera.set_fov", &environment, "Vertical field of view in degrees.");
+	runtime.bind<camera_near>("camera.get_near", &environment, "Near clip distance.");
+	runtime.bind<set_camera_near>("camera.set_near", &environment, "Near clip distance.");
+	runtime.bind<camera_far>("camera.get_far", &environment, "Far clip distance.");
+	runtime.bind<set_camera_far>("camera.set_far", &environment, "Far clip distance.");
+	runtime.bind<world_to_screen>("camera.world_to_screen", &environment, "World point to screen pixels.");
+	runtime.bind<screen_ray_origin>("camera.screen_ray_origin", &environment, "Where the ray under a pixel starts.");
+	runtime.bind<screen_ray_direction>("camera.screen_ray_direction", &environment,
+									   "Where the ray under a pixel goes.");
 
 	runtime.add_alias("aquila", Foundation::EnginePaths::resources_dir() + "Engine/API");
 
