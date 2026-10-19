@@ -13,8 +13,8 @@ struct TransformComponent {
   public:
 	Signal<void()> on_changed;
 
-	TransformComponent(const Vec3 &position = Vec3{ 0.F }, const Quaternion &rotation = Quaternion{ 1.F, 0.F, 0.F, 0.F },
-					   const Vec3 &scale = Vec3{ 1.F })
+	TransformComponent(const Vec3 &position = Vec3{ 0.F },
+					   const Quaternion &rotation = Quaternion{ 1.F, 0.F, 0.F, 0.F }, const Vec3 &scale = Vec3{ 1.F })
 		: m_local_position(position), m_local_rotation(rotation), m_local_scale(scale), m_world_matrix(1.0F) {}
 
 	void set_local_position(const Vec3 &position) {
@@ -28,7 +28,7 @@ struct TransformComponent {
 	}
 
 	/// Degrees.
-	void set_local_rotation_euler(const Vec3 &rotation){
+	void set_local_rotation_euler(const Vec3 &rotation) {
 		m_local_rotation = Quaternion(Math::radians(rotation));
 		mark_world_matrix_dirty();
 	}

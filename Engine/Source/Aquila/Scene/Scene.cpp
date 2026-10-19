@@ -117,6 +117,17 @@ Option<MeshSource> mesh_source_from_json(const nlohmann::ordered_json &mesh_json
 	return std::nullopt;
 }
 
+Quaternion rotation_from_json(const nlohmann::ordered_json &rotation) {
+	if (!rotation.is_array() || rotation.size() < 3) {
+		return Quaternion(1.F, 0.F, 0.F, 0.F);
+	}
+	const Vec3 axis(rotation[0].get<F32>(), rotation[1].get<F32>(), rotation[2].get<F32>());
+	const F32 w = rotation.size() >= 4 ? rotation[3].get<F32>() : Math::sqrt(Math::max(0.F, 1.F - Math::dot(axis, axis)));
+	const Quaternion quaternion(w, axis.x, axis.y, axis.z);
+	const F32 length = glm::length(quaternion);
+	return length > Math::EPSILON ? quaternion / length : Quaternion(1.F, 0.F, 0.F, 0.F);
+}
+
 nlohmann::ordered_json script_fields_to_json(const std::map<std::string, Components::ScriptFieldValue> &fields) {
 	nlohmann::ordered_json out = nlohmann::ordered_json::object();
 	for (const auto &[name, value] : fields) {
@@ -453,6 +464,7 @@ bool Scene::serialize(const std::string &filepath) {
 						transform.get_local_rotation().x,
 						transform.get_local_rotation().y,
 						transform.get_local_rotation().z,
+						transform.get_local_rotation().w,
 					},
 				},
 				{
@@ -668,13 +680,11 @@ bool Scene::deserialize(const std::string &filepath) {
 			const auto &transform_json = components["transform_component"];
 			Vec3 position =
 				Vec3(transform_json["position"][0], transform_json["position"][1], transform_json["position"][2]);
-			Vec3 rotation =
-				Vec3(transform_json["rotation"][0], transform_json["rotation"][1], transform_json["rotation"][2]);
 			Vec3 scale = Vec3(transform_json["scale"][0], transform_json["scale"][1], transform_json["scale"][2]);
 
 			auto &transform = entity.get_or_emplace<Components::TransformComponent>();
 			transform.set_local_position(position);
-			transform.set_local_rotation(rotation);
+			transform.set_local_rotation(rotation_from_json(transform_json["rotation"]));
 			transform.set_local_scale(scale);
 			transform.update_world_matrix();
 		}

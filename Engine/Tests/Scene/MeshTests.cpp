@@ -265,6 +265,35 @@ TEST_SUITE("Mesh library") {
 }
 
 TEST_SUITE("Scene serialization") {
+	TEST_CASE("rotations survive a save and a load, old files with only x, y, z load right") {
+		auto same_rotation = [](const Quaternion &a, const Quaternion &b) {
+			return std::abs(std::abs(glm::dot(a, b)) - 1.F) < 1e-5F;
+		};
+		const Quaternion turned = Quaternion(Math::radians(Vec3(30.F, 135.F, -20.F)));
+		const std::string path = scene_dir() + "/rotation.aqscene";
+		{
+			Scene scene("Saved");
+			Entity thing = scene.get_entity_manager()->create_entity("Thing");
+			thing.get_component<TransformComponent>().set_local_rotation(turned);
+			REQUIRE(scene.serialize(path));
+		}
+		Scene loaded("Loaded");
+		REQUIRE(loaded.deserialize(path));
+		CHECK(same_rotation(find(loaded, "Thing").get_component<TransformComponent>().get_local_rotation(), turned));
+
+		const Quaternion legacy = Quaternion(Math::radians(Vec3(0.F, 120.F, 0.F)));
+		const std::string old_path = scene_dir() + "/old_rotation.aqscene";
+		std::ofstream(std::filesystem::temp_directory_path() / "aquila-mesh-tests" / "old_rotation.aqscene")
+			<< "{ \"scene_name\": \"Old\", \"entities\": { \"0\": { \"components\": {"
+			   " \"metadata_component\": { \"name\": \"Thing\", \"uuid\": \""
+			<< Foundation::UUID::generate().to_string()
+			<< "\" }, \"transform_component\": { \"position\": [0, 0, 0], \"rotation\": [" << legacy.x << ", "
+			<< legacy.y << ", " << legacy.z << "], \"scale\": [1, 1, 1] } } } } }";
+		Scene old("Old");
+		REQUIRE(old.deserialize(old_path));
+		CHECK(same_rotation(find(old, "Thing").get_component<TransformComponent>().get_local_rotation(), legacy));
+	}
+
 	TEST_CASE("script field overrides and entity references survive a save, a load and a copy") {
 		register_script_component();
 		const std::string path = scene_dir() + "/script_fields.aqscene";
