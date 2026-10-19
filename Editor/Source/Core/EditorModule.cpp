@@ -179,6 +179,7 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		m_workspaces->activate(workspace);
 	}
 
+	drop_destroyed_selection();
 
 	if (m_pending_pick && m_context) {
 		const Entity picked = *m_pending_pick;
@@ -211,7 +212,14 @@ Aquila::UI::Core::Canvas *EditorModule::canvas_for(Events::EventSource source) c
 	return m_dock_manager ? m_dock_manager->find_canvas(source) : nullptr;
 }
 
+void EditorModule::drop_destroyed_selection() {
+	if (m_context && !m_context->selection.get().is_null() && !m_context->selection.has()) {
+		m_context->selection.clear();
+	}
+}
+
 void EditorModule::on_event(Events::Event &event) {
+	drop_destroyed_selection();
 	Aquila::UI::Core::Canvas *source_canvas = canvas_for(event.get_source());
 	if (source_canvas == nullptr) {
 		return;

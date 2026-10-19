@@ -509,4 +509,25 @@ TEST_SUITE("ScriptSystem") {
 		CHECK(scene.get_active_camera_entity() == other);
 	}
 
+	TEST_CASE("renaming and hiding from a script tell the scene, so the hierarchy follows") {
+		std::string path = write_script("rename.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set_name("Renamed")
+				self:set_visible(false)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		int changes = 0;
+		scene.on_entities_changed.connect([&changes] { ++changes; });
+
+		system.update(0.F);
+		CHECK(changes == 2);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "Renamed");
+		CHECK_FALSE(entity.get_component<MetadataComponent>().is_visible());
+	}
+
 }

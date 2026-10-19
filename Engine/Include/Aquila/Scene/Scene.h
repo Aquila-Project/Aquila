@@ -64,6 +64,11 @@ class Scene final {
 
 	/// Fires after deserialize() succeeded.
 	Signal<void()> on_loaded;
+	/// An entity was created or destroyed, or its MetadataComponent was patched (Entity::patch_component, which is
+	/// how scripts rename and hide entities; plain setter calls don't fire it). Fires per entity and a lot while
+	/// loading, so only mark yourself dirty in it.
+	Signal<void()> on_entities_changed;
+
 	void set_active_camera(Entity camera_entity);
 
   protected:
@@ -76,6 +81,7 @@ class Scene final {
 	Foundation::DirtySet<entt::entity> m_dirty_transforms;
 
 	void on_transform_construct(entt::registry &registry, entt::entity entity);
+	void on_metadata_changed(entt::registry &registry, entt::entity entity);
 	[[nodiscard]] bool has_dirty_ancestor(entt::entity entity) const;
 	[[nodiscard]] int get_entity_depth(entt::entity entity) const;
 

@@ -139,6 +139,10 @@ void Scene::on_start() {
 	m_entity_manager->get_registry()
 		.on_construct<Components::TransformComponent>()
 		.connect<&Scene::on_transform_construct>(this);
+	entt::registry &registry = m_entity_manager->get_registry();
+	registry.on_construct<Components::MetadataComponent>().connect<&Scene::on_metadata_changed>(this);
+	registry.on_update<Components::MetadataComponent>().connect<&Scene::on_metadata_changed>(this);
+	registry.on_destroy<Components::MetadataComponent>().connect<&Scene::on_metadata_changed>(this);
 	m_entity_manager->construct_scene_graph();
 }
 
@@ -146,6 +150,10 @@ void Scene::on_transform_construct(entt::registry &registry, entt::entity e) {
 	auto &t = registry.get<Components::TransformComponent>(e);
 	t.set_dirty_callback([this, e]() { mark_transform_dirty(e); });
 	mark_transform_dirty(e); // bootstrap: new entity needs its first world matrix compute
+}
+
+void Scene::on_metadata_changed(entt::registry &, entt::entity) {
+	on_entities_changed();
 }
 
 void Scene::mark_transform_dirty(entt::entity entity) {

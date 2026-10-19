@@ -24,7 +24,7 @@ void EditorSelection::select(Entity entity) {
 }
 
 void EditorSelection::clear() {
-	if (!m_entity.is_valid()) {
+	if (m_entity.is_null()) {
 		return;
 	}
 	m_entity = Entity::null();

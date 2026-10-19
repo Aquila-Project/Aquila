@@ -35,6 +35,9 @@ class HierarchyPanel : public IEditorPanel {
 	void refresh_entity(Aquila::SceneManagement::Entity entity);
 	void remove_entity(Aquila::SceneManagement::Entity entity);
 	void rebuild();
+	/// Brings the tree in line with the scene without rebuilding it, so expanded nodes stay expanded: drops nodes
+	/// of destroyed entities, adds missing ones under their parents, refreshes names, icons and visibility.
+	void sync();
 	void set_tree_icons(Aquila::GFX::GfxTexture *collapsed, Aquila::GFX::GfxTexture *expanded);
 	void set_entity_icons(const EntityIcons &icons);
 
