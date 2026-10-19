@@ -1,6 +1,7 @@
 #pragma once
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/Photometry.h"
 
 namespace Aquila::Rendering {
 
@@ -16,6 +17,9 @@ struct RenderView {
 	F32 far_plane = 1000.F;
 	F32 fov = 60.F;
 	F32 aspect = 1.F;
+	F32 ev100 = Foundation::Photometry::DAYLIGHT_EV100;
+	F32 exposure_compensation = 0.F;
+	bool auto_exposure = true;
 	bool is_orthographic = false;
 	bool valid = false;
 

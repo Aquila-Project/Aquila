@@ -12,6 +12,7 @@
 #include "Aquila/Rendering/LightData.h"
 #include "Aquila/Graphics/SurfaceData.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/Photometry.h"
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -188,6 +189,9 @@ RenderView render_view_from_entity(const CameraComponent &cam, const TransformCo
 	view.far_plane = cam.far_plane;
 	view.fov = cam.fov;
 	view.aspect = cam.aspect_ratio;
+	view.ev100 = cam.ev100;
+	view.exposure_compensation = cam.exposure_compensation;
+	view.auto_exposure = cam.auto_exposure;
 	view.is_orthographic = cam.is_orthographic;
 	view.valid = true;
 	return view;
@@ -224,11 +228,23 @@ static Vec3 light_direction(const LightComponent &light) {
 	const F32 length = Math::length(light.m_direction);
 	return length > 1e-6F ? light.m_direction / length : Vec3(0.F, -1.F, 0.F);
 }
+
+static F32 shader_intensity(const LightComponent &light) {
+	switch (light.m_type) {
+	case LightComponent::Type::Point:
+		return Foundation::Photometry::point_intensity(light.m_intensity);
+	case LightComponent::Type::Spot:
+		return Foundation::Photometry::spot_intensity(light.m_intensity, Math::radians(light.m_outer_cone_angle));
+	default:
+		return light.m_intensity;
+	}
+}
+
 static GpuLightData build_light_data(const LightComponent &light, const TransformComponent &transform) {
 	GpuLightData data{};
 
 	data.m_position_and_range = Vec4(transform.get_world_position(), light.m_range);
-	data.m_color_and_intensity = Vec4(light.m_color, light.m_intensity);
+	data.m_color_and_intensity = Vec4(light.m_color, shader_intensity(light));
 	data.m_direction_and_type = Vec4(light_direction(light), static_cast<float>(light.m_type));
 	data.m_shadow_index = -1;
 	data.m_flags = 0;
@@ -331,7 +347,7 @@ static GpuShadowData compute_shadow_data(const RenderView &camera, const Vec3 &l
 }
 
 void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uint32 frame_slot,
-							const RenderView &primary_view, bool shadows_allowed) {
+							const RenderView &primary_view, F32 exposure, bool shadows_allowed) {
 	m_time += delta_time;
 
 	GpuFrameData gpu_frame{};
@@ -339,6 +355,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 	gpu_frame.delta_time = delta_time;
 	gpu_frame.frame_index = m_frame_index++;
 	gpu_frame.screen_resolution = Vec2(static_cast<float>(m_width), static_cast<float>(m_height));
+	gpu_frame.exposure = exposure;
 
 	gpu_frame.main_camera = build_camera_data(primary_view, 0, m_width, m_height);
 

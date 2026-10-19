@@ -13,6 +13,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/Photometry.h"
 
 namespace Aquila::Rendering {
 
@@ -118,7 +119,7 @@ void SkySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		sky->set_irradiance(HosekWilkieSky::bake_sh(m_cached));
 	}
 
-	m_cached.tint_intensity = Vec4(sky->get_tint(), sky->get_intensity() * kSkyBaseExposure);
+	m_cached.tint_intensity = Vec4(sky->get_tint(), sky->get_intensity() * Foundation::Photometry::LUMINOUS_EFFICACY);
 
 	const Uint32 frame_slot = ctx.frame_slot;
 	m_sky_buffers[frame_slot]->write(&m_cached, sizeof(GpuSkyData));

@@ -181,7 +181,7 @@ float4 main(VSOutput IN) : SV_Target {
 
 		return float4(CascadeDebugColor(IN.worldPos) * shadow, 1.0);
 	}
-	return float4(color, surf.albedo.a);
+	return float4(color * GetExposure(), surf.albedo.a);
 }
 
 #endif // AQUILA_BASIC_SLANG

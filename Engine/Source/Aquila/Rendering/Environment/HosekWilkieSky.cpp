@@ -1,5 +1,6 @@
 #include "Aquila/Rendering/Environment/HosekWilkieSky.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/Photometry.h"
 
 extern "C" {
 #include "hosek/ArHosekSkyModel.h"
@@ -88,7 +89,7 @@ Vec3 HosekWilkieSky::evaluate(const GpuSkyData &data, Vec3 direction) {
 	}
 
 	const F32 ground = dir.y < 0.0F ? 0.25F : 1.0F;
-	return Math::max(result * kSkyBaseExposure * ground, Vec3(0.0F));
+	return Math::max(result * Foundation::Photometry::LUMINOUS_EFFICACY * ground, Vec3(0.0F));
 }
 
 SHCoefficients HosekWilkieSky::bake_sh(const GpuSkyData &data, int samples) {
@@ -114,9 +115,11 @@ SHCoefficients HosekWilkieSky::bake_sh(const GpuSkyData &data, int samples) {
 		}
 	}
 
+	constexpr std::array<F32, 9> k_cosine_lobe = { 1.0F,		 2.0F / 3.0F, 2.0F / 3.0F, 2.0F / 3.0F, 0.25F,
+												   0.25F, 0.25F,		0.25F,		 0.25F };
 	const F32 weight = 4.0F * Math::PI / static_cast<F32>(samples);
-	for (auto &coefficient : sh.coeffs) {
-		coefficient *= weight;
+	for (int i = 0; i < 9; ++i) {
+		sh.coeffs[i] *= weight * k_cosine_lobe[i];
 	}
 	return sh;
 }

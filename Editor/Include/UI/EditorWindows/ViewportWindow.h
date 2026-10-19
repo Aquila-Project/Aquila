@@ -7,6 +7,7 @@
 
 namespace Aquila::UI::Core {
 class Button;
+class Checkbox;
 class DragFloat;
 class Dropdown;
 class Popup;
@@ -34,6 +35,7 @@ class ViewportWindow final : public EditorWindow {
 	void wire_show_menu(Aquila::UI::Core::View &content);
 	void wire_camera_menu(Aquila::UI::Core::View &content);
 	void refresh_camera_menu();
+	void refresh_exposure_rows();
 	void refresh_debug_info(F32 delta_time);
 	[[nodiscard]] Aquila::Rendering::RenderView current_view() const;
 	void refresh_tools();
@@ -49,6 +51,9 @@ class ViewportWindow final : public EditorWindow {
 	Aquila::UI::Core::Popup *m_camera_popup = nullptr;
 	Aquila::UI::Core::DragFloat *m_fov_field = nullptr;
 	Aquila::UI::Core::DragFloat *m_speed_field = nullptr;
+	Aquila::UI::Core::Checkbox *m_auto_exposure_check = nullptr;
+	Aquila::UI::Core::DragFloat *m_compensation_field = nullptr;
+	Aquila::UI::Core::DragFloat *m_exposure_field = nullptr;
 	Aquila::UI::Core::Dropdown *m_view_through = nullptr;
 	std::vector<Aquila::SceneManagement::Entity> m_scene_cameras;
 	Aquila::SceneManagement::Entity m_view_camera;

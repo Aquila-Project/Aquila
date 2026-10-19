@@ -33,6 +33,13 @@ class CameraController {
 	[[nodiscard]] F32 get_fov() const { return m_fov; }
 	void set_move_speed(F32 speed) { m_move_speed = speed; }
 	[[nodiscard]] F32 get_move_speed() const { return m_move_speed; }
+	void set_ev100(F32 ev100);
+	[[nodiscard]] F32 get_ev100() const { return m_ev100; }
+	void set_auto_exposure(bool enabled);
+	[[nodiscard]] bool get_auto_exposure() const { return m_auto_exposure; }
+	/// Stops, + is brighter. Only used with auto exposure.
+	void set_exposure_compensation(F32 stops);
+	[[nodiscard]] F32 get_exposure_compensation() const { return m_exposure_compensation; }
 
   private:
 	enum class NavMode : Uint8 { None, Fly, Orbit };
@@ -44,6 +51,9 @@ class CameraController {
 	F32 m_far = 1000.F;
 	F32 m_aspect = 16.F / 9.F;
 	F32 m_move_speed = 5.F;
+	F32 m_ev100 = Foundation::Photometry::DAYLIGHT_EV100;
+	F32 m_exposure_compensation = 0.F;
+	bool m_auto_exposure = true;
 
 	Vec2 m_viewport_pos{ 0.F, 0.F };
 	Vec2 m_viewport_size{ 0.F, 0.F };

@@ -1,6 +1,7 @@
 #include "Aquila/Scene/Scene.h"
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Photometry.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/LightComponent.h"
@@ -22,6 +23,26 @@ namespace {
 using Graphics::Resources::MeshParams;
 using Graphics::Resources::MeshSource;
 using Graphics::Resources::MeshSourceKind;
+
+constexpr int k_scene_version = 2;
+constexpr int k_photometric_version = 2;
+
+F32 legacy_light_scale() {
+	return 1.F / Foundation::Photometry::exposure(Foundation::Photometry::DAYLIGHT_EV100);
+}
+
+F32 photometric_from_legacy(const Components::LightComponent &light) {
+	using Type = Components::LightComponent::Type;
+	const F32 scaled = light.m_intensity * legacy_light_scale();
+	switch (light.m_type) {
+	case Type::Point:
+		return scaled / Foundation::Photometry::point_intensity(1.F);
+	case Type::Spot:
+		return scaled / Foundation::Photometry::spot_intensity(1.F, Math::radians(light.m_outer_cone_angle));
+	default:
+		return scaled;
+	}
+}
 
 std::string snake_case(std::string_view name) {
 	auto upper = [](char c) { return std::isupper(static_cast<unsigned char>(c)) != 0; };
@@ -418,6 +439,7 @@ bool Scene::serialize(const std::string &filepath) {
 	nlohmann::ordered_json scene_json;
 
 	scene_json["scene_name"] = m_scene_name;
+	scene_json["version"] = k_scene_version;
 
 	auto &registry = get_registry();
 	scene_json["entities"] = nlohmann::ordered_json::object();
@@ -550,6 +572,9 @@ bool Scene::serialize(const std::string &filepath) {
 				{ "aspect_ratio", cam.aspect_ratio },
 				{ "near_plane", cam.near_plane },
 				{ "far_plane", cam.far_plane },
+				{ "ev100", cam.ev100 },
+				{ "auto_exposure", cam.auto_exposure },
+				{ "exposure_compensation", cam.exposure_compensation },
 				{ "ortho_left", cam.ortho_left },
 				{ "ortho_right", cam.ortho_right },
 				{ "ortho_top", cam.ortho_top },
@@ -632,6 +657,7 @@ bool Scene::deserialize(const std::string &filepath) {
 	}
 
 	m_scene_name = scene_json.value("scene_name", "Untitled Scene");
+	const bool legacy_light_units = scene_json.value("version", 1) < k_photometric_version;
 	clear();
 
 	const auto &entities_json = scene_json["entities"];
@@ -772,8 +798,9 @@ bool Scene::deserialize(const std::string &filepath) {
 				light.m_is_active = light_json["is_active"].get<bool>();
 			}
 
-			if (light_json.contains("IsActive")) {
-				light.m_is_active = light_json["IsActive"].get<bool>();
+
+			if (legacy_light_units && light_json.contains("intensity")) {
+				light.m_intensity = photometric_from_legacy(light);
 			}
 
 			// Deserialize shadow settings for directional lights
@@ -803,6 +830,9 @@ bool Scene::deserialize(const std::string &filepath) {
 			cam.aspect_ratio = cam_json.value("aspect_ratio", 16.0F / 9.0F);
 			cam.near_plane = cam_json.value("near_plane", 0.1F);
 			cam.far_plane = cam_json.value("far_plane", 1000.0F);
+			cam.ev100 = cam_json.value("ev100", Foundation::Photometry::DAYLIGHT_EV100);
+			cam.auto_exposure = cam_json.value("auto_exposure", true);
+			cam.exposure_compensation = cam_json.value("exposure_compensation", 0.F);
 			cam.ortho_left = cam_json.value("ortho_left", -10.0F);
 			cam.ortho_right = cam_json.value("ortho_right", 10.0F);
 			cam.ortho_top = cam_json.value("ortho_top", 10.0F);

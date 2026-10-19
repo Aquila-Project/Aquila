@@ -60,14 +60,13 @@ float4 fragmentMain(VSOutput IN) : SV_Target {
 	color.b = HosekRadiance(sky.configA[2], sky.configB[2], sky.configC[2].x, theta, gamma) * sky.configC[2].y;
 
 	color = max(color * sky.tintIntensity.w, float3(0.0));
-	color = 1.0 - exp(-color);
 	color *= sky.tintIntensity.xyz;
 
 	float3 groundColor = color * sky.groundAlbedo.xyz;
 	float horizonBlend = smoothstep(-0.02, 0.02, dir.y);
 	color = lerp(groundColor, color, horizonBlend);
 
-	return float4(color, 1.0);
+	return float4(color * GetExposure(), 1.0);
 }
 
 #endif // AQUILA_HOSEK_SKY_SLANG

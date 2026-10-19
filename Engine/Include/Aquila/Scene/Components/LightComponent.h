@@ -3,6 +3,7 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Photometry.h"
 #include "Aquila/Foundation/Signal.h"
 
 namespace Aquila::SceneManagement::Components {
@@ -16,16 +17,26 @@ struct ShadowQualitySettings {
 	int blocker_search_samples = 16;
 };
 
+/// `m_intensity` is lux for Directional and lumens for Point and Spot (Foundation/Photometry.h).
 /// `m_range` is for Point and Spot. `m_direction` is for Directional and Spot, it's not the
 /// transform rotation, and a zero vector is ignored. Cone angles are half angles in degrees.
 /// Area has no shading yet.
 struct LightComponent {
 	enum class Type { Point, Directional, Spot, Area };
 
+	/// A clear noon sun.
+	static constexpr F32 DEFAULT_ILLUMINANCE = 100000.0F;
+	/// A 60 W incandescent bulb.
+	static constexpr F32 DEFAULT_POWER = 800.0F;
+
+	[[nodiscard]] static constexpr F32 default_intensity(Type type) noexcept {
+		return type == Type::Directional ? DEFAULT_ILLUMINANCE : DEFAULT_POWER;
+	}
+
 	Type m_type = Type::Directional;
 
 	Vec3 m_color = Vec3(1.0F);
-	F32 m_intensity = 1.0F;
+	F32 m_intensity = DEFAULT_ILLUMINANCE;
 	F32 m_range = 100.0F;
 
 	F32 m_inner_cone_angle = 0.0F;

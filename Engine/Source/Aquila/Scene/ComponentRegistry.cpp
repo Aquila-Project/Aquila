@@ -64,6 +64,9 @@ void register_builtin_components(ComponentRegistry &registry) {
 	registry.register_component<LightComponent>("Light")
 		.property("Type", &LightComponent::get_type,
 				  [](LightComponent &light, LightType type) {
+					  if ((type == LightType::Directional) != (light.get_type() == LightType::Directional)) {
+						  light.set_intensity(LightComponent::default_intensity(type));
+					  }
 					  light.set_type(type);
 				  })
 		.options({ { .name = "Directional", .value = static_cast<Int32>(LightType::Directional) },

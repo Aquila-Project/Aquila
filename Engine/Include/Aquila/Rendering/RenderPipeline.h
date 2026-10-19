@@ -3,6 +3,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Graphics/RenderGraph/RGGraph.h"
+#include "Aquila/Rendering/AutoExposure.h"
 #include "Aquila/Rendering/Renderers/IRenderer.h"
 #include "Aquila/Rendering/FrameContext.h"
 #include "Aquila/Rendering/RenderView.h"
@@ -42,12 +43,17 @@ class RenderPipeline {
 	/// Resizes first when the size changed.
 	void render(GFX::GfxCommandList &cmd, SceneManagement::Scene &scene, F32 delta_time, Uint32 width, Uint32 height);
 	void resize(Uint32 width, Uint32 height);
+	/// Call right before the app sleeps, so auto exposure gets to finish adapting (it may wait for the GPU and
+	/// request one more frame).
+	void settle();
 
 	/// Render from this view instead of the scene's active camera. clear_primary_view() goes back.
 	void set_primary_view(const RenderView &view) { m_primary_view = view; }
 	void clear_primary_view() { m_primary_view.reset(); }
 
 	[[nodiscard]] RenderSettings &get_settings() { return m_settings; }
+	/// The EV100 the camera exposed the last frame with: the adapted one with auto exposure, before compensation.
+	[[nodiscard]] F32 get_exposure_ev100() const { return m_auto_exposure->get_ev100(); }
 	[[nodiscard]] const RenderView &get_last_view() const { return m_last_view; }
 
 	[[nodiscard]] GFX::GfxTexture &get_output() const { return *m_scene_color; }
@@ -94,6 +100,7 @@ class RenderPipeline {
 
 	Option<RenderView> m_primary_view;
 	RenderSettings m_settings;
+	Unique<AutoExposure> m_auto_exposure;
 	RenderView m_last_view;
 };
 

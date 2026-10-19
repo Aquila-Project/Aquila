@@ -33,8 +33,9 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 	SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height);
 
 	/// Fills `frame_slot`'s buffers. Also sets MaterialComponent::material_index on every material.
+	/// `exposure` is the pixel value per nit lit shaders multiply their output by (AutoExposure::begin_frame).
 	void update(SceneManagement::Scene &scene, float delta_time, Uint32 frame_slot, const RenderView &primary_view,
-				bool shadows_allowed = true);
+				F32 exposure, bool shadows_allowed = true);
 
 	void on_resize(Uint32 width, Uint32 height);
 

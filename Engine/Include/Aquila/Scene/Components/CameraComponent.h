@@ -2,6 +2,7 @@
 #define CAMERA_COMPONENT_H
 
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/Photometry.h"
 #include "Aquila/Foundation/Signal.h"
 
 #include <glm/gtc/quaternion.hpp>
@@ -11,12 +12,18 @@ using namespace glm;
 
 /// `fov` is vertical, in degrees. +Z is forward and -Y is up (Vulkan y-down).
 /// `primary` marks the camera find_primary_camera() returns.
+/// With `auto_exposure` the camera adapts to the scene like an eye and `exposure_compensation` (stops, + is
+/// brighter) shifts the result. Without it `ev100` is the exposure: higher is darker, one step halves the light
+/// (Foundation/Photometry.h).
 struct CameraComponent {
 	F32 fov = 80.0F;
 	F32 near_plane = 0.1F;
 	F32 far_plane = 100.F;
 	F32 aspect_ratio = 1.778F;
 	bool is_orthographic = false;
+	bool auto_exposure = true;
+	F32 exposure_compensation = 0.F;
+	F32 ev100 = Foundation::Photometry::DAYLIGHT_EV100;
 
 	F32 ortho_left = -1.0F;
 	F32 ortho_right = 1.0F;

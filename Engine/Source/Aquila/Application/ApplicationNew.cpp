@@ -125,6 +125,9 @@ void Application::run() {
 	Foundation::FrameScheduler *scheduler = Foundation::FrameScheduler::get();
 	while (m_running) {
 		if (!scheduler->is_pending()) {
+			m_render_pipeline->settle();
+		}
+		if (!scheduler->is_pending()) {
 			m_resumed_from_idle = true;
 			m_window->wait_events(idle_timeout());
 		} else if (const F64 until_slot = seconds_until_frame_slot(); until_slot > 0.0) {

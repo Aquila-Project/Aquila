@@ -66,19 +66,22 @@ void populate_demo_scene(Scene &scene, GFX::GfxContext &ctx, F32 aspect_ratio) {
 
 	{
 		auto e = em->create_entity("SunLight");
-		auto &light = e.add_component<LightComponent>(LightComponent::Type::Directional, Vec3(1.0F, 0.95F, 0.8F), 1.0F);
-		light.set_direction(Math::normalize(Vec3(0.4F, -1.0F, 0.6F)));
+		auto &light = e.add_component<LightComponent>(LightComponent::Type::Directional, Vec3(1.0F, 0.95F, 0.8F),
+													  LightComponent::DEFAULT_ILLUMINANCE);
+		light.set_direction(-SkyLightComponent{}.get_sun_direction());
 	}
 	{
 		auto e = em->create_entity("PointA");
 		e.get_component<TransformComponent>().set_local_position({ -1.5F, 0.5F, 1.5F });
-		auto &light = e.add_component<LightComponent>(LightComponent::Type::Point, Vec3(1.0F, 0.4F, 0.1F), 1.0F);
+		auto &light = e.add_component<LightComponent>(LightComponent::Type::Point, Vec3(1.0F, 0.4F, 0.1F),
+													  LightComponent::DEFAULT_POWER);
 		light.set_range(6.0F);
 	}
 	{
 		auto e = em->create_entity("PointB");
 		e.get_component<TransformComponent>().set_local_position({ 1.5F, 0.5F, 1.5F });
-		auto &light = e.add_component<LightComponent>(LightComponent::Type::Point, Vec3(0.2F, 0.5F, 1.0F), 1.0F);
+		auto &light = e.add_component<LightComponent>(LightComponent::Type::Point, Vec3(0.2F, 0.5F, 1.0F),
+													  LightComponent::DEFAULT_POWER);
 		light.set_range(6.0F);
 	}
 	{

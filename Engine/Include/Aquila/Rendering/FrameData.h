@@ -42,7 +42,8 @@ struct GpuFrameData {
 
 	Vec2 screen_resolution;
 	Uint32 light_count;
-	Uint32 pad;
+	/// Pixel value per nit from the main camera's EV100. Lit shaders multiply their output by it.
+	float exposure;
 };
 
 } // namespace Aquila::Rendering

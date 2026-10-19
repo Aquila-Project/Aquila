@@ -294,6 +294,37 @@ TEST_SUITE("Scene serialization") {
 		CHECK(same_rotation(find(old, "Thing").get_component<TransformComponent>().get_local_rotation(), legacy));
 	}
 
+	TEST_CASE("lights and cameras save in physical units, old light values get scaled to look the same at EV 15") {
+		const std::string path = scene_dir() + "/lights.aqscene";
+		{
+			Scene scene("Saved");
+			Entity sun = scene.get_entity_manager()->create_entity("Sun");
+			sun.add_component<LightComponent>(LightComponent::Type::Directional, Vec3(1.F), 50000.F);
+			Entity eye = scene.get_entity_manager()->create_entity("Eye");
+			eye.add_component<CameraComponent>().ev100 = 9.F;
+			REQUIRE(scene.serialize(path));
+		}
+		Scene loaded("Loaded");
+		REQUIRE(loaded.deserialize(path));
+		CHECK(find(loaded, "Sun").get_component<LightComponent>().get_intensity() == doctest::Approx(50000.F));
+		CHECK(find(loaded, "Eye").get_component<CameraComponent>().ev100 == doctest::Approx(9.F));
+
+		const std::string old_path = scene_dir() + "/old_lights.aqscene";
+		std::ofstream(std::filesystem::temp_directory_path() / "aquila-mesh-tests" / "old_lights.aqscene")
+			<< "{ \"scene_name\": \"Old\", \"entities\": {"
+			   " \"0\": { \"components\": { \"metadata_component\": { \"name\": \"Sun\", \"uuid\": \""
+			<< Foundation::UUID::generate().to_string()
+			<< "\" }, \"light_component\": { \"type\": 1, \"intensity\": 1 } } },"
+			   " \"1\": { \"components\": { \"metadata_component\": { \"name\": \"Bulb\", \"uuid\": \""
+			<< Foundation::UUID::generate().to_string()
+			<< "\" }, \"light_component\": { \"type\": 0, \"intensity\": 1 } } } } }";
+		Scene old("Old");
+		REQUIRE(old.deserialize(old_path));
+		const F32 scale = 1.2F * std::exp2(15.F);
+		CHECK(find(old, "Sun").get_component<LightComponent>().get_intensity() == doctest::Approx(scale));
+		CHECK(find(old, "Bulb").get_component<LightComponent>().get_intensity() == doctest::Approx(scale * 4.F * Math::PI));
+	}
+
 	TEST_CASE("script field overrides and entity references survive a save, a load and a copy") {
 		register_script_component();
 		const std::string path = scene_dir() + "/script_fields.aqscene";

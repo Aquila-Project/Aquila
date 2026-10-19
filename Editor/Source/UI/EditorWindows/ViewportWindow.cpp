@@ -360,7 +360,12 @@ Rendering::RenderView ViewportWindow::current_view() const {
 		scene_camera.has_component<SceneManagement::Components::TransformComponent>()) {
 		const auto &lens = scene_camera.get_component<SceneManagement::Components::CameraComponent>();
 		auto &transform = scene_camera.get_component<SceneManagement::Components::TransformComponent>();
-		return camera->render_view_from(transform.get_world_matrix_lazy(), lens.fov, lens.near_plane, lens.far_plane);
+		Rendering::RenderView view =
+			camera->render_view_from(transform.get_world_matrix_lazy(), lens.fov, lens.near_plane, lens.far_plane);
+		view.ev100 = lens.ev100;
+		view.exposure_compensation = lens.exposure_compensation;
+		view.auto_exposure = lens.auto_exposure;
+		return view;
 	}
 	return camera->get_render_view();
 }
@@ -399,6 +404,32 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 		}
 	});
 
+	m_auto_exposure_check = grid->add_check_row<UI::Core::Checkbox>("Auto Exposure", true);
+	m_auto_exposure_check->on_changed.connect([this](const bool &enabled) {
+		if (Rendering::CameraController *camera = context().camera()) {
+			camera->set_auto_exposure(enabled);
+		}
+		refresh_exposure_rows();
+	});
+
+	m_compensation_field = grid->add_row<UI::Core::DragFloat>(
+		"Compensation", UI::Core::DragFloat::Config{ .min = -8.F, .max = 8.F, .speed = 0.02F, .precision = 1 });
+	m_compensation_field->set_suffix("EV");
+	m_compensation_field->on_changed.connect([this](float value) {
+		if (Rendering::CameraController *camera = context().camera()) {
+			camera->set_exposure_compensation(value);
+		}
+	});
+
+	m_exposure_field = grid->add_row<UI::Core::DragFloat>(
+		"Exposure", UI::Core::DragFloat::Config{ .min = -10.F, .max = 24.F, .speed = 0.05F, .precision = 1 });
+	m_exposure_field->set_suffix("EV");
+	m_exposure_field->on_changed.connect([this](float value) {
+		if (Rendering::CameraController *camera = context().camera()) {
+			camera->set_ev100(value);
+		}
+	});
+
 	m_view_through = grid->add_row<UI::Core::Dropdown>("View Through");
 	m_view_through->set_variant("props-dropdown");
 	m_view_through->set_chevron(context().icon("chevron-down"));
@@ -408,6 +439,9 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 		m_camera_button->set_class("overlay-tool-active", m_view_camera.is_valid());
 		m_fov_field->set_enabled(!m_view_camera.is_valid());
 		m_speed_field->set_enabled(!m_view_camera.is_valid());
+		m_auto_exposure_check->set_enabled(!m_view_camera.is_valid());
+		m_compensation_field->set_enabled(!m_view_camera.is_valid());
+		m_exposure_field->set_enabled(!m_view_camera.is_valid());
 		Foundation::FrameScheduler::get()->request_frame();
 	});
 
@@ -423,7 +457,11 @@ void ViewportWindow::refresh_camera_menu() {
 	if (Rendering::CameraController *camera = context().camera()) {
 		m_fov_field->set_value(camera->get_fov());
 		m_speed_field->set_value(camera->get_move_speed());
+		m_exposure_field->set_value(camera->get_ev100());
+		m_compensation_field->set_value(camera->get_exposure_compensation());
+		m_auto_exposure_check->set_checked(camera->get_auto_exposure());
 	}
+	refresh_exposure_rows();
 
 	m_scene_cameras.clear();
 	context().engine().get_scene().get_entity_manager()->for_each<SceneManagement::Components::CameraComponent>(
@@ -440,6 +478,16 @@ void ViewportWindow::refresh_camera_menu() {
 		}
 	}
 	m_view_through->set_value(selected);
+}
+
+void ViewportWindow::refresh_exposure_rows() {
+	const bool automatic = m_auto_exposure_check != nullptr && m_auto_exposure_check->is_checked();
+	if (m_compensation_field != nullptr && m_compensation_field->get_parent() != nullptr) {
+		m_compensation_field->get_parent()->set_hidden(!automatic);
+	}
+	if (m_exposure_field != nullptr && m_exposure_field->get_parent() != nullptr) {
+		m_exposure_field->get_parent()->set_hidden(automatic);
+	}
 }
 
 void ViewportWindow::refresh_tools() {

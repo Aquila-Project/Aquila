@@ -48,6 +48,30 @@ void CameraController::set_fov(F32 fov_degrees) {
 	Foundation::FrameScheduler::get()->request_frame();
 }
 
+void CameraController::set_ev100(F32 ev100) {
+	if (ev100 == m_ev100) {
+		return;
+	}
+	m_ev100 = ev100;
+	Foundation::FrameScheduler::get()->request_frame();
+}
+
+void CameraController::set_auto_exposure(bool enabled) {
+	if (enabled == m_auto_exposure) {
+		return;
+	}
+	m_auto_exposure = enabled;
+	Foundation::FrameScheduler::get()->request_frame();
+}
+
+void CameraController::set_exposure_compensation(F32 stops) {
+	if (stops == m_exposure_compensation) {
+		return;
+	}
+	m_exposure_compensation = stops;
+	Foundation::FrameScheduler::get()->request_frame();
+}
+
 RenderView CameraController::render_view_from(const Mat4 &world, F32 fov_degrees, F32 near_plane,
 											  F32 far_plane) const {
 	Mat4 basis(1.F);
@@ -196,6 +220,9 @@ RenderView CameraController::get_render_view() const {
 	view.far_plane = m_far;
 	view.fov = m_fov;
 	view.aspect = m_aspect;
+	view.ev100 = m_ev100;
+	view.exposure_compensation = m_exposure_compensation;
+	view.auto_exposure = m_auto_exposure;
 	view.is_orthographic = false;
 	view.valid = true;
 	return view;
