@@ -3,6 +3,7 @@
 
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/Scripting/ScriptFields.h"
 
 #include "runtime.h"
 
@@ -29,6 +30,8 @@ struct ScriptEnvironment {
 	F32 delta_time = 0.F;
 	F64 elapsed = 0.0;
 	Uint64 frame = 0;
+	/// Set only while a script's top level runs, Aquila.Field reads and records through it.
+	ScriptFieldContext *loading = nullptr;
 };
 
 /// Binds the internal native modules (`@native`, `@input`, `@time`, `@scene`, `@screen`, `@camera`, `@fields`) that

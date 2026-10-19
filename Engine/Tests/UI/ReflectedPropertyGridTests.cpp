@@ -258,4 +258,46 @@ TEST_SUITE("ReflectedPropertyGrid") {
 		slot.on_drag_leave(drag);
 		CHECK(label.get_text() == "Drop an image here");
 	}
+
+	TEST_CASE("an adapter lets slots take other drags and name what they store") {
+		struct Picked {
+			int id = 0;
+		};
+		AssetSlot::set_adapter("thing", {
+			.from_drag = [](const std::any &payload) -> Option<AssetPayload> {
+				const auto *picked = std::any_cast<Picked>(&payload);
+				if (picked == nullptr) {
+					return std::nullopt;
+				}
+				return AssetPayload{ std::to_string(picked->id), "thing", "Thing " + std::to_string(picked->id) };
+			},
+			.display_name = [](const std::string &id) { return "Thing " + id; },
+		});
+
+		TypeInfo type("Thing");
+		TypeBuilder<Thing>(type).property("Target", &Thing::label, { .asset_type = "thing" });
+		PropertyGrid grid;
+		ReflectedPropertyGrid reflected(grid, type, nullptr);
+		Thing thing;
+		thing.label = "7";
+		reflected.bind(&thing);
+
+		auto &slot = widget<AssetSlot>(reflected, "Target");
+		const auto &label = dynamic_cast<const Label &>(*slot.get_children().front());
+		CHECK(label.get_text() == "Thing 7");
+
+		DragState drag{};
+		drag.payload = Picked{ 42 };
+		slot.on_drag_enter(drag);
+		CHECK(label.get_text() == "Drop to use Thing 42");
+		slot.on_drop(drag);
+		CHECK(thing.label == "42");
+
+		drag.payload = 3.F;
+		slot.on_drop(drag);
+		CHECK(thing.label == "42");
+
+		AssetSlot::set_adapter("thing", {});
+		CHECK(AssetSlot::find_adapter("thing") == nullptr);
+	}
 }

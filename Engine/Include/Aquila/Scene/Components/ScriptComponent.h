@@ -1,9 +1,21 @@
 #ifndef AQUILA_SCRIPTING_SCRIPT_COMPONENT_H
 #define AQUILA_SCRIPTING_SCRIPT_COMPONENT_H
 
+#include "Aquila/Foundation/UUID.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 
 namespace Aquila::SceneManagement::Components {
+
+/// Another entity, by the UUID in its MetadataComponent, so it survives saving, loading and Play.
+/// A null id is "nothing", an id no entity has is a missing reference (the script gets nil).
+struct EntityReference {
+	Foundation::UUID id = Foundation::UUID::null();
+
+	bool operator==(const EntityReference &other) const { return id == other.id; }
+};
+
+/// What one script field holds. Numbers are doubles, like in Luau.
+using ScriptFieldValue = std::variant<bool, F64, std::string, Vec3, EntityReference>;
 
 /// Runs the Luau script at `path` (a VFS path) on this entity. Every hook is optional.
 ///
@@ -27,6 +39,9 @@ namespace Aquila::SceneManagement::Components {
 /// return M
 /// @endcode
 ///
+/// Aquila.Field declares values the inspector edits per entity (`local speed = Aquila.Field.number("speed", 5)`),
+/// `fields` holds the ones changed from the script's defaults.
+///
 /// The API is split in modules (Aquila.Input, Aquila.Time, Aquila.Scene, Aquila.Screen, Aquila.Camera, Aquila.Log),
 /// written in Luau in Resources/Engine/API over the native ones ScriptBindings.cpp binds. Errors go to the console
 /// with a traceback.
@@ -36,6 +51,9 @@ namespace Aquila::SceneManagement::Components {
 /// not when its entity is destroyed.
 struct ScriptComponent {
 	std::string path;
+	/// By field name. Only the values the inspector changed: a field that isn't here, or holds another type than the
+	/// script declares now, uses the script's default.
+	std::map<std::string, ScriptFieldValue> fields{};
 };
 
 /// Adds Script to the ComponentRegistry, so the inspector shows it with an asset slot for the path.

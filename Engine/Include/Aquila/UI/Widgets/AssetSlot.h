@@ -12,6 +12,16 @@ namespace Aquila::UI::Core {
 /// on_changed gets nullopt when the slot is cleared.
 class AssetSlot : public View {
   public:
+	/// Lets slots of one type take drags that aren't AssetPayloads and name the values they store. The editor
+	/// registers "entity": hierarchy rows drag an Entity, the slot stores its UUID and shows its name.
+	struct Adapter {
+		Delegate<Option<AssetPayload>(const std::any &payload)> from_drag;
+		/// The name to show for a stored asset_path.
+		Delegate<std::string(const std::string &asset_path)> display_name;
+	};
+	/// An empty adapter removes it. Main thread.
+	static void set_adapter(const std::string &type, Adapter adapter);
+	[[nodiscard]] static const Adapter *find_adapter(std::string_view type);
 	AssetSlot();
 	explicit AssetSlot(std::string accepted_type);
 
@@ -39,6 +49,7 @@ class AssetSlot : public View {
 	void show_hint(std::string text);
 	[[nodiscard]] std::string accepted_name() const;
 	[[nodiscard]] bool is_compatible(const AssetPayload &payload) const;
+	[[nodiscard]] Option<AssetPayload> read_payload(const std::any &payload) const;
 
 	std::string m_accepted_type;
 	std::string m_placeholder;

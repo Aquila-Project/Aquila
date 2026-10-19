@@ -11,6 +11,7 @@
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
@@ -141,6 +142,7 @@ namespace {
 using Platform::Events::KeyCode;
 using Platform::Events::MouseButton;
 using SceneManagement::Components::CameraComponent;
+using SceneManagement::Components::EntityReference;
 using SceneManagement::Components::MetadataComponent;
 using SceneManagement::Components::SceneNodeComponent;
 using SceneManagement::Components::TransformComponent;
@@ -230,6 +232,85 @@ Option<ScriptEntity> find(ScriptEnvironment &environment, const std::string &nam
 
 ScriptEntity create(ScriptEnvironment &environment, const std::string &name) {
 	return to_script(environment.scene->get_entity_manager()->create_entity(name).get_handle());
+}
+
+Option<ScriptEntity> find_by_uuid(ScriptEnvironment &environment, const std::string &uuid) {
+	const Foundation::UUID id = Foundation::UUID::from_string(uuid);
+	if (id == Foundation::UUID::null()) {
+		return std::nullopt;
+	}
+	if (const auto entity = environment.scene->get_entity_manager()->find_entity_by_uuid(id)) {
+		return to_script(entity->get_handle());
+	}
+	return std::nullopt;
+}
+
+void declare(ScriptEnvironment &environment, ScriptField field) {
+	if (environment.loading == nullptr || environment.loading->declared == nullptr) {
+		return;
+	}
+	std::vector<ScriptField> &declared = *environment.loading->declared;
+	if (std::ranges::none_of(declared, [&field](const ScriptField &other) { return other.name == field.name; })) {
+		declared.push_back(std::move(field));
+	}
+}
+
+template <typename T> T value_or(const ScriptEnvironment &environment, const std::string &name, T fallback) {
+	if (environment.loading == nullptr || environment.loading->values == nullptr) {
+		return fallback;
+	}
+	const auto &values = *environment.loading->values;
+	if (const auto it = values.find(name); it != values.end()) {
+		if (const T *value = std::get_if<T>(&it->second)) {
+			return *value;
+		}
+	}
+	return fallback;
+}
+
+F64 number_field(ScriptEnvironment &environment, const std::string &name, F64 fallback, F64 min, F64 max, F64 step,
+				 bool slider, bool integer) {
+	declare(environment, { .name = name,
+						   .type = ScriptFieldType::Number,
+						   .default_value = fallback,
+						   .min = min,
+						   .max = max,
+						   .step = step,
+						   .slider = slider,
+						   .integer = integer });
+	F64 value = value_or(environment, name, fallback);
+	if (min <= max) {
+		value = std::clamp(value, min, max);
+	}
+	return integer ? std::round(value) : value;
+}
+
+bool boolean_field(ScriptEnvironment &environment, const std::string &name, bool fallback) {
+	declare(environment, { .name = name, .type = ScriptFieldType::Boolean, .default_value = fallback });
+	return value_or(environment, name, fallback);
+}
+
+std::string string_field(ScriptEnvironment &environment, const std::string &name, const std::string &fallback) {
+	declare(environment, { .name = name, .type = ScriptFieldType::String, .default_value = fallback });
+	return value_or(environment, name, fallback);
+}
+
+Vec3 vector_field(ScriptEnvironment &environment, const std::string &name, Vec3 fallback, bool color) {
+	declare(environment,
+			{ .name = name, .type = ScriptFieldType::Vector, .default_value = fallback, .color = color });
+	return value_or(environment, name, fallback);
+}
+
+Option<ScriptEntity> entity_field(ScriptEnvironment &environment, const std::string &name) {
+	declare(environment, { .name = name, .type = ScriptFieldType::Entity, .default_value = EntityReference{} });
+	const EntityReference reference = value_or(environment, name, EntityReference{});
+	if (reference.id == Foundation::UUID::null()) {
+		return std::nullopt;
+	}
+	if (const auto entity = environment.scene->get_entity_manager()->find_entity_by_uuid(reference.id)) {
+		return to_script(entity->get_handle());
+	}
+	return std::nullopt;
 }
 
 void destroy(ScriptEnvironment &environment, ScriptEntity entity) {
@@ -367,6 +448,10 @@ Vec3 forward(TransformComponent &transform) {
 	return Math::normalize(transform.get_world_rotation() * Vec3(0.F, 0.F, 1.F));
 }
 
+std::string uuid(MetadataComponent &metadata) {
+	return metadata.get_id().to_string();
+}
+
 Option<ScriptEntity> parent(SceneNodeComponent &node) {
 	return node.parent.is_null() ? std::nullopt : Option<ScriptEntity>(to_script(node.parent.get_handle()));
 }
@@ -416,8 +501,14 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 
 	runtime.bind<find>("scene.find", &environment, "The first entity with that name.");
 	runtime.bind<create>("scene.create", &environment, "A new entity with a transform.");
+	runtime.bind<find_by_uuid>("scene.find_by_uuid", &environment, "The entity with that UUID.");
 	runtime.bind<destroy>("scene.destroy", &environment, "Destroys it at the end of the frame.");
 
+	runtime.bind<number_field>("fields.number", &environment, "Declares a number field, returns its value.");
+	runtime.bind<boolean_field>("fields.boolean", &environment, "Declares a boolean field, returns its value.");
+	runtime.bind<string_field>("fields.string", &environment, "Declares a string field, returns its value.");
+	runtime.bind<vector_field>("fields.vector", &environment, "Declares a vector field, returns its value.");
+	runtime.bind<entity_field>("fields.entity", &environment, "Declares an entity field, returns the entity.");
 
 	runtime.bind<screen_size>("screen.get_size", &environment, "Pixels the game is shown in.");
 
@@ -466,6 +557,7 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 				"up next frame)."),
 			free_method<forward>("get_forward", "The direction its +Z axis points in the world, as of the last frame."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
+			free_method<uuid>("get_uuid", "The id saved in scenes. Stays the same across saves, loads and Play."),
 		},
 		environment.scene, "An entity in the scene. A script gets the entity it is attached to as self.");
 }

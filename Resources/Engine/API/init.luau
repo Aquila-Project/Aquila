@@ -12,6 +12,7 @@ Aquila.Time = require("@aquila/Time")
 Aquila.Scene = require("@aquila/Scene")
 Aquila.Screen = require("@aquila/Screen")
 Aquila.Camera = require("@aquila/Camera")
+Aquila.Field = require("@aquila/Field")
 Aquila.Log = require("@aquila/Log")
 
 --- Writes a line to the engine log, same as Aquila.Log.info().

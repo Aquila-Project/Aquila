@@ -20,6 +20,7 @@
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "UI/Inspectors/MaterialComponentUI.h"
 #include "UI/Inspectors/MeshComponentUI.h"
+#include "UI/Inspectors/ScriptComponentUI.h"
 #include "UI/ComponentIcons.h"
 #include "UI/Inspectors/ReflectedComponentUI.h"
 
@@ -141,6 +142,9 @@ void InspectorPanel::build_tabs_and_sections() {
 		}
 		if (descriptor.get_name() == "Material") {
 			return std::make_unique<MaterialComponentUI>(descriptor, m_context);
+		}
+		if (descriptor.get_name() == "Script") {
+			return std::make_unique<ScriptComponentUI>(descriptor, &m_context);
 		}
 		return std::make_unique<ReflectedComponentUI>(descriptor, &m_context);
 	};

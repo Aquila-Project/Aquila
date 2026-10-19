@@ -13,6 +13,7 @@
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scripting/ScriptFields.h"
 #include "Aquila/Scripting/ScriptSystem.h"
 
 using namespace Aquila;
@@ -530,4 +531,100 @@ TEST_SUITE("ScriptSystem") {
 		CHECK_FALSE(entity.get_component<MetadataComponent>().is_visible());
 	}
 
+	TEST_CASE("Aquila.Field declares fields in order, with types, defaults and hints, without running hooks") {
+		std::string path = write_script("fields.luau", R"(
+			local Aquila = require("@aquila")
+			local Field = Aquila.Field
+			local speed = Field.number("speed", 5, { min = 0, max = 20, slider = true })
+			local count = Field.number("count", 3, { integer = true })
+			local alive = Field.boolean("alive", true)
+			local label = Field.string("label", "hi")
+			local offset = Field.vector("offset", vector.create(0, 1, 0))
+			local tint = Field.color("tint", vector.create(1, 0.5, 0))
+			local target = Field.entity("target")
+			Field.number("speed", 99)
+			Aquila.Scene.create("Junk")
+			local M = {}
+			function M.on_start(self)
+				error("hooks don't run while reading fields")
+			end
+			return M
+		)");
+
+		const std::vector<ScriptField> fields = read_script_fields(path);
+		REQUIRE(fields.size() == 7);
+		CHECK(fields[0].name == "speed");
+		CHECK(fields[0].type == ScriptFieldType::Number);
+		CHECK(std::get<F64>(fields[0].default_value) == doctest::Approx(5.0));
+		CHECK(fields[0].min == doctest::Approx(0.0));
+		CHECK(fields[0].max == doctest::Approx(20.0));
+		CHECK(fields[0].slider);
+		CHECK(fields[1].integer);
+		CHECK_FALSE(std::isfinite(fields[1].max));
+		CHECK(fields[2].type == ScriptFieldType::Boolean);
+		CHECK(std::get<std::string>(fields[3].default_value) == "hi");
+		CHECK(std::get<Vec3>(fields[4].default_value) == Vec3(0.F, 1.F, 0.F));
+		CHECK(fields[5].color);
+		CHECK(fields[6].type == ScriptFieldType::Entity);
+		CHECK(std::get<EntityReference>(fields[6].default_value).id == Foundation::UUID::null());
+		CHECK(read_script_fields("/script-tests/nope.luau").empty());
+	}
+
+	TEST_CASE("each entity gets its own field values, entity fields resolve by UUID") {
+		std::string path = write_script("field-values.luau", R"(
+			local Field = require("@aquila/Field")
+			local speed = Field.number("speed", 5, { max = 10 })
+			local count = Field.number("count", 1, { integer = true })
+			local target = Field.entity("target")
+			local M = {}
+			function M.on_start(self)
+				self:set_position(vector.create(speed, count, 0))
+				self:set_name(if target then "-> " .. target:get_name() else "no target")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity target = scene.get_entity_manager()->create_entity("Target");
+		Entity tuned = scripted_entity(scene, path);
+		Entity plain = scripted_entity(scene, path);
+		Entity broken = scripted_entity(scene, path);
+		auto &fields = tuned.get_component<ScriptComponent>().fields;
+		fields["speed"] = 50.0;
+		fields["count"] = 2.6;
+		fields["target"] = EntityReference{ target.get_component<MetadataComponent>().get_id() };
+		auto &wrong = broken.get_component<ScriptComponent>().fields;
+		wrong["speed"] = std::string("fast");
+		wrong["target"] = EntityReference{ Foundation::UUID::generate() };
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		auto position = [](Entity entity) { return entity.get_component<TransformComponent>().get_local_position(); };
+		CHECK(position(tuned) == Vec3(10.F, 3.F, 0.F));
+		CHECK(tuned.get_component<MetadataComponent>().get_name() == "-> Target");
+		CHECK(position(plain) == Vec3(5.F, 1.F, 0.F));
+		CHECK(plain.get_component<MetadataComponent>().get_name() == "no target");
+		CHECK(position(broken) == Vec3(5.F, 1.F, 0.F));
+		CHECK(broken.get_component<MetadataComponent>().get_name() == "no target");
+	}
+
+	TEST_CASE("entities can be found by the UUID scenes save") {
+		std::string path = write_script("uuid.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_start(self)
+				local found = Scene.find_by_uuid(self:get_uuid())
+				assert(found ~= nil and found:get_id() == self:get_id())
+				assert(Scene.find_by_uuid("not a uuid") == nil)
+				self:set_name(self:get_uuid())
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		const auto &metadata = entity.get_component<MetadataComponent>();
+		CHECK(metadata.get_name() == metadata.get_id().to_string());
+	}
 }

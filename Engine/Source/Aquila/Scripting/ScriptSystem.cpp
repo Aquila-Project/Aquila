@@ -50,7 +50,7 @@ void ScriptSystem::update(F32 delta_time) {
 	for (auto [entity, component] : registry.view<SceneManagement::Components::ScriptComponent>().each()) {
 		Instance &instance = m_instances[entity];
 		if (instance.path != component.path) {
-			start(entity, instance, component.path);
+			start(entity, instance, component);
 		}
 	}
 
@@ -78,7 +78,9 @@ void ScriptSystem::finish(entt::entity entity, Instance &instance) {
 	}
 }
 
-void ScriptSystem::start(entt::entity entity, Instance &instance, const std::string &path) {
+void ScriptSystem::start(entt::entity entity, Instance &instance,
+						 const SceneManagement::Components::ScriptComponent &component) {
+	const std::string &path = component.path;
 	finish(entity, instance);
 	m_runtime.unload(instance.script);
 	instance = Instance{};
@@ -93,7 +95,10 @@ void ScriptSystem::start(entt::entity entity, Instance &instance, const std::str
 		return;
 	}
 
+	ScriptFieldContext fields{ .values = &component.fields };
+	m_environment.loading = &fields;
 	instance.script = m_runtime.load_source(path, vfs->read_text_file(path));
+	m_environment.loading = nullptr;
 	if (!instance.script.is_valid()) {
 		return;
 	}

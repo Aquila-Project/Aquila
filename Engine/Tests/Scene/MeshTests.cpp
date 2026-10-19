@@ -12,6 +12,7 @@
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
@@ -264,6 +265,43 @@ TEST_SUITE("Mesh library") {
 }
 
 TEST_SUITE("Scene serialization") {
+	TEST_CASE("script field overrides and entity references survive a save, a load and a copy") {
+		register_script_component();
+		const std::string path = scene_dir() + "/script_fields.aqscene";
+		Foundation::UUID target_id;
+		{
+			Scene scene("Saved");
+			Entity target = scene.get_entity_manager()->create_entity("Target");
+			target_id = target.get_component<MetadataComponent>().get_id();
+			Entity scripted = scene.get_entity_manager()->create_entity("Scripted");
+			auto &script = scripted.add_component<ScriptComponent>(ScriptComponent{ .path = "/project/Content/a.luau" });
+			script.fields["speed"] = 7.5;
+			script.fields["alive"] = false;
+			script.fields["label"] = std::string("boss");
+			script.fields["offset"] = Vec3(1.F, 2.F, 3.F);
+			script.fields["target"] = EntityReference{ target_id };
+			REQUIRE(scene.serialize(path));
+		}
+
+		Scene loaded("Loaded");
+		REQUIRE(loaded.deserialize(path));
+		Scene copy;
+		copy.copy_from(loaded);
+		for (Scene *scene : { &loaded, &copy }) {
+			Entity scripted = find(*scene, "Scripted");
+			REQUIRE(scripted.is_valid());
+			const auto &script = scripted.get_component<ScriptComponent>();
+			CHECK(script.path == "/project/Content/a.luau");
+			REQUIRE(script.fields.size() == 5);
+			CHECK(std::get<F64>(script.fields.at("speed")) == doctest::Approx(7.5));
+			CHECK_FALSE(std::get<bool>(script.fields.at("alive")));
+			CHECK(std::get<std::string>(script.fields.at("label")) == "boss");
+			CHECK(std::get<Vec3>(script.fields.at("offset")) == Vec3(1.F, 2.F, 3.F));
+			CHECK(std::get<EntityReference>(script.fields.at("target")).id == target_id);
+			CHECK(find(*scene, "Target").get_component<MetadataComponent>().get_id() == target_id);
+		}
+	}
+
 	TEST_CASE("a scene saves the mesh source and loads it back") {
 		const std::string path = scene_dir() + "/round_trip.aqscene";
 		{

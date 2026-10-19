@@ -2,6 +2,28 @@
 
 namespace Aquila::UI::Core {
 
+namespace {
+
+std::unordered_map<std::string, AssetSlot::Adapter> &adapters() {
+	static std::unordered_map<std::string, AssetSlot::Adapter> s_adapters;
+	return s_adapters;
+}
+
+}
+
+void AssetSlot::set_adapter(const std::string &type, Adapter adapter) {
+	if (!adapter.from_drag && !adapter.display_name) {
+		adapters().erase(type);
+	} else {
+		adapters()[type] = std::move(adapter);
+	}
+}
+
+const AssetSlot::Adapter *AssetSlot::find_adapter(std::string_view type) {
+	const auto it = adapters().find(std::string(type));
+	return it != adapters().end() ? &it->second : nullptr;
+}
+
 AssetSlot::AssetSlot() {
 	m_is_accepting_payload = true;
 	add_class("asset-slot");
@@ -47,30 +69,37 @@ void AssetSlot::clear() {
 }
 
 void AssetSlot::on_drop(DragState &state) {
-	if (!state.payload.has_value()) {
+	const Option<AssetPayload> payload = read_payload(state.payload);
+	if (!payload) {
 		return;
 	}
-
-	try {
-		AssetPayload payload = std::any_cast<AssetPayload>(state.payload);
-		if (!is_compatible(payload)) {
-			remove_class("drag-over-invalid");
-			return;
-		}
-		set_value(payload);
-		remove_class("drag-over");
+	if (!is_compatible(*payload)) {
 		remove_class("drag-over-invalid");
-		on_changed(m_value);
-	} catch (const std::bad_any_cast &) {
+		return;
 	}
+	set_value(*payload);
+	remove_class("drag-over");
+	remove_class("drag-over-invalid");
+	on_changed(m_value);
+}
+
+Option<AssetPayload> AssetSlot::read_payload(const std::any &payload) const {
+	if (!payload.has_value()) {
+		return std::nullopt;
+	}
+	if (const auto *asset = std::any_cast<AssetPayload>(&payload)) {
+		return *asset;
+	}
+	const Adapter *adapter = find_adapter(m_accepted_type);
+	return adapter != nullptr && adapter->from_drag ? adapter->from_drag(payload) : std::nullopt;
 }
 
 void AssetSlot::on_drag_enter(DragState &state) {
 	if (!state.payload.has_value()) {
 		return;
 	}
-	const auto *payload = std::any_cast<AssetPayload>(&state.payload);
-	if (payload != nullptr && is_compatible(*payload)) {
+	const Option<AssetPayload> payload = read_payload(state.payload);
+	if (payload && is_compatible(*payload)) {
 		add_class("drag-over");
 		show_hint("Drop to use " + payload->display_name);
 	} else {

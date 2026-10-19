@@ -38,6 +38,7 @@ class ScriptSystem {
 		bool failed = false;
 	};
 
+	void start(entt::entity entity, Instance &instance, const SceneManagement::Components::ScriptComponent &component);
 	void finish(entt::entity entity, Instance &instance);
 
 	SceneManagement::Scene &m_scene;
