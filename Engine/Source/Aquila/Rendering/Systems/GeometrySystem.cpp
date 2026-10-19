@@ -86,6 +86,9 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 					builder.read_texture(shadow_handle, RG::ResourceState::ShaderRead);
 				}
 			}
+			if (ctx.h_local_shadow_atlas.is_valid()) {
+				builder.read_texture(ctx.h_local_shadow_atlas, RG::ResourceState::ShaderRead);
+			}
 
 			ctx.h_scene_color =
 				builder.set_color_attachment(0, ctx.h_scene_color, RG::AttachmentLoadOp::Clear,

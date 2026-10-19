@@ -75,6 +75,8 @@ void register_builtin_components(ComponentRegistry &registry) {
 		.property("Color", &LightComponent::get_color, &LightComponent::set_color, PropertyHints{ .color = true })
 		.property("Intensity", &LightComponent::get_intensity, &LightComponent::set_intensity,
 				  PropertyHints{ .min = 0.F, .max = 100.F, .speed = 0.5F })
+		.property("Cast Shadows", &LightComponent::get_cast_shadows, &LightComponent::set_cast_shadows,
+				  PropertyHints{ .toggle = true })
 		.property("Range", &LightComponent::get_range, &LightComponent::set_range,
 				  PropertyHints{ .min = 0.F, .max = 200.F, .speed = 0.5F, .unit = "m" })
 		.visible_if(has_range)

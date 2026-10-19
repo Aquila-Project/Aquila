@@ -37,6 +37,20 @@ static_assert(sizeof(GpuEnvironmentData) == 176, "GpuEnvironmentData layout mism
 
 constexpr Uint32 SHADOW_CASCADE_COUNT = 4;
 
+/// One tile of the point/spot shadow atlas: a spot light, or one cube face of a point light (a point light takes 6
+/// tiles in a row: +X, -X, +Y, -Y, +Z, -Z). The light's `m_shadow_index` is its first tile.
+/// `m_view_proj` holds the matrix columns. `m_rect` is the tile in atlas uv (offset xy, size zw).
+/// `m_params` = near, far, light radius in meters, cot(fov / 2). `m_extra.x` = tile size, `m_extra.y` = atlas size,
+/// both in texels.
+struct alignas(16) GpuLocalShadow {
+	std::array<Vec4, 4> m_view_proj;
+	Vec4 m_rect;
+	Vec4 m_params;
+	Vec4 m_extra;
+};
+
+static_assert(sizeof(GpuLocalShadow) == 112, "GpuLocalShadow layout mismatch");
+
 struct alignas(16) GpuShadowData {
 	std::array<Mat4, SHADOW_CASCADE_COUNT> m_cascade_view_proj;
 	Vec4 m_cascade_splits;

@@ -90,6 +90,18 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
                 .stages  = RHI::ShaderStageFlags::Fragment,
                 .count   = 1,
             },
+            {
+                .binding = 11,
+                .type    = RHI::DescriptorType::StorageBuffer,
+                .stages  = RHI::ShaderStageFlags::Fragment,
+                .count   = 1,
+            },
+            {
+                .binding = 12,
+                .type    = RHI::DescriptorType::CombinedImageSampler,
+                .stages  = RHI::ShaderStageFlags::Fragment,
+                .count   = 1,
+            },
         },
     });
 
@@ -141,6 +153,24 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 			});
 		}
 
+		m_local_shadow_buffers[i] = ctx.create_buffer({
+			.size = sizeof(GpuLocalShadow) * (kLocalShadowAtlasSize / kLocalShadowTileSize) *
+				(kLocalShadowAtlasSize / kLocalShadowTileSize),
+			.usage = RHI::BufferUsage::StorageBuffer,
+			.domain = RHI::MemoryDomain::CpuToGpu,
+			.debug_name = "LocalShadows_" + std::to_string(i),
+		});
+
+		m_local_shadow_atlases[i] = ctx.create_texture({
+			.width = kLocalShadowAtlasSize,
+			.height = kLocalShadowAtlasSize,
+			.format = RHI::TextureFormat::Depth32,
+			.usage = RHI::TextureUsage::DepthAttachment | RHI::TextureUsage::Sampled,
+			.view_type = RHI::TextureViewType::Tex2D,
+			.sampler = RHI::SamplerDesc::point_sample(),
+			.debug_name = "LocalShadowAtlas_" + std::to_string(i),
+		});
+
 		m_sets[i] = ctx.allocate_descriptor_set(*m_layout);
 	}
 
@@ -170,6 +200,8 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 			.set_texture(8, *m_shadow_maps[i][1])
 			.set_texture(9, *m_shadow_maps[i][2])
 			.set_texture(10, *m_shadow_maps[i][3])
+			.set_buffer(11, *m_local_shadow_buffers[i])
+			.set_texture(12, *m_local_shadow_atlases[i])
 			.flush();
 	}
 }
@@ -281,6 +313,17 @@ static GpuLightData build_light_data(const LightComponent &light, const Transfor
 	return data;
 }
 
+struct LocalCaster {
+	Uint32 light_index = 0;
+	const LightComponent *light = nullptr;
+	Vec3 position = Vec3(0.F);
+	F32 priority = 0.F;
+};
+
+static Vec3 face_up(const Vec3 &direction) {
+	return Math::abs(direction.y) > 0.99F ? Vec3(0.F, 0.F, 1.F) : Vec3(0.F, 1.F, 0.F);
+}
+
 static GpuShadowData compute_shadow_data(const RenderView &camera, const Vec3 &light_dir, F32 angular_diameter,
 										 Uint32 shadow_map_size, std::array<Mat4, SHADOW_CASCADE_COUNT> &out_vp) {
 	constexpr F32 kSplitLambda = 0.95F;
@@ -388,6 +431,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 	int caster_index = -1;
 	Vec3 caster_dir(0.F, -1.F, 0.F);
 	const LightComponent *caster = nullptr;
+	std::vector<LocalCaster> local_casters;
 	{
 		auto view = registry.view<LightComponent, TransformComponent>();
 		for (auto entity : view) {
@@ -404,6 +448,16 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			}
 			const Uint32 index = light_count;
 			lights[light_count++] = build_light_data(light, transform);
+			const bool local = light.m_type == LightComponent::Type::Point || light.m_type == LightComponent::Type::Spot;
+			if (local && light.m_cast_shadows && light.m_range > 0.F) {
+				const Vec3 position = transform.get_world_position();
+				local_casters.push_back({
+					.light_index = index,
+					.light = &light,
+					.position = position,
+					.priority = Math::length(position - primary_view.position) - light.m_range,
+				});
+			}
 			if (caster_index < 0 && light.m_type == LightComponent::Type::Directional) {
 				caster_index = static_cast<int>(index);
 				caster_dir = light_direction(light);
@@ -415,7 +469,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 
 	GpuShadowData shadow_data{};
 	m_shadows_enabled = false;
-	if (shadows_allowed && primary_view.valid && caster_index >= 0) {
+	if (shadows_allowed && primary_view.valid && caster_index >= 0 && caster->m_cast_shadows) {
 		shadow_data = compute_shadow_data(primary_view, caster_dir, caster->m_angular_diameter, kShadowMapSize,
 										  m_cascade_view_proj);
 		shadow_data.m_enabled = 1;
@@ -423,6 +477,75 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 		m_shadows_enabled = true;
 	}
 	m_shadow_buffers[frame_slot]->write(&shadow_data, sizeof(GpuShadowData));
+
+	m_local_shadow_views.clear();
+	std::vector<GpuLocalShadow> local_shadows;
+	if (shadows_allowed && primary_view.valid && !local_casters.empty()) {
+		constexpr Uint32 tiles_per_row = kLocalShadowAtlasSize / kLocalShadowTileSize;
+		constexpr Uint32 tile_count = tiles_per_row * tiles_per_row;
+		constexpr F32 atlas_size = static_cast<F32>(kLocalShadowAtlasSize);
+		constexpr F32 tile_size = static_cast<F32>(kLocalShadowTileSize);
+		static const std::array<Vec3, 6> k_face_directions = { {
+			{ 1.F, 0.F, 0.F },
+			{ -1.F, 0.F, 0.F },
+			{ 0.F, 1.F, 0.F },
+			{ 0.F, -1.F, 0.F },
+			{ 0.F, 0.F, 1.F },
+			{ 0.F, 0.F, -1.F },
+		} };
+		const F32 point_fov = 2.F * std::atan(tile_size / (tile_size - 2.F * static_cast<F32>(kLocalShadowGuardTexels)));
+
+		std::ranges::sort(local_casters, {}, &LocalCaster::priority);
+		Uint32 next_tile = 0;
+		for (const LocalCaster &local : local_casters) {
+			const LightComponent &light = *local.light;
+			const bool point = light.m_type == LightComponent::Type::Point;
+			const Uint32 needed = point ? 6U : 1U;
+			if (next_tile + needed > tile_count) {
+				continue;
+			}
+
+			const F32 near_plane = Math::clamp(light.m_source_radius, 0.05F, Math::max(light.m_range * 0.25F, 0.05F));
+			const F32 far_plane = Math::max(light.m_range, near_plane * 2.F);
+			const F32 spot_half_angle = Math::min(Math::max(light.m_outer_cone_angle, 1.F) + 3.F, 80.F);
+			const F32 fov = point ? point_fov : 2.F * Math::radians(spot_half_angle);
+			const Mat4 projection = Math::perspective_vulkan(fov, 1.F, near_plane, far_plane);
+
+			lights[local.light_index].m_shadow_index = static_cast<Int32>(next_tile);
+			for (Uint32 face = 0; face < needed; ++face) {
+				const Uint32 tile = next_tile + face;
+				const Vec3 direction = point ? k_face_directions[face] : light_direction(light);
+				const Mat4 view_proj =
+					projection * Math::look_in_direction(local.position, direction, face_up(direction));
+				const Uint32 x = (tile % tiles_per_row) * kLocalShadowTileSize;
+				const Uint32 y = (tile / tiles_per_row) * kLocalShadowTileSize;
+
+				GpuLocalShadow gpu{};
+				for (int column = 0; column < 4; ++column) {
+					gpu.m_view_proj[column] = view_proj[column];
+				}
+				gpu.m_rect = Vec4(static_cast<F32>(x) / atlas_size, static_cast<F32>(y) / atlas_size,
+								  tile_size / atlas_size, tile_size / atlas_size);
+				gpu.m_params = Vec4(near_plane, far_plane, Math::max(light.m_source_radius, 0.F),
+									1.F / std::tan(fov * 0.5F));
+				gpu.m_extra = Vec4(tile_size, atlas_size, 0.F, 0.F);
+				local_shadows.push_back(gpu);
+
+				m_local_shadow_views.push_back({
+					.view_proj = view_proj,
+					.x = x,
+					.y = y,
+					.size = kLocalShadowTileSize,
+					.light_position = local.position,
+					.range = far_plane,
+				});
+			}
+			next_tile += needed;
+		}
+	}
+	if (!local_shadows.empty()) {
+		m_local_shadow_buffers[frame_slot]->write(local_shadows.data(), sizeof(GpuLocalShadow) * local_shadows.size());
+	}
 
 	m_frame_buffers[frame_slot]->write(&gpu_frame, sizeof(GpuFrameData));
 	if (light_count > 0) {

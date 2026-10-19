@@ -37,6 +37,7 @@ struct FrameContext {
 	Graphics::RG::RGTextureHandle h_object_picking;
 
 	std::array<Graphics::RG::RGTextureHandle, SHADOW_CASCADE_COUNT> h_shadow_maps;
+	Graphics::RG::RGTextureHandle h_local_shadow_atlas;
 
 	Graphics::RG::RGBufferHandle h_cluster_aab_bs;
 	Graphics::RG::RGBufferHandle h_light_list;

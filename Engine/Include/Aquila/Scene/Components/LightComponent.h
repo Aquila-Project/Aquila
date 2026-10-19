@@ -58,6 +58,9 @@ struct LightComponent {
 	bool m_use_temperature = false;
 	F32 m_temperature = 6500.0F;
 
+	/// Only the first directional light can get cascades. Point and Spot share a shadow atlas (a point light takes
+	/// 6 of its 64 tiles, a spot 1), the ones closest to the camera win when it's full.
+	bool m_cast_shadows = true;
 
 	ShadowQualitySettings m_shadow_settings;
 
@@ -93,6 +96,9 @@ struct LightComponent {
 	F32 get_temperature() const noexcept { return m_temperature; }
 	void set_temperature(F32 kelvin) noexcept { m_temperature = kelvin; }
 
+
+	bool get_cast_shadows() const noexcept { return m_cast_shadows; }
+	void set_cast_shadows(bool cast) noexcept { m_cast_shadows = cast; }
 	/// The color with the temperature tint applied.
 	[[nodiscard]] Vec3 get_emitted_color() const {
 		return m_use_temperature ? m_color * Foundation::Photometry::blackbody(m_temperature) : m_color;

@@ -549,6 +549,7 @@ bool Scene::serialize(const std::string &filepath) {
 				{ "angular_diameter", light.m_angular_diameter },
 				{ "use_temperature", light.m_use_temperature },
 				{ "temperature", light.m_temperature },
+				{ "cast_shadows", light.m_cast_shadows },
 				{ "is_active", light.m_is_active },
 			};
 
@@ -806,6 +807,7 @@ bool Scene::deserialize(const std::string &filepath) {
 			light.m_angular_diameter = light_json.value("angular_diameter", light.m_angular_diameter);
 			light.m_use_temperature = light_json.value("use_temperature", light.m_use_temperature);
 			light.m_temperature = light_json.value("temperature", light.m_temperature);
+			light.m_cast_shadows = light_json.value("cast_shadows", light.m_cast_shadows);
 
 			if (legacy_light_units && light_json.contains("intensity")) {
 				light.m_intensity = photometric_from_legacy(light);
