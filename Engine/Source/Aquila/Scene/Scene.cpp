@@ -9,6 +9,7 @@
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
+#include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Graphics/Resources/MeshLibrary.h"
@@ -116,6 +117,58 @@ Option<MeshSource> mesh_source_from_json(const nlohmann::ordered_json &mesh_json
 	return std::nullopt;
 }
 
+Quaternion rotation_from_json(const nlohmann::ordered_json &rotation) {
+	if (!rotation.is_array() || rotation.size() < 3) {
+		return Quaternion(1.F, 0.F, 0.F, 0.F);
+	}
+	const Vec3 axis(rotation[0].get<F32>(), rotation[1].get<F32>(), rotation[2].get<F32>());
+	const F32 w = rotation.size() >= 4 ? rotation[3].get<F32>() : Math::sqrt(Math::max(0.F, 1.F - Math::dot(axis, axis)));
+	const Quaternion quaternion(w, axis.x, axis.y, axis.z);
+	const F32 length = glm::length(quaternion);
+	return length > Math::EPSILON ? quaternion / length : Quaternion(1.F, 0.F, 0.F, 0.F);
+}
+
+nlohmann::ordered_json script_fields_to_json(const std::map<std::string, Components::ScriptFieldValue> &fields) {
+	nlohmann::ordered_json out = nlohmann::ordered_json::object();
+	for (const auto &[name, value] : fields) {
+		std::visit(
+			[&out, &name](const auto &field) {
+				using V = std::decay_t<decltype(field)>;
+				if constexpr (std::is_same_v<V, Vec3>) {
+					out[name] = { field.x, field.y, field.z };
+				} else if constexpr (std::is_same_v<V, Components::EntityReference>) {
+					out[name] = { { "entity", field.id.to_string() } };
+				} else {
+					out[name] = field;
+				}
+			},
+			value);
+	}
+	return out;
+}
+
+std::map<std::string, Components::ScriptFieldValue> script_fields_from_json(const nlohmann::ordered_json &json) {
+	std::map<std::string, Components::ScriptFieldValue> fields;
+	if (!json.is_object()) {
+		return fields;
+	}
+	for (const auto &[name, value] : json.items()) {
+		if (value.is_boolean()) {
+			fields[name] = value.get<bool>();
+		} else if (value.is_number()) {
+			fields[name] = value.get<F64>();
+		} else if (value.is_string()) {
+			fields[name] = value.get<std::string>();
+		} else if (value.is_array() && value.size() == 3 &&
+				   std::ranges::all_of(value, [](const auto &element) { return element.is_number(); })) {
+			fields[name] = Vec3(value[0].get<F32>(), value[1].get<F32>(), value[2].get<F32>());
+		} else if (value.is_object() && value.contains("entity") && value["entity"].is_string()) {
+			fields[name] = Components::EntityReference{ Foundation::UUID::from_string(value["entity"].get<std::string>()) };
+		}
+	}
+	return fields;
+}
+
 } // namespace
 Scene::Scene() : m_scene_name("Unnamed scene"), m_scene_id(Foundation::UUID::generate()) {
 	on_start();
@@ -139,6 +192,10 @@ void Scene::on_start() {
 	m_entity_manager->get_registry()
 		.on_construct<Components::TransformComponent>()
 		.connect<&Scene::on_transform_construct>(this);
+	entt::registry &registry = m_entity_manager->get_registry();
+	registry.on_construct<Components::MetadataComponent>().connect<&Scene::on_metadata_changed>(this);
+	registry.on_update<Components::MetadataComponent>().connect<&Scene::on_metadata_changed>(this);
+	registry.on_destroy<Components::MetadataComponent>().connect<&Scene::on_metadata_changed>(this);
 	m_entity_manager->construct_scene_graph();
 }
 
@@ -146,6 +203,10 @@ void Scene::on_transform_construct(entt::registry &registry, entt::entity e) {
 	auto &t = registry.get<Components::TransformComponent>(e);
 	t.set_dirty_callback([this, e]() { mark_transform_dirty(e); });
 	mark_transform_dirty(e); // bootstrap: new entity needs its first world matrix compute
+}
+
+void Scene::on_metadata_changed(entt::registry &, entt::entity) {
+	on_entities_changed();
 }
 
 void Scene::mark_transform_dirty(entt::entity entity) {
@@ -377,6 +438,14 @@ bool Scene::serialize(const std::string &filepath) {
 																{ "selected", meta.is_selected() } };
 		}
 
+		if (entity.has_component<Components::ScriptComponent>()) {
+			auto &script_comp = entity.get_component<Components::ScriptComponent>();
+			entity_json["components"]["script_component"] = {
+				{ "path", script_comp.path },
+				{ "fields", script_fields_to_json(script_comp.fields) },
+			};
+		}
+
 		// Serialize TransformComponent
 		if (entity.has_component<Components::TransformComponent>()) {
 			auto &transform = entity.get_component<Components::TransformComponent>();
@@ -395,6 +464,7 @@ bool Scene::serialize(const std::string &filepath) {
 						transform.get_local_rotation().x,
 						transform.get_local_rotation().y,
 						transform.get_local_rotation().z,
+						transform.get_local_rotation().w,
 					},
 				},
 				{
@@ -610,13 +680,11 @@ bool Scene::deserialize(const std::string &filepath) {
 			const auto &transform_json = components["transform_component"];
 			Vec3 position =
 				Vec3(transform_json["position"][0], transform_json["position"][1], transform_json["position"][2]);
-			Vec3 rotation =
-				Vec3(transform_json["rotation"][0], transform_json["rotation"][1], transform_json["rotation"][2]);
 			Vec3 scale = Vec3(transform_json["scale"][0], transform_json["scale"][1], transform_json["scale"][2]);
 
 			auto &transform = entity.get_or_emplace<Components::TransformComponent>();
 			transform.set_local_position(position);
-			transform.set_local_rotation(rotation);
+			transform.set_local_rotation(rotation_from_json(transform_json["rotation"]));
 			transform.set_local_scale(scale);
 			transform.update_world_matrix();
 		}
@@ -642,6 +710,15 @@ bool Scene::deserialize(const std::string &filepath) {
 			}
 
 			entity.add_or_replace_component<Components::SceneNodeComponent>(node);
+		}
+
+		if (components.contains("script_component")) {
+			const auto &script_json = components["script_component"];
+			Components::ScriptComponent script{ .path = script_json.value("path", "") };
+			if (script_json.contains("fields")) {
+				script.fields = script_fields_from_json(script_json["fields"]);
+			}
+			entity.add_or_replace_component<Components::ScriptComponent>(std::move(script));
 		}
 
 		// Deserialize MeshComponent

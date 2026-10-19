@@ -182,6 +182,57 @@ void HierarchyPanel::remove_entity(Entity entity) {
 	m_tree_view->queue_redraw();
 }
 
+void HierarchyPanel::sync() {
+	if (m_tree_view == nullptr) {
+		return;
+	}
+
+	std::vector<Entity> destroyed;
+	for (const auto &[node, entity] : m_tree_view->get_nodes()) {
+		if (!entity.exists()) {
+			destroyed.push_back(entity);
+		}
+	}
+	for (Entity entity : destroyed) {
+		remove_entity(entity);
+	}
+
+	std::unordered_map<entt::entity, HierarchyTreeNode *> nodes;
+	for (const auto &[node, entity] : m_tree_view->get_nodes()) {
+		nodes[entity.get_handle()] = node;
+	}
+
+	const auto ensure_node = [this, &nodes](const auto &self, Entity entity) -> HierarchyTreeNode * {
+		if (const auto it = nodes.find(entity.get_handle()); it != nodes.end()) {
+			return it->second;
+		}
+		HierarchyTreeNode *parent = nullptr;
+		if (const auto *scene_node = entity.try_get_component<SceneNodeComponent>();
+			scene_node != nullptr && scene_node->parent.is_valid() &&
+			scene_node->parent.has_component<MetadataComponent>()) {
+			parent = self(self, scene_node->parent);
+		}
+		HierarchyTreeNode *node = m_tree_view->add_entity_node(entity.get_name(), entity, parent);
+		nodes[entity.get_handle()] = node;
+		return node;
+	};
+
+	m_entity_manager.for_each<MetadataComponent>([this, &nodes, &ensure_node](Entity entity) {
+		const auto it = nodes.find(entity.get_handle());
+		if (it == nodes.end()) {
+			ensure_node(ensure_node, entity);
+			return;
+		}
+		HierarchyTreeNode *node = it->second;
+		if (node->get_label() != entity.get_name()) {
+			node->set_label(entity.get_name());
+		}
+		node->refresh_visibility();
+		m_tree_view->refresh_node_icon(node);
+		m_tree_view->regroup(node);
+	});
+}
+
 void HierarchyPanel::refresh_entity(Entity entity) {
 	if (m_tree_view == nullptr) {
 		return;

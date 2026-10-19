@@ -15,8 +15,10 @@ ScriptEntity to_script(entt::entity entity) {
 
 } // namespace
 
-ScriptSystem::ScriptSystem(SceneManagement::Scene &scene) : m_scene(scene) {
-	register_engine_api(m_runtime, m_scene);
+ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input)
+	: m_scene(scene), m_environment{ .scene = &scene, .input = input } {
+	m_runtime.set_error_handler([](std::string_view message) { AQUILA_LOG_ERROR("[Luau] {}", message); });
+	register_engine_api(m_runtime, m_environment);
 }
 
 ScriptSystem::~ScriptSystem() = default;
@@ -26,6 +28,10 @@ bool ScriptSystem::write_types(const std::string &directory) const {
 }
 
 void ScriptSystem::update(F32 delta_time) {
+	m_environment.delta_time = delta_time;
+	m_environment.elapsed += delta_time;
+	++m_environment.frame;
+
 	auto &registry = m_scene.get_registry();
 
 	for (auto it = m_instances.begin(); it != m_instances.end();) {
@@ -44,7 +50,7 @@ void ScriptSystem::update(F32 delta_time) {
 	for (auto [entity, component] : registry.view<SceneManagement::Components::ScriptComponent>().each()) {
 		Instance &instance = m_instances[entity];
 		if (instance.path != component.path) {
-			start(entity, instance, component.path);
+			start(entity, instance, component);
 		}
 	}
 
@@ -72,7 +78,9 @@ void ScriptSystem::finish(entt::entity entity, Instance &instance) {
 	}
 }
 
-void ScriptSystem::start(entt::entity entity, Instance &instance, const std::string &path) {
+void ScriptSystem::start(entt::entity entity, Instance &instance,
+						 const SceneManagement::Components::ScriptComponent &component) {
+	const std::string &path = component.path;
 	finish(entity, instance);
 	m_runtime.unload(instance.script);
 	instance = Instance{};
@@ -87,7 +95,10 @@ void ScriptSystem::start(entt::entity entity, Instance &instance, const std::str
 		return;
 	}
 
+	ScriptFieldContext fields{ .values = &component.fields };
+	m_environment.loading = &fields;
 	instance.script = m_runtime.load_source(path, vfs->read_text_file(path));
+	m_environment.loading = nullptr;
 	if (!instance.script.is_valid()) {
 		return;
 	}

@@ -94,4 +94,22 @@ TEST_SUITE("Scene copy") {
 
 		CHECK_FALSE(Entity(entity.get_handle(), &copy).has_component<OutlineComponent>());
 	}
+
+	TEST_CASE("on_entities_changed fires on create, destroy and metadata patches, not on plain setters") {
+		Scene scene("Test");
+		int changes = 0;
+		scene.on_entities_changed.connect([&changes] { ++changes; });
+
+		Entity entity = scene.get_entity_manager()->create_entity("Thing");
+		CHECK(changes == 1);
+
+		entity.get_component<MetadataComponent>().set_name("Quiet");
+		CHECK(changes == 1);
+
+		entity.patch_component<MetadataComponent>([](MetadataComponent &metadata) { metadata.set_name("Loud"); });
+		CHECK(changes == 2);
+
+		scene.get_entity_manager()->destroy_entity(entity);
+		CHECK(changes == 3);
+	}
 }

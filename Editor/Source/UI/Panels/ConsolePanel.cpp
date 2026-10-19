@@ -133,10 +133,12 @@ void ConsolePanel::flush_pending() {
 	}
 	const bool follow_output = m_scroll_view->is_at_bottom();
 	for (auto &line : lines) {
-		const LogLevel level = parse_level(line);
+		const bool continuation = line.find("[AQUILA ") == std::string::npos && !m_entries.empty();
+		const LogLevel level = continuation ? m_entries.back().level : parse_level(line);
 		const std::string_view tag = level_tag(level);
-		const Usize tag_pos = tag.empty() ? std::string::npos : line.find(tag);
-		LogEntry entry{ level, std::move(line) };
+		const Usize tag_pos = tag.empty() || continuation ? std::string::npos : line.find(tag);
+		LogEntry entry{ level, continuation ? "    " + line : std::move(line) };
+		entry.continuation = continuation;
 		if (tag_pos != std::string::npos) {
 			entry.tag_begin = static_cast<int>(tag_pos);
 			entry.tag_length = static_cast<int>(tag.size());
@@ -151,34 +153,18 @@ void ConsolePanel::flush_pending() {
 
 void ConsolePanel::append_entry(LogEntry entry) {
 	if ((int)m_entries.size() >= K_MAX_MESSAGES) {
-		const LogLevel oldest_level = m_entries.front().level;
-		switch (level_to_group(oldest_level)) {
-		case FilterGroup::Info:
-			--m_info_count;
-			break;
-		case FilterGroup::Warning:
-			--m_warning_count;
-			break;
-		case FilterGroup::Error:
-			--m_error_count;
-			break;
+		const LogEntry &oldest = m_entries.front();
+		if (!oldest.continuation) {
+			--count_for(oldest.level);
 		}
-		if (is_shown(oldest_level)) {
+		if (is_shown(oldest.level)) {
 			m_view->remove_front(1);
 		}
 		m_entries.erase(m_entries.begin());
 	}
 
-	switch (level_to_group(entry.level)) {
-	case FilterGroup::Info:
-		++m_info_count;
-		break;
-	case FilterGroup::Warning:
-		++m_warning_count;
-		break;
-	case FilterGroup::Error:
-		++m_error_count;
-		break;
+	if (!entry.continuation) {
+		++count_for(entry.level);
 	}
 
 	if (is_shown(entry.level)) {
@@ -279,6 +265,18 @@ LogLevel ConsolePanel::parse_level(const std::string &line) {
 		return LogLevel::Trace;
 	}
 	return LogLevel::Info;
+}
+
+int &ConsolePanel::count_for(LogLevel level) {
+	switch (level_to_group(level)) {
+	case FilterGroup::Warning:
+		return m_warning_count;
+	case FilterGroup::Error:
+		return m_error_count;
+	case FilterGroup::Info:
+		break;
+	}
+	return m_info_count;
 }
 
 ConsolePanel::FilterGroup ConsolePanel::level_to_group(LogLevel level) {

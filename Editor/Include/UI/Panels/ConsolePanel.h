@@ -45,6 +45,8 @@ class ConsolePanel : public IEditorPanel {
 		std::string message;
 		int tag_begin = 0;
 		int tag_length = 0;
+		/// A line of a multi-line message (a script traceback): it has the message's level and isn't counted.
+		bool continuation = false;
 	};
 
 	enum class FilterGroup { Info, Warning, Error };
@@ -57,6 +59,7 @@ class ConsolePanel : public IEditorPanel {
 	void update_filter_buttons();
 	static LogLevel parse_level(const std::string &line);
 	static FilterGroup level_to_group(LogLevel level);
+	[[nodiscard]] int &count_for(LogLevel level);
 	static Vec4 level_tag_color(LogLevel level);
 	static std::string_view level_tag(LogLevel level);
 	static Vec4 level_icon_tint(LogLevel level);

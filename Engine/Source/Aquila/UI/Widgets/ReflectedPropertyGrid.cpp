@@ -181,12 +181,19 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 			});
 			row.widget = slot;
 			row.show = [slot, type](const PropertyValue &value) {
-				const auto &path = std::get<std::string>(value);
-				if (path.empty()) {
+				const auto *path_ptr = std::get_if<std::string>(&value);
+				if (!path_ptr || path_ptr->empty()) {
 					slot->clear();
 					return;
 				}
-				slot->set_value(AssetPayload{ path, type, path.substr(path.find_last_of('/') + 1) });
+				const auto &path = *path_ptr;
+
+				const AssetSlot::Adapter *adapter = AssetSlot::find_adapter(type);
+				std::string name = adapter != nullptr && adapter->display_name
+					? adapter->display_name(path)
+					: path.substr(path.find_last_of('/') + 1);
+				slot->set_value(
+					AssetPayload{ .asset_path = path, .asset_type = type, .display_name = std::move(name) });
 			};
 			break;
 		}

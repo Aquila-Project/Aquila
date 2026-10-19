@@ -2,6 +2,12 @@
 	"languageMode": "strict",
 	"aliases": {
 		"aquila": "Resources/Engine/API",
-		"native": "Resources/Engine/Types/native"
+		"native": "Resources/Engine/Types/native",
+		"time": "Resources/Engine/Types/time",
+		"scene": "Resources/Engine/Types/scene",
+		"input": "Resources/Engine/Types/input",
+		"screen": "Resources/Engine/Types/screen",
+		"fields": "Resources/Engine/Types/fields",
+		"camera": "Resources/Engine/Types/camera"
 	}
 }

@@ -37,6 +37,7 @@
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/UIHost.h"
 #include "Aquila/UI/Style/StyleParser.h"
+#include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/ColorPicker.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
@@ -143,6 +144,7 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 }
 
 void EditorModule::on_detach() {
+	Aquila::UI::Core::AssetSlot::set_adapter("entity", {});
 	if (m_windows) {
 		m_windows->shutdown();
 	}
@@ -179,6 +181,7 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		m_workspaces->activate(workspace);
 	}
 
+	drop_destroyed_selection();
 
 	if (m_pending_pick && m_context) {
 		const Entity picked = *m_pending_pick;
@@ -211,7 +214,14 @@ Aquila::UI::Core::Canvas *EditorModule::canvas_for(Events::EventSource source) c
 	return m_dock_manager ? m_dock_manager->find_canvas(source) : nullptr;
 }
 
+void EditorModule::drop_destroyed_selection() {
+	if (m_context && !m_context->selection.get().is_null() && !m_context->selection.has()) {
+		m_context->selection.clear();
+	}
+}
+
 void EditorModule::on_event(Events::Event &event) {
+	drop_destroyed_selection();
 	Aquila::UI::Core::Canvas *source_canvas = canvas_for(event.get_source());
 	if (source_canvas == nullptr) {
 		return;
@@ -611,6 +621,7 @@ void EditorModule::setup_editor_ui() {
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
 	m_context->set_project(m_project);
+	register_entity_slots();
 	register_content_creators();
 	bind_default_shortcuts(m_context->shortcuts);
 
@@ -690,6 +701,31 @@ void EditorModule::setup_editor_ui() {
 	m_devtools->attach(layout_root);
 
 	editor_canvas.reload_styles();
+}
+
+void EditorModule::register_entity_slots() {
+	using Aquila::UI::Core::AssetPayload;
+	Aquila::UI::Core::AssetSlot::set_adapter(
+		"entity",
+		{
+			.from_drag = [](const std::any &payload) -> Option<AssetPayload> {
+				const auto *entity = std::any_cast<Entity>(&payload);
+				if (entity == nullptr || !entity->exists() || !entity->has_component<MetadataComponent>()) {
+					return std::nullopt;
+				}
+				return AssetPayload{
+					.asset_path = entity->get_component<MetadataComponent>().get_id().to_string(),
+					.asset_type = "entity",
+					.display_name = entity->get_name(),
+				};
+			},
+			.display_name =
+				[this](const std::string &uuid) {
+					const auto entity = m_engine->get_scene().get_entity_manager()->find_entity_by_uuid(
+						Aquila::Foundation::UUID::from_string(uuid));
+					return entity ? entity->get_name() : std::string("Missing entity");
+				},
+		});
 }
 
 void EditorModule::load_styles() {

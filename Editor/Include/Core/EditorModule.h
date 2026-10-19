@@ -74,7 +74,12 @@ class EditorModule final : public Aquila::Application::IModule {
 	void reset_to_demo_scene();
 	void scene_replaced();
 	void set_outlined_entity(Aquila::SceneManagement::Entity entity);
+	/// A script destroyed the selected entity: clear the selection before anything (the inspector) touches its
+	/// components again. Runs before every event and frame.
+	void drop_destroyed_selection();
 	void setup_editor_ui();
+	/// "entity" AssetSlots (script entity fields) take hierarchy drags, store the UUID and show the entity's name.
+	void register_entity_slots();
 	void load_styles();
 	void reload_styles();
 	void wire_main_menu(Aquila::UI::Core::View *layout_root);

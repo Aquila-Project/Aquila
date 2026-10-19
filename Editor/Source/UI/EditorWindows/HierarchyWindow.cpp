@@ -66,9 +66,21 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 	listen(selection.on_entity_destroying, [this](Entity entity) { m_panel->remove_entity(entity); });
 	listen(selection.on_entity_modified, [this](Entity entity) { m_panel->refresh_entity(entity); });
 	listen(selection.on_scene_replaced, [this] { m_panel->rebuild(); });
+	listen(context().engine().get_scene().on_entities_changed, [this] { m_scene_changed = true; });
 
 	if (selection.has()) {
 		show_selection(selection.get());
+	}
+}
+
+void HierarchyWindow::update(F32) {
+	if (!m_scene_changed) {
+		return;
+	}
+	m_scene_changed = false;
+	m_panel->sync();
+	if (context().selection.has()) {
+		show_selection(context().selection.get());
 	}
 }
 
