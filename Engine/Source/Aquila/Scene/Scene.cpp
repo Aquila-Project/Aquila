@@ -545,6 +545,10 @@ bool Scene::serialize(const std::string &filepath) {
 				{ "inner_cone_angle", light.m_inner_cone_angle },
 				{ "outer_cone_angle", light.m_outer_cone_angle },
 				{ "direction", { light.m_direction.x, light.m_direction.y, light.m_direction.z } },
+				{ "source_radius", light.m_source_radius },
+				{ "angular_diameter", light.m_angular_diameter },
+				{ "use_temperature", light.m_use_temperature },
+				{ "temperature", light.m_temperature },
 				{ "is_active", light.m_is_active },
 			};
 
@@ -798,6 +802,10 @@ bool Scene::deserialize(const std::string &filepath) {
 				light.m_is_active = light_json["is_active"].get<bool>();
 			}
 
+			light.m_source_radius = light_json.value("source_radius", light.m_source_radius);
+			light.m_angular_diameter = light_json.value("angular_diameter", light.m_angular_diameter);
+			light.m_use_temperature = light_json.value("use_temperature", light.m_use_temperature);
+			light.m_temperature = light_json.value("temperature", light.m_temperature);
 
 			if (legacy_light_units && light_json.contains("intensity")) {
 				light.m_intensity = photometric_from_legacy(light);

@@ -244,7 +244,7 @@ static GpuLightData build_light_data(const LightComponent &light, const Transfor
 	GpuLightData data{};
 
 	data.m_position_and_range = Vec4(transform.get_world_position(), light.m_range);
-	data.m_color_and_intensity = Vec4(light.m_color, shader_intensity(light));
+	data.m_color_and_intensity = Vec4(light.get_emitted_color(), shader_intensity(light));
 	data.m_direction_and_type = Vec4(light_direction(light), static_cast<float>(light.m_type));
 	data.m_shadow_index = -1;
 	data.m_flags = 0;
@@ -269,6 +269,13 @@ static GpuLightData build_light_data(const LightComponent &light, const Transfor
 		data.m_cos_inner_angle = 1.0F;
 		data.m_cos_outer_angle = 1.0F;
 		break;
+	}
+
+	if (light.m_type == LightComponent::Type::Directional) {
+		const F32 half_angle = Math::radians(Math::max(light.m_angular_diameter, 0.F) * 0.5F);
+		data.m_source = Vec4(Math::sin(half_angle), Math::cos(half_angle), 0.F, 0.F);
+	} else {
+		data.m_source = Vec4(Math::max(light.m_source_radius, 0.F), 0.F, 0.F, 0.F);
 	}
 
 	return data;

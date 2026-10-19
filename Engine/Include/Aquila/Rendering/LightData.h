@@ -20,9 +20,11 @@ struct alignas(16) GpuLightData {
 	F32 m_cos_outer_angle;
 	Int32 m_shadow_index;
 	Uint32 m_flags;
+	/// Point and Spot: x = sphere radius in meters. Directional: x = sin, y = cos of the sun's angular radius.
+	Vec4 m_source;
 };
 
-static_assert(sizeof(GpuLightData) == 96, "GpuLightData must be 96 bytes for std430 packing");
+static_assert(sizeof(GpuLightData) == 112, "GpuLightData must be 112 bytes for std430 packing");
 
 struct alignas(16) GpuEnvironmentData {
 	std::array<Vec4, 9> m_sh_coeffs;

@@ -78,6 +78,9 @@ void register_builtin_components(ComponentRegistry &registry) {
 		.property("Range", &LightComponent::get_range, &LightComponent::set_range,
 				  PropertyHints{ .min = 0.F, .max = 200.F, .speed = 0.5F, .unit = "m" })
 		.visible_if(has_range)
+		.property("Radius", &LightComponent::get_source_radius, &LightComponent::set_source_radius,
+				  PropertyHints{ .min = 0.F, .max = 5.F, .speed = 0.005F, .precision = 3, .unit = "m" })
+		.visible_if(has_range)
 		.property(
 			"Direction", &LightComponent::get_direction,
 			[](LightComponent &light, const Vec3 &direction) {

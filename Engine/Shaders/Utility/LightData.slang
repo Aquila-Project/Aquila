@@ -20,6 +20,7 @@ struct LightData {
 	float cosOuterAngle;	  // spot only, 1.0 for other types
 	int shadowIndex;		  // -1 = unshadowed
 	uint flags;
+	float4 source;
 };
 
 [vk::binding(1, 0)] StructuredBuffer<LightData> lights;
@@ -68,6 +69,15 @@ float GetCosInnerAngle(LightData l) {
 float GetCosOuterAngle(LightData l) {
 	return l.cosOuterAngle;
 }
+float GetSourceRadius(LightData l) {
+	return l.source.x;
+}
+float GetSunSinRadius(LightData l) {
+	return l.source.x;
+}
+float GetSunCosRadius(LightData l) {
+	return l.source.y;
+}
 float3 GetAreaRight(LightData l) {
 	return l.rightAndWidth.xyz;
 }
@@ -84,6 +94,11 @@ float GetAreaHeight(LightData l) {
 float Attenuation(float dist, float range) {
 	float num = saturate(1.0 - pow(dist / range, 4.0));
 	return (num * num) / max(dist * dist, 0.0001);
+}
+
+float SphereAttenuation(float dist, float range, float radius) {
+	float num = saturate(1.0 - pow(dist / range, 4.0));
+	return (num * num) / max(dist * dist, max(radius * radius, 0.0001));
 }
 
 float SpotAttenuation(float3 L, LightData l) {
