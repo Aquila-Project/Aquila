@@ -47,12 +47,12 @@ void ViewRenderingSystem::add_passes(Graphics::RG::RenderGraph &graph, Aquila::R
 	graph.add_pass(
 		"GameUI",
 		[&ctx](Graphics::RG::RGPassBuilder &builder) {
-			ctx.h_scene_color = builder.set_color_attachment(0, ctx.h_scene_color, Graphics::RG::AttachmentLoadOp::Load,
-															 Graphics::RG::AttachmentStoreOp::Store);
+			ctx.h_display_color = builder.set_color_attachment(
+				0, ctx.h_display_color, Graphics::RG::AttachmentLoadOp::Load, Graphics::RG::AttachmentStoreOp::Store);
 		},
 		[r2d, w, h](GFX::GfxCommandList &cmd, Graphics::RG::RGRegistry &) {
 			const Mat4 ortho = glm::ortho(0.F, static_cast<float>(w), static_cast<float>(h), 0.F, -1.F, 1.F);
-			r2d->begin(cmd, RHI::TextureFormat::RGBA16F, RHI::SampleCount::X1, ortho);
+			r2d->begin(cmd, Aquila::Rendering::DISPLAY_COLOR_FORMAT, RHI::SampleCount::X1, ortho);
 			Core::CanvasManager::get()->render_layers(*r2d, cmd, Core::UILayer::WorldSpace,
 													  Core::UILayer::ScreenCamera);
 			r2d->end();
@@ -84,7 +84,7 @@ void ViewRenderingSystem::blit_to_swapchain(Graphics::RG::RenderGraph &graph, Aq
 		"UIOverlay",
 		[&ctx](Graphics::RG::RGPassBuilder &builder) {
 			builder.mark_as_side_effect();
-			builder.read_texture(ctx.h_scene_color, Graphics::RG::ResourceState::ShaderRead);
+			builder.read_texture(ctx.h_display_color, Graphics::RG::ResourceState::ShaderRead);
 		},
 		[r2d, swapchain, image_index, overlay_pass, w, h](GFX::GfxCommandList &cmd, Graphics::RG::RGRegistry &) {
 			const Mat4 ortho = glm::ortho(0.F, static_cast<float>(w), static_cast<float>(h), 0.F, -1.F, 1.F);

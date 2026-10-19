@@ -43,7 +43,7 @@ struct FrameData {
 
 	float2 screenResolution;
 	uint lightCount;
-	uint _pad;
+	float exposure;
 };
 
 [vk::binding(0, 0)] ConstantBuffer<FrameData> frameData;
@@ -152,6 +152,10 @@ float GetDeltaTime() {
 }
 uint GetFrameIndex() {
 	return frameData.frameIndex;
+}
+
+float GetExposure() {
+	return frameData.exposure;
 }
 
 } // namespace Aquila::Shading

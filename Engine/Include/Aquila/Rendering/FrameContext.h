@@ -16,6 +16,11 @@ namespace Aquila::Rendering {
 
 class SceneFrameData;
 
+/// Scene color is linear HDR, already multiplied by the camera exposure. Display color is what ends up on screen:
+/// tone mapped and sRGB encoded by ToneMapSystem. Overlays that shouldn't be exposed (grid, outline, UI) draw into it.
+inline constexpr RHI::TextureFormat SCENE_COLOR_FORMAT = RHI::TextureFormat::RGBA16F;
+inline constexpr RHI::TextureFormat DISPLAY_COLOR_FORMAT = RHI::TextureFormat::RGBA8;
+
 /// What a system gets every frame. The h_* handles are how systems pass graph resources to each other:
 /// a system that writes one must store the new handle back, so the next system reads the latest version.
 struct FrameContext {
@@ -27,10 +32,12 @@ struct FrameContext {
 	Vec3 camera_position = {};
 
 	Graphics::RG::RGTextureHandle h_scene_color;
+	Graphics::RG::RGTextureHandle h_display_color;
 	Graphics::RG::RGTextureHandle h_depth;
 	Graphics::RG::RGTextureHandle h_object_picking;
 
 	std::array<Graphics::RG::RGTextureHandle, SHADOW_CASCADE_COUNT> h_shadow_maps;
+	Graphics::RG::RGTextureHandle h_local_shadow_atlas;
 
 	Graphics::RG::RGBufferHandle h_cluster_aab_bs;
 	Graphics::RG::RGBufferHandle h_light_list;

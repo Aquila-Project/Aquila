@@ -8,6 +8,7 @@
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/SliderField.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/Toggle.h"
 #include "Aquila/UI/Widgets/VecField.h"
@@ -24,7 +25,7 @@ DragFloat::Config drag_config(const Reflection::PropertyHints &hints) {
 	return { .min = hints.min, .max = hints.max, .speed = hints.speed, .precision = hints.precision };
 }
 
-}
+} // namespace
 
 ReflectedPropertyGrid::ReflectedPropertyGrid(PropertyGrid &grid, const Reflection::TypeInfo &type,
 											 GFX::GfxContext *ctx) {
@@ -74,9 +75,15 @@ void ReflectedPropertyGrid::on_widget_edited(size_t row_index, const PropertyVal
 		m_on_edited();
 	}
 
-	for (const Row &row : m_rows) {
+	m_refreshing = true;
+	for (size_t i = 0; i < m_rows.size(); ++i) {
+		Row &row = m_rows[i];
+		if (i != row_index) {
+			row.show(row.property->get(m_instance));
+		}
 		row.widget->get_parent()->set_hidden(!row.property->is_visible(m_instance));
 	}
+	m_refreshing = false;
 }
 
 void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property, GFX::GfxContext *ctx) {
@@ -113,6 +120,27 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 		break;
 	}
 	case PropertyKind::Float: {
+		const Reflection::PropertyHints &hints = property.hints;
+		if (hints.logarithmic || !hints.marks.empty() || !hints.gradient.empty()) {
+			auto *field = grid.add_stacked_row<SliderField>(property.name);
+			const bool narrower = hints.slider_max > hints.slider_min;
+			field->set_range(hints.min, hints.max);
+			field->set_slider_range(narrower ? hints.slider_min : hints.min, narrower ? hints.slider_max : hints.max);
+			field->set_logarithmic(hints.logarithmic);
+			field->set_precision(hints.precision);
+			field->set_suffix(std::string(hints.unit));
+			std::vector<SliderField::Mark> marks;
+			marks.reserve(hints.marks.size());
+			for (const Reflection::PropertyMark &mark : hints.marks) {
+				marks.push_back({ .value = mark.value, .label = std::string(mark.label) });
+			}
+			field->set_marks(std::move(marks));
+			field->set_gradient(std::vector<Vec4>(hints.gradient.begin(), hints.gradient.end()));
+			field->on_changed.connect([edited](float value) { edited(PropertyValue{ value }); });
+			row.widget = field;
+			row.show = [field](const PropertyValue &value) { field->set_value(std::get<F32>(value)); };
+			break;
+		}
 		auto *field = grid.add_row<DragFloat>(property.name, drag_config(property.hints));
 		field->set_slider(property.hints.slider);
 		field->set_suffix(std::string(property.hints.unit));

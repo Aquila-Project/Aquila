@@ -18,6 +18,7 @@
 using namespace Aquila;
 using namespace Aquila::UI;
 using namespace Aquila::UI::Core;
+using Aquila::Reflection::PropertyMark;
 using Aquila::Reflection::TypeBuilder;
 using Aquila::Reflection::TypeInfo;
 
@@ -43,12 +44,31 @@ struct Everything {
 		"/project/Content/Materials_Tiles_03/JPEG/Tiles_GreenAndGoldPattern_01/Tiles_GreenAndGoldPattern_01_basecolor.jpg";
 };
 
+constexpr std::array<PropertyMark, 3> k_marks = { {
+	{ .value = 0.25F, .label = "Full moon" },
+	{ .value = 2000.F, .label = "Overcast day" },
+	{ .value = 100000.F, .label = "Clear noon sun" },
+} };
+
+const std::array<Vec4, 2> k_gradient = { Vec4(1.F, 0.5F, 0.F, 1.F), Vec4(0.5F, 0.7F, 1.F, 1.F) };
+
 const TypeInfo &everything_type() {
 	static const TypeInfo type = [] {
 		TypeInfo info("Everything");
 		TypeBuilder<Everything>(info)
 			.property("Distance From The Camera", &Everything::distance, { .speed = 0.05F, .precision = 3, .unit = "m" })
 			.property("Roughness", &Everything::roughness, { .min = 0.F, .max = 1.F, .slider = true })
+			.property("Intensity", &Everything::illuminance,
+					  { .min = 0.F,
+						.max = 1000000.F,
+						.precision = 2,
+						.unit = "lx",
+						.logarithmic = true,
+						.slider_min = 0.01F,
+						.slider_max = 150000.F,
+						.marks = k_marks })
+			.property("Temperature", &Everything::temperature,
+					  { .min = 1667.F, .max = 12000.F, .precision = 0, .unit = "K", .gradient = k_gradient })
 			.property("Count", &Everything::count)
 			.property("Visible", &Everything::visible)
 			.property("Cast Shadows", &Everything::shadows, { .toggle = true })

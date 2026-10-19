@@ -33,8 +33,9 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 	SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height);
 
 	/// Fills `frame_slot`'s buffers. Also sets MaterialComponent::material_index on every material.
+	/// `exposure` is the pixel value per nit lit shaders multiply their output by (AutoExposure::begin_frame).
 	void update(SceneManagement::Scene &scene, float delta_time, Uint32 frame_slot, const RenderView &primary_view,
-				bool shadows_allowed = true);
+				F32 exposure, bool shadows_allowed = true);
 
 	void on_resize(Uint32 width, Uint32 height);
 
@@ -45,6 +46,21 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 	[[nodiscard]] GFX::GfxBuffer &get_cluster_light_info_buffer() const { return *m_cluster_light_info_buffer; }
 
 	static constexpr Uint32 kShadowMapSize = 2048;
+	/// Point and spot shadows share one atlas of square tiles. 64 tiles: a point light takes 6, a spot 1.
+	static constexpr Uint32 kLocalShadowAtlasSize = 4096;
+	static constexpr Uint32 kLocalShadowTileSize = 512;
+	/// Point light faces see a bit past 90 degrees so soft shadow taps near a cube edge stay inside the tile.
+	static constexpr Uint32 kLocalShadowGuardTexels = 16;
+
+	/// A tile ShadowSystem has to render this frame. `x`, `y`, `size` are atlas texels.
+	struct LocalShadowView {
+		Mat4 view_proj = Mat4(1.F);
+		Uint32 x = 0;
+		Uint32 y = 0;
+		Uint32 size = 0;
+		Vec3 light_position = Vec3(0.F);
+		F32 range = 0.F;
+	};
 
 	[[nodiscard]] GFX::GfxTexture &get_shadow_map(Uint32 frame_slot, Uint32 cascade) const {
 		return *m_shadow_maps[frame_slot][cascade];
@@ -53,6 +69,12 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 		return m_cascade_view_proj;
 	}
 	[[nodiscard]] bool shadows_enabled() const { return m_shadows_enabled; }
+
+	[[nodiscard]] GFX::GfxTexture &get_local_shadow_atlas(Uint32 frame_slot) const {
+		return *m_local_shadow_atlases[frame_slot];
+	}
+	/// Filled by update(), in tile order. Empty when no point or spot light got a shadow.
+	[[nodiscard]] const std::vector<LocalShadowView> &get_local_shadow_views() const { return m_local_shadow_views; }
 
   private:
 	GFX::GfxContext &m_ctx;
@@ -81,6 +103,10 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 		m_shadow_maps;
 
 	std::array<Mat4, SHADOW_CASCADE_COUNT> m_cascade_view_proj{};
+
+	std::array<Ref<GFX::GfxBuffer>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_local_shadow_buffers;
+	std::array<Ref<GFX::GfxTexture>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_local_shadow_atlases;
+	std::vector<LocalShadowView> m_local_shadow_views;
 
 	bool m_shadows_enabled = false;
 

@@ -18,6 +18,12 @@ struct EnumOption {
 	Int32 value = 0;
 };
 
+/// A labelled spot on a slider, like "60 W bulb" at 800 lm.
+struct PropertyMark {
+	F32 value = 0.F;
+	std::string_view label{};
+};
+
 /// How the inspector shows and limits a property. Every field is optional.
 ///
 /// - speed: drag speed of number fields
@@ -27,6 +33,13 @@ struct EnumOption {
 /// - slider: draws a fill bar between min and max
 /// - unit: suffix like "m"
 /// - asset_type: the string is an asset path, the inspector shows an asset slot for that type
+///
+/// Floats with `logarithmic`, `marks` or `gradient` get a slider with a typed value next to it instead:
+/// - logarithmic: every doubling is the same distance, for values that span decades (light intensities)
+/// - slider_min/slider_max: the slider's range when it's narrower than min/max, typing can still go past it.
+///   Must be above 0 when logarithmic.
+/// - marks: reference points drawn on the track, the nearest one is named under it
+/// - gradient: colors spread evenly along the track, like a temperature scale
 struct PropertyHints {
 	F32 min = std::numeric_limits<F32>::lowest();
 	F32 max = std::numeric_limits<F32>::max();
@@ -38,6 +51,11 @@ struct PropertyHints {
 	bool read_only = false;
 	std::string_view unit{};
 	std::string_view asset_type{};
+	bool logarithmic = false;
+	F32 slider_min = 0.F;
+	F32 slider_max = 0.F;
+	std::span<const PropertyMark> marks{};
+	std::span<const Vec4> gradient{};
 };
 
 /// One reflected field. The instance is a type-erased pointer to the object.

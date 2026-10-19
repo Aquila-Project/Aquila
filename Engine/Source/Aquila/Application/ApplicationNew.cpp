@@ -14,6 +14,7 @@
 #include "Aquila/Rendering/Systems/OutlineSystem.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Rendering/Systems/SkySystem.h"
+#include "Aquila/Rendering/Systems/ToneMapSystem.h"
 #include "Aquila/Rendering/Systems/LightCullingSystem.h"
 #include "Aquila/Graphics/Material/MaterialFactory.h"
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
@@ -124,6 +125,9 @@ void Application::run() {
 	m_frame_interval = 1.0 / Window::highest_refresh_rate();
 	Foundation::FrameScheduler *scheduler = Foundation::FrameScheduler::get();
 	while (m_running) {
+		if (!scheduler->is_pending()) {
+			m_render_pipeline->settle();
+		}
 		if (!scheduler->is_pending()) {
 			m_resumed_from_idle = true;
 			m_window->wait_events(idle_timeout());
@@ -322,6 +326,9 @@ void Application::init_rendering(Uint32 width, Uint32 height) {
 	m_renderer->add_system<Rendering::GeometrySystem>();
 	m_renderer->add_system<Rendering::DebugViewSystem>();
 	m_renderer->add_system<Rendering::SkySystem>();
+
+	// post process
+	m_renderer->add_system<Rendering::ToneMapSystem>();
 	m_renderer->add_system<Rendering::GridSystem>();
 	m_renderer->add_system<Rendering::OutlineSystem>();
 

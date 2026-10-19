@@ -96,7 +96,7 @@ void Renderer::blit_to_swapchain(Graphics::RG::RenderGraph &graph, FrameContext 
 		return;
 	}
 
-	auto h_src = ctx.h_scene_color;
+	auto h_src = ctx.h_display_color;
 	auto *swapchain = m_swapchain;
 	auto image_index = m_swapchain_image_index;
 	auto *set = m_blit_sets[m_frame_slot].get();

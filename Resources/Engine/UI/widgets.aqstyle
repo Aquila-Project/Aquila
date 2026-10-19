@@ -733,6 +733,58 @@ OverlayToolbar {
     accent-color: var(--accent-muted);
 }
 
+SliderField {
+    flex-direction: column;
+    width: grow;
+    min-width: 0px;
+    gap: 1px;
+}
+
+.slider-field-row {
+    flex-direction: row;
+    align-items: center;
+    width: grow;
+    min-width: 0px;
+    gap: 6px;
+}
+
+.slider-field-track {
+    width: grow;
+    min-width: 20px;
+    height: 20px;
+    color: var(--text-dim);
+    accent-color: var(--accent);
+}
+
+.slider-field-value {
+    width: grow;
+    min-width: 32px;
+    max-width: 84px;
+    height: 20px;
+    font-family: mono;
+    font-size: 12px;
+    color: var(--text);
+    background-color: var(--bg-surface);
+    border-width: 0px;
+    border-radius: 4px;
+    selection-color: var(--selection);
+}
+
+.slider-field-value:hover {
+    background-color: var(--bg-hover);
+}
+
+.slider-field-value:focus {
+    background-color: var(--input-bg);
+}
+
+.slider-field-caption {
+    min-height: 14px;
+    font-family: regular;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
 .split-Checkbox {
     width: 16px;
     height: 16px;

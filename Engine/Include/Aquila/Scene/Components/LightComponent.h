@@ -3,6 +3,7 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Photometry.h"
 #include "Aquila/Foundation/Signal.h"
 
 namespace Aquila::SceneManagement::Components {
@@ -16,16 +17,32 @@ struct ShadowQualitySettings {
 	int blocker_search_samples = 16;
 };
 
+/// `m_intensity` is lux for Directional and lumens for Point and Spot (Foundation/Photometry.h).
 /// `m_range` is for Point and Spot. `m_direction` is for Directional and Spot, it's not the
 /// transform rotation, and a zero vector is ignored. Cone angles are half angles in degrees.
 /// Area has no shading yet.
 struct LightComponent {
 	enum class Type { Point, Directional, Spot, Area };
+	/// How Point and Spot intensities are shown and typed. `m_intensity` stays in lumens either way.
+	enum class IntensityUnit { Lumen, Candela };
+
+	/// A clear noon sun.
+	static constexpr F32 DEFAULT_ILLUMINANCE = 100000.0F;
+	/// A 60 W incandescent bulb.
+	static constexpr F32 DEFAULT_POWER = 800.0F;
+	/// Meters, about a frosted bulb.
+	static constexpr F32 DEFAULT_SOURCE_RADIUS = 0.05F;
+	/// Degrees. A slightly hazy sun, the clear-sky one is Photometry::SUN_ANGULAR_DIAMETER.
+	static constexpr F32 DEFAULT_ANGULAR_DIAMETER = 1.5F;
+
+	[[nodiscard]] static constexpr F32 default_intensity(Type type) noexcept {
+		return type == Type::Directional ? DEFAULT_ILLUMINANCE : DEFAULT_POWER;
+	}
 
 	Type m_type = Type::Directional;
 
 	Vec3 m_color = Vec3(1.0F);
-	F32 m_intensity = 1.0F;
+	F32 m_intensity = DEFAULT_ILLUMINANCE;
 	F32 m_range = 100.0F;
 
 	F32 m_inner_cone_angle = 0.0F;
@@ -34,6 +51,19 @@ struct LightComponent {
 	Vec3 m_direction = Vec3(0.0F, -1.0F, 0.0F);
 
 	Vec2 m_area_size = Vec2(1.0F, 1.0F);
+
+	/// Point and Spot. The light is a glowing sphere this big: softer, wider highlights and softer shadows.
+	F32 m_source_radius = DEFAULT_SOURCE_RADIUS;
+	/// Directional. How big the sun looks: sets the shadow penumbra and the size of its highlight.
+	F32 m_angular_diameter = DEFAULT_ANGULAR_DIAMETER;
+	/// When on, the color is multiplied by a black body at `m_temperature` kelvin.
+	bool m_use_temperature = false;
+	F32 m_temperature = 6500.0F;
+
+	IntensityUnit m_intensity_unit = IntensityUnit::Lumen;
+	/// Only the first directional light can get cascades. Point and Spot share a shadow atlas (a point light takes
+	/// 6 of its 64 tiles, a spot 1), the ones closest to the camera win when it's full.
+	bool m_cast_shadows = true;
 
 	ShadowQualitySettings m_shadow_settings;
 
@@ -57,6 +87,38 @@ struct LightComponent {
 	F32 get_range() const noexcept { return m_range; }
 	void set_range(F32 range) noexcept { m_range = range; }
 
+	F32 get_source_radius() const noexcept { return m_source_radius; }
+	void set_source_radius(F32 radius) noexcept { m_source_radius = radius; }
+
+	F32 get_angular_diameter() const noexcept { return m_angular_diameter; }
+	void set_angular_diameter(F32 degrees) noexcept { m_angular_diameter = degrees; }
+
+	bool get_use_temperature() const noexcept { return m_use_temperature; }
+	void set_use_temperature(bool use) noexcept { m_use_temperature = use; }
+
+	F32 get_temperature() const noexcept { return m_temperature; }
+	void set_temperature(F32 kelvin) noexcept { m_temperature = kelvin; }
+
+	IntensityUnit get_intensity_unit() const noexcept { return m_intensity_unit; }
+	void set_intensity_unit(IntensityUnit unit) noexcept { m_intensity_unit = unit; }
+
+	bool get_cast_shadows() const noexcept { return m_cast_shadows; }
+	void set_cast_shadows(bool cast) noexcept { m_cast_shadows = cast; }
+
+	/// Point and Spot. A spot's candela depend on its outer cone: same lumens in a narrower cone is brighter.
+	[[nodiscard]] F32 get_candela() const {
+		return m_intensity * candela_per_lumen();
+	}
+	void set_candela(F32 candela) {
+		const F32 per_lumen = candela_per_lumen();
+		m_intensity = per_lumen > 0.F ? candela / per_lumen : candela;
+	}
+
+	/// The color with the temperature tint applied.
+	[[nodiscard]] Vec3 get_emitted_color() const {
+		return m_use_temperature ? m_color * Foundation::Photometry::blackbody(m_temperature) : m_color;
+	}
+
 	F32 get_inner_cone_angle() const noexcept { return m_inner_cone_angle; }
 	void set_inner_cone_angle(F32 angle) noexcept { m_inner_cone_angle = angle; }
 
@@ -74,6 +136,14 @@ struct LightComponent {
 
 	LightComponent(Type light_type, const Vec3 &light_color, F32 light_intensity)
 		: m_type(light_type), m_color(light_color), m_intensity(light_intensity) {}
+
+  private:
+	[[nodiscard]] F32 candela_per_lumen() const {
+		if (m_type == Type::Spot) {
+			return Foundation::Photometry::spot_intensity(1.0F, Math::radians(m_outer_cone_angle));
+		}
+		return Foundation::Photometry::point_intensity(1.0F);
+	}
 };
 } // namespace Aquila::SceneManagement::Components
 #endif

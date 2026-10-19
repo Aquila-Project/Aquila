@@ -20,20 +20,41 @@ struct alignas(16) GpuLightData {
 	F32 m_cos_outer_angle;
 	Int32 m_shadow_index;
 	Uint32 m_flags;
+	/// Point and Spot: x = sphere radius in meters. Directional: x = sin, y = cos of the sun's angular radius.
+	Vec4 m_source;
 };
 
-static_assert(sizeof(GpuLightData) == 96, "GpuLightData must be 96 bytes for std430 packing");
+static_assert(sizeof(GpuLightData) == 112, "GpuLightData must be 112 bytes for std430 packing");
 
+/// The fog lives here because it's lit by the same sky. `m_fog_sun_illuminance.w` is 1 when there's fog.
 struct alignas(16) GpuEnvironmentData {
 	std::array<Vec4, 9> m_sh_coeffs;
 	Vec4 m_tint_and_intensity;
+	Vec4 m_fog_color_density;
+	Vec4 m_fog_params;
+	Vec4 m_fog_sun_direction;
+	Vec4 m_fog_sun_illuminance;
 	Int32 m_enabled;
 	std::array<Int32, 3> m_padding;
 };
 
-static_assert(sizeof(GpuEnvironmentData) == 176, "GpuEnvironmentData layout mismatch");
+static_assert(sizeof(GpuEnvironmentData) == 240, "GpuEnvironmentData layout mismatch");
 
 constexpr Uint32 SHADOW_CASCADE_COUNT = 4;
+
+/// One tile of the point/spot shadow atlas: a spot light, or one cube face of a point light (a point light takes 6
+/// tiles in a row: +X, -X, +Y, -Y, +Z, -Z). The light's `m_shadow_index` is its first tile.
+/// `m_view_proj` holds the matrix columns. `m_rect` is the tile in atlas uv (offset xy, size zw).
+/// `m_params` = near, far, light radius in meters, cot(fov / 2). `m_extra.x` = tile size, `m_extra.y` = atlas size,
+/// both in texels.
+struct alignas(16) GpuLocalShadow {
+	std::array<Vec4, 4> m_view_proj;
+	Vec4 m_rect;
+	Vec4 m_params;
+	Vec4 m_extra;
+};
+
+static_assert(sizeof(GpuLocalShadow) == 112, "GpuLocalShadow layout mismatch");
 
 struct alignas(16) GpuShadowData {
 	std::array<Mat4, SHADOW_CASCADE_COUNT> m_cascade_view_proj;

@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
@@ -50,7 +51,7 @@ EntityGroup HierarchyTreeView::group_for(Entity entity) {
 	if (entity.has_component<CameraComponent>()) {
 		return EntityGroup::Cameras;
 	}
-	if (entity.has_component<SkyLightComponent>()) {
+	if (entity.has_component<SkyLightComponent>() || entity.has_component<FogComponent>()) {
 		return EntityGroup::Environment;
 	}
 	if (entity.has_component<LightComponent>()) {
@@ -110,6 +111,9 @@ Aquila::GFX::GfxTexture *HierarchyTreeView::icon_for(Entity entity) const {
 	}
 	if (entity.has_component<SkyLightComponent>()) {
 		return m_icons.sky;
+	}
+	if (entity.has_component<FogComponent>()) {
+		return m_icons.fog;
 	}
 	if (entity.has_component<LightComponent>()) {
 		return m_icons.light;
