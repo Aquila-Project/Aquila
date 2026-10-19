@@ -131,6 +131,10 @@ ColorPicker::ColorPicker(GFX::GfxContext &ctx, Vec4 color) : m_ctx(ctx), m_color
 }
 
 void ColorPicker::set_color(Vec4 color) {
+	if (m_color == color && !m_popup->is_open()) {
+		return;
+	}
+
 	m_color = color;
 	const Vec3 hsv = rgb_to_hsv(color.r, color.g, color.b);
 	m_h = hsv.x;
