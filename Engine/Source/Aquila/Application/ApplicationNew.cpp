@@ -3,6 +3,7 @@
 #include <ranges>
 #include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Profiler.h"
+#include "Aquila/Foundation/JobSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/Input.h"
 
@@ -63,6 +64,7 @@ Application::Application(const ApplicationSpec &spec) : m_spec(spec) {
 	m_timer = std::make_unique<Foundation::Stopwatch>();
 	m_window = std::make_unique<Window>(spec.width, spec.height, spec.name, true, spec.start_hidden);
 	Foundation::Profiler::Profiler::init();
+	Foundation::JobSystem::init();
 	Platform::Filesystem::VirtualFileSystem::init();
 
 	m_window->set_event_callback([this](Platform::Events::Event &event) { route_window_event(event); });
@@ -98,6 +100,7 @@ Application::~Application() {
 	m_ctx->wait_idle();
 	m_modules.clear();
 
+	Foundation::JobSystem::shutdown();
 	Platform::Filesystem::VirtualFileSystem::shutdown();
 	Foundation::Profiler::Profiler::shutdown();
 	Graphics::MaterialFactory::shutdown();
