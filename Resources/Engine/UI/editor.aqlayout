@@ -9,6 +9,7 @@
         <Button id="topbar-pause" class="topbar-btn" src="Engine/UI/Icons/pause.svg" tooltip="Pause"/>
         <Button id="topbar-stop" class="topbar-btn" src="Engine/UI/Icons/square.svg" tooltip="Stop"/>
         <View class="topbar-spacer"/>
+        <Button id="topbar-build" class="topbar-btn" src="Engine/UI/Icons/package.svg" tooltip="Build the project"/>
         <Button id="topbar-reset" class="topbar-btn" src="Engine/UI/Icons/refresh-cw.svg" tooltip="Reset this workspace"/>
         <Button id="topbar-settings" class="topbar-btn" src="Engine/UI/Icons/settings.svg" tooltip="Preferences"/>
     </View>
