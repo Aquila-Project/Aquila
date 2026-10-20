@@ -143,6 +143,50 @@ std::string path_executable_dir() {
 	return (slash == std::string::npos) ? normalized : normalized.substr(0, slash);
 }
 
+std::string path_executable_name() {
+	std::string full;
+#ifdef AQUILA_PLATFORM_WINDOWS
+	char buffer[MAX_PATH] = {};
+	const DWORD length = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+	if (length == 0 || length >= MAX_PATH) {
+		return "Aquila";
+	}
+	full.assign(buffer, length);
+#elif defined(AQUILA_PLATFORM_LINUX) || defined(AQUILA_PLATFORM_MACOS)
+	char buffer[PATH_MAX] = {};
+	const ssize_t length = ::readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+	if (length <= 0) {
+		return "Aquila";
+	}
+	full.assign(buffer, static_cast<std::size_t>(length));
+#endif
+	return std::filesystem::path(full).stem().string();
+}
+
+std::string path_user_cache_dir() {
+	auto from_env = [](const char *name) -> std::string {
+		const char *value = std::getenv(name);
+		return (value != nullptr && value[0] != '\0') ? path_normalize(value) : std::string();
+	};
+#ifdef AQUILA_PLATFORM_WINDOWS
+	std::string directory = from_env("LOCALAPPDATA");
+#elif defined(AQUILA_PLATFORM_MACOS)
+	std::string directory = from_env("HOME");
+	if (!directory.empty()) {
+		directory += "/Library/Caches";
+	}
+#else
+	std::string directory = from_env("XDG_CACHE_HOME");
+	if (directory.empty() || !path_is_absolute(directory)) {
+		directory = from_env("HOME");
+		if (!directory.empty()) {
+			directory += "/.cache";
+		}
+	}
+#endif
+	return directory.empty() ? dir_get_current() : directory;
+}
+
 bool dir_set_current(const std::string &path) {
 #ifdef AQUILA_PLATFORM_WINDOWS
 	return SetCurrentDirectoryA(path.c_str()) != 0; // was missing .c_str() and != 0

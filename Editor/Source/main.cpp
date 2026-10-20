@@ -1,6 +1,7 @@
 #include "Core/EditorModule.h"
 
 #include "Aquila/Application/ApplicationNew.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Scripting/ScriptModule.h"
 
 int main(int argc, char **argv) {
@@ -16,6 +17,7 @@ int main(int argc, char **argv) {
 	spec.width = 1920;
 	spec.height = 1080;
 	spec.start_hidden = true;
+	spec.icon = Aquila::Foundation::EnginePaths::resources_dir() + "Engine/aquila-logo.png";
 
 	Aquila::Application::Application app(spec);
 	app.add_module<Aquila::Scripting::ScriptModule>();

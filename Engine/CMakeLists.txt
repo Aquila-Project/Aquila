@@ -79,11 +79,12 @@ add_subdirectory(Source/Aquila/Scene)
 add_subdirectory(Source/Aquila/Rendering)
 add_subdirectory(Source/Aquila/UI)
 add_subdirectory(Source/Aquila/Scripting)
+add_subdirectory(Source/Aquila/Player)
 
 enable_testing()
 add_subdirectory(Tests)
 
-set(AQUILA_ENGINE_MODULES Foundation Platform RHI GFX Graphics Scene Rendering Application UI Scripting)
+set(AQUILA_ENGINE_MODULES Foundation Platform RHI GFX Graphics Scene Rendering Application UI Scripting Player)
 
 if (AQUILA_SHARED_ENGINE)
     set(AQUILA_RUNTIME_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/AquilaRuntime.cpp)
@@ -92,6 +93,7 @@ if (AQUILA_SHARED_ENGINE)
     set_target_properties(AquilaRuntime PROPERTIES
         OUTPUT_NAME "Aquila"
         WINDOWS_EXPORT_ALL_SYMBOLS ON
+        BUILD_RPATH "$ORIGIN"
     )
     target_link_libraries(AquilaRuntime
         PUBLIC "$<COMPILE_ONLY:${AQUILA_ENGINE_MODULES}>"
@@ -118,3 +120,13 @@ target_precompile_headers(AquilaEngine PRIVATE
     ${ENGINE_INCLUDE_DIR}/GraphicsPCH.h
 )
 aquila_link_engine(AquilaEngine)
+
+add_executable(AquilaPlayer
+    ${ENGINE_ROOT_DIR}/Player/main.cpp
+)
+set_target_properties(AquilaPlayer PROPERTIES OUTPUT_NAME "${AQUILA_PLAYER_EXECUTABLE_NAME}")
+target_precompile_headers(AquilaPlayer PRIVATE
+    ${ENGINE_INCLUDE_DIR}/GraphicsPCH.h
+)
+aquila_link_engine(AquilaPlayer)
+aquila_player_runtime_layout(AquilaPlayer)

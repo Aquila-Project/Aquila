@@ -1250,6 +1250,7 @@
     font-family: mono;
     font-size: 12px;
 }
+
 .game-root {
     width: grow;
     height: grow;
@@ -1302,6 +1303,256 @@
     font-size: 13px;
     color: var(--text-dim);
     padding: 12px;
+}
+
+.build-root {
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-base);
+}
+
+.build-header {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 36px;
+    padding: 0px 14px;
+    gap: 8px;
+    overflow: hidden;
+    background-color: var(--bg-surface);
+    border-color: var(--border);
+    border-width: 1px;
+}
+
+.build-header-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.build-title {
+    font-family: regular;
+    font-size: 16px;
+    color: var(--text-bright);
+}
+
+.build-project {
+    width: grow;
+    min-width: 0px;
+    font-family: regular;
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+.build-body {
+    flex-direction: column;
+    width: 100%;
+    height: grow;
+    min-height: 0px;
+    padding: 12px 14px;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.build-settings {
+    flex-direction: column;
+    width: 100%;
+}
+
+.build-form {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+}
+
+.build-row {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 20px;
+    gap: 10px;
+}
+
+.build-row-top {
+    align-items: start;
+}
+
+.build-row-label {
+    width: 110px;
+    min-width: 110px;
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+}
+
+.build-field {
+    width: grow;
+    min-width: 0px;
+}
+
+.build-size {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.build-size-field {
+    width: grow;
+    min-width: 0px;
+}
+
+.build-size-times {
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.build-template {
+    flex-direction: column;
+    gap: 2px;
+}
+
+.build-template-state {
+    width: 100%;
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text);
+}
+
+.build-template-found {
+    color: var(--success);
+}
+
+.build-template-missing {
+    color: #c9a24a;
+}
+
+.build-template-path {
+    width: 100%;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.build-log-header {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+    padding: 4px 0px 0px 0px;
+}
+
+.build-log-title {
+    width: grow;
+    min-width: 0px;
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.build-status {
+    max-width: 70%;
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+}
+
+.build-status-busy {
+    color: var(--text);
+}
+
+.build-status-error {
+    color: var(--danger);
+}
+
+.build-status-success {
+    color: var(--success);
+}
+
+.build-log-frame {
+    flex-direction: column;
+    width: 100%;
+    height: grow;
+    min-height: 60px;
+    overflow: hidden;
+    background-color: var(--bg-deep);
+    border-color: var(--border-ui);
+    border-width: 1px;
+    border-radius: 4px;
+}
+
+.build-log {
+    width: 100%;
+    height: grow;
+    padding: 6px 12px 6px 8px;
+}
+
+.build-log-text {
+    font-size: 13px;
+}
+
+.build-footer {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    min-height: 46px;
+    padding: 8px 14px;
+    gap: 8px;
+    overflow: hidden;
+    background-color: var(--bg-panel);
+    border-color: var(--border);
+    border-width: 1px;
+}
+
+.build-footer-spacer {
+    width: grow;
+    height: 1px;
+    min-width: 0px;
+}
+
+.build-btn {
+    padding: 6px 16px;
+    background-color: var(--bg-widget);
+    color: var(--text);
+    border-radius: 3px;
+    align-items: center;
+    justify-content: center;
+    transition: 80ms ease-out;
+}
+
+.build-btn:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-bright);
+}
+
+.build-btn:pressed {
+    background-color: var(--bg-surface);
+}
+
+.build-btn:disabled {
+    opacity: 0.4;
+}
+
+.build-browse {
+    padding: 4px 6px;
+}
+
+.build-primary {
+    background-color: var(--accent-dark);
+    color: var(--text-bright);
+    border-color: var(--accent-muted);
+    border-width: 1px;
+}
+
+.build-primary:hover {
+    background-color: var(--accent-muted);
+}
+
+.build-primary:pressed {
+    background-color: var(--accent-press);
 }
 
 .asset-inspector-root {

@@ -310,13 +310,16 @@ if (PROJECT_IS_TOP_LEVEL AND CMAKE_EXPORT_COMPILE_COMMANDS)
     )
 endif ()
 
+include(AquilaPlayer)
 add_subdirectory(Engine)
 
 if (AQUILA_BUILD_EDITOR)
     add_subdirectory(Editor)
 endif ()
 
+aquila_stage_player_template()
 include(AquilaLint)
+
 if (AQUILA_BUILD_EDITOR)
     install(TARGETS AquilaEditor
             RUNTIME DESTINATION bin

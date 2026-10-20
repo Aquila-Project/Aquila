@@ -65,6 +65,9 @@ RenderWindowId open_content_window(IRenderWindowHost &host, Content &content, Ui
 	};
 	callbacks.on_event = [&content](Platform::Events::Event &event) { content.on_event(event); };
 	callbacks.on_close = std::move(on_close);
+	if constexpr (requires { content.get_cursor(); }) {
+		callbacks.cursor = [&content] { return content.get_cursor(); };
+	}
 	const RenderWindowId window = host.create_window(width, height, title, std::move(callbacks));
 	if constexpr (requires { content.set_frame_target(window); }) {
 		content.set_frame_target(window);

@@ -22,6 +22,7 @@
 #include "UI/EditorWindows/InspectorWindow.h"
 #include "UI/EditorWindows/ViewportWindow.h"
 #include "UI/Panels/StatusBar.h"
+#include "UI/Windows/BuildWindow.h"
 #include "UI/Windows/ProjectLauncher.h"
 #include "UI/Windows/SettingsWindow.h"
 
@@ -186,6 +187,7 @@ void EditorModule::on_detach() {
 	m_dock_manager.reset();
 	m_edit_scene.reset();
 	m_settings_window.reset();
+	m_build_window.reset();
 	m_project_launcher.reset();
 	m_devtools.reset();
 
@@ -744,6 +746,9 @@ void EditorModule::setup_editor_ui() {
 	if (auto *settings = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-settings")) {
 		settings->on_click.connect([this] { open_settings_window(); });
 	}
+	if (auto *build = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-build")) {
+		build->on_click.connect([this] { open_build_window(); });
+	}
 	if (auto *reset = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-reset")) {
 		reset->on_click.connect([this] { m_workspaces->reset_active(); });
 	}
@@ -827,6 +832,23 @@ void EditorModule::open_settings_window() {
 		});
 	host.set_window_min_size(window, { 520.F, 360.F });
 	m_settings_window->on_request_close = [&host, window] { host.request_close(window); };
+}
+
+void EditorModule::open_build_window() {
+	if (m_build_window) {
+		return;
+	}
+
+	constexpr Uint32 width = 720;
+	constexpr Uint32 height = 600;
+	m_build_window = std::make_unique<BuildWindow>(*m_context);
+	m_build_window->build(width, height, Config::get_preferences().ui.style_paths);
+
+	Aquila::Rendering::IRenderWindowHost &host = m_engine->get_window_host();
+	const Aquila::Rendering::RenderWindowId window = Aquila::Rendering::open_content_window(
+		host, *m_build_window, width, height, "Aquila - Build", [this] { m_build_window.reset(); });
+	host.set_window_min_size(window, { 480.F, 400.F });
+	m_build_window->on_request_close = [&host, window] { host.request_close(window); };
 }
 
 void EditorModule::set_ui_scale(F32 scale) {
@@ -967,6 +989,17 @@ void EditorModule::register_commands() {
 		{ .id = "editor.preferences", .title = "Preferences", .run = [this] { open_settings_window(); } });
 	shortcuts.add_command({ .id = "editor.quit", .title = "Quit", .run = [this] { m_engine->request_close(); } });
 
+	shortcuts.add_command({ .id = "window.open.build", .title = "Build", .run = [this] { open_build_window(); } });
+	shortcuts.add_command({
+		.id = "project.build",
+		.title = "Build project",
+		.run =
+			[this] {
+				open_build_window();
+				m_build_window->start_build(false);
+			},
+		.enabled = [this] { return !m_build_window || !m_build_window->is_busy(); },
+	});
 	shortcuts.add_command({
 		.id = "editor.reload_layout",
 		.title = "Reload layout",
@@ -1103,6 +1136,7 @@ void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
 	for (const EditorWindowType &type : m_windows->get_types()) {
 		add(window_menu, "window.open." + type.id, type.icon);
 	}
+	add(window_menu, "window.open.build", "wrench");
 	window_menu->add_separator();
 	add(window_menu, "workspace.reset", "refresh-cw");
 	add(window_menu, "view.status_bar", "info");

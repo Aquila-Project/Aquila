@@ -33,6 +33,7 @@ class EditorWindows;
 class Workspaces;
 class StatusBar;
 class SettingsWindow;
+class BuildWindow;
 class ProjectLauncher;
 class ProjectManager;
 
@@ -88,6 +89,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	void reload_styles();
 	void wire_main_menu(Aquila::UI::Core::View *layout_root);
 	void open_settings_window();
+	void open_build_window();
 	void open_project_launcher();
 	void enter_editor(const ProjectInfo &project);
 	void apply_font_settings();
@@ -139,6 +141,7 @@ class EditorModule final : public Aquila::Application::IModule {
 
 	Unique<Aquila::UI::DevTools::UIDevTools> m_devtools;
 	Unique<SettingsWindow> m_settings_window;
+	Unique<BuildWindow> m_build_window;
 	Unique<ProjectLauncher> m_project_launcher;
 	Aquila::Rendering::RenderWindowId m_launcher_window = nullptr;
 	bool m_editor_entered = false;

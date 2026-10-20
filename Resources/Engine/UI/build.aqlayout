@@ -1,0 +1,24 @@
+<View id="build-root" class="build-root">
+    <View class="build-header">
+        <Image class="build-header-icon" src="Engine/UI/Icons/package.svg"/>
+        <Label class="build-title">Build</Label>
+        <Label id="build-project" class="build-project">Project</Label>
+    </View>
+    <View class="build-body">
+        <View id="build-settings" class="build-settings"/>
+        <View class="build-log-header">
+            <Label class="build-log-title">Log</Label>
+            <Label id="build-status" class="build-status">Ready</Label>
+        </View>
+        <View class="build-log-frame">
+            <ScrollView id="build-log" class="build-log"/>
+        </View>
+    </View>
+    <View class="build-footer">
+        <Button id="build-close" class="build-btn">Close</Button>
+        <View class="build-footer-spacer"/>
+        <Button id="build-preview" class="build-btn" tooltip="Show the steps a build would take, without touching the disk">Preview</Button>
+        <Button id="build-and-run" class="build-btn" tooltip="Build, then launch the game">Build and Run</Button>
+        <Button id="build-start" class="build-btn build-primary" tooltip="Build the project into the output folder">Build</Button>
+    </View>
+</View>
