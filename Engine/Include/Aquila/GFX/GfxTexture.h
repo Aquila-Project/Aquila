@@ -22,11 +22,15 @@ class GfxTexture {
 	[[nodiscard]] RHI::TextureFormat get_format() const;
 	[[nodiscard]] const RHI::TextureDesc &get_desc() const;
 	[[nodiscard]] RHI::IRHITexture &get_rhi() { return *m_texture; }
+	/// Unique for the whole run, unlike the address: caches keyed by GfxTexture* compare it to notice a new texture
+	/// that landed where a dead one was.
+	[[nodiscard]] Uint64 get_id() const { return m_id; }
 
   private:
 	friend class GfxContext;
 	explicit GfxTexture(Unique<RHI::IRHITexture> texture);
 	Unique<RHI::IRHITexture> m_texture;
+	Uint64 m_id = 0;
 };
 
 } // namespace Aquila::GFX

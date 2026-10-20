@@ -2,7 +2,10 @@
 
 namespace Aquila::GFX {
 
-GfxTexture::GfxTexture(Unique<RHI::IRHITexture> texture) : m_texture(std::move(texture)) {}
+GfxTexture::GfxTexture(Unique<RHI::IRHITexture> texture) : m_texture(std::move(texture)) {
+	static std::atomic<Uint64> s_next_id{ 1 };
+	m_id = s_next_id.fetch_add(1, std::memory_order_relaxed);
+}
 
 void GfxTexture::destroy_immediate() {
 	m_texture->destroy_immediate();
