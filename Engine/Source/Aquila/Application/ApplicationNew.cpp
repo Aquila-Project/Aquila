@@ -237,7 +237,11 @@ void Application::poll_shader_hot_reload() {
 		return;
 	}
 	m_next_hot_reload_check = current + k_hot_reload_interval;
-	Graphics::Shader::ShaderHotReload::get()->tick();
+	auto *hot_reload = Graphics::Shader::ShaderHotReload::get();
+	hot_reload->tick();
+	if (hot_reload->is_enabled() && Graphics::TextureLibrary::get()->poll_changes(*m_ctx)) {
+		Foundation::FrameScheduler::get()->request_frame();
+	}
 }
 
 void Application::attach_modules() {
