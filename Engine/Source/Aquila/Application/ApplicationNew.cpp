@@ -13,6 +13,7 @@
 #include "Aquila/Graphics/Core/Renderer2D.h"
 #include "Aquila/RHI/Vulkan/VulkanShaderCompiler.h"
 
+#include "Aquila/Rendering/Systems/BloomSystem.h"
 #include "Aquila/Rendering/Systems/GridSystem.h"
 #include "Aquila/Rendering/Systems/OutlineSystem.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
@@ -347,6 +348,7 @@ void Application::init_rendering(Uint32 width, Uint32 height) {
 
 	// post process
 	m_renderer->add_system<Rendering::FullscreenEffectSystem>();
+	m_renderer->add_system<Rendering::BloomSystem>();
 	m_renderer->add_system<Rendering::ToneMapSystem>();
 	m_renderer->add_system<Rendering::GridSystem>();
 	m_renderer->add_system<Rendering::OutlineSystem>();

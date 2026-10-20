@@ -40,6 +40,10 @@ class CameraController {
 	/// Stops, + is brighter. Only used with auto exposure.
 	void set_exposure_compensation(F32 stops);
 	[[nodiscard]] F32 get_exposure_compensation() const { return m_exposure_compensation; }
+	void set_bloom(bool enabled);
+	[[nodiscard]] bool get_bloom() const { return m_bloom; }
+	void set_bloom_intensity(F32 intensity);
+	[[nodiscard]] F32 get_bloom_intensity() const { return m_bloom_intensity; }
 
   private:
 	enum class NavMode : Uint8 { None, Fly, Orbit };
@@ -54,6 +58,8 @@ class CameraController {
 	F32 m_ev100 = Foundation::Photometry::DAYLIGHT_EV100;
 	F32 m_exposure_compensation = 0.F;
 	bool m_auto_exposure = true;
+	bool m_bloom = true;
+	F32 m_bloom_intensity = 1.F;
 
 	Vec2 m_viewport_pos{ 0.F, 0.F };
 	Vec2 m_viewport_size{ 0.F, 0.F };

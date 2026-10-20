@@ -377,6 +377,8 @@ Rendering::RenderView ViewportWindow::current_view() const {
 		view.ev100 = lens.ev100;
 		view.exposure_compensation = lens.exposure_compensation;
 		view.auto_exposure = lens.auto_exposure;
+		view.bloom = lens.bloom;
+		view.bloom_intensity = lens.bloom_intensity;
 		return view;
 	}
 	return camera->get_render_view();
@@ -454,6 +456,23 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 		Foundation::FrameScheduler::get()->request_frame();
 	});
 
+	m_bloom_check = grid->add_check_row<UI::Core::Checkbox>("Bloom", true);
+	m_bloom_check->on_changed.connect([this](const bool &enabled) {
+		if (Rendering::CameraController *camera = context().camera()) {
+			camera->set_bloom(enabled);
+		}
+		m_bloom_intensity_field->get_parent()->set_hidden(!enabled);
+	});
+
+	m_bloom_intensity_field = grid->add_row<UI::Core::DragFloat>(
+		"Bloom Intensity", UI::Core::DragFloat::Config{ .min = 0.F, .max = 4.F, .speed = 0.01F, .precision = 2 });
+	m_bloom_intensity_field->set_slider(true);
+	m_bloom_intensity_field->on_changed.connect([this](float value) {
+		if (Rendering::CameraController *camera = context().camera()) {
+			camera->set_bloom_intensity(value);
+		}
+	});
+
 	m_view_through = grid->add_row<UI::Core::Dropdown>("View Through");
 	m_view_through->set_variant("props-dropdown");
 	m_view_through->set_chevron(context().icon("chevron-down"));
@@ -466,6 +485,8 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 		m_auto_exposure_check->set_enabled(!m_view_camera.is_valid());
 		m_compensation_field->set_enabled(!m_view_camera.is_valid());
 		m_exposure_field->set_enabled(!m_view_camera.is_valid());
+		m_bloom_check->set_enabled(!m_view_camera.is_valid());
+		m_bloom_intensity_field->set_enabled(!m_view_camera.is_valid());
 		Foundation::FrameScheduler::get()->request_frame();
 	});
 
@@ -484,6 +505,9 @@ void ViewportWindow::refresh_camera_menu() {
 		m_exposure_field->set_value(camera->get_ev100());
 		m_compensation_field->set_value(camera->get_exposure_compensation());
 		m_auto_exposure_check->set_checked(camera->get_auto_exposure());
+		m_bloom_check->set_checked(camera->get_bloom());
+		m_bloom_intensity_field->set_value(camera->get_bloom_intensity());
+		m_bloom_intensity_field->get_parent()->set_hidden(!camera->get_bloom());
 	}
 	refresh_exposure_rows();
 	const Rendering::ToneMapper tone_mapper = context().engine().get_render_pipeline().get_settings().tone_mapper;

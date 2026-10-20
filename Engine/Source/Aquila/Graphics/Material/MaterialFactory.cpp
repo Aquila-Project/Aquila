@@ -326,10 +326,32 @@ void MaterialFactory::rebuild_entry(GFX::GfxContext &ctx, Entry &entry, const st
 		}
 	}
 
+	std::array<Ref<GFX::GfxPipeline>, 2> emissive_pipelines;
+	bool emissive_failed = false;
+	if (entry.emissive_program) {
+		Ref<GFX::GfxDescriptorSetLayout> emissive_layout;
+		if (entry.emissive_program->reload(err, emissive_layout)) {
+			entry.emissive_program->commit_new_layout(emissive_layout);
+			for (Usize i = 0; i < emissive_pipelines.size(); ++i) {
+				if (entry.emissive_pipelines[i]) {
+					emissive_pipelines[i] = build_emissive_pipeline(ctx, entry, i == 1);
+				}
+			}
+		} else {
+			AQUILA_LOG_ERROR("MaterialFactory: hot-reload of the emissive variant failed for '{}': {}", shader_path,
+							 err);
+			emissive_failed = true;
+		}
+	}
 
 	ctx.wait_idle();
 	entry.pipelines = std::move(pipelines);
 	entry.depth_pipeline = depth_pipeline;
+	entry.emissive_pipelines = emissive_pipelines;
+	entry.emissive_failed = emissive_failed;
+	if (emissive_failed) {
+		entry.emissive_program.reset();
+	}
 
 	const bool uses_time = entry.program->reads_frame_time();
 	auto it = entry.instances.begin();

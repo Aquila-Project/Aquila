@@ -55,6 +55,8 @@ class ViewportWindow final : public EditorWindow {
 	Aquila::UI::Core::DragFloat *m_compensation_field = nullptr;
 	Aquila::UI::Core::DragFloat *m_exposure_field = nullptr;
 	Aquila::UI::Core::Dropdown *m_tone_mapper = nullptr;
+	Aquila::UI::Core::Checkbox *m_bloom_check = nullptr;
+	Aquila::UI::Core::DragFloat *m_bloom_intensity_field = nullptr;
 	Aquila::UI::Core::Dropdown *m_view_through = nullptr;
 	std::vector<Aquila::SceneManagement::Entity> m_scene_cameras;
 	Aquila::SceneManagement::Entity m_view_camera;

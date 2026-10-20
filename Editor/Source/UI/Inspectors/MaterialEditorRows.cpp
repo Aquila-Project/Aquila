@@ -31,6 +31,20 @@ bool is_color_name(std::string_view name) {
 	return name_has(name, "color") || name_has(name, "colour") || name_has(name, "tint") || name_has(name, "albedo");
 }
 
+constexpr std::array<Reflection::PropertyMark, 6> k_luminance_marks = { {
+	{ .value = 80.F, .label = "Monitor white" },
+	{ .value = 500.F, .label = "Phone screen" },
+	{ .value = 12000.F, .label = "Fluorescent tube" },
+	{ .value = 75000.F, .label = "Sodium street lamp" },
+	{ .value = 130000.F, .label = "Frosted bulb" },
+	{ .value = 7000000.F, .label = "Bulb filament" },
+} };
+
+bool is_emission_strength(const MaterialParameter &param) {
+	return param.type == ParameterType::Float && (name_has(param.name, "emissive") || name_has(param.name, "emission")) &&
+		(name_has(param.name, "intensity") || name_has(param.name, "strength"));
+}
+
 bool is_builtin(const std::string &shader) {
 	return shader == Graphics::STANDARD_SHADER || shader == Graphics::UNLIT_SHADER;
 }
@@ -122,6 +136,15 @@ Reflection::Property make_parameter_property(const MaterialParameter &param) {
 			property.hints.min = 0.F;
 			property.hints.max = 1.F;
 			property.hints.slider = true;
+		} else if (is_emission_strength(param)) {
+			property.hints.min = 0.F;
+			property.hints.max = 2000000000.F;
+			property.hints.precision = 1;
+			property.hints.unit = "nits";
+			property.hints.logarithmic = true;
+			property.hints.slider_min = 1.F;
+			property.hints.slider_max = 10000000.F;
+			property.hints.marks = k_luminance_marks;
 		} else if (name_has(param.name, "intensity")) {
 			property.hints.min = 0.F;
 			property.hints.speed = 1.F;
@@ -161,6 +184,20 @@ Reflection::Property make_parameter_property(const MaterialParameter &param) {
 	};
 	property.set = [name, type](void *instance, const PropertyValue &value) {
 		static_cast<Graphics::Material *>(instance)->set_value(name, from_property(value, type));
+	};
+	return property;
+}
+
+Reflection::Property make_emit_light_property() {
+	Reflection::Property property;
+	property.name = "Emit Light";
+	property.kind = PropertyKind::Bool;
+	property.hints.toggle = true;
+	property.get = [](const void *instance) -> PropertyValue {
+		return static_cast<const Graphics::Material *>(instance)->get_data().emit_light;
+	};
+	property.set = [](void *instance, const PropertyValue &value) {
+		static_cast<Graphics::Material *>(instance)->set_emit_light(std::get<bool>(value));
 	};
 	return property;
 }
@@ -342,11 +379,21 @@ void MaterialEditorRows::build_parameters() {
 		m_shown_parameters = std::move(visible);
 		m_params_type = std::make_unique<Reflection::TypeInfo>("Material Parameters");
 		if (m_material) {
+			const bool emits = m_material->get_domain() == Graphics::Shader::ShaderDomain::Lit &&
+				m_material->get_average_emission().has_value();
+			bool emit_light_added = false;
 			for (const MaterialParameter &param : m_material->get_parameters()) {
 				if (param.hidden) {
 					continue;
 				}
 				m_params_type->add(make_parameter_property(param));
+				if (emits && !emit_light_added && is_emission_strength(param)) {
+					m_params_type->add(make_emit_light_property());
+					emit_light_added = true;
+				}
+			}
+			if (emits && !emit_light_added) {
+				m_params_type->add(make_emit_light_property());
 			}
 		}
 		m_params = std::make_unique<UI::Core::ReflectedPropertyGrid>(*m_params_grid, *m_params_type, m_context);

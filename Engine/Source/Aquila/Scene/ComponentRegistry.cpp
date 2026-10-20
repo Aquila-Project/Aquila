@@ -140,6 +140,11 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .slider_max = 18.F,
 								 .marks = k_exposure_marks })
 		.visible_if([](const CameraComponent &camera) { return !camera.auto_exposure; })
+		.property("Bloom", &CameraComponent::bloom, PropertyHints{ .toggle = true })
+		.property("Bloom Intensity", &CameraComponent::bloom_intensity,
+				  PropertyHints{ .min = 0.F, .max = 16.F, .speed = 0.01F, .slider = true, .slider_min = 0.F,
+								 .slider_max = 4.F })
+		.visible_if([](const CameraComponent &camera) { return camera.bloom; })
 		.property("Primary", &CameraComponent::primary, PropertyHints{ .toggle = true })
 		.property("Orthographic", &CameraComponent::is_orthographic);
 

@@ -72,6 +72,23 @@ void CameraController::set_exposure_compensation(F32 stops) {
 	Foundation::FrameScheduler::get()->request_frame();
 }
 
+void CameraController::set_bloom(bool enabled) {
+	if (enabled == m_bloom) {
+		return;
+	}
+	m_bloom = enabled;
+	Foundation::FrameScheduler::get()->request_frame();
+}
+
+void CameraController::set_bloom_intensity(F32 intensity) {
+	const F32 clamped = std::max(intensity, 0.F);
+	if (clamped == m_bloom_intensity) {
+		return;
+	}
+	m_bloom_intensity = clamped;
+	Foundation::FrameScheduler::get()->request_frame();
+}
+
 RenderView CameraController::render_view_from(const Mat4 &world, F32 fov_degrees, F32 near_plane,
 											  F32 far_plane) const {
 	Mat4 basis(1.F);
@@ -223,6 +240,8 @@ RenderView CameraController::get_render_view() const {
 	view.ev100 = m_ev100;
 	view.exposure_compensation = m_exposure_compensation;
 	view.auto_exposure = m_auto_exposure;
+	view.bloom = m_bloom;
+	view.bloom_intensity = m_bloom_intensity;
 	view.is_orthographic = false;
 	view.valid = true;
 	return view;
