@@ -23,6 +23,10 @@ MaterialCreateInfo MaterialFactory::create_info_for(Shader::ShaderDomain domain,
 	info.type = domain == Shader::ShaderDomain::Unlit ? MaterialType::Unlit : MaterialType::Lit;
 	info.color_formats = { RHI::TextureFormat::RGBA16F };
 	info.cull_mode = data.double_sided ? RHI::CullMode::None : RHI::CullMode::Back;
+	if (data.blend_mode == BlendMode::Transparent) {
+		info.blend_enabled = true;
+		info.depth_write = false;
+	}
 	if (domain == Shader::ShaderDomain::Fullscreen) {
 		info.type = MaterialType::Custom;
 		info.fullscreen = true;
@@ -71,8 +75,8 @@ Ref<GFX::GfxPipeline> MaterialFactory::build_pipeline(GFX::GfxContext &ctx, Shad
 		blend.src_color = RHI::BlendFactor::SrcAlpha;
 		blend.dst_color = RHI::BlendFactor::OneMinusSrcAlpha;
 		blend.color_op = RHI::BlendOp::Add;
-		blend.src_alpha = RHI::BlendFactor::One;
-		blend.dst_alpha = RHI::BlendFactor::Zero;
+		blend.src_alpha = RHI::BlendFactor::Zero;
+		blend.dst_alpha = RHI::BlendFactor::One;
 		blend.alpha_op = RHI::BlendOp::Add;
 		desc.blend_attachments.assign(info.color_formats.size(), blend);
 	}

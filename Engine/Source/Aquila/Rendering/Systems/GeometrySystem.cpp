@@ -1,6 +1,7 @@
 #include "Aquila/Rendering/Systems/GeometrySystem.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/Rendering/FrameContext.h"
+#include "Aquila/Rendering/MeshPushConstants.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxCommandList.h"
@@ -18,13 +19,6 @@ namespace Aquila::Rendering {
 
 using namespace SceneManagement::Components;
 using namespace Graphics;
-
-struct MeshPushConstants {
-	Mat4 model;
-	Vec4 color = Vec4(1.F);
-	Uint32 material_index = 0;
-	Uint32 receives_shadows = 0;
-};
 
 void GeometrySystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
@@ -45,6 +39,7 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 	};
 
 	struct Batch {
+		F32 alpha_cutoff = -1.F;
 		Ref<Material> material;
 		std::vector<DrawCall> draws;
 	};
@@ -66,13 +61,16 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 			continue;
 		}
 		SceneManagement::ensure_material(*mat, *m_ctx);
-		if (!mat->material || mat->material->get_domain() == Shader::ShaderDomain::Fullscreen) {
+		if (!mat->material || mat->material->get_domain() == Shader::ShaderDomain::Fullscreen ||
+			mat->material->get_blend_mode() == BlendMode::Transparent) {
 			continue;
 		}
 
 		animated = animated || mat->material->uses_time();
 		Batch &batch = batches[mat->material.get()];
 		batch.material = mat->material;
+		batch.alpha_cutoff =
+			mat->material->get_blend_mode() == BlendMode::Masked ? mat->material->get_data().alpha_cutoff : -1.F;
 		batch.draws.push_back({ .gpu_mesh = get_or_upload_mesh(mesh.data),
 								.model = transform.get_world_matrix(),
 								.material_index = mat->material_index,
@@ -120,7 +118,8 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 				for (const auto &dc : batch.draws) {
 					MeshPushConstants push{ .model = dc.model,
 											.material_index = dc.material_index,
-											.receives_shadows = dc.receives_shadows };
+											.receives_shadows = dc.receives_shadows,
+											.alpha_cutoff = batch.alpha_cutoff };
 					cmd.push_constants(push, RHI::ShaderStageFlags::Vertex | RHI::ShaderStageFlags::Fragment);
 					cmd.bind_vertex_buffer(dc.gpu_mesh->get_vertex_buffer());
 					cmd.bind_index_buffer(dc.gpu_mesh->get_index_buffer());

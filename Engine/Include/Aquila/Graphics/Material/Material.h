@@ -74,6 +74,9 @@ class Material {
 	/// shader: a different `shader` needs a new material (MaterialAssets does that).
 	void apply(const MaterialData &data);
 	[[nodiscard]] const MaterialData &get_data() const { return m_data; }
+	[[nodiscard]] BlendMode get_blend_mode() const { return m_data.blend_mode; }
+	/// Changes right away, it's a push constant. The blend mode itself needs a new material (another pipeline).
+	void set_alpha_cutoff(F32 cutoff) { m_data.alpha_cutoff = std::clamp(cutoff, 0.F, 1.F); }
 	/// What the parameter shows right now: the material's value or the default.
 	[[nodiscard]] MaterialValue get_value(const MaterialParameter &param) const;
 	[[nodiscard]] static MaterialValue get_default_value(const MaterialParameter &param);

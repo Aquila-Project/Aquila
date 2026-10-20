@@ -249,6 +249,60 @@ void MaterialEditorRows::build_settings() {
 	};
 	m_settings_type->add(std::move(double_sided));
 
+	const auto has_blending = [](const void *instance) {
+		const auto &rows = *static_cast<const MaterialEditorRows *>(instance);
+		return !rows.m_material || rows.m_material->get_domain() != Graphics::Shader::ShaderDomain::Fullscreen;
+	};
+
+	Reflection::Property blend_mode;
+	blend_mode.name = "Blend Mode";
+	blend_mode.kind = PropertyKind::Enum;
+	blend_mode.options = { { .name = "Opaque", .value = static_cast<Int32>(Graphics::BlendMode::Opaque) },
+						   { .name = "Masked", .value = static_cast<Int32>(Graphics::BlendMode::Masked) },
+						   { .name = "Transparent", .value = static_cast<Int32>(Graphics::BlendMode::Transparent) } };
+	blend_mode.get = [](const void *instance) -> PropertyValue {
+		return static_cast<Int32>(static_cast<const MaterialEditorRows *>(instance)->m_data.blend_mode);
+	};
+	blend_mode.set = [](void *instance, const PropertyValue &value) {
+		auto &rows = *static_cast<MaterialEditorRows *>(instance);
+		const auto mode = static_cast<Graphics::BlendMode>(std::get<Int32>(value));
+		if (mode != rows.m_data.blend_mode) {
+			rows.m_data.blend_mode = mode;
+			rows.notify(true);
+		}
+	};
+	blend_mode.visible = has_blending;
+	m_settings_type->add(std::move(blend_mode));
+
+	Reflection::Property alpha_cutoff;
+	alpha_cutoff.name = "Alpha Cutoff";
+	alpha_cutoff.kind = PropertyKind::Float;
+	alpha_cutoff.hints.min = 0.F;
+	alpha_cutoff.hints.max = 1.F;
+	alpha_cutoff.hints.speed = 0.01F;
+	alpha_cutoff.hints.precision = 2;
+	alpha_cutoff.hints.slider = true;
+	alpha_cutoff.get = [](const void *instance) -> PropertyValue {
+		return static_cast<const MaterialEditorRows *>(instance)->m_data.alpha_cutoff;
+	};
+	alpha_cutoff.set = [](void *instance, const PropertyValue &value) {
+		auto &rows = *static_cast<MaterialEditorRows *>(instance);
+		const F32 cutoff = std::clamp(std::get<F32>(value), 0.F, 1.F);
+		if (cutoff == rows.m_data.alpha_cutoff) {
+			return;
+		}
+		rows.m_data.alpha_cutoff = cutoff;
+		if (rows.m_material) {
+			rows.m_material->set_alpha_cutoff(cutoff);
+		}
+		rows.notify(false);
+	};
+	alpha_cutoff.visible = [has_blending](const void *instance) {
+		return has_blending(instance) &&
+			static_cast<const MaterialEditorRows *>(instance)->m_data.blend_mode == Graphics::BlendMode::Masked;
+	};
+	m_settings_type->add(std::move(alpha_cutoff));
+
 	m_settings = std::make_unique<UI::Core::ReflectedPropertyGrid>(*m_settings_grid, *m_settings_type, m_context);
 	m_kind_label = m_settings_grid->add_row<UI::Core::Label>("Kind", std::string{});
 	m_settings->bind(this, {});
