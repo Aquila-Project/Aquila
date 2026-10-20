@@ -4,6 +4,7 @@
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/FogComponent.h"
+#include "Aquila/Scene/Components/FullscreenEffectComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -33,8 +34,9 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::string_view, 10> k_component_order = {
-	"Transform", "Metadata", "Scene Node", "Mesh", "Material", "Light", "Sky Light", "Fog", "Camera", "Shadows",
+constexpr std::array<std::string_view, 11> k_component_order = {
+	"Transform", "Metadata", "Scene Node", "Mesh",	  "Material",		   "Light",
+	"Sky Light", "Fog",		 "Camera",	   "Shadows", "Fullscreen Effect",
 };
 
 }
@@ -316,6 +318,9 @@ void InspectorPanel::build_component_registry() {
 						  } });
 	m_addable.push_back({ "Material", "Rendering", [](Entity e) { return e.has_component<MaterialComponent>(); },
 						  [this](Entity e) { attach_default_material(e); } });
+	m_addable.push_back({ "Fullscreen Effect", "Rendering",
+						  [](Entity e) { return e.has_component<FullscreenEffectComponent>(); },
+						  [](Entity e) { e.add_component<FullscreenEffectComponent>(); } });
 	m_addable.push_back({ "Light", "Lighting", [](Entity e) { return e.has_component<LightComponent>(); },
 						  [](Entity e) { e.add_component<LightComponent>(); } });
 	m_addable.push_back({ "Sky Light", "Lighting", [](Entity e) { return e.has_component<SkyLightComponent>(); },

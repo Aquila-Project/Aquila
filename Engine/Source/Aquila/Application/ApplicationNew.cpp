@@ -18,6 +18,7 @@
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Rendering/Systems/SkySystem.h"
 #include "Aquila/Rendering/Systems/ToneMapSystem.h"
+#include "Aquila/Rendering/Systems/FullscreenEffectSystem.h"
 #include "Aquila/Rendering/Systems/LightCullingSystem.h"
 #include "Aquila/Graphics/Material/MaterialFactory.h"
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
@@ -339,6 +340,7 @@ void Application::init_rendering(Uint32 width, Uint32 height) {
 	m_renderer->add_system<Rendering::SkySystem>();
 
 	// post process
+	m_renderer->add_system<Rendering::FullscreenEffectSystem>();
 	m_renderer->add_system<Rendering::ToneMapSystem>();
 	m_renderer->add_system<Rendering::GridSystem>();
 	m_renderer->add_system<Rendering::OutlineSystem>();

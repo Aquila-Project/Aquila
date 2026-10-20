@@ -6,6 +6,7 @@
 #include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/FogComponent.h"
+#include "Aquila/Scene/Components/FullscreenEffectComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -316,6 +317,11 @@ void register_builtin_components(ComponentRegistry &registry) {
 	registry.register_component<MeshComponent>("Shadows", false, ComponentCategory::Rendering)
 		.property("Cast Shadows", &MeshComponent::cast_shadows)
 		.property("Receive Shadows", &MeshComponent::receive_shadows);
+
+	registry.register_component<FullscreenEffectComponent>("Fullscreen Effect")
+		.property("Material", &FullscreenEffectComponent::material, PropertyHints{ .asset_type = "material" })
+		.property("Order", &FullscreenEffectComponent::order, PropertyHints{ .speed = 0.1F })
+		.property("Active", &FullscreenEffectComponent::active, PropertyHints{ .toggle = true });
 
 	registry.register_component<MaterialComponent>("Material")
 		.property(

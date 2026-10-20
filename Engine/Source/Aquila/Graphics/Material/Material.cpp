@@ -517,18 +517,18 @@ void Material::bind(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slo
 	}
 }
 
-void Material::replace_pipeline(Ref<GFX::GfxPipeline> new_pipeline, Ref<GFX::GfxDescriptorSetLayout> new_layout) {
-	m_pipeline = std::move(new_pipeline);
-
-	if (new_layout && (m_context != nullptr)) {
-		m_layout = std::move(new_layout);
-		for (Uint32 i = 0; i < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++i) {
-			m_sets[i] = m_context->allocate_descriptor_set(*m_layout);
-		}
-		if (m_uniform_buffers[0]) {
-			m_dirty_slot_mask = (1u << SharedConstants::MAX_FRAMES_IN_FLIGHT) - 1u;
-		}
+void Material::bind_descriptor_set(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slot) {
+	if (m_sets[frame_slot]) {
+		cmd.bind_descriptor_set(set_index, *m_sets[frame_slot]);
 	}
+}
+
+void Material::bind_input(Uint32 frame_slot, Uint32 binding, GFX::GfxTexture &texture) {
+	if (!m_sets[frame_slot]) {
+		return;
+	}
+	m_sets[frame_slot]->set_texture(binding, texture);
+	m_sets[frame_slot]->flush();
 }
 
 } // namespace Aquila::Graphics

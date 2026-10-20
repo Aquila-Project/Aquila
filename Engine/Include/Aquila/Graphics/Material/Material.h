@@ -84,6 +84,11 @@ class Material {
 
 	/// Binds the pipeline too.
 	void bind(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slot);
+	/// Only the material's descriptor set, for passes that bind another pipeline (the depth pipeline in shadows).
+	void bind_descriptor_set(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slot);
+	/// For textures the renderer hands in every frame (a fullscreen effect's scene color). Writes straight into the
+	/// slot's set, call it after flush() and right before drawing.
+	void bind_input(Uint32 frame_slot, Uint32 binding, GFX::GfxTexture &texture);
 
 	[[nodiscard]] GFX::GfxPipeline &get_pipeline() { return *m_pipeline; }
 	[[nodiscard]] bool has_descriptor_set() const { return m_sets[0] != nullptr; }
@@ -104,7 +109,6 @@ class Material {
   private:
 	Material() = default;
 
-	void replace_pipeline(Ref<GFX::GfxPipeline> new_pipeline, Ref<GFX::GfxDescriptorSetLayout> new_layout = nullptr);
 	/// Reads the parameters from the shader again (after a hot reload), keeps the values in get_data().
 	void rebuild(Shader::ShaderProgram &shader, Ref<GFX::GfxPipeline> pipeline);
 	void build_parameters(Shader::ShaderProgram &shader);

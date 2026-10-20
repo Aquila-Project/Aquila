@@ -6,6 +6,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/FogComponent.h"
+#include "Aquila/Scene/Components/FullscreenEffectComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -642,6 +643,15 @@ bool Scene::serialize(const std::string &filepath) {
 			};
 		}
 
+		if (entity.has_component<Components::FullscreenEffectComponent>()) {
+			const auto &effect = entity.get_component<Components::FullscreenEffectComponent>();
+			entity_json["components"]["fullscreen_effect_component"] = {
+				{ "material", effect.material },
+				{ "order", effect.order },
+				{ "active", effect.active },
+			};
+		}
+
 		if (entity.has_component<Components::FogComponent>()) {
 			const auto &fog = entity.get_component<Components::FogComponent>();
 			entity_json["components"]["fog_component"] = {
@@ -930,6 +940,14 @@ bool Scene::deserialize(const std::string &filepath) {
 			sky_light.set_render_skybox(sky_light_json.value("render_skybox", true));
 		}
 
+		if (components.contains("fullscreen_effect_component")) {
+			const auto &effect_json = components["fullscreen_effect_component"];
+			Components::FullscreenEffectComponent effect;
+			effect.material = effect_json.value("material", std::string());
+			effect.order = effect_json.value("order", 0);
+			effect.active = effect_json.value("active", true);
+			entity.add_or_replace_component<Components::FullscreenEffectComponent>(effect);
+		}
 
 		if (components.contains("fog_component")) {
 			const auto &fog_json = components["fog_component"];
