@@ -1,0 +1,6 @@
+{
+    "version": 1,
+    "shader": "Basic.slang",
+    "double_sided": false,
+    "values": {}
+}

@@ -60,6 +60,9 @@ std::string asset_type(std::string_view name) {
 	if (has_extension({ ".slang", ".hlsl", ".glsl" })) {
 		return "shader";
 	}
+	if (has_extension({ ".aqmat" })) {
+		return "material";
+	}
 	if (has_extension({ ".aqlayout", ".aqstyle" })) {
 		return "ui";
 	}
@@ -96,6 +99,9 @@ std::string_view icon_for(std::string_view type) {
 	}
 	if (type == "model") {
 		return "box";
+	}
+	if (type == "material") {
+		return "eclipse";
 	}
 	if (type == "ui") {
 		return "panel-left";

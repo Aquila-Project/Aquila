@@ -572,6 +572,15 @@ void EditorModule::register_content_creators() {
 	m_context->content_creators.push_back(folder_creator());
 	m_context->content_creators.push_back(
 		template_creator("Script", "file-code", "new_script.luau", "/resources/Engine/Templates/script.luau"));
+	m_context->content_creators.push_back(
+		template_creator("Material", "eclipse", "NewMaterial.aqmat", "/resources/Engine/Templates/material.aqmat"));
+	m_context->content_creators.push_back(template_creator("Lit Shader", "file-code", "NewLitShader.slang",
+														   "/resources/Engine/Templates/lit_shader.slang"));
+	m_context->content_creators.push_back(template_creator("Unlit Shader", "file-code", "NewUnlitShader.slang",
+														   "/resources/Engine/Templates/unlit_shader.slang"));
+	m_context->content_creators.push_back(template_creator("Fullscreen Shader", "file-code",
+														   "NewFullscreenShader.slang",
+														   "/resources/Engine/Templates/fullscreen_shader.slang"));
 	for (ContentCreator &creator : m_pending_content_creators) {
 		m_context->content_creators.push_back(std::move(creator));
 	}
