@@ -33,6 +33,7 @@ class ContentBrowserWindow final : public EditorWindow {
 	void build_grid();
 	void apply_filter();
 	void press(const std::string &path);
+	void open_in_inspector(const std::string &path);
 	void open_background_menu(Vec2 position);
 	void open_item_menu(const std::string &path, Vec2 position);
 	void create(const ContentCreator &creator);

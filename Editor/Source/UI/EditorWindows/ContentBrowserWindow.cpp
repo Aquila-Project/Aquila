@@ -199,6 +199,7 @@ class ContentTile final : public View {
 	}
 
 	Delegate<void(KeyCode)> on_key;
+	Delegate<void()> on_click;
 
 	void begin_rename(Delegate<void(Option<std::string>)> done) {
 		set_input_leaf(false);
@@ -217,7 +218,22 @@ class ContentTile final : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "ContentTile"; }
 
+	void on_mouse_press(Aquila::Platform::MouseButton button, Vec2 position) override {
+		m_click_armed = button == Aquila::Platform::MouseButton::Left;
+		View::on_mouse_press(button, position);
+	}
+
+	void on_mouse_release(Aquila::Platform::MouseButton button, Vec2 position) override {
+		View::on_mouse_release(button, position);
+		const bool clicked = m_click_armed && button == Aquila::Platform::MouseButton::Left;
+		m_click_armed = false;
+		if (clicked && on_click) {
+			on_click();
+		}
+	}
+
 	void on_drag_start(DragState &state) override {
+		m_click_armed = false;
 		state.payload = m_payload;
 		state.label = m_payload.display_name;
 	}
@@ -225,6 +241,7 @@ class ContentTile final : public View {
   private:
 	AssetPayload m_payload;
 	Label *m_name = nullptr;
+	bool m_click_armed = false;
 };
 
 std::string unique_path(const std::string &directory, const std::string &name) {
@@ -374,6 +391,7 @@ void ContentBrowserWindow::build_grid() {
 		tile.view->set_class("content-tile-selected", tile.path == m_selected);
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
 		tile.view->on_context_menu.connect([this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
+		static_cast<ContentTile *>(tile.view)->on_click = [this, path = tile.path] { open_in_inspector(path); };
 		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path, view = tile.view](KeyCode key) {
 			if (key == KeyCode::F2) {
 				begin_rename(path);
@@ -526,4 +544,10 @@ void ContentBrowserWindow::press(const std::string &path) {
 	}
 }
 
+void ContentBrowserWindow::open_in_inspector(const std::string &path) {
+	if (asset_type(std::filesystem::path(path).filename().string()) == "material") {
+		context().selection.select_asset(path);
+	}
 }
+
+} // namespace Editor

@@ -35,6 +35,11 @@ class EditorSelection {
 	[[nodiscard]] Aquila::SceneManagement::Entity get() const { return m_entity; }
 	[[nodiscard]] bool has() const;
 
+	/// A content browser file the inspector shows instead of an entity (a .aqmat). Clears the entity selection,
+	/// selecting an entity clears it.
+	void select_asset(const std::string &path);
+	[[nodiscard]] const std::string &get_asset() const { return m_asset; }
+
 	Signal<void(Aquila::SceneManagement::Entity)> on_changed;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_created;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_destroying;
@@ -45,9 +50,11 @@ class EditorSelection {
 	Signal<void(Aquila::SceneManagement::Entity)> on_components_changed;
 	/// A different scene was loaded, drop anything that points into the old one.
 	Signal<void()> on_scene_replaced;
+	Signal<void(const std::string &)> on_asset_selected;
 
   private:
 	Aquila::SceneManagement::Entity m_entity;
+	std::string m_asset;
 };
 
 /// What every editor window can reach.

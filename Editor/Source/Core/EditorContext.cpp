@@ -19,8 +19,15 @@ void EditorSelection::select(Entity entity) {
 	if (m_entity == entity) {
 		return;
 	}
+	m_asset.clear();
 	m_entity = entity;
 	on_changed(m_entity);
+}
+
+void EditorSelection::select_asset(const std::string &path) {
+	clear();
+	m_asset = path;
+	on_asset_selected(m_asset);
 }
 
 void EditorSelection::clear() {
