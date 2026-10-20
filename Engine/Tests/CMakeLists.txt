@@ -4,6 +4,7 @@ add_subdirectory(RHI)
 add_subdirectory(UI)
 add_subdirectory(Scene)
 add_subdirectory(Scripting)
+add_subdirectory(Player)
 
 set(TEST_COMMANDS "")
 list(LENGTH ALL_TEST_TARGETS TARGET_COUNT)

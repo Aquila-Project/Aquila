@@ -27,5 +27,10 @@ std::vector<std::string> dir_list(const std::string &path, bool recursive = fals
 std::string path_to_absolute(const std::string &path);
 std::string path_extension(const std::string &path);
 std::string path_executable_dir();
+/// File name of the running executable without its folder or extension.
+std::string path_executable_name();
+/// Per-user folder for caches: $XDG_CACHE_HOME or ~/.cache, %LOCALAPPDATA% on Windows, ~/Library/Caches on macOS.
+/// Falls back to the current directory when the environment has none of them.
+std::string path_user_cache_dir();
 } // namespace Aquila::Platform::Filesystem
 #endif // FILESYSTEM_H

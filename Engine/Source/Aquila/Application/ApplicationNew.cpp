@@ -2,6 +2,7 @@
 
 #include <ranges>
 #include "Aquila/Foundation/EnginePaths.h"
+#include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Profiler.h"
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Foundation/JobSystem.h"
@@ -36,6 +37,7 @@
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
+#include "stb/stb_image.h"
 
 namespace Aquila::Application {
 
@@ -57,6 +59,52 @@ struct FrameGuard {
 	~FrameGuard() { m_flag = false; }
 	bool &m_flag;
 };
+
+constexpr Uint32 k_max_icon_size = 256;
+
+std::vector<Uint8> halve(const std::vector<Uint8> &rgba, Uint32 &width, Uint32 &height) {
+	const Uint32 half_width = Math::max(width / 2, 1U);
+	const Uint32 half_height = Math::max(height / 2, 1U);
+	std::vector<Uint8> out(static_cast<Usize>(half_width) * half_height * 4);
+	for (Uint32 y = 0; y < half_height; ++y) {
+		for (Uint32 x = 0; x < half_width; ++x) {
+			for (Uint32 channel = 0; channel < 4; ++channel) {
+				Uint32 sum = 0;
+				for (Uint32 dy = 0; dy < 2; ++dy) {
+					for (Uint32 dx = 0; dx < 2; ++dx) {
+						const Uint32 sx = Math::min(x * 2 + dx, width - 1);
+						const Uint32 sy = Math::min(y * 2 + dy, height - 1);
+						sum += rgba[(static_cast<Usize>(sy) * width + sx) * 4 + channel];
+					}
+				}
+				out[(static_cast<Usize>(y) * half_width + x) * 4 + channel] = static_cast<Uint8>(sum / 4);
+			}
+		}
+	}
+	width = half_width;
+	height = half_height;
+	return out;
+}
+
+void apply_window_icon(Window &window, const std::string &png_file) {
+	int width = 0;
+	int height = 0;
+	int channels = 0;
+	stbi_uc *pixels = stbi_load(png_file.c_str(), &width, &height, &channels, 4);
+	if (pixels == nullptr) {
+		AQUILA_LOG_WARNING("Application: can't read the window icon {}: {}", png_file, stbi_failure_reason());
+		return;
+	}
+	Uint32 icon_width = static_cast<Uint32>(width);
+	Uint32 icon_height = static_cast<Uint32>(height);
+	std::vector<Uint8> rgba(pixels, pixels + static_cast<Usize>(icon_width) * icon_height * 4);
+	stbi_image_free(pixels);
+
+	while (icon_width > k_max_icon_size || icon_height > k_max_icon_size) {
+		rgba = halve(rgba, icon_width, icon_height);
+	}
+	window.set_icon(icon_width, icon_height, rgba);
+}
 } // namespace
 
 Application::Application(const ApplicationSpec &spec) : m_spec(spec) {
@@ -68,7 +116,10 @@ Application::Application(const ApplicationSpec &spec) : m_spec(spec) {
 	}
 
 	m_timer = std::make_unique<Foundation::Stopwatch>();
-	m_window = std::make_unique<Window>(spec.width, spec.height, spec.name, true, spec.start_hidden);
+	m_window = std::make_unique<Window>(spec.width, spec.height, spec.name, spec.maximized, spec.start_hidden);
+	if (!spec.icon.empty()) {
+		apply_window_icon(*m_window, spec.icon);
+	}
 	Foundation::Profiler::Profiler::init();
 	Foundation::JobSystem::init();
 	Platform::Filesystem::VirtualFileSystem::init();
@@ -308,7 +359,7 @@ void Application::init_rendering(Uint32 width, Uint32 height) {
 	RHI::VulkanShaderCompiler::initialize();
 	Graphics::MaterialFactory::init();
 	Graphics::Shader::ShaderHotReload::init();
-	Graphics::Shader::ShaderHotReload::get()->enable(true);
+	Graphics::Shader::ShaderHotReload::get()->enable(m_spec.shader_hot_reload);
 	Foundation::FrameScheduler::init();
 	Foundation::FrameScheduler::get()->set_wake([] { Window::wake(); });
 

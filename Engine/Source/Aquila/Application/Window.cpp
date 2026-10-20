@@ -66,6 +66,16 @@ void Window::set_title(const std::string &text) const {
 	const auto title = std::string(m_data.title + " | " + text);
 	glfwSetWindowTitle(m_window, title.c_str());
 }
+void Window::set_icon(Uint32 width, Uint32 height, std::span<const Uint8> rgba) const {
+	if (width == 0 || height == 0 || rgba.size() < static_cast<Usize>(width) * height * 4) {
+		return;
+	}
+	GLFWimage image{ .width = static_cast<int>(width),
+					 .height = static_cast<int>(height),
+					 .pixels = const_cast<unsigned char *>(rgba.data()) };
+	glfwSetWindowIcon(m_window, 1, &image);
+}
+
 void Window::setup_callbacks() {
 	glfwSetWindowSizeCallback(m_window, [](GLFWwindow *window, int width, int height) {
 		WindowData &data = *static_cast<WindowData *>(glfwGetWindowUserPointer(window));

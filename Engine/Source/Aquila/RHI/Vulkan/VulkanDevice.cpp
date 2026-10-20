@@ -100,7 +100,8 @@ VulkanDevice::~VulkanDevice() {
 }
 
 std::string VulkanDevice::pipeline_cache_path() const {
-	return Platform::Filesystem::path_executable_dir() + "/aquila_pipeline_cache.bin";
+	return Platform::Filesystem::path_user_cache_dir() + "/Aquila/" + Platform::Filesystem::path_executable_name() +
+		"/pipeline_cache.bin";
 }
 
 void VulkanDevice::create_pipeline_cache() {
@@ -160,7 +161,10 @@ void VulkanDevice::save_pipeline_cache() const {
 		return;
 	}
 
-	std::ofstream file(pipeline_cache_path(), std::ios::binary | std::ios::trunc);
+	const std::string path = pipeline_cache_path();
+	std::error_code error;
+	std::filesystem::create_directories(std::filesystem::path(path).parent_path(), error);
+	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (file.is_open()) {
 		file.write(blob.data(), static_cast<std::streamsize>(size));
 	}

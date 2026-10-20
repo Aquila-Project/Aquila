@@ -38,6 +38,8 @@ class Window {
 	Uint32 get_width() const { return m_data.width; }
 	Uint32 get_height() const { return m_data.height; }
 	void set_title(const std::string &text) const;
+	/// `rgba` is 8 bits per channel, top row first. GLFW copies it. Wayland ignores window icons.
+	void set_icon(Uint32 width, Uint32 height, std::span<const Uint8> rgba) const;
 	void set_cursor(Platform::CursorType type);
 	/// For windows created with start_hidden.
 	void show();
