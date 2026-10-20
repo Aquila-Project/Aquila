@@ -289,6 +289,11 @@ void Window::set_position(Vec2 position) const {
 	glfwSetWindowPos(m_window, static_cast<int>(position.x), static_cast<int>(position.y));
 }
 
+void Window::set_min_size(Vec2 size) const {
+	glfwSetWindowSizeLimits(m_window, static_cast<int>(size.x), static_cast<int>(size.y), GLFW_DONT_CARE,
+							GLFW_DONT_CARE);
+}
+
 void Window::set_cursor(Platform::CursorType type) {
 	if (type == m_current_cursor) {
 		return;

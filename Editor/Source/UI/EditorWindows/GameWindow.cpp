@@ -99,7 +99,7 @@ void GameWindow::set_live(bool live) {
 	Rendering::RenderSettings &settings = context().engine().get_render_pipeline().get_settings();
 	if (live) {
 		m_editor_settings = settings;
-		settings = Rendering::RenderSettings::game();
+		settings = game_render_settings(context().project().settings);
 	} else {
 		settings = *m_editor_settings;
 		m_editor_settings.reset();

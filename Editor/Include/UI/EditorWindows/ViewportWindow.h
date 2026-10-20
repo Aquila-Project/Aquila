@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/EditorConfig.h"
 #include "Aquila/Rendering/RenderView.h"
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/Scene/SceneStatistics.h"
@@ -33,6 +34,7 @@ class ViewportWindow final : public EditorWindow {
 	void wire_tools(Aquila::UI::Core::View &content);
 	void wire_shading(Aquila::UI::Core::View &content);
 	void wire_show_menu(Aquila::UI::Core::View &content);
+	void apply_overlay_preferences();
 	void wire_camera_menu(Aquila::UI::Core::View &content);
 	void refresh_camera_menu();
 	void refresh_exposure_rows();
@@ -46,6 +48,7 @@ class ViewportWindow final : public EditorWindow {
 	Unique<ViewportPanel> m_panel;
 	TransformGizmo *m_gizmo = nullptr;
 	ViewportOverlay *m_overlay = nullptr;
+	Config::ViewportPreferences m_applied_viewport;
 	Aquila::UI::Core::Button *m_snap_button = nullptr;
 	Aquila::UI::Core::Button *m_camera_button = nullptr;
 	Aquila::UI::Core::Popup *m_camera_popup = nullptr;

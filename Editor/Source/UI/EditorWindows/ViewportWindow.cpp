@@ -1,4 +1,5 @@
 #include "UI/EditorWindows/ViewportWindow.h"
+#include "Core/EditorConfig.h"
 
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Profiler.h"
@@ -97,6 +98,14 @@ void ViewportWindow::build(UI::Core::View &content) {
 
 	if (UI::Core::View *root = content.find_by_id("viewport-root")) {
 		m_overlay = root->add_child<ViewportOverlay>(context());
+		m_applied_viewport = Config::get_preferences().viewport;
+		apply_overlay_preferences();
+		listen(context().on_settings_changed, [this] {
+			if (Config::get_preferences().viewport != m_applied_viewport) {
+				m_applied_viewport = Config::get_preferences().viewport;
+				apply_overlay_preferences();
+			}
+		});
 		m_gizmo = root->add_child<TransformGizmo>(context());
 		m_gizmo->on_background_pressed.connect([this](Vec2 position) {
 			const Rect rect = m_panel->get_content_rect();
@@ -296,11 +305,13 @@ void ViewportWindow::wire_show_menu(UI::Core::View &content) {
 	auto *title = popup->add_child<UI::Core::Label>(std::string("Show"));
 	title->add_class("overlay-popover-title");
 
+	auto syncs = std::make_shared<std::vector<Delegate<void()>>>();
 	for (const ShowToggle &toggle : k_show_toggles) {
 		auto *row = popup->add_child<UI::Core::View>();
 		row->add_class("overlay-check-row");
 		auto *check = row->add_child<UI::Core::Checkbox>(settings.*toggle.flag);
 		check->add_class("overlay-check");
+		syncs->emplace_back([check, &settings, flag = toggle.flag] { check->set_checked(settings.*flag); });
 		row->add_child<UI::Core::Label>(std::string(toggle.label))->add_class("overlay-check-text");
 		check->on_changed.connect([&settings, flag = toggle.flag](const bool &enabled) {
 			settings.*flag = enabled;
@@ -323,6 +334,7 @@ void ViewportWindow::wire_show_menu(UI::Core::View &content) {
 			row->add_class("overlay-check-row");
 			auto *check = row->add_child<UI::Core::Checkbox>(m_overlay->options().*flag);
 			check->add_class("overlay-check");
+			syncs->emplace_back([this, check, flag] { check->set_checked(m_overlay->options().*flag); });
 			row->add_child<UI::Core::Label>(std::string(label))->add_class("overlay-check-text");
 			check->on_changed.connect([this, flag](const bool &enabled) {
 				m_overlay->set_option(flag, enabled);
@@ -332,7 +344,26 @@ void ViewportWindow::wire_show_menu(UI::Core::View &content) {
 		}
 	}
 
-	button->on_click.connect([popup] { popup->toggle(); });
+	button->on_click.connect([popup, syncs] {
+		for (Delegate<void()> &sync : *syncs) {
+			sync();
+		}
+		popup->toggle();
+	});
+}
+
+void ViewportWindow::apply_overlay_preferences() {
+	if (m_overlay == nullptr) {
+		return;
+	}
+	const Config::ViewportPreferences &prefs = Config::get_preferences().viewport;
+	m_overlay->set_option(&ViewportOverlay::Options::axis_widget, prefs.axis_widget);
+	m_overlay->set_option(&ViewportOverlay::Options::selection_label, prefs.selection_label);
+	m_overlay->set_option(&ViewportOverlay::Options::safe_frame, prefs.safe_frame);
+	m_overlay->set_option(&ViewportOverlay::Options::render_status, prefs.render_status);
+	m_overlay->set_option(&ViewportOverlay::Options::statistics, prefs.statistics);
+	m_overlay->set_option(&ViewportOverlay::Options::gpu_timings, prefs.gpu_timings);
+	m_debug_refresh_timer = 0.F;
 }
 
 void ViewportWindow::refresh_debug_info(F32 delta_time) {

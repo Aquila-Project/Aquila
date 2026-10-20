@@ -18,7 +18,6 @@ using SceneManagement::Components::TransformComponent;
 
 namespace {
 
-constexpr F32 k_handle_px = 96.F;
 constexpr F32 k_pick_radius_px = 7.F;
 constexpr F32 k_center_radius_px = 9.F;
 constexpr F32 k_plane_offset = 0.3F;
@@ -116,7 +115,7 @@ TransformGizmo::Frame TransformGizmo::compute_frame(const Rect &viewport, const 
 		return frame;
 	}
 	frame.center = *center;
-	frame.length = k_handle_px * Rendering::world_units_per_pixel(view, viewport, frame.origin);
+	frame.length = m_context.tools.get_gizmo_size() * Rendering::world_units_per_pixel(view, viewport, frame.origin);
 
 	for (Usize i = 0; i < 3; ++i) {
 		const Option<Vec2> tip =
@@ -519,7 +518,7 @@ void TransformGizmo::apply_rotate(Vec2 mouse) {
 
 	F32 angle = 0.F;
 	if (!m_drag.modal && !around_view) {
-		angle = Math::dot(mouse - m_drag.start_mouse, m_drag.ring_tangent) / k_handle_px;
+		angle = Math::dot(mouse - m_drag.start_mouse, m_drag.ring_tangent) / m_context.tools.get_gizmo_size();
 	} else {
 		const Vec2 from_center = mouse - f.center;
 		if (Math::length(from_center) < 2.F) {
@@ -567,7 +566,7 @@ void TransformGizmo::apply_scale(Vec2 mouse) {
 		factor = Math::length(mouse - f.center) / start;
 	} else if (uniform) {
 		const Vec2 moved = mouse - m_drag.start_mouse;
-		factor = 1.F + ((moved.x - moved.y) / k_handle_px);
+		factor = 1.F + ((moved.x - moved.y) / m_context.tools.get_gizmo_size());
 	} else {
 		const Vec2 handle = f.tips[axis] - f.center;
 		const F32 handle_length = Math::length(handle);

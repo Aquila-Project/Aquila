@@ -404,6 +404,10 @@ void Application::set_window_position(Rendering::RenderWindowId window, Vec2 pos
 	static_cast<const Window *>(window)->set_position(position);
 }
 
+void Application::set_window_min_size(Rendering::RenderWindowId window, Vec2 size) {
+	static_cast<const Window *>(window)->set_min_size(size);
+}
+
 void Application::ensure_window_targets(RenderWindow &rw, Uint32 width, Uint32 height) {
 	if (!rw.msaa_color) {
 		rw.msaa_color = m_ctx->create_texture({

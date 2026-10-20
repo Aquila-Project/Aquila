@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Core/ProjectSettings.h"
 
 namespace Editor {
 
@@ -10,6 +11,7 @@ struct ProjectInfo {
 	std::string native_directory;
 	std::string project_file;
 	std::vector<std::string> scenes;
+	ProjectSettings settings;
 	Uint64 created = 0;
 	Uint64 last_opened = 0;
 
@@ -38,6 +40,8 @@ class ProjectManager {
 	/// Lists a scene file (relative to the project root, like "Scenes/Level.aqscene") in the project file.
 	bool add_scene(ProjectInfo &project, const std::string &scene) const;
 	bool rename(ProjectInfo &project, const std::string &name) const;
+	/// Writes `project.settings` into its project file.
+	bool save_settings(const ProjectInfo &project) const;
 	bool remove(const ProjectInfo &project) const;
 	/// Most recently used first.
 	[[nodiscard]] std::vector<ProjectInfo> list() const;

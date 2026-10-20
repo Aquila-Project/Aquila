@@ -1,6 +1,7 @@
 #include "Core/EditorModule.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Graphics/Material/MaterialAssets.h"
+#include "Aquila/Graphics/Shader/ShaderHotReload.h"
 #include "Aquila/Graphics/Texture/TextureLibrary.h"
 #include "Core/AssetThumbnails.h"
 #include "Core/DefaultShortcuts.h"
@@ -30,6 +31,7 @@
 #include "Aquila/Platform/Events/KeyChord.h"
 #include "Aquila/Platform/Input.h"
 #include "Aquila/Platform/InputState.h"
+#include "Aquila/Rendering/RenderPipeline.h"
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Scene/Components/OutlineComponent.h"
 #include "Aquila/Scene/DefaultScenes.h"
@@ -61,6 +63,8 @@ namespace Events = Aquila::Platform::Events;
 
 namespace {
 constexpr std::string_view k_game_workspace = "Game";
+constexpr F64 k_settings_save_seconds = 0.5;
+constexpr auto k_settings_save_delay = std::chrono::milliseconds(500);
 }
 
 EditorModule::EditorModule(std::string project) : m_startup_project(std::move(project)) {}
@@ -80,7 +84,11 @@ void EditorModule::on_attach(EngineContext &engine) {
 	});
 
 	Config::get_preferences().load_from_file();
+	m_applied_preferences = Config::get_preferences();
 	Aquila::UI::Core::FontRegistry::set_ui_scale(Config::get_preferences().ui_scale);
+	if (Aquila::Graphics::Shader::ShaderHotReload::is_alive()) {
+		Aquila::Graphics::Shader::ShaderHotReload::get()->enable(Config::get_preferences().advanced.shader_hot_reload);
+	}
 
 	Aquila::UI::Core::FontManager::get().initialize(m_engine->get_context(), Config::get_preferences().fonts);
 
@@ -97,6 +105,13 @@ void EditorModule::on_attach(EngineContext &engine) {
 			return;
 		}
 		AQUILA_LOG_ERROR("EditorModule: no project at {}", directory);
+	} else if (Config::get_preferences().startup.reopen_last_project) {
+		const std::vector<ProjectInfo> projects = m_project_manager->list();
+		if (!projects.empty()) {
+			m_pending_project = projects.front();
+			Aquila::Foundation::FrameScheduler::get()->request_frame();
+			return;
+		}
 	}
 	open_project_launcher();
 }
@@ -143,6 +158,9 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 	m_editor_camera = std::make_unique<Aquila::Rendering::CameraController>();
 	setup_editor_ui();
 
+	m_context->set_project_settings_writer(
+		[this](ProjectSettings settings) { write_project_settings(std::move(settings)); });
+	apply_preferences(true);
 
 	const bool loaded = !m_project.scenes.empty() &&
 		load_scene(std::string{ SharedConstants::PROJECT_SCENES_DIR } + "/" + m_project.scenes.front());
@@ -158,6 +176,7 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 }
 
 void EditorModule::on_detach() {
+	save_settings_if_due(true);
 	Aquila::UI::Core::AssetSlot::set_adapter("entity", {});
 	Aquila::UI::Core::AssetSlot::set_adapter("texture", {});
 	Aquila::UI::Core::AssetSlot::set_adapter("material", {});
@@ -185,6 +204,7 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		m_pending_project.reset();
 		enter_editor(project);
 	}
+	save_settings_if_due(false);
 
 	if (m_restore_pending) {
 		restore_edit_scene();
@@ -340,7 +360,7 @@ void EditorModule::on_stop() {
 	const std::string back = std::exchange(m_workspace_before_play, {});
 	if (m_pending_workspace) {
 		m_pending_workspace.reset();
-	} else if (!back.empty() && m_workspaces &&
+	} else if (!back.empty() && Config::get_preferences().play.return_after_stop && m_workspaces &&
 			   m_workspaces->get_active() == k_game_workspace) {
 		m_pending_workspace = back;
 	}
@@ -369,7 +389,7 @@ void EditorModule::start_playing() {
 }
 
 void EditorModule::show_game_view() {
-	if (!m_workspaces ||
+	if (!Config::get_preferences().play.switch_to_game_view || !m_workspaces ||
 		m_context->is_window_visible(GameWindow::k_type_id) ||
 		m_workspaces->get_active() == k_game_workspace) {
 		return;
@@ -658,6 +678,7 @@ void EditorModule::setup_editor_ui() {
 	register_thumbnail_slots();
 	register_content_creators();
 	bind_default_shortcuts(m_context->shortcuts);
+	apply_user_shortcuts(m_context->shortcuts, cfg.shortcuts);
 
 	m_layout_loader.register_command("entity.create", [this] { m_context->shortcuts.execute("entity.create"); });
 	m_layout_loader.register_command("console.clear", [this] {
@@ -792,20 +813,27 @@ void EditorModule::open_settings_window() {
 		return;
 	}
 
-	m_settings_window = std::make_unique<SettingsWindow>();
-	m_settings_window->build(m_texture_cache.get(), 560, 640, Config::get_preferences().ui.style_paths);
-	m_settings_window->on_applied = [this] { apply_font_settings(); };
+	constexpr Uint32 width = 860;
+	constexpr Uint32 height = 640;
+	m_settings_window = std::make_unique<SettingsWindow>(*m_context);
+	m_settings_window->build(width, height, Config::get_preferences().ui.style_paths);
+	m_settings_window->on_preferences_changed = [this] { preferences_edited(); };
 
+	Aquila::Rendering::IRenderWindowHost &host = m_engine->get_window_host();
 	const Aquila::Rendering::RenderWindowId window =
-		Aquila::Rendering::open_content_window(m_engine->get_window_host(), *m_settings_window, 560, 640,
-											   "Aquila - Settings", [this] { m_settings_window.reset(); });
-	m_settings_window->on_request_close = [this, window] { m_engine->get_window_host().request_close(window); };
+		Aquila::Rendering::open_content_window(host, *m_settings_window, width, height, "Aquila - Settings", [this] {
+			m_settings_window.reset();
+			save_settings_if_due(true);
+		});
+	host.set_window_min_size(window, { 520.F, 360.F });
+	m_settings_window->on_request_close = [&host, window] { host.request_close(window); };
 }
 
 void EditorModule::set_ui_scale(F32 scale) {
 	auto &prefs = Config::get_preferences();
 	prefs.ui_scale = Math::clamp(scale, 0.5F, 2.F);
 	prefs.save_to_file();
+	m_applied_preferences.ui_scale = prefs.ui_scale;
 
 	Aquila::UI::Core::FontRegistry::set_ui_scale(prefs.ui_scale);
 	reload_styles();
@@ -818,6 +846,79 @@ void EditorModule::apply_font_settings() {
 	Aquila::UI::Core::FontManager::get().reload(m_engine->get_context(), prefs.fonts);
 	Aquila::UI::Core::FontRegistry::set_ui_scale(prefs.ui_scale);
 	reload_styles();
+}
+
+void EditorModule::apply_preferences(bool force) {
+	const Config::EditorPreferences &prefs = Config::get_preferences();
+	const Config::EditorPreferences &last = m_applied_preferences;
+
+	if (!force && (prefs.fonts != last.fonts || prefs.ui_scale != last.ui_scale)) {
+		apply_font_settings();
+	}
+	if (force || prefs.viewport != last.viewport) {
+		Aquila::Rendering::RenderSettings &render = m_engine->get_render_pipeline().get_settings();
+		render.show_grid = prefs.viewport.show_grid;
+		render.show_sky = prefs.viewport.show_sky;
+		render.show_shadows = prefs.viewport.show_shadows;
+		render.show_outline = prefs.viewport.show_outline;
+		render.realtime = prefs.viewport.realtime;
+		render.tone_mapper = prefs.viewport.tone_mapper;
+	}
+	if (m_editor_camera && (force || prefs.navigation != last.navigation)) {
+		m_editor_camera->set_move_speed(prefs.navigation.fly_speed);
+		m_editor_camera->set_look_sensitivity(prefs.navigation.look_sensitivity);
+		m_editor_camera->set_invert_y(prefs.navigation.invert_y);
+		m_editor_camera->set_zoom_step(prefs.navigation.zoom_step);
+		m_editor_camera->set_fov(prefs.navigation.fov);
+	}
+	if (m_context && (force || prefs.gizmos != last.gizmos)) {
+		EditorTools &tools = m_context->tools;
+		tools.set_snap_steps(prefs.gizmos.translate_snap, prefs.gizmos.rotate_snap, prefs.gizmos.scale_snap);
+		tools.set_gizmo_size(prefs.gizmos.gizmo_size);
+		tools.set_snapping(prefs.gizmos.snapping);
+	}
+	if ((force || prefs.advanced != last.advanced) && Aquila::Graphics::Shader::ShaderHotReload::is_alive()) {
+		Aquila::Graphics::Shader::ShaderHotReload::get()->enable(prefs.advanced.shader_hot_reload);
+	}
+
+	m_applied_preferences = prefs;
+	if (m_context) {
+		m_context->on_settings_changed();
+	}
+	Aquila::Foundation::FrameScheduler::get()->request_frame();
+}
+
+void EditorModule::preferences_edited() {
+	apply_preferences(false);
+	m_preferences_save_due = Aquila::Foundation::now() + k_settings_save_delay;
+	Aquila::Foundation::FrameScheduler::get()->request_frame_in(k_settings_save_seconds);
+}
+
+void EditorModule::write_project_settings(ProjectSettings settings) {
+	if (settings == m_project.settings) {
+		return;
+	}
+	m_project.settings = std::move(settings);
+	if (m_context) {
+		m_context->set_project(m_project);
+		m_context->on_settings_changed();
+	}
+	m_project_save_due = Aquila::Foundation::now() + k_settings_save_delay;
+	Aquila::Foundation::FrameScheduler::get()->request_frame_in(k_settings_save_seconds);
+}
+
+void EditorModule::save_settings_if_due(bool now) {
+	const Aquila::Foundation::TimePoint current = Aquila::Foundation::now();
+	if (m_preferences_save_due && (now || *m_preferences_save_due <= current)) {
+		m_preferences_save_due.reset();
+		Config::get_preferences().save_to_file();
+	}
+	if (m_project_save_due && (now || *m_project_save_due <= current)) {
+		m_project_save_due.reset();
+		if (m_project_manager && !m_project_manager->save_settings(m_project)) {
+			AQUILA_LOG_ERROR("EditorModule: couldn't save the settings of '{}'", m_project.name);
+		}
+	}
 }
 
 void EditorModule::register_commands() {

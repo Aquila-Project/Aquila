@@ -13,7 +13,6 @@ namespace Events = Platform::Events;
 namespace {
 constexpr F32 kRotateSensitivity = 0.0035F;
 constexpr F32 kOrbitSensitivity = 0.0075F;
-constexpr F32 kDollyStep = 0.15F;
 
 bool point_in_rect(Vec2 point, Vec2 position, Vec2 size) {
 	return point.x >= position.x && point.y >= position.y && point.x < position.x + size.x &&
@@ -157,12 +156,13 @@ void CameraController::update(F32 delta_time) {
 	const Vec2 delta = mouse - m_last_mouse;
 	m_last_mouse = mouse;
 
+	const Vec2 look = Vec2(delta.x, m_invert_y ? -delta.y : delta.y) * m_look_sensitivity;
 	if (m_nav_mode == NavMode::Orbit) {
-		m_camera.orbit_rotate(delta.x * kOrbitSensitivity, -delta.y * kOrbitSensitivity);
+		m_camera.orbit_rotate(look.x * kOrbitSensitivity, -look.y * kOrbitSensitivity);
 		return;
 	}
 
-	m_camera.rotate(delta.x * kRotateSensitivity, delta.y * kRotateSensitivity);
+	m_camera.rotate(look.x * kRotateSensitivity, look.y * kRotateSensitivity);
 
 	m_camera.reset_speed();
 	m_camera.get_movement_speed() = m_move_speed;
@@ -215,7 +215,7 @@ void CameraController::on_event(Events::Event &event) {
 		if (m_navigation_blocked || !point_in_rect(Input::get_mouse_position(), m_viewport_pos, m_viewport_size)) {
 			return false;
 		}
-		m_camera.move_forward(scroll.get_y_offset() * kDollyStep);
+		m_camera.move_forward(scroll.get_y_offset() * m_zoom_step);
 		m_camera.set_view_yxz(m_camera.get_position(), m_camera.get_rotation());
 		Foundation::FrameScheduler::get()->request_frame();
 		return true;

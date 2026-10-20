@@ -14,6 +14,7 @@
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Core/AssetThumbnails.h"
+#include "Core/EditorConfig.h"
 #include "Core/FileDialog.h"
 
 #include <initializer_list>
@@ -31,7 +32,8 @@ namespace {
 constexpr std::string_view k_root = Aquila::SharedConstants::PROJECT_CONTENT_DIR;
 constexpr Usize k_line_length = 12;
 constexpr std::chrono::milliseconds k_double_click{ 400 };
-constexpr F32 k_thumbnail_size = 48.F;
+constexpr F32 k_tile_padding = 40.F;
+constexpr F32 k_icon_scale = 0.75F;
 
 std::string lower(std::string_view text) {
 	std::string out(text);
@@ -69,10 +71,10 @@ std::string asset_type(std::string_view name) {
 	return "file";
 }
 
-StyleProperties fit_thumbnail(const Aquila::GFX::GfxTexture &texture) {
+StyleProperties fit_thumbnail(const Aquila::GFX::GfxTexture &texture, F32 size) {
 	const F32 width = static_cast<F32>(std::max(1U, texture.get_width()));
 	const F32 height = static_cast<F32>(std::max(1U, texture.get_height()));
-	const F32 scale = k_thumbnail_size / std::max(width, height);
+	const F32 scale = size / std::max(width, height);
 	StyleProperties style;
 	style.width = StyleLength::pixel(width * scale);
 	style.height = StyleLength::pixel(height * scale);
@@ -169,23 +171,38 @@ class RenameField final : public TextInput {
 
 class ContentTile final : public View {
   public:
-	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon, bool thumbnail)
-		: m_payload(std::move(payload)) {
+	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon, bool thumbnail,
+				const Config::ContentBrowserPreferences &prefs)
+		: m_payload(std::move(payload)), m_size(prefs.thumbnail_size) {
 		m_is_draggable = !is_directory;
 		set_input_leaf(true);
 		set_tooltip(m_payload.display_name);
 		add_class("content-tile");
+		StyleProperties tile_style;
+		tile_style.width = StyleLength::pixel(m_size + k_tile_padding);
+		merge_style(tile_style);
 
 		auto *preview = add_child<View>();
 		preview->add_class("content-tile-preview");
+		StyleProperties preview_style;
+		preview_style.width = StyleLength::pixel(m_size);
+		preview_style.height = StyleLength::pixel(m_size);
+		preview->merge_style(preview_style);
 		m_image = preview->add_child<Image>(icon);
 		if (thumbnail) {
 			set_thumbnail(icon);
 		} else {
 			m_image->add_class("content-tile-icon");
 			m_image->set_class("content-tile-folder", is_directory);
+			StyleProperties icon_style;
+			icon_style.width = StyleLength::pixel(std::round(m_size * k_icon_scale));
+			icon_style.height = StyleLength::pixel(std::round(m_size * k_icon_scale));
+			m_image->set_style(icon_style);
 		}
-		m_name = add_child<Label>(wrap_name(m_payload.display_name));
+		const std::string_view name = m_payload.display_name;
+		const Usize dot = name.find_last_of('.');
+		const bool strip = !is_directory && !prefs.show_extensions && dot != std::string_view::npos && dot > 0;
+		m_name = add_child<Label>(wrap_name(strip ? name.substr(0, dot) : name));
 		m_name->add_class("content-tile-name");
 	}
 
@@ -199,7 +216,7 @@ class ContentTile final : public View {
 		m_image->set_texture(texture);
 		m_image->remove_class("content-tile-icon");
 		m_image->add_class("content-tile-thumbnail");
-		m_image->set_style(fit_thumbnail(*texture));
+		m_image->set_style(fit_thumbnail(*texture, m_size));
 	}
 
 	void begin_rename(Delegate<void(Option<std::string>)> done) {
@@ -241,6 +258,7 @@ class ContentTile final : public View {
 
   private:
 	AssetPayload m_payload;
+	F32 m_size = 48.F;
 	Image *m_image = nullptr;
 	Label *m_name = nullptr;
 	bool m_click_armed = false;
@@ -308,6 +326,13 @@ void ContentBrowserWindow::build(View &content) {
 	if (auto *scroll = root->find_by_id("content-scroll")) {
 		scroll->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
 	}
+	m_prefs = Config::get_preferences().content_browser;
+	listen(context().on_settings_changed, [this] {
+		if (Config::get_preferences().content_browser != m_prefs) {
+			m_prefs = Config::get_preferences().content_browser;
+			navigate(m_directory);
+		}
+	});
 
 	open(m_directory);
 }
@@ -395,7 +420,7 @@ void ContentBrowserWindow::build_grid() {
 		Aquila::GFX::GfxTexture *thumbnail = tile.is_directory ? nullptr : context().thumbnails().get(tile.path);
 		tile.view = m_grid->add_child<ContentTile>(AssetPayload{ tile.path, type, tile.name }, tile.is_directory,
 												   thumbnail != nullptr ? thumbnail : context().icon(icon_for(type)),
-												   thumbnail != nullptr);
+												   thumbnail != nullptr, m_prefs);
 		tile.view->set_class("content-tile-selected", tile.path == m_selected);
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
 		tile.view->on_context_menu.connect([this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
