@@ -617,6 +617,8 @@ bool Scene::serialize(const std::string &filepath) {
 				{ "ev100", cam.ev100 },
 				{ "auto_exposure", cam.auto_exposure },
 				{ "exposure_compensation", cam.exposure_compensation },
+				{ "bloom", cam.bloom },
+				{ "bloom_intensity", cam.bloom_intensity },
 				{ "ortho_left", cam.ortho_left },
 				{ "ortho_right", cam.ortho_right },
 				{ "ortho_top", cam.ortho_top },
@@ -905,6 +907,8 @@ bool Scene::deserialize(const std::string &filepath) {
 			cam.ev100 = cam_json.value("ev100", Foundation::Photometry::DAYLIGHT_EV100);
 			cam.auto_exposure = cam_json.value("auto_exposure", true);
 			cam.exposure_compensation = cam_json.value("exposure_compensation", 0.F);
+			cam.bloom = cam_json.value("bloom", true);
+			cam.bloom_intensity = cam_json.value("bloom_intensity", 1.F);
 			cam.ortho_left = cam_json.value("ortho_left", -10.0F);
 			cam.ortho_right = cam_json.value("ortho_right", 10.0F);
 			cam.ortho_top = cam_json.value("ortho_top", 10.0F);

@@ -225,6 +225,8 @@ RenderView render_view_from_entity(const CameraComponent &cam, const TransformCo
 	view.ev100 = cam.ev100;
 	view.exposure_compensation = cam.exposure_compensation;
 	view.auto_exposure = cam.auto_exposure;
+	view.bloom = cam.bloom;
+	view.bloom_intensity = cam.bloom_intensity;
 	view.is_orthographic = cam.is_orthographic;
 	view.valid = true;
 	return view;

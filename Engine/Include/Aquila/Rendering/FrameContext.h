@@ -30,11 +30,17 @@ struct FrameContext {
 	Mat4 projection = Mat4(1.F);
 	Mat4 view_projection = Mat4(1.F);
 	Vec3 camera_position = {};
+	/// The primary camera's emissive glow.
+	bool bloom = false;
+	F32 bloom_intensity = 0.F;
 
 	Graphics::RG::RGTextureHandle h_scene_color;
 	Graphics::RG::RGTextureHandle h_display_color;
 	Graphics::RG::RGTextureHandle h_depth;
 	Graphics::RG::RGTextureHandle h_object_picking;
+
+	/// Scene color with bloom mixed in, what ToneMapSystem reads. Only valid when BloomSystem ran this frame.
+	Graphics::RG::RGTextureHandle h_bloom_final;
 
 	std::array<Graphics::RG::RGTextureHandle, SHADOW_CASCADE_COUNT> h_shadow_maps;
 	Graphics::RG::RGTextureHandle h_local_shadow_atlas;

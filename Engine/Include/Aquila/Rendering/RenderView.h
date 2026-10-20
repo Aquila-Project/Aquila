@@ -5,7 +5,9 @@
 
 namespace Aquila::Rendering {
 
-/// The camera a frame renders from. `fov` is vertical, in degrees. `valid` false means there's no camera.
+/// The camera a frame renders from. `fov` is vertical, in degrees. `ev100` is the exposure when `auto_exposure` is
+/// off, `exposure_compensation` (stops, + is brighter) shifts it when it's on. `bloom`/`bloom_intensity` are the
+/// camera's emissive glow (BloomSystem). `valid` false means there's no camera.
 struct RenderView {
 	Mat4 view = Mat4(1.F);
 	Mat4 projection = Mat4(1.F);
@@ -20,6 +22,8 @@ struct RenderView {
 	F32 ev100 = Foundation::Photometry::DAYLIGHT_EV100;
 	F32 exposure_compensation = 0.F;
 	bool auto_exposure = true;
+	bool bloom = true;
+	F32 bloom_intensity = 1.F;
 	bool is_orthographic = false;
 	bool valid = false;
 

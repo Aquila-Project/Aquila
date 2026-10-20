@@ -174,6 +174,8 @@ void RenderPipeline::build_frame_context(SceneManagement::Scene &scene, F32 delt
 	out.h_object_picking = m_graph.import_texture(m_object_picking.get(), "ObjectPicking");
 
 	out.camera_position = primary.position;
+	out.bloom = primary.valid && primary.bloom;
+	out.bloom_intensity = primary.bloom_intensity;
 	out.view = primary.view;
 	out.projection = primary.projection;
 	out.view_projection = primary.projection * primary.view;

@@ -77,6 +77,11 @@ class Material {
 	[[nodiscard]] BlendMode get_blend_mode() const { return m_data.blend_mode; }
 	/// Changes right away, it's a push constant. The blend mode itself needs a new material (another pipeline).
 	void set_alpha_cutoff(F32 cutoff) { m_data.alpha_cutoff = std::clamp(cutoff, 0.F, 1.F); }
+	/// Average light the surface gives off, in nits per color channel: every emission color times every emission
+	/// strength (parameters named like emissiveColor and emissiveIntensity or emissionStrength) times the average of
+	/// the emission map. Nullopt when the shader has no such parameters, it may still emit from its own code.
+	/// @note A map that's still loading counts as black, like the placeholder drawn meanwhile.
+	[[nodiscard]] Option<Vec3> get_average_emission() const;
 	/// What the parameter shows right now: the material's value or the default.
 	[[nodiscard]] MaterialValue get_value(const MaterialParameter &param) const;
 	[[nodiscard]] static MaterialValue get_default_value(const MaterialParameter &param);

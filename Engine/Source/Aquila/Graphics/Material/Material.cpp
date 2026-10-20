@@ -313,6 +313,48 @@ void Material::set_value(const std::string &param_name, const MaterialValue &val
 	write_parameter(*p, normalized);
 }
 
+Option<Vec3> Material::get_average_emission() const {
+	bool declared = false;
+	Vec3 emission(1.F);
+	for (const MaterialParameter &p : m_parameters) {
+		if (p.hidden || (!name_has(p.name, "emissive") && !name_has(p.name, "emission"))) {
+			continue;
+		}
+		const MaterialValue value = get_value(p);
+		switch (p.type) {
+		case ParameterType::Float:
+			if (name_has(p.name, "intensity") || name_has(p.name, "strength")) {
+				emission *= as_float(value);
+				declared = true;
+			}
+			break;
+		case ParameterType::Vec3:
+		case ParameterType::Vec4:
+		case ParameterType::Color:
+			if (is_color_name(p.name)) {
+				emission *= Vec3(as_vec4(value, 1.F));
+				declared = true;
+			}
+			break;
+		case ParameterType::Texture2D:
+			if (const auto *reference = std::get_if<TextureReference>(&value);
+				reference != nullptr && !reference->path.empty()) {
+				if (Option<Vec4> average = TextureLibrary::get()->get_average(reference->path, p.srgb)) {
+					emission *= Vec3(*average);
+				} else if (TextureLibrary::get()->is_loading(reference->path, p.srgb)) {
+					emission = Vec3(0.F);
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	if (!declared) {
+		return std::nullopt;
+	}
+	return Math::max(emission, Vec3(0.F));
+}
 
 void Material::apply(const MaterialData &data) {
 	m_data = data;

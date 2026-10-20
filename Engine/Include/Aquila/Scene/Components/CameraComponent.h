@@ -15,6 +15,7 @@ using namespace glm;
 /// With `auto_exposure` the camera adapts to the scene like an eye and `exposure_compensation` (stops, + is
 /// brighter) shifts the result. Without it `ev100` is the exposure: higher is darker, one step halves the light
 /// (Foundation/Photometry.h).
+/// With `bloom` emissive surfaces glow, `bloom_intensity` scales the glow (1 = the average of the blurred light).
 struct CameraComponent {
 	F32 fov = 80.0F;
 	F32 near_plane = 0.1F;
@@ -24,6 +25,8 @@ struct CameraComponent {
 	bool auto_exposure = true;
 	F32 exposure_compensation = 0.F;
 	F32 ev100 = Foundation::Photometry::DAYLIGHT_EV100;
+	bool bloom = true;
+	F32 bloom_intensity = 1.F;
 
 	F32 ortho_left = -1.0F;
 	F32 ortho_right = 1.0F;

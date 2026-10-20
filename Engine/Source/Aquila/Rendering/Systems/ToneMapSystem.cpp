@@ -81,7 +81,7 @@ void ToneMapSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		.tone_mapper = static_cast<Uint32>(settings.tone_mapper),
 		.display_raw = settings.debug_view == DebugView::Lit ? 0U : 1U,
 	};
-	const RG::RGTextureHandle h_source = ctx.h_scene_color;
+	const RG::RGTextureHandle h_source = ctx.h_bloom_final.is_valid() ? ctx.h_bloom_final : ctx.h_scene_color;
 	auto *set = m_sets[ctx.frame_slot].get();
 	auto *pipeline = m_pipeline.get();
 
