@@ -45,6 +45,7 @@ class IRenderWindowHost {
 	[[nodiscard]] virtual Vec2 get_window_position(RenderWindowId window) const = 0;
 	[[nodiscard]] virtual Vec2 get_window_size(RenderWindowId window) const = 0;
 	virtual void set_window_position(RenderWindowId window, Vec2 position) = 0;
+	virtual void set_window_min_size(RenderWindowId window, Vec2 size) = 0;
 };
 
 /// Opens a window around `content`, which needs update(dt), render(r2d, cmd) and on_event(event).

@@ -79,6 +79,15 @@ class EditorContext {
 
 	[[nodiscard]] const ProjectInfo &project() const { return m_project; }
 	void set_project(ProjectInfo project) { m_project = std::move(project); }
+	/// Changes the open project's settings. EditorModule saves them and fires on_settings_changed.
+	void set_project_settings(ProjectSettings settings) {
+		if (m_project_settings_writer) {
+			m_project_settings_writer(std::move(settings));
+		}
+	}
+	void set_project_settings_writer(Delegate<void(ProjectSettings)> writer) {
+		m_project_settings_writer = std::move(writer);
+	}
 	/// "/project/Content/a.png" to the file on disk. Other VFS paths come back unchanged.
 	[[nodiscard]] std::string to_native(const std::string &project_path) const;
 	/// The other way, nullopt for files outside the open project (scenes can only reference files inside it).
@@ -114,6 +123,9 @@ class EditorContext {
 	Aquila::UI::Core::Shortcuts shortcuts;
 	std::vector<ContentCreator> content_creators;
 	Signal<void()> on_render_output_changed;
+	/// Fires after the preferences (Config::get_preferences()) or the project settings changed, from the Settings
+	/// window. Windows that read either apply them again.
+	Signal<void()> on_settings_changed;
 
   private:
 	Aquila::Application::EngineContext &m_engine;
@@ -128,6 +140,7 @@ class EditorContext {
 	Option<Rect> m_game_view;
 	bool m_game_focused = false;
 	ProjectInfo m_project;
+	Delegate<void(ProjectSettings)> m_project_settings_writer;
 };
 
 } // namespace Editor

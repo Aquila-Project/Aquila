@@ -33,6 +33,14 @@ class CameraController {
 	[[nodiscard]] F32 get_fov() const { return m_fov; }
 	void set_move_speed(F32 speed) { m_move_speed = speed; }
 	[[nodiscard]] F32 get_move_speed() const { return m_move_speed; }
+	/// Multiplies how far a mouse pixel turns the camera, in fly and orbit mode. 1 is the default.
+	void set_look_sensitivity(F32 scale) { m_look_sensitivity = scale; }
+	[[nodiscard]] F32 get_look_sensitivity() const { return m_look_sensitivity; }
+	void set_invert_y(bool invert) { m_invert_y = invert; }
+	[[nodiscard]] bool get_invert_y() const { return m_invert_y; }
+	/// Meters one scroll notch moves the camera forward.
+	void set_zoom_step(F32 meters) { m_zoom_step = meters; }
+	[[nodiscard]] F32 get_zoom_step() const { return m_zoom_step; }
 	void set_ev100(F32 ev100);
 	[[nodiscard]] F32 get_ev100() const { return m_ev100; }
 	void set_auto_exposure(bool enabled);
@@ -55,6 +63,9 @@ class CameraController {
 	F32 m_far = 1000.F;
 	F32 m_aspect = 16.F / 9.F;
 	F32 m_move_speed = 5.F;
+	F32 m_look_sensitivity = 1.F;
+	bool m_invert_y = false;
+	F32 m_zoom_step = 0.15F;
 	F32 m_ev100 = Foundation::Photometry::DAYLIGHT_EV100;
 	F32 m_exposure_compensation = 0.F;
 	bool m_auto_exposure = true;

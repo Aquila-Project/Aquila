@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/EditorConfig.h"
 #include "Core/EditorWindow.h"
 
 namespace Aquila::UI::Core {
@@ -57,6 +58,7 @@ class ContentBrowserWindow final : public EditorWindow {
 	std::string m_selected;
 	std::string m_rename_after_open;
 	std::chrono::steady_clock::time_point m_last_press{};
+	Config::ContentBrowserPreferences m_prefs;
 };
 
 } // namespace Editor

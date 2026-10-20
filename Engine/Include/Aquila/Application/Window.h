@@ -44,6 +44,7 @@ class Window {
 	void request_close() const;
 	[[nodiscard]] Vec2 get_position() const;
 	void set_position(Vec2 position) const;
+	void set_min_size(Vec2 size) const;
 	[[nodiscard]] std::string get_clipboard_text() const;
 	void set_clipboard_text(const std::string &text) const;
 

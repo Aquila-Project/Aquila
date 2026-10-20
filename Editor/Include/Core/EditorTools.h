@@ -8,7 +8,8 @@ enum class TransformTool { Translate, Rotate, Scale };
 enum class TransformSpace { World, Local };
 
 /// The transform tool state shared by the viewport toolbar, the gizmo and the shortcuts.
-/// Snapping is 0.5 m, 15 degrees and 0.1 scale. Holding Ctrl while dragging flips it.
+/// Snapping defaults to 0.5 m, 15 degrees and 0.1 scale (the editor settings change them). Holding Ctrl while
+/// dragging flips it.
 class EditorTools {
   public:
 	void set_tool(TransformTool tool) {
@@ -39,6 +40,16 @@ class EditorTools {
 
 	void toggle_snapping() { set_snapping(!m_snapping); }
 
+	/// Meters, degrees, scale units. Steps of 0 or less are ignored.
+	void set_snap_steps(F32 translate, F32 rotate_degrees, F32 scale) {
+		m_translate_snap = translate > 0.F ? translate : m_translate_snap;
+		m_rotate_snap_degrees = rotate_degrees > 0.F ? rotate_degrees : m_rotate_snap_degrees;
+		m_scale_snap = scale > 0.F ? scale : m_scale_snap;
+	}
+	/// Axis length of the transform gizmo in pixels.
+	void set_gizmo_size(F32 pixels) { m_gizmo_size = std::max(pixels, 24.F); }
+	[[nodiscard]] F32 get_gizmo_size() const { return m_gizmo_size; }
+
 	[[nodiscard]] TransformTool get_tool() const { return m_tool; }
 	[[nodiscard]] TransformSpace get_space() const { return m_space; }
 	[[nodiscard]] bool is_snapping() const { return m_snapping; }
@@ -57,6 +68,7 @@ class EditorTools {
 	F32 m_translate_snap = 0.5F;
 	F32 m_rotate_snap_degrees = 15.F;
 	F32 m_scale_snap = 0.1F;
+	F32 m_gizmo_size = 96.F;
 };
 
 } // namespace Editor

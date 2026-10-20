@@ -155,6 +155,11 @@ bool ProjectManager::add_scene(ProjectInfo &project, const std::string &scene) c
 	return update_project_file(project, [&scenes](nlohmann::ordered_json &root) { root["scenes"] = scenes; });
 }
 
+bool ProjectManager::save_settings(const ProjectInfo &project) const {
+	const nlohmann::ordered_json settings = project_settings_to_json(project.settings);
+	return update_project_file(project, [&settings](nlohmann::ordered_json &root) { root["settings"] = settings; });
+}
+
 void ProjectManager::touch(ProjectInfo &project) const {
 	project.last_opened = now_seconds();
 	const Uint64 stamp = project.last_opened;
@@ -289,6 +294,9 @@ Option<ProjectInfo> ProjectManager::load(const std::string &directory) const {
 	info.name = root.value("name", std::string());
 	info.created = root.value("created", static_cast<Uint64>(0));
 	info.last_opened = root.value("last_opened", static_cast<Uint64>(0));
+	if (root.contains("settings")) {
+		info.settings = project_settings_from_json(nlohmann::ordered_json::parse(root["settings"].dump()));
+	}
 	if (root.contains("scenes") && root["scenes"].is_array()) {
 		info.scenes = root["scenes"].get<std::vector<std::string>>();
 	}

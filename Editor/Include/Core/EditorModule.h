@@ -2,6 +2,7 @@
 
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Application/IModule.h"
+#include "Aquila/Foundation/Timer.h"
 #include "Aquila/Rendering/CameraController.h"
 #include "Aquila/Rendering/IRenderWindowHost.h"
 #include "Aquila/Scene/Entity.h"
@@ -11,6 +12,7 @@
 #include "Aquila/UI/Core/UIHost.h"
 #include "Aquila/UI/DevTools/UIDevTools.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "Core/EditorConfig.h"
 #include "Core/EditorWindows.h"
 #include "Core/ProjectManager.h"
 #include "Aquila/UI/Core/DockLayoutSerializer.h"
@@ -90,6 +92,13 @@ class EditorModule final : public Aquila::Application::IModule {
 	void enter_editor(const ProjectInfo &project);
 	void apply_font_settings();
 	void set_ui_scale(F32 scale);
+	/// Pushes the preferences into the engine and the tools, only the groups that changed since the last call
+	/// unless `force`, then fires EditorContext::on_settings_changed.
+	void apply_preferences(bool force);
+	/// The Settings window changed the preferences: apply them now, write the file a moment later.
+	void preferences_edited();
+	void write_project_settings(ProjectSettings settings);
+	void save_settings_if_due(bool now);
 	void save_scene();
 	void save_scene_as();
 	void open_scene();
@@ -149,6 +158,9 @@ class EditorModule final : public Aquila::Application::IModule {
 	std::vector<Aquila::UI::Core::View *> m_play_tinted;
 	/// Where Play came from, Stop goes back there if the Game workspace is still the active one.
 	std::string m_workspace_before_play;
+	Config::EditorPreferences m_applied_preferences;
+	Option<Aquila::Foundation::TimePoint> m_preferences_save_due;
+	Option<Aquila::Foundation::TimePoint> m_project_save_due;
 	/// Applied at the start of the next frame, so no panel is destroyed while one of its buttons is being clicked.
 	Option<std::string> m_pending_workspace;
 

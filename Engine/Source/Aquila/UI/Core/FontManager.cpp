@@ -2,20 +2,51 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/GFX/GfxContext.h"
+#include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Core/FontRegistry.h"
 
 namespace Aquila::UI::Core {
 
 namespace {
 
+constexpr std::string_view k_fonts_dir = "/resources/Engine/Fonts";
+constexpr std::string_view k_fallback_font = "/resources/Engine/Fonts/Outfit/Outfit-Regular.ttf";
+
 std::string family_to_path(const std::string &family) {
-	if (family == "Inconsolata") {
-		return "/resources/Engine/Fonts/Inconsolata/Inconsolata-Regular.ttf";
+	auto *vfs = Platform::Filesystem::VirtualFileSystem::get();
+	const std::string dir = std::string(k_fonts_dir) + "/" + family;
+	if (family.empty() || family.find('/') != std::string::npos || vfs == nullptr || !vfs->is_directory(dir)) {
+		AQUILA_LOG_WARNING("FontManager: no font family '{}', using Outfit", family);
+		return std::string(k_fallback_font);
 	}
-	return "/resources/Engine/Fonts/Outfit/Outfit-Regular.ttf";
+	std::vector<std::string> files = vfs->list_directory(dir);
+	std::erase_if(files, [](const std::string &file) { return !file.ends_with(".ttf") && !file.ends_with(".otf"); });
+	std::ranges::sort(files);
+	const auto regular = std::ranges::find_if(files, [](const std::string &file) {
+		return file.find("Regular") != std::string::npos;
+	});
+	if (regular != files.end()) {
+		return dir + "/" + *regular;
+	}
+	return files.empty() ? std::string(k_fallback_font) : dir + "/" + files.front();
 }
 
-} // namespace
+}
+
+std::vector<std::string> FontManager::available_families() {
+	std::vector<std::string> families;
+	auto *vfs = Platform::Filesystem::VirtualFileSystem::get();
+	if (vfs == nullptr) {
+		return families;
+	}
+	for (const std::string &entry : vfs->list_directory(std::string(k_fonts_dir))) {
+		if (vfs->is_directory(std::string(k_fonts_dir) + "/" + entry)) {
+			families.push_back(entry);
+		}
+	}
+	std::ranges::sort(families);
+	return families;
+}
 
 FontManager &FontManager::get() {
 	static FontManager instance;

@@ -14,11 +14,17 @@ struct FontSettings {
 	std::string main_family = "Geist";
 	std::string mono_family = "Inconsolata";
 	F32 size = 16.F;
+
+	bool operator==(const FontSettings &) const = default;
 };
 
 class FontManager {
   public:
 	static FontManager &get();
+
+	/// Folder names under /resources/Engine/Fonts, sorted. A family is any folder there with a .ttf/.otf in it, the
+	/// one with "Regular" in its name wins.
+	[[nodiscard]] static std::vector<std::string> available_families();
 
 	void initialize(GFX::GfxContext &ctx, const FontSettings &settings);
 	void reload(GFX::GfxContext &ctx, const FontSettings &settings);

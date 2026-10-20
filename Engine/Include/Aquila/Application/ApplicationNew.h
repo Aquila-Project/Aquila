@@ -96,6 +96,7 @@ class Application : public Rendering::IRenderWindowHost {
 	[[nodiscard]] Vec2 get_window_position(Rendering::RenderWindowId window) const override;
 	[[nodiscard]] Vec2 get_window_size(Rendering::RenderWindowId window) const override;
 	void set_window_position(Rendering::RenderWindowId window, Vec2 position) override;
+	void set_window_min_size(Rendering::RenderWindowId window, Vec2 size) override;
 
   protected:
 	/// Old hooks from when Application was subclassed, nothing uses them. Write an IModule instead.
