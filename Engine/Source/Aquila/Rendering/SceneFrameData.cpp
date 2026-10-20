@@ -9,6 +9,7 @@
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
+#include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Rendering/FrameData.h"
 #include "Aquila/Rendering/LightData.h"
 #include "Aquila/Graphics/SurfaceData.h"
@@ -357,6 +358,85 @@ static Graphics::GpuSurfaceData surface_of(const MaterialComponent &component) {
 	return surface;
 }
 
+constexpr Uint32 k_max_emissive_lights = 64;
+constexpr F32 k_max_emissive_range = 100.F;
+constexpr F32 k_emissive_cutoff_pixel = 0.001F;
+const Vec3 k_luminance_weights(0.2126F, 0.7152F, 0.0722F);
+
+struct EmissiveLight {
+	GpuLightData data{};
+	F32 importance = 0.F;
+};
+
+static Option<EmissiveLight> emissive_light_of(const Graphics::Material &material, const Graphics::Resources::Mesh &mesh,
+											   const Mat4 &model, const Vec3 &camera_position, F32 cutoff_lux) {
+	const Option<Vec3> emission = material.get_average_emission();
+	if (!emission) {
+		return std::nullopt;
+	}
+	const F32 luminance = Math::dot(*emission, k_luminance_weights);
+	if (luminance <= 0.F) {
+		return std::nullopt;
+	}
+
+	const Graphics::Resources::MeshSurface &surface = mesh.get_surface();
+	const Vec3 scale(Math::length(Vec3(model[0])), Math::length(Vec3(model[1])), Math::length(Vec3(model[2])));
+	const F32 area = surface.get_scaled_area(scale);
+	const F32 intensity = Foundation::Photometry::emitter_intensity(luminance, area);
+	const F32 radius = Foundation::Photometry::emitter_radius(area);
+	const F32 range = Math::min(Math::sqrt(intensity / cutoff_lux), k_max_emissive_range);
+	if (intensity <= 0.F || range <= radius) {
+		return std::nullopt;
+	}
+
+	const Vec3 position = Vec3(model * Vec4(surface.center, 1.F));
+	const F32 distance = Math::max(Math::length(position - camera_position), radius);
+
+	EmissiveLight light;
+	light.data.m_position_and_range = Vec4(position, range);
+	light.data.m_color_and_intensity = Vec4(*emission / luminance, intensity);
+	light.data.m_direction_and_type = Vec4(0.F, -1.F, 0.F, static_cast<F32>(LightComponent::Type::Point));
+	light.data.m_cos_inner_angle = 1.F;
+	light.data.m_cos_outer_angle = 1.F;
+	light.data.m_shadow_index = -1;
+	light.data.m_source = Vec4(radius, 0.F, 0.F, 0.F);
+	light.importance = intensity / (distance * distance);
+	return light;
+}
+
+static void append_emissive_lights(entt::registry &registry, const RenderView &view, F32 exposure,
+								   GpuLightData *lights, Uint32 &light_count) {
+	if (exposure <= 0.F || light_count >= SharedConstants::MAX_LIGHTS) {
+		return;
+	}
+	const F32 cutoff_lux = k_emissive_cutoff_pixel * Math::PI / exposure;
+
+	std::vector<EmissiveLight> found;
+	for (auto entity : registry.view<TransformComponent, MeshComponent, MaterialComponent>()) {
+		const Ref<Graphics::Material> &material = registry.get<MaterialComponent>(entity).material;
+		const MeshComponent &mesh = registry.get<MeshComponent>(entity);
+		if (!material || !mesh.is_valid() || material->get_domain() != Graphics::Shader::ShaderDomain::Lit ||
+			!material->get_data().emit_light || !SceneManagement::is_visible_in_hierarchy(registry, entity)) {
+			continue;
+		}
+		if (Option<EmissiveLight> light = emissive_light_of(*material, *mesh.data,
+															registry.get<TransformComponent>(entity).get_world_matrix(),
+															view.position, cutoff_lux)) {
+			found.push_back(*light);
+		}
+	}
+
+	const Usize budget = Math::min<Usize>(k_max_emissive_lights, SharedConstants::MAX_LIGHTS - light_count);
+	if (found.size() > budget) {
+		std::ranges::nth_element(found, found.begin() + static_cast<std::ptrdiff_t>(budget), std::ranges::greater{},
+								 &EmissiveLight::importance);
+		found.resize(budget);
+	}
+	for (const EmissiveLight &light : found) {
+		lights[light_count++] = light.data;
+	}
+}
+
 struct LocalCaster {
 	Uint32 light_index = 0;
 	const LightComponent *light = nullptr;
@@ -509,6 +589,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			}
 		}
 	}
+	append_emissive_lights(registry, primary_view, exposure, lights, light_count);
 	gpu_frame.light_count = light_count;
 
 	GpuShadowData shadow_data{};

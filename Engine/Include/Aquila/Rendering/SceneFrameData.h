@@ -34,6 +34,11 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 
 	/// Fills `frame_slot`'s buffers. Also sets MaterialComponent::material_index on every material.
 	/// `exposure` is the pixel value per nit lit shaders multiply their output by (AutoExposure::begin_frame).
+	///
+	/// Glowing meshes light the scene too: every visible mesh whose Lit material has `emit_light` and some emission
+	/// becomes a point light after the scene's own lights, sitting in the middle of the mesh with a sphere of the
+	/// same area as its source, as bright as the surface (Photometry::emitter_intensity). They cast no shadows, the
+	/// 64 brightest at the camera win, and they reach as far as a white wall would still show at `exposure`.
 	void update(SceneManagement::Scene &scene, float delta_time, Uint32 frame_slot, const RenderView &primary_view,
 				F32 exposure, bool shadows_allowed = true);
 
