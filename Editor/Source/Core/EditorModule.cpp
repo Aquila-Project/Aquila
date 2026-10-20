@@ -2,6 +2,7 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Graphics/Texture/TextureLibrary.h"
+#include "Core/AssetThumbnails.h"
 #include "Core/DefaultShortcuts.h"
 #include "Core/EditorContext.h"
 #include "Core/EditorWindows.h"
@@ -124,6 +125,9 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 
 	Aquila::Graphics::MaterialAssets::get()->clear();
 	Aquila::Graphics::TextureLibrary::get()->clear();
+	if (m_thumbnails) {
+		m_thumbnails->clear();
+	}
 	if (m_texture_cache) {
 		m_texture_cache->evict_project_assets();
 	}
@@ -155,6 +159,8 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 
 void EditorModule::on_detach() {
 	Aquila::UI::Core::AssetSlot::set_adapter("entity", {});
+	Aquila::UI::Core::AssetSlot::set_adapter("texture", {});
+	Aquila::UI::Core::AssetSlot::set_adapter("material", {});
 	if (m_windows) {
 		m_windows->shutdown();
 	}
@@ -168,6 +174,7 @@ void EditorModule::on_detach() {
 	m_workspaces.reset();
 	m_windows.reset();
 	m_context.reset();
+	m_thumbnails.reset();
 	m_texture_cache.reset();
 	Aquila::UI::Core::FontManager::get().shutdown();
 }
@@ -209,6 +216,9 @@ void EditorModule::on_pre_render(F32 delta_time) {
 							 has_selection ? m_outlined_entity.get_name() : std::string());
 	}
 
+	if (m_thumbnails) {
+		m_thumbnails->update();
+	}
 	if (m_windows) {
 		m_windows->update(delta_time);
 	}
@@ -640,7 +650,12 @@ void EditorModule::setup_editor_ui() {
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
 	m_context->set_project(m_project);
+	if (!m_thumbnails) {
+		m_thumbnails = std::make_unique<AssetThumbnails>(m_engine->get_context(), *m_texture_cache);
+	}
+	m_context->set_thumbnails(m_thumbnails.get());
 	register_entity_slots();
+	register_thumbnail_slots();
 	register_content_creators();
 	bind_default_shortcuts(m_context->shortcuts);
 
@@ -745,6 +760,13 @@ void EditorModule::register_entity_slots() {
 					return entity ? entity->get_name() : std::string("Missing entity");
 				},
 		});
+}
+
+void EditorModule::register_thumbnail_slots() {
+	for (const char *type : { "texture", "material" }) {
+		Aquila::UI::Core::AssetSlot::set_adapter(
+			type, { .thumbnail = [this](const std::string &path) { return m_thumbnails->get(path); } });
+	}
 }
 
 void EditorModule::load_styles() {

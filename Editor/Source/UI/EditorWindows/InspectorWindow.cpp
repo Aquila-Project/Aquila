@@ -2,9 +2,11 @@
 
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Platform/Input.h"
+#include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
+#include "Core/AssetThumbnails.h"
 #include "UI/Inspectors/MaterialEditorRows.h"
 #include "UI/Panels/InspectorPanel.h"
 
@@ -32,6 +34,11 @@ void InspectorWindow::build(Aquila::UI::Core::View &content) {
 
 	listen(selection.on_changed, [this](Entity entity) { show(entity); });
 	listen(selection.on_asset_selected, [this](const std::string &path) { show_asset(path); });
+	listen(context().thumbnails().on_ready, [this](const std::string &path) {
+		if (path == m_asset) {
+			show_preview(path);
+		}
+	});
 	listen(selection.on_scene_replaced, [this] { m_panel->clear(); });
 	listen(selection.on_entity_transformed, [this](Entity entity) { m_panel->refresh_values(entity); });
 	listen(selection.on_components_changed, [this](Entity entity) {
@@ -65,6 +72,9 @@ void InspectorWindow::build_asset_view(Aquila::UI::Core::View &content) {
 	scroll->add_class("asset-inspector-scroll");
 	auto *body = scroll->add_child<Aquila::UI::Core::View>();
 	body->add_class("asset-inspector");
+	m_asset_preview = body->add_child<Aquila::UI::Core::Image>();
+	m_asset_preview->add_class("asset-inspector-preview");
+	m_asset_preview->set_hidden(true);
 	m_asset_title = body->add_child<Aquila::UI::Core::Label>(std::string{});
 	m_asset_title->add_class("asset-inspector-title");
 	m_asset_path = body->add_child<Aquila::UI::Core::Label>(std::string{});
@@ -76,6 +86,12 @@ void InspectorWindow::build_asset_view(Aquila::UI::Core::View &content) {
 	m_asset_view->set_hidden(true);
 }
 
+void InspectorWindow::show_preview(const std::string &path) {
+	Aquila::GFX::GfxTexture *texture = context().thumbnails().get(path);
+	m_asset_preview->set_texture(texture);
+	m_asset_preview->set_hidden(texture == nullptr);
+}
+
 void InspectorWindow::show_asset(const std::string &path) {
 	if (!path.ends_with(Aquila::Graphics::MATERIAL_EXTENSION) || m_asset_rows == nullptr) {
 		return;
@@ -83,6 +99,7 @@ void InspectorWindow::show_asset(const std::string &path) {
 	m_asset = path;
 	Aquila::GFX::GfxContext &gfx = context().engine().get_context();
 	Ref<Aquila::Graphics::Material> material = Aquila::Graphics::MaterialAssets::get()->load(gfx, path);
+	show_preview(path);
 	m_asset_title->set_text(std::filesystem::path(path).stem().string());
 	m_asset_path->set_text(path);
 	m_asset_rows->show(material, [this, path](const Aquila::Graphics::MaterialData &data, bool needs_rebuild) {

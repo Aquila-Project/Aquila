@@ -25,6 +25,7 @@ class View;
 
 namespace Editor {
 
+class AssetThumbnails;
 class EditorContext;
 class EditorWindows;
 class Workspaces;
@@ -80,6 +81,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	void setup_editor_ui();
 	/// "entity" AssetSlots (script entity fields) take hierarchy drags, store the UUID and show the entity's name.
 	void register_entity_slots();
+	void register_thumbnail_slots();
 	void load_styles();
 	void reload_styles();
 	void wire_main_menu(Aquila::UI::Core::View *layout_root);
@@ -114,6 +116,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<Aquila::UI::Core::UIHost> m_ui_host;
 	Unique<ProjectManager> m_project_manager;
 	Unique<Aquila::UI::Core::TextureCache> m_texture_cache;
+	Unique<AssetThumbnails> m_thumbnails;
 	Unique<Aquila::Rendering::CameraController> m_editor_camera;
 
 	Unique<EditorContext> m_context;

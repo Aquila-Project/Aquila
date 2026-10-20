@@ -1122,6 +1122,12 @@
     gap: 6px;
 }
 
+.asset-inspector-preview {
+    width: 96px;
+    height: 96px;
+    color: #ffffff;
+    border-radius: 4px;
+}
 
 .asset-inspector-title {
     font-family: medium;
