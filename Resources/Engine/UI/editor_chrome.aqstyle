@@ -1104,6 +1104,43 @@
     padding: 12px;
 }
 
+.asset-inspector-root {
+    flex-direction: column;
+    width: 100%;
+    height: grow;
+    overflow: clip;
+}
+
+.asset-inspector-scroll {
+    width: 100%;
+}
+
+.asset-inspector {
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+    gap: 6px;
+}
+
+.asset-inspector-preview {
+    width: 96px;
+    height: 96px;
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+.asset-inspector-title {
+    font-family: medium;
+    font-size: 13px;
+    color: var(--text-bright);
+}
+
+.asset-inspector-path {
+    font-family: mono;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
 .play-tint {
     background-color: var(--play-tint);
 }

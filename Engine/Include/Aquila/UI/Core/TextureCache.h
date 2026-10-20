@@ -17,8 +17,11 @@ class TextureCache {
 	/// Relative paths resolve against the base path. Cached by path, an SVG is parsed once.
 	[[nodiscard]] GFX::GfxTexture *load(const std::string &path);
 
+	/// Reads the file again after it changed on disk. The new texture exists before the old one goes, so it can't
+	/// land at the old address. Views showing the old pointer have to be given the new one.
+	/// @return null when the file can't be read any more
+	[[nodiscard]] GFX::GfxTexture *reload(const std::string &path);
 	void evict(const std::string &path);
-
 	void evict_project_assets();
 	void clear();
 

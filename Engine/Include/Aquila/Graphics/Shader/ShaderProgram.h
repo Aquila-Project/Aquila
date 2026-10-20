@@ -2,6 +2,7 @@
 #define AQUILA_SHADER_PROGRAM_H
 
 #include "Aquila/Graphics/Material/MaterialParameters.h"
+#include "Aquila/Graphics/Shader/ShaderSource.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxDescriptorSet.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
@@ -33,12 +34,20 @@ class ShaderProgram {
 		ReflectedBindingType type;
 		RHI::ShaderStageFlags stage_flags;
 
+		/// `offset` is in bytes from Slang's layout. Fields with `supported` false (matrices, structs, arrays) still
+		/// take their bytes but materials can't edit them.
 		struct UBOField {
 			std::string name;
-			Graphics::ParameterType param_type;
+			Graphics::ParameterType param_type = Graphics::ParameterType::Float;
+			Uint32 offset = 0;
+			bool supported = true;
 		};
 		std::vector<UBOField> ubo_fields;
+		Uint32 ubo_size = 0;
 	};
+
+	/// Hands out the code to compile. reload() calls it again, so edits to the file come through.
+	using SourceProvider = Delegate<bool(ShaderSource &out, std::string &error)>;
 
 	// Public members — engine types only
 	std::string m_name;
@@ -50,6 +59,8 @@ class ShaderProgram {
 	AQUILA_NONCOPYABLE(ShaderProgram);
 
 	bool add_stage_from_slang(const std::string &slang_path, std::string &error_log);
+	/// Compiles what `provider` returns instead of a file, and remembers it for reload().
+	bool add_stages_from_provider(SourceProvider provider, std::string &error_log);
 	bool reload(std::string &error_log, Ref<GFX::GfxDescriptorSetLayout> &out_new_layout);
 	void commit_new_layout(Ref<GFX::GfxDescriptorSetLayout> new_layout);
 	bool reflect();
@@ -66,6 +77,10 @@ class ShaderProgram {
 	[[nodiscard]] bool is_valid() const { return !m_stages.empty(); }
 	[[nodiscard]] const std::string &get_slang_path() const { return m_slang_path; }
 	[[nodiscard]] ShaderType get_shader_type() const { return m_shader_type; }
+	/// Custom for programs compiled from a plain file.
+	[[nodiscard]] ShaderDomain get_domain() const { return m_domain; }
+	/// The file hot reload should watch: the provider's watch path, else the compiled file.
+	[[nodiscard]] const std::string &get_watch_path() const { return m_watch_path; }
 	[[nodiscard]] const std::vector<ReflectedBinding> &get_reflected_bindings() const { return m_reflected_bindings; }
 	void set_shader_type(ShaderType type) { m_shader_type = type; }
 
@@ -74,8 +89,14 @@ class ShaderProgram {
 	[[nodiscard]] bool reads_frame_time() const;
 
   private:
+	bool compile_from_provider(std::string &error_log);
+	void store_stages(std::vector<RHI::VulkanCompiledStage> &compiled);
+
 	GFX::GfxContext &m_context;
 	std::string m_slang_path;
+	std::string m_watch_path;
+	SourceProvider m_provider;
+	ShaderDomain m_domain = ShaderDomain::Custom;
 	ShaderType m_shader_type = ShaderType::Standard;
 	std::vector<RHI::TextureFormat> m_color_formats;
 	RHI::TextureFormat m_depth_format = RHI::TextureFormat::Depth32;

@@ -1,6 +1,7 @@
 #include "Aquila/Rendering/Systems/GeometrySystem.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/Rendering/FrameContext.h"
+#include "Aquila/Rendering/MeshPushConstants.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxCommandList.h"
@@ -10,6 +11,7 @@
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
+#include "Aquila/Scene/DefaultScenes.h"
 #include "Aquila/Foundation/Color.h"
 #include "Aquila/Foundation/FrameScheduler.h"
 
@@ -17,13 +19,6 @@ namespace Aquila::Rendering {
 
 using namespace SceneManagement::Components;
 using namespace Graphics;
-
-struct MeshPushConstants {
-	Mat4 model;
-	Vec4 color = Vec4(1.F);
-	Uint32 material_index = 0;
-	Uint32 receives_shadows = 0;
-};
 
 void GeometrySystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
@@ -43,7 +38,12 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		Uint32 receives_shadows = 0;
 	};
 
-	std::unordered_map<Material *, std::vector<DrawCall>> batches;
+	struct Batch {
+		F32 alpha_cutoff = -1.F;
+		Ref<Material> material;
+		std::vector<DrawCall> draws;
+	};
+	std::unordered_map<Material *, Batch> batches;
 	bool animated = false;
 
 	for (auto entity : view) {
@@ -57,15 +57,24 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		}
 
 		auto *mat = registry.try_get<MaterialComponent>(entity);
-		if ((mat == nullptr) || mat->type == MaterialType::Custom || !mat->material) {
+		if (mat == nullptr) {
+			continue;
+		}
+		SceneManagement::ensure_material(*mat, *m_ctx);
+		if (!mat->material || mat->material->get_domain() == Shader::ShaderDomain::Fullscreen ||
+			mat->material->get_blend_mode() == BlendMode::Transparent) {
 			continue;
 		}
 
 		animated = animated || mat->material->uses_time();
-		batches[mat->material.get()].push_back({ .gpu_mesh = get_or_upload_mesh(mesh.data),
-												 .model = transform.get_world_matrix(),
-												 .material_index = mat->material_index,
-												 .receives_shadows = static_cast<Uint32>(mesh.receive_shadows) });
+		Batch &batch = batches[mat->material.get()];
+		batch.material = mat->material;
+		batch.alpha_cutoff =
+			mat->material->get_blend_mode() == BlendMode::Masked ? mat->material->get_data().alpha_cutoff : -1.F;
+		batch.draws.push_back({ .gpu_mesh = get_or_upload_mesh(mesh.data),
+								.model = transform.get_world_matrix(),
+								.material_index = mat->material_index,
+								.receives_shadows = static_cast<Uint32>(mesh.receive_shadows) });
 	}
 
 	if (animated) {
@@ -100,15 +109,17 @@ void GeometrySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 											 /*read_only=*/false, RG::ClearDepth{ .depth = 1.F });
 		},
 		[batches = std::move(batches), frame_data, frame_slot](GFX::GfxCommandList &cmd, RG::RGRegistry &) {
-			for (const auto &[material, drawCalls] : batches) {
+			for (const auto &[key, batch] : batches) {
+				Material *material = batch.material.get();
 				material->flush(frame_slot);
 				material->bind(cmd, 1, frame_slot);
 				cmd.bind_descriptor_set(0, frame_data->get_descriptor_set(frame_slot));
 
-				for (const auto &dc : drawCalls) {
+				for (const auto &dc : batch.draws) {
 					MeshPushConstants push{ .model = dc.model,
 											.material_index = dc.material_index,
-											.receives_shadows = dc.receives_shadows };
+											.receives_shadows = dc.receives_shadows,
+											.alpha_cutoff = batch.alpha_cutoff };
 					cmd.push_constants(push, RHI::ShaderStageFlags::Vertex | RHI::ShaderStageFlags::Fragment);
 					cmd.bind_vertex_buffer(dc.gpu_mesh->get_vertex_buffer());
 					cmd.bind_index_buffer(dc.gpu_mesh->get_index_buffer());

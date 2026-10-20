@@ -213,6 +213,7 @@ class Renderer2D {
 											 RHI::VertexBindingDesc (*vertex_layout)(), RHI::PrimitiveTopology topology,
 											 const PipelineKey &key);
 	GFX::GfxDescriptorSet &get_or_create_texture_set(GFX::GfxTexture &texture);
+	void retire_set(Ref<GFX::GfxDescriptorSet> set);
 	GFX::GfxDescriptorSet &get_or_create_text_data_set(GFX::GfxTexture &curve_texture, GFX::GfxTexture &band_texture);
 
 	GFX::GfxContext &m_ctx;
@@ -237,8 +238,13 @@ class Renderer2D {
 	Ref<GFX::GfxBuffer> m_index_buffer;
 	Ref<GFX::GfxDescriptorSetLayout> m_texture_layout;
 	Ref<GFX::GfxDescriptorSetLayout> m_text_data_layout;
-	std::unordered_map<GFX::GfxTexture *, Ref<GFX::GfxDescriptorSet>> m_texture_set_cache;
-	std::unordered_map<GFX::GfxTexture *, Ref<GFX::GfxDescriptorSet>> m_text_data_set_cache;
+	struct CachedSet {
+		Uint64 texture_id = 0;
+		Ref<GFX::GfxDescriptorSet> set;
+	};
+	std::unordered_map<GFX::GfxTexture *, CachedSet> m_texture_set_cache;
+	std::unordered_map<GFX::GfxTexture *, CachedSet> m_text_data_set_cache;
+	std::deque<Ref<GFX::GfxDescriptorSet>> m_stale_sets;
 
 	PipelineCache m_flat_pipelines;
 	PipelineCache m_texture_pipelines;

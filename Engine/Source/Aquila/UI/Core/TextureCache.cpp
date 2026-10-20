@@ -248,6 +248,17 @@ void TextureCache::forget_vector(GFX::GfxTexture *base) {
 	m_vectors.erase(base);
 }
 
+GFX::GfxTexture *TextureCache::reload(const std::string &path) {
+	const std::string resolved = resolve(path);
+	Ref<GFX::GfxTexture> previous;
+	if (auto it = m_cache.find(resolved); it != m_cache.end()) {
+		previous = std::move(it->second);
+		forget_vector(previous.get());
+		m_cache.erase(it);
+	}
+	return load(path);
+}
+
 void TextureCache::evict(const std::string &path) {
 	auto it = m_cache.find(resolve(path));
 	if (it == m_cache.end()) {

@@ -161,20 +161,26 @@ class VulkanShaderCompiler {
 	}
 
 	/// Same as compile_file() for source in memory. `name` is the module name used in errors.
+	/// `extra_search_paths` are looked in after the engine shaders folder.
 	static bool compile_source(const std::string &name, const std::string &source,
-							  std::vector<VulkanCompiledStage> &out_stages, std::string &error_log) {
+							  std::vector<VulkanCompiledStage> &out_stages, std::string &error_log,
+							  const std::vector<std::string> &extra_search_paths = {}) {
 		AQUILA_ASSERT(s_Initialized, "VulkanShaderCompiler::Initialize() was not called");
 
 		slang::TargetDesc target_desc{};
 		target_desc.format = SLANG_SPIRV;
 		target_desc.profile = s_GlobalSession->findProfile(K_SPIRV_PROFILE);
 
-		const char *search_paths[] = { Foundation::EnginePaths::shaders_dir().c_str() };
+		const std::string engine_shaders = Foundation::EnginePaths::shaders_dir();
+		std::vector<const char *> search_paths = { engine_shaders.c_str() };
+		for (const std::string &path : extra_search_paths) {
+			search_paths.push_back(path.c_str());
+		}
 		slang::SessionDesc session_desc{};
 		session_desc.targets = &target_desc;
 		session_desc.targetCount = 1;
-		session_desc.searchPaths = search_paths;
-		session_desc.searchPathCount = 1;
+		session_desc.searchPaths = search_paths.data();
+		session_desc.searchPathCount = static_cast<SlangInt>(search_paths.size());
 
 		Slang::ComPtr<slang::ISession> session;
 		if (SLANG_FAILED(s_GlobalSession->createSession(session_desc, session.writeRef()))) {

@@ -2,6 +2,7 @@
 #include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/Rendering/FrameContext.h"
+#include "Aquila/Rendering/MeshPushConstants.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxCommandList.h"
@@ -11,6 +12,8 @@
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
+#include "Aquila/Scene/Components/MaterialComponent.h"
+#include "Aquila/Scene/DefaultScenes.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
 
@@ -101,18 +104,53 @@ Ref<std::vector<ShadowSystem::Caster>> ShadowSystem::collect_casters(FrameContex
 		if (!mesh.is_valid() || !mesh.cast_shadows) {
 			continue;
 		}
+		Ref<Material> masked;
+		if (auto *material = registry.try_get<MaterialComponent>(entity); material != nullptr) {
+			SceneManagement::ensure_material(*material, *m_ctx);
+			if (material->material) {
+				const BlendMode blend = material->material->get_blend_mode();
+				if (blend == BlendMode::Transparent ||
+					material->material->get_domain() == Shader::ShaderDomain::Fullscreen) {
+					continue;
+				}
+				if (blend == BlendMode::Masked && material->material->get_depth_pipeline() != nullptr) {
+					masked = material->material;
+				}
+			}
+		}
 		const Mat4 model = view.get<TransformComponent>(entity).get_world_matrix();
 		casters->push_back({
 			.gpu_mesh = get_or_upload_mesh(mesh.data),
 			.model = model,
+			.masked = std::move(masked),
 			.bounds = with_bounds ? world_bounds(mesh.data, model) : Sphere{},
 		});
 	}
+	std::ranges::stable_sort(*casters, {}, [](const Caster &caster) { return caster.masked.get(); });
 	return casters;
 }
 
 void ShadowSystem::draw_caster(GFX::GfxCommandList &cmd, const Caster &caster, const Mat4 &view_proj,
 							   DrawState &state) {
+	if (caster.masked) {
+		Material *material = caster.masked.get();
+		GFX::GfxPipeline *pipeline = material->get_depth_pipeline();
+		if (state.pipeline != pipeline) {
+			cmd.bind_pipeline(*pipeline);
+			cmd.bind_descriptor_set(0, state.frame_data->get_descriptor_set(state.frame_slot));
+			state.pipeline = pipeline;
+			state.material = nullptr;
+		}
+		if (state.material != material) {
+			material->flush(state.frame_slot);
+			material->bind_descriptor_set(cmd, 1, state.frame_slot);
+			state.material = material;
+		}
+		DepthPushConstants push_constants{ .model = caster.model,
+										   .view_projection = view_proj,
+										   .alpha_cutoff = material->get_data().alpha_cutoff };
+		cmd.push_constants(push_constants, RHI::ShaderStageFlags::Vertex | RHI::ShaderStageFlags::Fragment);
+	} else {
 		GFX::GfxPipeline *pipeline = &m_pipeline->get();
 		if (state.pipeline != pipeline) {
 			cmd.bind_pipeline(*pipeline);
@@ -121,6 +159,7 @@ void ShadowSystem::draw_caster(GFX::GfxCommandList &cmd, const Caster &caster, c
 		}
 		ShadowPushConstants push_constants{ .model = caster.model, .cascade_view_proj = view_proj };
 		cmd.push_constants(push_constants, RHI::ShaderStageFlags::Vertex);
+	}
 	cmd.bind_vertex_buffer(caster.gpu_mesh->get_vertex_buffer());
 	cmd.bind_index_buffer(caster.gpu_mesh->get_index_buffer());
 	cmd.draw_indexed(caster.gpu_mesh->get_index_count());

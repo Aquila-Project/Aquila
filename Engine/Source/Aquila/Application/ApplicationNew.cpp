@@ -3,7 +3,9 @@
 #include <ranges>
 #include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Profiler.h"
+#include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Foundation/JobSystem.h"
+#include "Aquila/Graphics/Texture/TextureLibrary.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/Input.h"
 
@@ -16,10 +18,13 @@
 #include "Aquila/Rendering/Systems/ObjectPickingSystem.h"
 #include "Aquila/Rendering/Systems/SkySystem.h"
 #include "Aquila/Rendering/Systems/ToneMapSystem.h"
+#include "Aquila/Rendering/Systems/FullscreenEffectSystem.h"
+#include "Aquila/Rendering/Systems/TransparentSystem.h"
 #include "Aquila/Rendering/Systems/LightCullingSystem.h"
 #include "Aquila/Graphics/Material/MaterialFactory.h"
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
 #include "Aquila/Foundation/SharedConstants.h"
+#include "Aquila/Scene/DefaultScenes.h"
 #include "Aquila/Scene/EntityManager.h"
 
 #include "Aquila/Rendering/Systems/DepthPrepassSystem.h"
@@ -66,6 +71,8 @@ Application::Application(const ApplicationSpec &spec) : m_spec(spec) {
 	Foundation::Profiler::Profiler::init();
 	Foundation::JobSystem::init();
 	Platform::Filesystem::VirtualFileSystem::init();
+	Graphics::MaterialAssets::init();
+	Graphics::TextureLibrary::init();
 
 	m_window->set_event_callback([this](Platform::Events::Event &event) { route_window_event(event); });
 
@@ -101,6 +108,8 @@ Application::~Application() {
 	m_modules.clear();
 
 	Foundation::JobSystem::shutdown();
+	Graphics::TextureLibrary::shutdown();
+	Graphics::MaterialAssets::shutdown();
 	Platform::Filesystem::VirtualFileSystem::shutdown();
 	Foundation::Profiler::Profiler::shutdown();
 	Graphics::MaterialFactory::shutdown();
@@ -122,6 +131,7 @@ Application::~Application() {
 void Application::run() {
 	init_rendering(m_window->get_width(), m_window->get_height());
 	m_scene = std::make_unique<Scene>("Main");
+	m_scene->on_loaded.connect([this] { SceneManagement::create_missing_materials(*m_scene, *m_ctx); });
 	on_init();
 	attach_modules();
 
@@ -227,7 +237,11 @@ void Application::poll_shader_hot_reload() {
 		return;
 	}
 	m_next_hot_reload_check = current + k_hot_reload_interval;
-	Graphics::Shader::ShaderHotReload::get()->tick();
+	auto *hot_reload = Graphics::Shader::ShaderHotReload::get();
+	hot_reload->tick();
+	if (hot_reload->is_enabled() && Graphics::TextureLibrary::get()->poll_changes(*m_ctx)) {
+		Foundation::FrameScheduler::get()->request_frame();
+	}
 }
 
 void Application::attach_modules() {
@@ -329,8 +343,10 @@ void Application::init_rendering(Uint32 width, Uint32 height) {
 	m_renderer->add_system<Rendering::GeometrySystem>();
 	m_renderer->add_system<Rendering::DebugViewSystem>();
 	m_renderer->add_system<Rendering::SkySystem>();
+	m_renderer->add_system<Rendering::TransparentSystem>();
 
 	// post process
+	m_renderer->add_system<Rendering::FullscreenEffectSystem>();
 	m_renderer->add_system<Rendering::ToneMapSystem>();
 	m_renderer->add_system<Rendering::GridSystem>();
 	m_renderer->add_system<Rendering::OutlineSystem>();
@@ -489,6 +505,7 @@ void Application::render_one_secondary_window(RenderWindow &rw) {
 }
 
 void Application::run_pre_render(F32 delta_time) {
+	Graphics::TextureLibrary::get()->update(*m_ctx);
 	on_pre_render(delta_time);
 	for (auto &module : m_modules) {
 		module->on_pre_render(delta_time);

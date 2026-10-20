@@ -33,6 +33,7 @@ class ShadowSystem : public RenderingSystemBase {
 	struct Caster {
 		Ref<GFX::GfxMesh> gpu_mesh;
 		Mat4 model;
+		Ref<Graphics::Material> masked;
 		Sphere bounds;
 	};
 

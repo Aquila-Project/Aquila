@@ -9,13 +9,31 @@ std::unordered_map<std::string, AssetSlot::Adapter> &adapters() {
 	return s_adapters;
 }
 
+std::vector<AssetSlot *> &live_slots() {
+	static std::vector<AssetSlot *> s_slots;
+	return s_slots;
+}
+
 }
 
 void AssetSlot::set_adapter(const std::string &type, Adapter adapter) {
-	if (!adapter.from_drag && !adapter.display_name) {
+	if (!adapter.from_drag && !adapter.display_name && !adapter.thumbnail) {
 		adapters().erase(type);
 	} else {
 		adapters()[type] = std::move(adapter);
+	}
+	for (AssetSlot *slot : live_slots()) {
+		if (slot->m_accepted_type == type) {
+			slot->update_thumbnail();
+		}
+	}
+}
+
+void AssetSlot::refresh_thumbnails(const std::string &asset_path) {
+	for (AssetSlot *slot : live_slots()) {
+		if (slot->m_has_value && slot->m_value.asset_path == asset_path) {
+			slot->update_thumbnail();
+		}
 	}
 }
 
@@ -27,6 +45,11 @@ const AssetSlot::Adapter *AssetSlot::find_adapter(std::string_view type) {
 AssetSlot::AssetSlot() {
 	m_is_accepting_payload = true;
 	add_class("asset-slot");
+	live_slots().push_back(this);
+
+	m_thumbnail = add_child<Image>();
+	m_thumbnail->add_class("asset-slot-thumbnail");
+	m_thumbnail->set_hidden(true);
 
 	auto label = std::make_unique<Label>("");
 	label->add_class("asset-slot-label");
@@ -43,6 +66,10 @@ AssetSlot::AssetSlot() {
 AssetSlot::AssetSlot(std::string accepted_type) : AssetSlot() {
 	m_accepted_type = std::move(accepted_type);
 	update_display();
+}
+
+AssetSlot::~AssetSlot() {
+	std::erase(live_slots(), this);
 }
 
 void AssetSlot::set_accepted_type(std::string type) {
@@ -136,6 +163,15 @@ void AssetSlot::update_display() {
 	} else {
 		m_label->set_text(m_placeholder.empty() ? "Drop " + accepted_name() + " here" : m_placeholder);
 	}
+	update_thumbnail();
+}
+
+void AssetSlot::update_thumbnail() {
+	const Adapter *adapter = find_adapter(m_accepted_type);
+	GFX::GfxTexture *texture =
+		m_has_value && adapter != nullptr && adapter->thumbnail ? adapter->thumbnail(m_value.asset_path) : nullptr;
+	m_thumbnail->set_texture(texture);
+	m_thumbnail->set_hidden(texture == nullptr);
 }
 
 void AssetSlot::show_hint(std::string text) {

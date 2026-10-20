@@ -1,9 +1,11 @@
 #include "Aquila/Scene/DefaultScenes.h"
 
+#include "Aquila/Foundation/EnginePaths.h"
+#include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/GFX/GfxContext.h"
-#include "Aquila/Graphics/Material/MaterialFactory.h"
+#include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/FogComponent.h"
@@ -19,13 +21,27 @@ namespace Aquila::SceneManagement {
 using namespace Aquila::SceneManagement::Components;
 
 Ref<Graphics::Material> make_default_material(GFX::GfxContext &ctx) {
-	return Graphics::MaterialFactory::get()->create(ctx, SharedConstants::SHADERS_DIR + "Basic.slang",
-													{
-														.type = Graphics::MaterialType::Lit,
-														.color_formats = { RHI::TextureFormat::RGBA16F },
-														.depth_test = true,
-														.depth_write = true,
-													});
+	return Graphics::MaterialAssets::get()->create(ctx, Graphics::MaterialData{});
+}
+
+void ensure_material(MaterialComponent &component, GFX::GfxContext &ctx) {
+	if (component.uses_asset()) {
+		Ref<Graphics::Material> shared = Graphics::MaterialAssets::get()->load(ctx, component.asset);
+		if (shared != component.material) {
+			component.material = std::move(shared);
+		}
+		return;
+	}
+	if (!component.material || !component.material->get_asset_path().empty()) {
+		component.material = Graphics::MaterialAssets::get()->create(ctx, component.embedded);
+	}
+}
+
+void create_missing_materials(Scene &scene, GFX::GfxContext &ctx) {
+	auto view = scene.get_registry().view<MaterialComponent>();
+	for (auto entity : view) {
+		ensure_material(view.get<MaterialComponent>(entity), ctx);
+	}
 }
 
 Entity spawn_default_camera(Scene &scene, F32 aspect_ratio) {
@@ -46,7 +62,6 @@ void populate_demo_scene(Scene &scene, GFX::GfxContext &ctx, F32 aspect_ratio) {
 	auto *em = scene.get_entity_manager();
 	spawn_default_camera(scene, aspect_ratio);
 
-	auto lit_mat = make_default_material(ctx);
 	const Ref<Graphics::Resources::Mesh> cube =
 		Graphics::Resources::MeshLibrary::instance().load(Graphics::Resources::MeshSource::procedural("cube"));
 
@@ -54,10 +69,11 @@ void populate_demo_scene(Scene &scene, GFX::GfxContext &ctx, F32 aspect_ratio) {
 		auto entity = em->create_entity(name);
 		entity.add_component<MeshComponent>().set_mesh(cube);
 		entity.get_component<TransformComponent>().set_local_position(pos);
-		auto &mat = entity.add_component<MaterialComponent>(lit_mat);
-		mat.surface_properties.albedo = Vec4(0.8F, 0.6F, 0.4F, 1.F);
-		mat.surface_properties.metallic = 0.0F;
-		mat.surface_properties.roughness = 0.6F;
+		Graphics::MaterialData data;
+		data.values["baseColor"] = Vec4(0.8F, 0.6F, 0.4F, 1.F);
+		data.values["roughness"] = 0.6F;
+		auto &mat = entity.add_component<MaterialComponent>(std::move(data));
+		ensure_material(mat, ctx);
 		return entity;
 	};
 	add_cube("CubeA", { -2.5F, 1.F, 2.F });
@@ -95,4 +111,4 @@ void populate_demo_scene(Scene &scene, GFX::GfxContext &ctx, F32 aspect_ratio) {
 	}
 }
 
-}
+} // namespace Aquila::SceneManagement

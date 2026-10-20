@@ -208,6 +208,8 @@ Dropdown {
 AssetSlot {
     width: 100%;
     min-height: 60px;
+    padding: 4px 6px;
+    overflow: hidden;
     flex-direction: row;
     background-color: var(--bg-surface);
     border-width: 2px;
@@ -227,6 +229,14 @@ AssetSlot:hover {
 .asset-slot-filled {
     border-style: solid;
     border-color: var(--accent);
+    gap: 6px;
+}
+
+.asset-slot-thumbnail {
+    width: 32px;
+    height: 32px;
+    color: #ffffff;
+    border-radius: 2px;
 }
 
 .asset-slot-label {

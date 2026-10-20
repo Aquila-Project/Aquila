@@ -21,24 +21,44 @@ TextureLoader::RawImageData TextureLoader::load_from_vfs(const std::string &file
 		throw std::runtime_error("VFS file has invalid size: " + filepath);
 	}
 
-	std::vector<char> buffer(size);
-	size_t bytes_read = file->read(buffer.data(), size);
-	if (bytes_read != static_cast<size_t>(size)) {
+	std::vector<Uint8> buffer(static_cast<Usize>(size));
+	const Usize bytes_read = file->read(buffer.data(), static_cast<Usize>(size));
+	if (bytes_read != static_cast<Usize>(size)) {
 		throw std::runtime_error("Failed to read complete VFS file: " + filepath);
 	}
+	return load_from_memory(buffer);
+}
 
+TextureLoader::RawImageData TextureLoader::load_from_native(const std::string &native_path) {
+	std::ifstream file(native_path, std::ios::binary | std::ios::ate);
+	if (!file) {
+		throw std::runtime_error("Failed to open file: " + native_path);
+	}
+	const std::streamsize size = file.tellg();
+	if (size <= 0) {
+		throw std::runtime_error("File has invalid size: " + native_path);
+	}
+	std::vector<Uint8> buffer(static_cast<Usize>(size));
+	file.seekg(0);
+	if (!file.read(reinterpret_cast<char *>(buffer.data()), size)) {
+		throw std::runtime_error("Failed to read complete file: " + native_path);
+	}
+	return load_from_memory(buffer);
+}
+
+TextureLoader::RawImageData TextureLoader::load_from_memory(std::span<const Uint8> bytes) {
 	RawImageData data;
 
 	int width = 0, height = 0, channels = 0;
-	stbi_uc *pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(buffer.data()),
-											static_cast<int>(bytes_read), &width, &height, &channels, STBI_rgb_alpha);
+	stbi_uc *pixels = stbi_load_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &channels,
+											STBI_rgb_alpha);
 
 	data.width = static_cast<Uint32>(width);
 	data.height = static_cast<Uint32>(height);
 	data.channels = static_cast<Uint32>(channels);
 
 	if (pixels != nullptr) {
-		size_t pixel_size = static_cast<size_t>(data.width * data.height) * 4;
+		const Usize pixel_size = static_cast<Usize>(data.width) * data.height * 4;
 		data.pixels = std::make_unique<Uint8[]>(pixel_size);
 		std::memcpy(data.pixels.get(), pixels, pixel_size);
 		stbi_image_free(pixels);

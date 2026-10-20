@@ -4,6 +4,7 @@
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/FogComponent.h"
+#include "Aquila/Scene/Components/FullscreenEffectComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MaterialComponent.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
@@ -33,8 +34,9 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::string_view, 10> k_component_order = {
-	"Transform", "Metadata", "Scene Node", "Mesh", "Material", "Light", "Sky Light", "Fog", "Camera", "Shadows",
+constexpr std::array<std::string_view, 11> k_component_order = {
+	"Transform", "Metadata", "Scene Node", "Mesh",	  "Material",		   "Light",
+	"Sky Light", "Fog",		 "Camera",	   "Shadows", "Fullscreen Effect",
 };
 
 }
@@ -316,6 +318,9 @@ void InspectorPanel::build_component_registry() {
 						  } });
 	m_addable.push_back({ "Material", "Rendering", [](Entity e) { return e.has_component<MaterialComponent>(); },
 						  [this](Entity e) { attach_default_material(e); } });
+	m_addable.push_back({ "Fullscreen Effect", "Rendering",
+						  [](Entity e) { return e.has_component<FullscreenEffectComponent>(); },
+						  [](Entity e) { e.add_component<FullscreenEffectComponent>(); } });
 	m_addable.push_back({ "Light", "Lighting", [](Entity e) { return e.has_component<LightComponent>(); },
 						  [](Entity e) { e.add_component<LightComponent>(); } });
 	m_addable.push_back({ "Sky Light", "Lighting", [](Entity e) { return e.has_component<SkyLightComponent>(); },
@@ -342,21 +347,15 @@ void InspectorPanel::build_component_registry() {
 	}
 }
 
-Ref<Graphics::Material> InspectorPanel::ensure_default_material() {
-	if (!m_default_material) {
-		m_default_material = SceneManagement::make_default_material(m_context);
-	}
-	return m_default_material;
-}
-
 void InspectorPanel::attach_default_material(Entity entity) {
 	if (entity.has_component<MaterialComponent>()) {
 		return;
 	}
-	auto &material = entity.add_component<MaterialComponent>(ensure_default_material());
-	material.surface_properties.albedo = Vec4(0.8F, 0.8F, 0.8F, 1.0F);
-	material.surface_properties.metallic = 0.0F;
-	material.surface_properties.roughness = 0.6F;
+	Graphics::MaterialData data;
+	data.values["baseColor"] = Vec4(0.8F, 0.8F, 0.8F, 1.0F);
+	data.values["roughness"] = 0.6F;
+	auto &material = entity.add_component<MaterialComponent>(std::move(data));
+	SceneManagement::ensure_material(material, m_context);
 }
 
 void InspectorPanel::open_add_menu() {
@@ -398,15 +397,16 @@ void InspectorPanel::populate_add_menu(const std::string &query) {
 	std::ranges::transform(needle, needle.begin(), [](unsigned char c) { return std::tolower(c); });
 
 	auto attach_item = [this](UI::Core::PopupMenu *menu, const AddableComponent &entry) {
-		menu->add_item(entry.name, {}, icon(component_icon(entry.name)), [this, name = entry.name, attach = entry.attach] {
-			if (!m_has_current) {
-				return;
-			}
-			attach(m_current_entity);
-			AQUILA_LOG_INFO("Added {} component to '{}'", name, m_current_entity.get_name());
-			show_entity(m_current_entity);
-			on_components_changed(m_current_entity);
-		});
+		menu->add_item(entry.name, {}, icon(component_icon(entry.name)),
+					   [this, name = entry.name, attach = entry.attach] {
+						   if (!m_has_current) {
+							   return;
+						   }
+						   attach(m_current_entity);
+						   AQUILA_LOG_INFO("Added {} component to '{}'", name, m_current_entity.get_name());
+						   show_entity(m_current_entity);
+						   on_components_changed(m_current_entity);
+					   });
 	};
 
 	if (!needle.empty()) {

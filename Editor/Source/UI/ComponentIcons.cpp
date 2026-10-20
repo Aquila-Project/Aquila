@@ -12,7 +12,7 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 10> k_component_icons = { {
+constexpr std::array<std::pair<std::string_view, std::string_view>, 11> k_component_icons = { {
 	{ "Transform", "move-3d" },
 	{ "Metadata", "info" },
 	{ "Scene Node", "folder-tree" },
@@ -22,6 +22,7 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 10> k_compon
 	{ "Light", "lightbulb" },
 	{ "Sky Light", "sun" },
 	{ "Fog", "cloud-fog" },
+	{ "Fullscreen Effect", "sparkles" },
 	{ "Camera", "video" },
 } };
 

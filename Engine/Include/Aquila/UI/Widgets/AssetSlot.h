@@ -4,6 +4,7 @@
 #include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/Button.h"
+#include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Core/DragState.h"
 
 namespace Aquila::UI::Core {
@@ -18,12 +19,19 @@ class AssetSlot : public View {
 		Delegate<Option<AssetPayload>(const std::any &payload)> from_drag;
 		/// The name to show for a stored asset_path.
 		Delegate<std::string(const std::string &asset_path)> display_name;
+		/// A picture of the stored asset_path, shown left of the name. Null hides it (none, or not ready yet: call
+		/// refresh_thumbnails() once it is).
+		Delegate<GFX::GfxTexture *(const std::string &asset_path)> thumbnail;
 	};
 	/// An empty adapter removes it. Main thread.
 	static void set_adapter(const std::string &type, Adapter adapter);
 	[[nodiscard]] static const Adapter *find_adapter(std::string_view type);
+	/// Asks the thumbnail adapter again in every live slot holding `asset_path`. Main thread.
+	static void refresh_thumbnails(const std::string &asset_path);
+
 	AssetSlot();
 	explicit AssetSlot(std::string accepted_type);
+	~AssetSlot() override;
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "AssetSlot"; }
 
@@ -46,6 +54,7 @@ class AssetSlot : public View {
 
   private:
 	void update_display();
+	void update_thumbnail();
 	void show_hint(std::string text);
 	[[nodiscard]] std::string accepted_name() const;
 	[[nodiscard]] bool is_compatible(const AssetPayload &payload) const;
@@ -56,6 +65,7 @@ class AssetSlot : public View {
 	AssetPayload m_value;
 	bool m_has_value = false;
 
+	Image *m_thumbnail = nullptr;
 	Label *m_label = nullptr;
 	Button *m_clear_button = nullptr;
 

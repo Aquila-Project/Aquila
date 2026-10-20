@@ -426,6 +426,46 @@ TEST_SUITE("Scene serialization") {
 		CHECK_FALSE(scene.deserialize(path));
 	}
 
+	TEST_CASE("ids, visibility, materials and the primary camera survive a round trip") {
+		const std::string path = scene_dir() + "/identity.aqscene";
+		std::string box_id;
+		{
+			Scene scene("Saved");
+			Entity box = scene.get_entity_manager()->create_entity("Box");
+			box_id = box.get_component<MetadataComponent>().get_id().to_string();
+			box.get_component<MetadataComponent>().set_visible(false);
+			auto &material = box.add_component<MaterialComponent>();
+			material.embedded.shader = "Custom/Toon.slang";
+			material.embedded.values["roughness"] = 0.25F;
+			Entity shared = scene.get_entity_manager()->create_entity("Shared");
+			shared.add_component<MaterialComponent>().asset = "/project/Content/Brick.aqmat";
+			Entity camera = scene.get_entity_manager()->create_entity("Camera");
+			camera.add_component<CameraComponent>().primary = true;
+			REQUIRE(scene.serialize(path));
+		}
+
+		Scene loaded("Loaded");
+		bool notified = false;
+		loaded.on_loaded.connect([&notified] { notified = true; });
+		REQUIRE(loaded.deserialize(path));
+		CHECK(notified);
+
+		Entity box = find(loaded, "Box");
+		REQUIRE(box.is_valid());
+		CHECK(box.get_component<MetadataComponent>().get_id().to_string() == box_id);
+		CHECK_FALSE(box.get_component<MetadataComponent>().is_visible());
+		const auto &material = box.get_component<MaterialComponent>();
+		CHECK(material.material == nullptr);
+		CHECK_FALSE(material.uses_asset());
+		CHECK(material.embedded.shader == "Custom/Toon.slang");
+		REQUIRE(material.embedded.values.contains("roughness"));
+		CHECK(std::get<F32>(material.embedded.values.at("roughness")) == doctest::Approx(0.25F));
+		CHECK(find(loaded, "Shared").get_component<MaterialComponent>().asset == "/project/Content/Brick.aqmat");
+
+		REQUIRE(loaded.has_active_camera());
+		CHECK(loaded.get_active_camera_entity().get_component<MetadataComponent>().get_name() == "Camera");
+	}
+
 	TEST_CASE("loading twice keeps the entity names") {
 		const std::string path = scene_dir() + "/names.aqscene";
 		{

@@ -26,6 +26,8 @@ class View;
 
 namespace Editor {
 
+class AssetThumbnails;
+
 /// The selection, and the signals windows use to keep each other in sync.
 class EditorSelection {
   public:
@@ -34,6 +36,11 @@ class EditorSelection {
 
 	[[nodiscard]] Aquila::SceneManagement::Entity get() const { return m_entity; }
 	[[nodiscard]] bool has() const;
+
+	/// A content browser file the inspector shows instead of an entity (a .aqmat). Clears the entity selection,
+	/// selecting an entity clears it.
+	void select_asset(const std::string &path);
+	[[nodiscard]] const std::string &get_asset() const { return m_asset; }
 
 	Signal<void(Aquila::SceneManagement::Entity)> on_changed;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_created;
@@ -45,9 +52,11 @@ class EditorSelection {
 	Signal<void(Aquila::SceneManagement::Entity)> on_components_changed;
 	/// A different scene was loaded, drop anything that points into the old one.
 	Signal<void()> on_scene_replaced;
+	Signal<void(const std::string &)> on_asset_selected;
 
   private:
 	Aquila::SceneManagement::Entity m_entity;
+	std::string m_asset;
 };
 
 /// What every editor window can reach.
@@ -61,6 +70,9 @@ class EditorContext {
 	[[nodiscard]] Aquila::UI::Core::Canvas &canvas() const { return m_canvas; }
 	[[nodiscard]] Aquila::UI::Core::LayoutLoader &layouts() const { return m_layouts; }
 	[[nodiscard]] Aquila::UI::Core::TextureCache &textures() const { return m_textures; }
+	/// Images and rendered materials for content files. Set by EditorModule right after the context is made.
+	[[nodiscard]] AssetThumbnails &thumbnails() const { return *m_thumbnails; }
+	void set_thumbnails(AssetThumbnails *thumbnails) { m_thumbnails = thumbnails; }
 
 	[[nodiscard]] Aquila::UI::Core::View *overlay_root() const { return m_overlay_root; }
 	void set_overlay_root(Aquila::UI::Core::View *root) { m_overlay_root = root; }
@@ -108,6 +120,7 @@ class EditorContext {
 	Aquila::UI::Core::Canvas &m_canvas;
 	Aquila::UI::Core::LayoutLoader &m_layouts;
 	Aquila::UI::Core::TextureCache &m_textures;
+	AssetThumbnails *m_thumbnails = nullptr;
 	std::string m_layout_dir;
 	Aquila::UI::Core::View *m_overlay_root = nullptr;
 	Aquila::Rendering::CameraController *m_camera = nullptr;

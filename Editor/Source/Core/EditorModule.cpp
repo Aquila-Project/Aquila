@@ -1,5 +1,8 @@
 #include "Core/EditorModule.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Graphics/Material/MaterialAssets.h"
+#include "Aquila/Graphics/Texture/TextureLibrary.h"
+#include "Core/AssetThumbnails.h"
 #include "Core/DefaultShortcuts.h"
 #include "Core/EditorContext.h"
 #include "Core/EditorWindows.h"
@@ -120,9 +123,15 @@ void EditorModule::open_project_launcher() {
 void EditorModule::enter_editor(const ProjectInfo &project) {
 	AQUILA_LOG_INFO("EditorModule: opening project '{}' ({})", project.name, project.directory);
 
+	Aquila::Graphics::MaterialAssets::get()->clear();
+	Aquila::Graphics::TextureLibrary::get()->clear();
+	if (m_thumbnails) {
+		m_thumbnails->clear();
+	}
 	if (m_texture_cache) {
 		m_texture_cache->evict_project_assets();
 	}
+
 	m_editor_entered = true;
 	m_project = project;
 	m_project_manager->open(m_project);
@@ -141,10 +150,17 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 		new_empty_scene();
 	}
 
+	const Usize preloading =
+		Aquila::Graphics::MaterialAssets::get()->preload_textures(std::string{ SharedConstants::PROJECT_CONTENT_DIR });
+	AQUILA_LOG_INFO("EditorModule: loading {} textures in the background ({} for the scene)",
+					Aquila::Graphics::TextureLibrary::get()->get_loading_count(),
+					Aquila::Graphics::TextureLibrary::get()->get_loading_count() - preloading);
 }
 
 void EditorModule::on_detach() {
 	Aquila::UI::Core::AssetSlot::set_adapter("entity", {});
+	Aquila::UI::Core::AssetSlot::set_adapter("texture", {});
+	Aquila::UI::Core::AssetSlot::set_adapter("material", {});
 	if (m_windows) {
 		m_windows->shutdown();
 	}
@@ -158,6 +174,7 @@ void EditorModule::on_detach() {
 	m_workspaces.reset();
 	m_windows.reset();
 	m_context.reset();
+	m_thumbnails.reset();
 	m_texture_cache.reset();
 	Aquila::UI::Core::FontManager::get().shutdown();
 }
@@ -199,6 +216,9 @@ void EditorModule::on_pre_render(F32 delta_time) {
 							 has_selection ? m_outlined_entity.get_name() : std::string());
 	}
 
+	if (m_thumbnails) {
+		m_thumbnails->update();
+	}
 	if (m_windows) {
 		m_windows->update(delta_time);
 	}
@@ -562,6 +582,15 @@ void EditorModule::register_content_creators() {
 	m_context->content_creators.push_back(folder_creator());
 	m_context->content_creators.push_back(
 		template_creator("Script", "file-code", "new_script.luau", "/resources/Engine/Templates/script.luau"));
+	m_context->content_creators.push_back(
+		template_creator("Material", "eclipse", "NewMaterial.aqmat", "/resources/Engine/Templates/material.aqmat"));
+	m_context->content_creators.push_back(template_creator("Lit Shader", "file-code", "NewLitShader.slang",
+														   "/resources/Engine/Templates/lit_shader.slang"));
+	m_context->content_creators.push_back(template_creator("Unlit Shader", "file-code", "NewUnlitShader.slang",
+														   "/resources/Engine/Templates/unlit_shader.slang"));
+	m_context->content_creators.push_back(template_creator("Fullscreen Shader", "file-code",
+														   "NewFullscreenShader.slang",
+														   "/resources/Engine/Templates/fullscreen_shader.slang"));
 	for (ContentCreator &creator : m_pending_content_creators) {
 		m_context->content_creators.push_back(std::move(creator));
 	}
@@ -621,7 +650,12 @@ void EditorModule::setup_editor_ui() {
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
 	m_context->set_project(m_project);
+	if (!m_thumbnails) {
+		m_thumbnails = std::make_unique<AssetThumbnails>(m_engine->get_context(), *m_texture_cache);
+	}
+	m_context->set_thumbnails(m_thumbnails.get());
 	register_entity_slots();
+	register_thumbnail_slots();
 	register_content_creators();
 	bind_default_shortcuts(m_context->shortcuts);
 
@@ -726,6 +760,13 @@ void EditorModule::register_entity_slots() {
 					return entity ? entity->get_name() : std::string("Missing entity");
 				},
 		});
+}
+
+void EditorModule::register_thumbnail_slots() {
+	for (const char *type : { "texture", "material" }) {
+		Aquila::UI::Core::AssetSlot::set_adapter(
+			type, { .thumbnail = [this](const std::string &path) { return m_thumbnails->get(path); } });
+	}
 }
 
 void EditorModule::load_styles() {

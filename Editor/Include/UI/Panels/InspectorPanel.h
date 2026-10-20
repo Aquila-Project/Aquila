@@ -74,14 +74,12 @@ class InspectorPanel : public IEditorPanel {
 	void style_dropdowns(Aquila::UI::Core::View &root) const;
 
 	void build_component_registry();
-	Ref<Aquila::Graphics::Material> ensure_default_material();
 	void attach_default_material(Aquila::SceneManagement::Entity entity);
 	void open_add_menu();
 	void open_add_popup_at(Vec2 canvas_pos, bool swallow_first_char);
 	void populate_add_menu(const std::string &query);
 
 	Aquila::GFX::GfxContext &m_context;
-	Ref<Aquila::Graphics::Material> m_default_material;
 	Aquila::UI::Core::TextureCache *m_texture_cache = nullptr;
 	Aquila::UI::Core::View *m_tab_strip = nullptr;
 	Aquila::UI::Core::View *m_pages = nullptr;

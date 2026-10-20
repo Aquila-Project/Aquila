@@ -801,30 +801,46 @@ void Renderer2D::flush() {
 	start_batch();
 }
 
+void Renderer2D::retire_set(Ref<GFX::GfxDescriptorSet> set) {
+	constexpr Usize k_max_stale_sets = 64;
+	m_stale_sets.push_back(std::move(set));
+	while (m_stale_sets.size() > k_max_stale_sets) {
+		m_stale_sets.pop_front();
+	}
+}
+
 GFX::GfxDescriptorSet &Renderer2D::get_or_create_texture_set(GFX::GfxTexture &texture) {
 	auto it = m_texture_set_cache.find(&texture);
 	if (it != m_texture_set_cache.end()) {
-		return *it->second;
+		if (it->second.texture_id == texture.get_id()) {
+			return *it->second.set;
+		}
+		retire_set(std::move(it->second.set));
 	}
 	auto set = m_ctx.allocate_descriptor_set(*m_texture_layout);
 	set->set_texture(0, texture);
 	set->flush();
-	m_texture_set_cache[&texture] = std::move(set);
-	return *m_texture_set_cache[&texture];
+	CachedSet &cached = m_texture_set_cache[&texture];
+	cached = CachedSet{ .texture_id = texture.get_id(), .set = std::move(set) };
+	return *cached.set;
 }
 
 GFX::GfxDescriptorSet &Renderer2D::get_or_create_text_data_set(GFX::GfxTexture &curve_texture,
 																GFX::GfxTexture &band_texture) {
 	auto it = m_text_data_set_cache.find(&curve_texture);
 	if (it != m_text_data_set_cache.end()) {
-		return *it->second;
+		if (it->second.texture_id == curve_texture.get_id()) {
+			return *it->second.set;
+		}
+		retire_set(std::move(it->second.set));
 	}
 	auto set = m_ctx.allocate_descriptor_set(*m_text_data_layout);
 	set->set_texture(0, curve_texture);
 	set->set_texture(1, band_texture);
 	set->flush();
-	m_text_data_set_cache[&curve_texture] = std::move(set);
-	return *m_text_data_set_cache[&curve_texture];
+	CachedSet &cached = m_text_data_set_cache[&curve_texture];
+	cached = CachedSet{ .texture_id = curve_texture.get_id(), .set = std::move(set) };
+	return *cached.set;
 }
 
 void Renderer2D::start_batch() {
