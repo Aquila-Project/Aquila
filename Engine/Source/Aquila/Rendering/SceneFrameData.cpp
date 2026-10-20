@@ -314,6 +314,47 @@ static GpuLightData build_light_data(const LightComponent &light, const Transfor
 	return data;
 }
 
+static Graphics::GpuSurfaceData surface_of(const MaterialComponent &component) {
+	Graphics::GpuSurfaceData surface;
+	if (!component.material) {
+		return surface;
+	}
+	const Graphics::Material &material = *component.material;
+	auto vec4_of = [&material](const char *name) -> Option<Vec4> {
+		const Graphics::MaterialParameter *param = material.get_parameter(name);
+		if (param == nullptr) {
+			return std::nullopt;
+		}
+		const Graphics::MaterialValue value = material.get_value(*param);
+		if (const auto *v = std::get_if<Vec4>(&value)) {
+			return *v;
+		}
+		if (const auto *v = std::get_if<Vec3>(&value)) {
+			return Vec4(*v, 1.F);
+		}
+		return std::nullopt;
+	};
+	auto float_of = [&material](const char *name) -> Option<F32> {
+		const Graphics::MaterialParameter *param = material.get_parameter(name);
+		if (param == nullptr) {
+			return std::nullopt;
+		}
+		const Graphics::MaterialValue value = material.get_value(*param);
+		if (const auto *f = std::get_if<F32>(&value)) {
+			return *f;
+		}
+		return std::nullopt;
+	};
+	if (Option<Vec4> color = vec4_of("baseColor")) {
+		surface.albedo = *color;
+	} else if (Option<Vec4> unlit = vec4_of("color")) {
+		surface.albedo = *unlit;
+	}
+	surface.metallic = float_of("metallic").value_or(surface.metallic);
+	surface.roughness = float_of("roughness").value_or(surface.roughness);
+	return surface;
+}
+
 struct LocalCaster {
 	Uint32 light_index = 0;
 	const LightComponent *light = nullptr;
@@ -600,7 +641,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 				break;
 			}
 			auto &comp = mat_view.get<MaterialComponent>(entity);
-			materials[material_count] = comp.surface_properties;
+			materials[material_count] = surface_of(comp);
 			comp.material_index = material_count++;
 		}
 		if (material_count > 0) {

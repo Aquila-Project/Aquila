@@ -44,6 +44,10 @@ class TextureLoader {
 	/// Always RGBA8, `channels` is what the file had.
 	/// Throws when the file can't be read, returns an invalid image when it can't be decoded.
 	RawImageData load_from_vfs(const std::string &filepath);
+	/// Same as load_from_vfs() for a path on disk. Doesn't touch the VFS, so jobs can call it while mounts change.
+	RawImageData load_from_native(const std::string &native_path);
+	/// An encoded file (PNG, JPEG, TGA, BMP...) already in memory. Invalid when it can't be decoded. Thread safe.
+	RawImageData load_from_memory(std::span<const Uint8> bytes);
 	/// RGBA32F. Returns an invalid image on failure.
 	RawHDRData load_hdr_from_file(const std::string &filepath);
 

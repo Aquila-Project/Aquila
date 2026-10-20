@@ -1,5 +1,6 @@
 #include "Aquila/Scene/Scene.h"
 
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Photometry.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
@@ -94,6 +95,39 @@ void upgrade_legacy_scene(nlohmann::ordered_json &scene_json) {
 		upgraded["entities"][id]["components"] = snake_case_keys(entity);
 	}
 	scene_json = std::move(upgraded);
+}
+
+Graphics::MaterialData material_from_legacy_json(const nlohmann::ordered_json &json, bool legacy_light_units) {
+	Graphics::MaterialData data;
+	const std::string shader = json.value("shader", std::string());
+	if (!shader.empty()) {
+		data.shader = Graphics::portable_shader_path(shader);
+	}
+	auto read_vec4 = [&json](const char *key) -> Option<Vec4> {
+		if (!json.contains(key) || !json[key].is_array() || json[key].size() < 4) {
+			return std::nullopt;
+		}
+		const auto &v = json[key];
+		return Vec4(v[0].get<F32>(), v[1].get<F32>(), v[2].get<F32>(), v[3].get<F32>());
+	};
+	if (Option<Vec4> albedo = read_vec4("albedo")) {
+		data.values["baseColor"] = *albedo;
+	}
+	if (Option<Vec4> emissive = read_vec4("emissive")) {
+		const F32 scale = legacy_light_units ? legacy_light_scale() : 1.F;
+		data.values["emissiveColor"] = Vec3(*emissive);
+		data.values["emissiveIntensity"] = emissive->w * scale;
+	}
+	auto read_float = [&json, &data](const char *key, const char *parameter) {
+		if (json.contains(key) && json[key].is_number()) {
+			data.values[parameter] = json[key].get<F32>();
+		}
+	};
+	read_float("metallic", "metallic");
+	read_float("roughness", "roughness");
+	read_float("normal_strength", "normalStrength");
+	read_float("ao_strength", "occlusionStrength");
+	return data;
 }
 
 nlohmann::ordered_json mesh_source_to_json(const MeshSource &source) {
@@ -625,16 +659,16 @@ bool Scene::serialize(const std::string &filepath) {
 		// Serialize MaterialComponent
 		if (entity.has_component<Components::MaterialComponent>()) {
 			auto &mat_comp = entity.get_component<Components::MaterialComponent>();
-			const auto &surface = mat_comp.surface_properties;
-			entity_json["components"]["material_component"] = {
-				{ "type", static_cast<int>(mat_comp.type) },
-				{ "albedo", { surface.albedo.x, surface.albedo.y, surface.albedo.z, surface.albedo.w } },
-				{ "emissive", { surface.emissive.x, surface.emissive.y, surface.emissive.z, surface.emissive.w } },
-				{ "metallic", surface.metallic },
-				{ "roughness", surface.roughness },
-				{ "normal_strength", surface.normal_strength },
-				{ "ao_strength", surface.ao_strength },
-			};
+			nlohmann::ordered_json material_json = nlohmann::ordered_json::object();
+			if (mat_comp.uses_asset()) {
+				material_json["asset"] = mat_comp.asset;
+			} else {
+				if (mat_comp.material && mat_comp.material->get_asset_path().empty()) {
+					mat_comp.embedded = mat_comp.material->get_data();
+				}
+				material_json["material"] = Graphics::material_to_json(mat_comp.embedded);
+			}
+			entity_json["components"]["material_component"] = std::move(material_json);
 		}
 
 		scene_json["entities"][std::to_string(static_cast<int>(entity_handle))] = entity_json;
@@ -918,21 +952,13 @@ bool Scene::deserialize(const std::string &filepath) {
 		if (components.contains("material_component")) {
 			const auto &mat_json = components["material_component"];
 			auto &mat_comp = entity.get_or_emplace<Components::MaterialComponent>();
-			mat_comp.type = static_cast<Graphics::MaterialType>(mat_json.value("type", 0));
-
-			auto &surface = mat_comp.surface_properties;
-			auto read_vec4 = [&mat_json](const char *key, Vec4 &out) {
-				if (mat_json.contains(key)) {
-					const auto &v = mat_json[key];
-					out = Vec4(v[0].get<F32>(), v[1].get<F32>(), v[2].get<F32>(), v[3].get<F32>());
-				}
-			};
-			read_vec4("albedo", surface.albedo);
-			read_vec4("emissive", surface.emissive);
-			surface.metallic = mat_json.value("metallic", surface.metallic);
-			surface.roughness = mat_json.value("roughness", surface.roughness);
-			surface.normal_strength = mat_json.value("normal_strength", surface.normal_strength);
-			surface.ao_strength = mat_json.value("ao_strength", surface.ao_strength);
+			mat_comp.material = nullptr;
+			mat_comp.asset = mat_json.value("asset", std::string());
+			if (mat_json.contains("material")) {
+				mat_comp.embedded = Graphics::material_from_json(mat_json["material"]);
+			} else if (!mat_comp.uses_asset()) {
+				mat_comp.embedded = material_from_legacy_json(mat_json, legacy_light_units);
+			}
 		}
 	}
 

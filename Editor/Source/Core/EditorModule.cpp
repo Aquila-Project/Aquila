@@ -1,5 +1,7 @@
 #include "Core/EditorModule.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Graphics/Material/MaterialAssets.h"
+#include "Aquila/Graphics/Texture/TextureLibrary.h"
 #include "Core/DefaultShortcuts.h"
 #include "Core/EditorContext.h"
 #include "Core/EditorWindows.h"
@@ -120,9 +122,12 @@ void EditorModule::open_project_launcher() {
 void EditorModule::enter_editor(const ProjectInfo &project) {
 	AQUILA_LOG_INFO("EditorModule: opening project '{}' ({})", project.name, project.directory);
 
+	Aquila::Graphics::MaterialAssets::get()->clear();
+	Aquila::Graphics::TextureLibrary::get()->clear();
 	if (m_texture_cache) {
 		m_texture_cache->evict_project_assets();
 	}
+
 	m_editor_entered = true;
 	m_project = project;
 	m_project_manager->open(m_project);
@@ -141,6 +146,11 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 		new_empty_scene();
 	}
 
+	const Usize preloading =
+		Aquila::Graphics::MaterialAssets::get()->preload_textures(std::string{ SharedConstants::PROJECT_CONTENT_DIR });
+	AQUILA_LOG_INFO("EditorModule: loading {} textures in the background ({} for the scene)",
+					Aquila::Graphics::TextureLibrary::get()->get_loading_count(),
+					Aquila::Graphics::TextureLibrary::get()->get_loading_count() - preloading);
 }
 
 void EditorModule::on_detach() {

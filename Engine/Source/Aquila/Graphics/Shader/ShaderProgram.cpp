@@ -22,16 +22,16 @@ static RHI::ShaderStageFlags vk_stage_to_rhi(VkShaderStageFlagBits stage) {
 	}
 }
 
-static Graphics::ParameterType slang_scalar_to_param_type(slang::TypeReflection *type) {
+static Option<Graphics::ParameterType> slang_scalar_to_param_type(slang::TypeReflection *type) {
 	using Kind = slang::TypeReflection::Kind;
 	using Scalar = slang::TypeReflection::ScalarType;
 
 	Kind kind = type->getKind();
 	if (kind != Kind::Scalar && kind != Kind::Vector) {
-		return Graphics::ParameterType::Float;
+		return std::nullopt;
 	}
 
-	int cols = type->getColumnCount();
+	const auto cols = kind == Kind::Scalar ? 1U : type->getColumnCount();
 	switch (type->getScalarType()) {
 	case Scalar::Float32:
 		if (cols == 1) {
@@ -48,46 +48,17 @@ static Graphics::ParameterType slang_scalar_to_param_type(slang::TypeReflection 
 		}
 		break;
 	case Scalar::Int32:
-		return Graphics::ParameterType::Int;
+	case Scalar::UInt32:
+		return cols == 1 ? Option<Graphics::ParameterType>(Graphics::ParameterType::Int) : std::nullopt;
 	case Scalar::Bool:
-		return Graphics::ParameterType::Bool;
+		return cols == 1 ? Option<Graphics::ParameterType>(Graphics::ParameterType::Bool) : std::nullopt;
 	default:
 		break;
 	}
-	return Graphics::ParameterType::Float;
+	return std::nullopt;
 }
 
-bool ShaderProgram::add_stage_from_slang(const std::string &slang_path, std::string &error_log) {
-	m_slang_path = slang_path;
-
-	std::vector<RHI::VulkanCompiledStage> compiled;
-	if (!RHI::VulkanShaderCompiler::compile_file(slang_path, compiled, error_log)) {
-		return false;
-	}
-
-	for (auto &stage : compiled) {
-		ShaderStage s;
-		s.stage = vk_stage_to_rhi(stage.stage);
-		s.spirv = std::move(stage.spirv);
-		s.entry_point_name = std::move(stage.entry_point_name);
-		s.linked_component = std::move(stage.linked_component);
-		s.session = std::move(stage.session);
-		m_stages.push_back(std::move(s));
-	}
-	return true;
-}
-
-bool ShaderProgram::reload(std::string &error_log, Ref<GFX::GfxDescriptorSetLayout> &out_new_layout) {
-	if (m_slang_path.empty()) {
-		error_log = "ShaderProgram: no source path set";
-		return false;
-	}
-
-	std::vector<RHI::VulkanCompiledStage> compiled;
-	if (!RHI::VulkanShaderCompiler::compile_file(m_slang_path, compiled, error_log)) {
-		return false;
-	}
-
+void ShaderProgram::store_stages(std::vector<RHI::VulkanCompiledStage> &compiled) {
 	m_stages.clear();
 	for (auto &stage : compiled) {
 		ShaderStage s;
@@ -98,7 +69,61 @@ bool ShaderProgram::reload(std::string &error_log, Ref<GFX::GfxDescriptorSetLayo
 		s.session = std::move(stage.session);
 		m_stages.push_back(std::move(s));
 	}
+}
 
+bool ShaderProgram::add_stage_from_slang(const std::string &slang_path, std::string &error_log) {
+	m_slang_path = slang_path;
+	m_watch_path = slang_path;
+
+	std::vector<RHI::VulkanCompiledStage> compiled;
+	if (!RHI::VulkanShaderCompiler::compile_file(slang_path, compiled, error_log)) {
+		return false;
+	}
+	store_stages(compiled);
+	return true;
+}
+
+bool ShaderProgram::add_stages_from_provider(SourceProvider provider, std::string &error_log) {
+	m_provider = std::move(provider);
+	return compile_from_provider(error_log);
+}
+
+bool ShaderProgram::compile_from_provider(std::string &error_log) {
+	ShaderSource source;
+	if (!m_provider(source, error_log)) {
+		return false;
+	}
+	m_slang_path = source.name;
+	m_watch_path = source.watch_path;
+
+	std::vector<RHI::VulkanCompiledStage> compiled;
+	if (!RHI::VulkanShaderCompiler::compile_source(source.name, source.code, compiled, error_log,
+												   source.search_paths)) {
+		return false;
+	}
+	m_domain = source.domain;
+	store_stages(compiled);
+	return true;
+}
+
+bool ShaderProgram::reload(std::string &error_log, Ref<GFX::GfxDescriptorSetLayout> &out_new_layout) {
+	if (m_provider) {
+		if (!compile_from_provider(error_log)) {
+			return false;
+		}
+		return reflect_into(out_new_layout);
+	}
+
+	if (m_slang_path.empty()) {
+		error_log = "ShaderProgram: no source path set";
+		return false;
+	}
+
+	std::vector<RHI::VulkanCompiledStage> compiled;
+	if (!RHI::VulkanShaderCompiler::compile_file(m_slang_path, compiled, error_log)) {
+		return false;
+	}
+	store_stages(compiled);
 	return reflect_into(out_new_layout);
 }
 
@@ -211,6 +236,7 @@ void ShaderProgram::process_binding(slang::VariableLayoutReflection *var, RHI::S
 	if (refl_type == ReflectedBindingType::UniformBuffer) {
 		slang::TypeLayoutReflection *inner = type_layout->getElementTypeLayout();
 		if (inner != nullptr) {
+			rb.ubo_size = static_cast<Uint32>(inner->getSize());
 			for (Uint32 f = 0; f < (Uint32)inner->getFieldCount(); ++f) {
 				slang::VariableLayoutReflection *field = inner->getFieldByIndex(f);
 				if ((field == nullptr) || (field->getName() == nullptr)) {
@@ -222,7 +248,10 @@ void ShaderProgram::process_binding(slang::VariableLayoutReflection *var, RHI::S
 				}
 				ReflectedBinding::UBOField uf{};
 				uf.name = field->getName();
-				uf.param_type = slang_scalar_to_param_type(ft);
+				uf.offset = static_cast<Uint32>(field->getOffset());
+				const Option<Graphics::ParameterType> param_type = slang_scalar_to_param_type(ft);
+				uf.supported = param_type.has_value();
+				uf.param_type = param_type.value_or(Graphics::ParameterType::Float);
 				rb.ubo_fields.push_back(std::move(uf));
 			}
 		}

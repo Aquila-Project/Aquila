@@ -318,20 +318,19 @@ void register_builtin_components(ComponentRegistry &registry) {
 		.property("Receive Shadows", &MeshComponent::receive_shadows);
 
 	registry.register_component<MaterialComponent>("Material")
-		.property("Type", &MaterialComponent::type)
-		.options({ { .name = "PBR", .value = static_cast<Int32>(Graphics::MaterialType::PBR) },
-				   { .name = "Lit", .value = static_cast<Int32>(Graphics::MaterialType::Lit) },
-				   { .name = "Unlit", .value = static_cast<Int32>(Graphics::MaterialType::Unlit) },
-				   { .name = "Custom", .value = static_cast<Int32>(Graphics::MaterialType::Custom) } })
 		.property(
-			"Albedo", [](MaterialComponent &m) -> Vec4 & { return m.surface_properties.albedo; },
-			PropertyHints{ .color = true })
-		.property(
-			"Metallic", [](MaterialComponent &m) -> F32 & { return m.surface_properties.metallic; },
-			PropertyHints{ .min = 0.F, .max = 1.F, .speed = 0.01F, .precision = 3, .slider = true })
-		.property(
-			"Roughness", [](MaterialComponent &m) -> F32 & { return m.surface_properties.roughness; },
-			PropertyHints{ .min = 0.F, .max = 1.F, .speed = 0.01F, .precision = 3, .slider = true });
+			"Material", [](const MaterialComponent &m) { return m.asset; },
+			[](MaterialComponent &m, const std::string &path) {
+				if (path == m.asset) {
+					return;
+				}
+				if (path.empty() && m.material) {
+					m.embedded = m.material->get_data();
+				}
+				m.asset = path;
+				m.material = nullptr;
+			},
+			PropertyHints{ .asset_type = "material" });
 }
 
 } // namespace

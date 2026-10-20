@@ -342,21 +342,15 @@ void InspectorPanel::build_component_registry() {
 	}
 }
 
-Ref<Graphics::Material> InspectorPanel::ensure_default_material() {
-	if (!m_default_material) {
-		m_default_material = SceneManagement::make_default_material(m_context);
-	}
-	return m_default_material;
-}
-
 void InspectorPanel::attach_default_material(Entity entity) {
 	if (entity.has_component<MaterialComponent>()) {
 		return;
 	}
-	auto &material = entity.add_component<MaterialComponent>(ensure_default_material());
-	material.surface_properties.albedo = Vec4(0.8F, 0.8F, 0.8F, 1.0F);
-	material.surface_properties.metallic = 0.0F;
-	material.surface_properties.roughness = 0.6F;
+	Graphics::MaterialData data;
+	data.values["baseColor"] = Vec4(0.8F, 0.8F, 0.8F, 1.0F);
+	data.values["roughness"] = 0.6F;
+	auto &material = entity.add_component<MaterialComponent>(std::move(data));
+	SceneManagement::ensure_material(material, m_context);
 }
 
 void InspectorPanel::open_add_menu() {
@@ -398,15 +392,16 @@ void InspectorPanel::populate_add_menu(const std::string &query) {
 	std::ranges::transform(needle, needle.begin(), [](unsigned char c) { return std::tolower(c); });
 
 	auto attach_item = [this](UI::Core::PopupMenu *menu, const AddableComponent &entry) {
-		menu->add_item(entry.name, {}, icon(component_icon(entry.name)), [this, name = entry.name, attach = entry.attach] {
-			if (!m_has_current) {
-				return;
-			}
-			attach(m_current_entity);
-			AQUILA_LOG_INFO("Added {} component to '{}'", name, m_current_entity.get_name());
-			show_entity(m_current_entity);
-			on_components_changed(m_current_entity);
-		});
+		menu->add_item(entry.name, {}, icon(component_icon(entry.name)),
+					   [this, name = entry.name, attach = entry.attach] {
+						   if (!m_has_current) {
+							   return;
+						   }
+						   attach(m_current_entity);
+						   AQUILA_LOG_INFO("Added {} component to '{}'", name, m_current_entity.get_name());
+						   show_entity(m_current_entity);
+						   on_components_changed(m_current_entity);
+					   });
 	};
 
 	if (!needle.empty()) {

@@ -1,6 +1,7 @@
 #pragma once
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/GFX/GfxTexture.h"
+#include "Aquila/Graphics/Texture/TextureLibrary.h"
 
 namespace Aquila::Graphics {
 
@@ -26,6 +27,13 @@ struct MaterialParameter {
 	// Descriptor-set binding index for Texture2D parameters.
 	// UINT32_MAX for non-texture parameters.
 	Uint32 texture_binding = UINT32_MAX;
+
+	/// Textures: decoded from sRGB (color maps) or read as is (normal, roughness...), and what's bound when the
+	/// material doesn't set one. Both guessed from the name.
+	bool srgb = false;
+	DefaultTexture default_texture = DefaultTexture::White;
+	/// Engine inputs (a fullscreen effect's sceneColor/sceneDepth): bound by the renderer, not shown or saved.
+	bool hidden = false;
 };
 
 } // namespace Aquila::Graphics
