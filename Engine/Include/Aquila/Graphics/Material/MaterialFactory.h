@@ -81,6 +81,7 @@ class MaterialFactory : public Foundation::Singleton<MaterialFactory> {
 	struct Instance {
 		WeakRef<Material> material;
 		MaterialCreateInfo info;
+		bool masked = false;
 	};
 
 	struct Entry {

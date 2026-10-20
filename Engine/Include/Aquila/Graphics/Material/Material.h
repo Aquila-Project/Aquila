@@ -89,6 +89,9 @@ class Material {
 	void bind(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slot);
 	/// Only the material's descriptor set, for passes that bind another pipeline (the depth pipeline in shadows).
 	void bind_descriptor_set(GFX::GfxCommandList &cmd, Uint32 set_index, Uint32 frame_slot);
+	/// Masked materials of Lit and Unlit shaders get one: depth only, discards under the cutoff, takes
+	/// DepthPushConstants and this material's set 1. Null otherwise, shadows then draw the plain silhouette.
+	[[nodiscard]] GFX::GfxPipeline *get_depth_pipeline() const { return m_depth_pipeline.get(); }
 	/// For textures the renderer hands in every frame (a fullscreen effect's scene color). Writes straight into the
 	/// slot's set, call it after flush() and right before drawing.
 	void bind_input(Uint32 frame_slot, Uint32 binding, GFX::GfxTexture &texture);
@@ -130,6 +133,7 @@ class Material {
 
 	GFX::GfxContext *m_context = nullptr;
 	Ref<GFX::GfxPipeline> m_pipeline;
+	Ref<GFX::GfxPipeline> m_depth_pipeline;
 	Uint64 m_texture_revision = 0;
 	MaterialType m_type = MaterialType::PBR;
 	Shader::ShaderDomain m_domain = Shader::ShaderDomain::Custom;

@@ -274,6 +274,10 @@ Ref<Material> MaterialFactory::create(GFX::GfxContext &ctx, const MaterialData &
 		return nullptr;
 	}
 	mat->apply(data);
+	if (data.blend_mode == BlendMode::Masked) {
+		mat->m_depth_pipeline = get_depth_pipeline(ctx, *entry, shader_path);
+		entry->instances.back().masked = true;
+	}
 	return mat;
 }
 
@@ -311,10 +315,21 @@ void MaterialFactory::rebuild_entry(GFX::GfxContext &ctx, Entry &entry, const st
 		pipelines.emplace_back(info, pipeline);
 	}
 
+	Ref<GFX::GfxPipeline> depth_pipeline;
+	if (entry.depth_program) {
+		Ref<GFX::GfxDescriptorSetLayout> depth_layout;
+		if (entry.depth_program->reload(err, depth_layout)) {
+			entry.depth_program->commit_new_layout(depth_layout);
+			depth_pipeline = build_depth_pipeline(ctx, entry);
+		} else {
+			AQUILA_LOG_ERROR("MaterialFactory: hot-reload of the depth variant failed for '{}': {}", shader_path, err);
+		}
+	}
 
 
 	ctx.wait_idle();
 	entry.pipelines = std::move(pipelines);
+	entry.depth_pipeline = depth_pipeline;
 
 	const bool uses_time = entry.program->reads_frame_time();
 	auto it = entry.instances.begin();
@@ -328,6 +343,7 @@ void MaterialFactory::rebuild_entry(GFX::GfxContext &ctx, Entry &entry, const st
 		if (pipeline) {
 			mat->rebuild(*entry.program, pipeline);
 			mat->m_uses_time = uses_time;
+			mat->m_depth_pipeline = it->masked ? entry.depth_pipeline : nullptr;
 		}
 		++it;
 	}
