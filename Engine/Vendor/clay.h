@@ -1764,6 +1764,10 @@ Clay__MeasureTextCacheItem *Clay__MeasureTextCached(Clay_String *text, Clay_Text
         measured->minWidth = CLAY__MAX(dimensions.width, measured->minWidth);
     }
     measuredWidth = CLAY__MAX(lineWidth, measuredWidth) - config->letterSpacing;
+    if (config->wrapMode == CLAY_TEXT_WRAP_WORDS && measured->minWidth > 0) {
+        float wideCharWidth = Clay__MeasureText(CLAY__INIT(Clay_StringSlice) { .length = 1, .chars = "W", .baseChars = "W" }, config, context->measureTextUserData).width;
+        measured->minWidth = CLAY__MIN(measured->minWidth, wideCharWidth);
+    }
 
     measured->measuredWordsStartIndex = tempWord.next;
     measured->unwrappedDimensions.width = measuredWidth;
@@ -2603,12 +2607,41 @@ void Clay__CalculateFinalLayout(float deltaTime, bool useStoredBoundingBoxes, bo
                 break;
             }
             Clay__MeasuredWord *measuredWord = Clay__MeasuredWordArray_Get(&context->measuredWords, wordIndex);
-            // Only word on the line is too large, just render it anyway
+            // Only word on the line is too large: break it between characters, the last piece starts the next line
             if (lineLengthChars == 0 && lineWidth + measuredWord->width > containerElement->dimensions.width) {
-                Clay__WrappedTextLineArray_Add(&context->wrappedTextLines, CLAY__INIT(Clay__WrappedTextLine) { { measuredWord->width, lineHeight }, { .length = measuredWord->length, .chars = &textElementData->text.chars[measuredWord->startOffset] } });
-                textElementData->wrappedLines.length++;
+                const char *chars = textElementData->text.chars;
+                int32_t offset = measuredWord->startOffset;
+                bool trailingSpace = measuredWord->length > 0 && chars[offset + measuredWord->length - 1] == ' ';
+                int32_t visible = measuredWord->length - (trailingSpace ? 1 : 0);
+                while (visible > 0) {
+                    if (context->wrappedTextLines.length > context->wrappedTextLines.capacity - 1) {
+                        break;
+                    }
+                    int32_t fit = 1;
+                    float fitWidth = Clay__MeasureText(CLAY__INIT(Clay_StringSlice) { .length = 1, .chars = &chars[offset], .baseChars = chars }, &containerElement->textConfig, context->measureTextUserData).width;
+                    while (fit < visible) {
+                        float width = Clay__MeasureText(CLAY__INIT(Clay_StringSlice) { .length = fit + 1, .chars = &chars[offset], .baseChars = chars }, &containerElement->textConfig, context->measureTextUserData).width;
+                        if (width > containerElement->dimensions.width) {
+                            break;
+                        }
+                        fit++;
+                        fitWidth = width;
+                    }
+                    if (fit == visible) {
+                        lineWidth = fitWidth + (trailingSpace ? spaceWidth : 0) + containerElement->textConfig.letterSpacing;
+                        lineLengthChars = fit + (trailingSpace ? 1 : 0);
+                        lineStartOffset = offset;
+                        break;
+                    }
+                    Clay__WrappedTextLineArray_Add(&context->wrappedTextLines, CLAY__INIT(Clay__WrappedTextLine) { { fitWidth, lineHeight }, { .length = fit, .chars = &chars[offset] } });
+                    textElementData->wrappedLines.length++;
+                    offset += fit;
+                    visible -= fit;
+                }
+                if (lineLengthChars == 0) {
+                    lineStartOffset = measuredWord->startOffset + measuredWord->length;
+                }
                 wordIndex = measuredWord->next;
-                lineStartOffset = measuredWord->startOffset + measuredWord->length;
             }
             // measuredWord->length == 0 means a newline character
             else if (measuredWord->length == 0 || lineWidth + measuredWord->width > containerElement->dimensions.width) {
