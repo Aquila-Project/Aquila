@@ -12,12 +12,17 @@ endif ()
 
 option(AQUILA_BUILD_EDITOR "Build the Aquila editor" ON)
 
-if (CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$")
+if (CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT (WIN32 AND NOT MINGW))
     set(AQUILA_SHARED_ENGINE_DEFAULT ON)
 else ()
     set(AQUILA_SHARED_ENGINE_DEFAULT OFF)
 endif ()
 option(AQUILA_SHARED_ENGINE "Build the engine as one shared library behind thin executables" ${AQUILA_SHARED_ENGINE_DEFAULT})
+if (AQUILA_SHARED_ENGINE AND WIN32 AND NOT MINGW)
+    message(WARNING "AQUILA_SHARED_ENGINE is not supported with the MSVC ABI: WINDOWS_EXPORT_ALL_SYMBOLS skips the "
+        "objects of the engine's static modules and data needs dllimport. Linking the engine statically.")
+    set(AQUILA_SHARED_ENGINE OFF CACHE BOOL "Build the engine as one shared library behind thin executables" FORCE)
+endif ()
 if (AQUILA_SHARED_ENGINE)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif ()
