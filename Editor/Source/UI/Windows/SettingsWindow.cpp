@@ -265,7 +265,7 @@ void SettingsWindow::add_editor_pages() {
 				  PropertyHints{ .min = 0.01F, .max = 10.F, .speed = 0.01F, .precision = 2, .unit = "m" })
 		.property(
 			"Field of View", &Navigation::fov,
-			PropertyHints{ .min = 10.F, .max = 150.F, .speed = 0.5F, .precision = 1, .unit = "°", .slider = true });
+			PropertyHints{ .min = 10.F, .max = 150.F, .speed = 0.5F, .precision = 1, .slider = true, .unit = "°" });
 	navigation.reset = [&prefs] { prefs.navigation = {}; };
 
 	using Gizmos = Config::GizmoPreferences;
@@ -282,7 +282,7 @@ void SettingsWindow::add_editor_pages() {
 				  PropertyHints{ .min = 0.001F, .max = 10.F, .speed = 0.01F, .precision = 3 })
 		.property(
 			"Gizmo Size", &Gizmos::gizmo_size,
-			PropertyHints{ .min = 32.F, .max = 256.F, .speed = 1.F, .precision = 0, .unit = "px", .slider = true });
+			PropertyHints{ .min = 32.F, .max = 256.F, .speed = 1.F, .precision = 0, .slider = true, .unit = "px" });
 	gizmos.reset = [&prefs] { prefs.gizmos = {}; };
 
 	using Play = Config::PlayPreferences;
@@ -299,7 +299,7 @@ void SettingsWindow::add_editor_pages() {
 	TypeBuilder<Browser>(*browser.type)
 		.property(
 			"Thumbnail Size", &Browser::thumbnail_size,
-			PropertyHints{ .min = 32.F, .max = 160.F, .speed = 1.F, .precision = 0, .unit = "px", .slider = true })
+			PropertyHints{ .min = 32.F, .max = 160.F, .speed = 1.F, .precision = 0, .slider = true, .unit = "px" })
 		.property("File Extensions", &Browser::show_extensions, PropertyHints{ .toggle = true });
 	browser.reset = [&prefs] { prefs.content_browser = {}; };
 
