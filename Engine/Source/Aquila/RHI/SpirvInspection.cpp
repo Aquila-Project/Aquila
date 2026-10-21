@@ -4,8 +4,8 @@ namespace Aquila::RHI {
 
 namespace {
 
-constexpr Uint32 k_magic = 0x07230203;
-constexpr Usize k_header_words = 5;
+constexpr Uint32 K_MAGIC = 0x07230203;
+constexpr Usize K_HEADER_WORDS = 5;
 
 enum Opcode : Uint32 {
 	OpName = 5,
@@ -32,10 +32,10 @@ std::string_view literal_string(std::span<const Uint32> words) {
 }
 
 bool names_struct(std::string_view name, std::string_view struct_name) {
-	constexpr std::string_view k_separators = "._:";
+	constexpr std::string_view K_SEPARATORS = "._:";
 	Usize start = 0;
 	while (true) {
-		const Usize end = name.find_first_of(k_separators, start);
+		const Usize end = name.find_first_of(K_SEPARATORS, start);
 		if (name.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start) == struct_name) {
 			return true;
 		}
@@ -139,14 +139,14 @@ struct MemberReadScan {
 }
 
 bool spirv_reads_member(std::span<const Uint32> spirv, std::string_view struct_name, std::string_view member_name) {
-	if (spirv.size() < k_header_words || spirv[0] != k_magic) {
+	if (spirv.size() < K_HEADER_WORDS || spirv[0] != K_MAGIC) {
 		return false;
 	}
 
 	MemberReadScan scan;
 	scan.struct_name = struct_name;
 	scan.member_name = member_name;
-	for (Usize i = k_header_words; i < spirv.size();) {
+	for (Usize i = K_HEADER_WORDS; i < spirv.size();) {
 		const Uint32 word_count = spirv[i] >> 16;
 		if (word_count == 0 || i + word_count > spirv.size()) {
 			return false;

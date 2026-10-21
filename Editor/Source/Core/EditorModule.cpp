@@ -63,9 +63,9 @@ using namespace Aquila::Application;
 namespace Events = Aquila::Platform::Events;
 
 namespace {
-constexpr std::string_view k_game_workspace = "Game";
-constexpr F64 k_settings_save_seconds = 0.5;
-constexpr auto k_settings_save_delay = std::chrono::milliseconds(500);
+constexpr std::string_view K_GAME_WORKSPACE = "Game";
+constexpr F64 K_SETTINGS_SAVE_SECONDS = 0.5;
+constexpr auto K_SETTINGS_SAVE_DELAY = std::chrono::milliseconds(500);
 }
 
 EditorModule::EditorModule(std::string project) : m_startup_project(std::move(project)) {}
@@ -363,7 +363,7 @@ void EditorModule::on_stop() {
 	if (m_pending_workspace) {
 		m_pending_workspace.reset();
 	} else if (!back.empty() && Config::get_preferences().play.return_after_stop && m_workspaces &&
-			   m_workspaces->get_active() == k_game_workspace) {
+			   m_workspaces->get_active() == K_GAME_WORKSPACE) {
 		m_pending_workspace = back;
 	}
 	sync_play_controls();
@@ -392,12 +392,12 @@ void EditorModule::start_playing() {
 
 void EditorModule::show_game_view() {
 	if (!Config::get_preferences().play.switch_to_game_view || !m_workspaces ||
-		m_context->is_window_visible(GameWindow::k_type_id) ||
-		m_workspaces->get_active() == k_game_workspace) {
+		m_context->is_window_visible(GameWindow::K_TYPE_ID) ||
+		m_workspaces->get_active() == K_GAME_WORKSPACE) {
 		return;
 	}
 	m_workspace_before_play = m_workspaces->get_active();
-	m_pending_workspace = std::string(k_game_workspace);
+	m_pending_workspace = std::string(K_GAME_WORKSPACE);
 }
 
 void EditorModule::toggle_pause() {
@@ -572,7 +572,7 @@ void EditorModule::register_windows() {
 		{ .id = "content", .title = "Content", .icon = "folder-open", .group = "Scene" });
 	m_windows->add<ConsoleWindow>({ .id = "console", .title = "Console", .icon = "terminal", .group = "Diagnostics" });
 	m_windows->add<GameWindow>(
-		{ .id = std::string(GameWindow::k_type_id), .title = "Game", .icon = "gamepad-2", .group = "Scene" });
+		{ .id = std::string(GameWindow::K_TYPE_ID), .title = "Game", .icon = "gamepad-2", .group = "Scene" });
 }
 
 void EditorModule::add_window_type(EditorWindowType type) {
@@ -644,11 +644,11 @@ void EditorModule::register_workspaces() {
 			{ 0.40F, tabs({ "console", "content" }) },
 		})));
 
-	m_workspaces->add(std::string(k_game_workspace),
+	m_workspaces->add(std::string(K_GAME_WORKSPACE),
 					  layout(row({
 						  { 0.18F, tabs({ "hierarchy" }) },
 						  { 0.60F,
-							column({ { 0.70F, tabs({ std::string(GameWindow::k_type_id) }) },
+							column({ { 0.70F, tabs({ std::string(GameWindow::K_TYPE_ID) }) },
 									 { 0.30F, tabs({ "console", "content" }) } }) },
 						  { 0.22F, tabs({ "inspector" }) },
 					  })));
@@ -912,8 +912,8 @@ void EditorModule::apply_preferences(bool force) {
 
 void EditorModule::preferences_edited() {
 	apply_preferences(false);
-	m_preferences_save_due = Aquila::Foundation::now() + k_settings_save_delay;
-	Aquila::Foundation::FrameScheduler::get()->request_frame_in(k_settings_save_seconds);
+	m_preferences_save_due = Aquila::Foundation::now() + K_SETTINGS_SAVE_DELAY;
+	Aquila::Foundation::FrameScheduler::get()->request_frame_in(K_SETTINGS_SAVE_SECONDS);
 }
 
 void EditorModule::write_project_settings(ProjectSettings settings) {
@@ -925,8 +925,8 @@ void EditorModule::write_project_settings(ProjectSettings settings) {
 		m_context->set_project(m_project);
 		m_context->on_settings_changed();
 	}
-	m_project_save_due = Aquila::Foundation::now() + k_settings_save_delay;
-	Aquila::Foundation::FrameScheduler::get()->request_frame_in(k_settings_save_seconds);
+	m_project_save_due = Aquila::Foundation::now() + K_SETTINGS_SAVE_DELAY;
+	Aquila::Foundation::FrameScheduler::get()->request_frame_in(K_SETTINGS_SAVE_SECONDS);
 }
 
 void EditorModule::save_settings_if_due(bool now) {

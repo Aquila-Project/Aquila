@@ -6,7 +6,7 @@ namespace Aquila::Graphics::Resources {
 
 namespace {
 
-constexpr Vec3 k_white = { 1, 1, 1 };
+constexpr Vec3 K_WHITE = { 1, 1, 1 };
 
 Uint32 count(const MeshParams &params, std::string_view name) {
 	return static_cast<Uint32>(params.find(name)->second);
@@ -21,7 +21,7 @@ struct CubeFace {
 	Vec3 up;
 };
 
-constexpr std::array<CubeFace, 6> k_cube_faces = { {
+constexpr std::array<CubeFace, 6> K_CUBE_FACES = { {
 	{ { 0, 0, 1 }, { 0, 1, 0 } },
 	{ { 0, 0, -1 }, { 0, 1, 0 } },
 	{ { 1, 0, 0 }, { 0, 1, 0 } },
@@ -30,17 +30,17 @@ constexpr std::array<CubeFace, 6> k_cube_faces = { {
 	{ { 0, -1, 0 }, { 0, 0, -1 } },
 } };
 
-constexpr std::array<Vec2, 4> k_quad_uvs = { Vec2(0, 0), Vec2(1, 0), Vec2(1, 1), Vec2(0, 1) };
+constexpr std::array<Vec2, 4> K_QUAD_UVS = { Vec2(0, 0), Vec2(1, 0), Vec2(1, 1), Vec2(0, 1) };
 
 MeshData make_cube(const MeshParams &params) {
 	const F32 h = number(params, "size") * 0.5F;
 	MeshData data;
-	for (const CubeFace &face : k_cube_faces) {
+	for (const CubeFace &face : K_CUBE_FACES) {
 		const Vec3 right = Math::cross(face.normal, face.up);
 		const auto first = static_cast<Uint32>(data.vertices.size());
-		for (const Vec2 &uv : k_quad_uvs) {
+		for (const Vec2 &uv : K_QUAD_UVS) {
 			const Vec3 pos = (face.normal + right * (uv.x * 2.F - 1.F) + face.up * (1.F - uv.y * 2.F)) * h;
-			data.vertices.push_back({ pos, k_white, face.normal, uv, Vec4(right, -1) });
+			data.vertices.push_back({ pos, K_WHITE, face.normal, uv, Vec4(right, -1) });
 		}
 		data.indices.insert(data.indices.end(), { first, first + 1, first + 2, first + 2, first + 3, first });
 	}
@@ -65,7 +65,7 @@ MeshData make_sphere(const MeshParams &params) {
 				? Vec3(0, stack == 0 ? 1 : -1, 0)
 				: Vec3(Math::sin(phi) * Math::cos(theta), Math::cos(phi), Math::sin(phi) * Math::sin(theta));
 			const Vec4 tangent = { -Math::sin(theta), 0, Math::cos(theta), -1 };
-			data.vertices.push_back({ normal * radius, k_white, normal, { u, v }, tangent });
+			data.vertices.push_back({ normal * radius, K_WHITE, normal, { u, v }, tangent });
 		}
 	}
 
@@ -98,8 +98,8 @@ MeshData make_cylinder(const MeshParams &params) {
 		const F32 angle = Math::TAU * u;
 		const Vec3 n = { Math::cos(angle), 0, Math::sin(angle) };
 		const Vec4 t = { -Math::sin(angle), 0, Math::cos(angle), -1 };
-		data.vertices.push_back({ { n.x * radius, half, n.z * radius }, k_white, n, { u, 0 }, t });
-		data.vertices.push_back({ { n.x * radius, -half, n.z * radius }, k_white, n, { u, 1 }, t });
+		data.vertices.push_back({ { n.x * radius, half, n.z * radius }, K_WHITE, n, { u, 0 }, t });
+		data.vertices.push_back({ { n.x * radius, -half, n.z * radius }, K_WHITE, n, { u, 1 }, t });
 	}
 	for (Uint32 i = 0; i < segments; i++) {
 		const Uint32 tc = i * 2;
@@ -113,13 +113,13 @@ MeshData make_cylinder(const MeshParams &params) {
 		const auto center = static_cast<Uint32>(data.vertices.size());
 		const Vec3 n = { 0, side, 0 };
 		const Vec4 t = { 1, 0, 0, -1 };
-		data.vertices.push_back({ { 0, half * side, 0 }, k_white, n, { 0.5F, 0.5F }, t });
+		data.vertices.push_back({ { 0, half * side, 0 }, K_WHITE, n, { 0.5F, 0.5F }, t });
 		for (Uint32 i = 0; i < segments; i++) {
 			const F32 angle = Math::TAU * F32(i) / F32(segments);
 			const F32 c = Math::cos(angle);
 			const F32 s = Math::sin(angle);
 			data.vertices.push_back({ { c * radius, half * side, s * radius },
-									  k_white,
+									  K_WHITE,
 									  n,
 									  { 0.5F + 0.5F * c, 0.5F - 0.5F * s * side },
 									  t });
@@ -149,7 +149,7 @@ MeshData make_plane(const MeshParams &params) {
 			const F32 u = F32(x) / F32(w_segs);
 			const F32 v = F32(y) / F32(d_segs);
 			data.vertices.push_back({ { (u - 0.5F) * width, 0, (v - 0.5F) * depth },
-									  k_white,
+									  K_WHITE,
 									  { 0, 1, 0 },
 									  { u, 1.F - v },
 									  { 1, 0, 0, -1 } });

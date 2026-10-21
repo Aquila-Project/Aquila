@@ -18,7 +18,7 @@ struct ModifierName {
 	std::string_view name;
 };
 
-constexpr std::array k_key_names{
+constexpr std::array K_KEY_NAMES{
 	KeyName{ KeyCode::Space, "Space" },
 	KeyName{ KeyCode::Apostrophe, "'" },
 	KeyName{ KeyCode::Comma, "," },
@@ -50,23 +50,23 @@ constexpr std::array k_key_names{
 	KeyName{ KeyCode::KeypadEnter, "KeypadEnter" },
 };
 
-constexpr std::array k_key_aliases{
+constexpr std::array K_KEY_ALIASES{
 	KeyName{ KeyCode::Escape, "Escape" }, KeyName{ KeyCode::Enter, "Return" },	KeyName{ KeyCode::Delete, "Del" },
 	KeyName{ KeyCode::Insert, "Ins" },	  KeyName{ KeyCode::Equal, "Equal" },	KeyName{ KeyCode::Minus, "Minus" },
 	KeyName{ KeyCode::Comma, "Comma" },	  KeyName{ KeyCode::Period, "Period" }, KeyName{ KeyCode::PageUp, "PgUp" },
 	KeyName{ KeyCode::PageDown, "PgDn" },
 };
 
-constexpr std::array k_modifier_names{
+constexpr std::array K_MODIFIER_NAMES{
 	ModifierName{ MODIFIER_CONTROL, "ctrl" }, ModifierName{ MODIFIER_CONTROL, "control" },
 	ModifierName{ MODIFIER_SHIFT, "shift" },  ModifierName{ MODIFIER_ALT, "alt" },
 	ModifierName{ MODIFIER_ALT, "option" },	  ModifierName{ MODIFIER_SUPER, "super" },
 	ModifierName{ MODIFIER_SUPER, "cmd" },	  ModifierName{ MODIFIER_SUPER, "meta" },
 };
 
-constexpr std::string_view k_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-constexpr std::string_view k_digits = "0123456789";
-constexpr std::array<std::string_view, 12> k_function_keys{ "F1", "F2", "F3", "F4",	 "F5",	"F6",
+constexpr std::string_view K_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+constexpr std::string_view K_DIGITS = "0123456789";
+constexpr std::array<std::string_view, 12> K_FUNCTION_KEYS{ "F1", "F2", "F3", "F4",	 "F5",	"F6",
 															"F7", "F8", "F9", "F10", "F11", "F12" };
 
 constexpr int code_of(KeyCode key) {
@@ -88,7 +88,7 @@ bool equals_ignoring_case(std::string_view a, std::string_view b) {
 }
 
 int modifier_from_name(std::string_view name) {
-	for (const ModifierName &modifier : k_modifier_names) {
+	for (const ModifierName &modifier : K_MODIFIER_NAMES) {
 		if (equals_ignoring_case(name, modifier.name)) {
 			return modifier.mod;
 		}
@@ -110,15 +110,15 @@ Option<int> parse_number(std::string_view text) {
 std::string_view key_name(KeyCode key) {
 	const int code = code_of(key);
 	if (code >= code_of(KeyCode::A) && code <= code_of(KeyCode::Z)) {
-		return k_letters.substr(static_cast<Usize>(code - code_of(KeyCode::A)), 1);
+		return K_LETTERS.substr(static_cast<Usize>(code - code_of(KeyCode::A)), 1);
 	}
 	if (code >= code_of(KeyCode::Num0) && code <= code_of(KeyCode::Num9)) {
-		return k_digits.substr(static_cast<Usize>(code - code_of(KeyCode::Num0)), 1);
+		return K_DIGITS.substr(static_cast<Usize>(code - code_of(KeyCode::Num0)), 1);
 	}
 	if (code >= code_of(KeyCode::F1) && code <= code_of(KeyCode::F12)) {
-		return k_function_keys[static_cast<Usize>(code - code_of(KeyCode::F1))];
+		return K_FUNCTION_KEYS[static_cast<Usize>(code - code_of(KeyCode::F1))];
 	}
-	for (const KeyName &entry : k_key_names) {
+	for (const KeyName &entry : K_KEY_NAMES) {
 		if (entry.key == key) {
 			return entry.name;
 		}
@@ -154,7 +154,7 @@ Option<KeyCode> key_from_name(std::string_view name) {
 		}
 	}
 
-	for (const auto &table : { std::span<const KeyName>(k_key_names), std::span<const KeyName>(k_key_aliases) }) {
+	for (const auto &table : { std::span<const KeyName>(K_KEY_NAMES), std::span<const KeyName>(K_KEY_ALIASES) }) {
 		for (const KeyName &entry : table) {
 			if (equals_ignoring_case(name, entry.name)) {
 				return entry.key;

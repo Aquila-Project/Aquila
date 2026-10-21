@@ -20,8 +20,8 @@ class DockPanel : public View {
 	~DockPanel() override;
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "DockPanel"; }
-	static constexpr ViewKind k_kind = ViewKind::DockPanel;
-	[[nodiscard]] ViewKind get_kind() const override { return k_kind; }
+	static constexpr ViewKind K_KIND = ViewKind::DockPanel;
+	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 	[[nodiscard]] const std::string &get_title() const { return m_title; }
 	void set_title(std::string title);
 

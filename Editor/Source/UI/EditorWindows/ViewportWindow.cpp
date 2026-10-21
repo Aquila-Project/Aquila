@@ -39,7 +39,7 @@ struct ShadingMode {
 	const char *icon;
 };
 
-constexpr std::array<ShadingMode, 7> k_shading_modes = { {
+constexpr std::array<ShadingMode, 7> K_SHADING_MODES = { {
 	{ .view = Rendering::DebugView::Lit, .label = "Lit", .icon = "sun" },
 	{ .view = Rendering::DebugView::Albedo, .label = "Albedo", .icon = "palette" },
 	{ .view = Rendering::DebugView::Normals, .label = "Normals", .icon = "arrow-up-from-dot" },
@@ -54,7 +54,7 @@ struct ToneMapperOption {
 	const char *label;
 };
 
-constexpr std::array<ToneMapperOption, 4> k_tone_mappers = { {
+constexpr std::array<ToneMapperOption, 4> K_TONE_MAPPERS = { {
 	{ .mapper = Rendering::ToneMapper::AgX, .label = "AgX" },
 	{ .mapper = Rendering::ToneMapper::Neutral, .label = "Khronos Neutral" },
 	{ .mapper = Rendering::ToneMapper::Aces, .label = "ACES" },
@@ -66,7 +66,7 @@ struct ShowToggle {
 	bool Rendering::RenderSettings::*flag;
 };
 
-constexpr std::array<ShowToggle, 5> k_show_toggles = { {
+constexpr std::array<ShowToggle, 5> K_SHOW_TOGGLES = { {
 	{ .label = "Grid", .flag = &Rendering::RenderSettings::show_grid },
 	{ .label = "Sky", .flag = &Rendering::RenderSettings::show_sky },
 	{ .label = "Shadows", .flag = &Rendering::RenderSettings::show_shadows },
@@ -281,7 +281,7 @@ void ViewportWindow::wire_shading(UI::Core::View &content) {
 	Rendering::RenderSettings &settings = context().engine().get_render_pipeline().get_settings();
 	shading->set_variant("overlay-dropdown");
 	shading->set_chevron(context().icon("chevron-down"));
-	for (const ShadingMode &mode : k_shading_modes) {
+	for (const ShadingMode &mode : K_SHADING_MODES) {
 		shading->add_option(std::to_string(static_cast<Uint32>(mode.view)), mode.label, context().icon(mode.icon));
 	}
 	shading->set_value(std::to_string(static_cast<Uint32>(settings.debug_view)));
@@ -306,7 +306,7 @@ void ViewportWindow::wire_show_menu(UI::Core::View &content) {
 	title->add_class("overlay-popover-title");
 
 	auto syncs = std::make_shared<std::vector<Delegate<void()>>>();
-	for (const ShowToggle &toggle : k_show_toggles) {
+	for (const ShowToggle &toggle : K_SHOW_TOGGLES) {
 		auto *row = popup->add_child<UI::Core::View>();
 		row->add_class("overlay-check-row");
 		auto *check = row->add_child<UI::Core::Checkbox>(settings.*toggle.flag);
@@ -374,13 +374,13 @@ void ViewportWindow::refresh_debug_info(F32 delta_time) {
 	if (m_debug_refresh_timer > 0.F) {
 		return;
 	}
-	constexpr F32 k_refresh_seconds = 0.25F;
-	m_debug_refresh_timer = k_refresh_seconds;
+	constexpr F32 K_REFRESH_SECONDS = 0.25F;
+	m_debug_refresh_timer = K_REFRESH_SECONDS;
 
 	Rendering::RenderPipeline &pipeline = context().engine().get_render_pipeline();
 	ViewportOverlay::DebugInfo info;
 	const Rendering::DebugView mode = pipeline.get_settings().debug_view;
-	for (const ShadingMode &shading : k_shading_modes) {
+	for (const ShadingMode &shading : K_SHADING_MODES) {
 		if (shading.view == mode) {
 			info.shading = shading.label;
 		}
@@ -479,7 +479,7 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 	m_tone_mapper = grid->add_row<UI::Core::Dropdown>("Tone Mapping");
 	m_tone_mapper->set_variant("props-dropdown");
 	m_tone_mapper->set_chevron(context().icon("chevron-down"));
-	for (const ToneMapperOption &option : k_tone_mappers) {
+	for (const ToneMapperOption &option : K_TONE_MAPPERS) {
 		m_tone_mapper->add_option(std::to_string(static_cast<Uint32>(option.mapper)), option.label);
 	}
 	m_tone_mapper->on_changed.connect([&settings](const std::string &value) {

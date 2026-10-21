@@ -20,7 +20,7 @@ using namespace Aquila::UI::Core;
 
 namespace {
 
-constexpr std::array<const char *, static_cast<Usize>(EntityGroup::Count)> k_group_labels = {
+constexpr std::array<const char *, static_cast<Usize>(EntityGroup::Count)> K_GROUP_LABELS = {
 	"ENVIRONMENT", "LIGHTS", "GEOMETRY", "CAMERAS", "EMPTY",
 };
 
@@ -73,7 +73,7 @@ TreeNode *HierarchyTreeView::ensure_group(EntityGroup group) {
 		return slot.node;
 	}
 
-	auto node = std::make_unique<TreeNode>(k_group_labels[static_cast<Usize>(group)], *this, 0);
+	auto node = std::make_unique<TreeNode>(K_GROUP_LABELS[static_cast<Usize>(group)], *this, 0);
 	node->set_selectable(false);
 	node->get_header()->add_class("hierarchy-group-header");
 	slot.count = node->get_actions()->add_child<Label>(std::string{});

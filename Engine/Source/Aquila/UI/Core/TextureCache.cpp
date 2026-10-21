@@ -237,9 +237,9 @@ GFX::GfxTexture *TextureCache::resolve_for_size(GFX::GfxTexture *texture, Vec2 p
 	if (owner == vector_owners().end()) {
 		return texture;
 	}
-	constexpr F32 k_max_raster_size = 4096.F;
-	const Uint32 width = static_cast<Uint32>(Math::min(Math::round(pixel_size.x), k_max_raster_size));
-	const Uint32 height = static_cast<Uint32>(Math::min(Math::round(pixel_size.y), k_max_raster_size));
+	constexpr F32 K_MAX_RASTER_SIZE = 4096.F;
+	const Uint32 width = static_cast<Uint32>(Math::min(Math::round(pixel_size.x), K_MAX_RASTER_SIZE));
+	const Uint32 height = static_cast<Uint32>(Math::min(Math::round(pixel_size.y), K_MAX_RASTER_SIZE));
 	return owner->second->vector_at_size(texture, width, height);
 }
 

@@ -12,11 +12,11 @@ using Aquila::Foundation::LogLevel;
 
 namespace {
 
-const std::filesystem::path k_ui_dir = std::filesystem::path(AQUILA_SOURCE_DIR) / "Resources/Engine/UI";
+const std::filesystem::path K_UI_DIR = std::filesystem::path(AQUILA_SOURCE_DIR) / "Resources/Engine/UI";
 
 std::vector<std::filesystem::path> files_with(std::string_view extension) {
 	std::vector<std::filesystem::path> files;
-	for (const auto &entry : std::filesystem::directory_iterator(k_ui_dir)) {
+	for (const auto &entry : std::filesystem::directory_iterator(K_UI_DIR)) {
 		if (entry.path().extension() == extension) {
 			files.push_back(entry.path());
 		}

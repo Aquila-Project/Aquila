@@ -10,8 +10,8 @@ class DockSplitter : public View {
 	explicit DockSplitter(SplitDirection dir);
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "DockSplitter"; }
-	static constexpr ViewKind k_kind = ViewKind::DockSplitter;
-	[[nodiscard]] ViewKind get_kind() const override { return k_kind; }
+	static constexpr ViewKind K_KIND = ViewKind::DockSplitter;
+	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 
 	void set_resize_before(bool v) { m_resize_before = v; }
 

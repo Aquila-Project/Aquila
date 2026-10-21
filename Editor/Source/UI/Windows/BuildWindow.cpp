@@ -30,14 +30,14 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr int k_min_window_size = 320;
-constexpr int k_max_window_size = 7680;
-constexpr std::string_view k_default_icon = "default";
+constexpr int K_MIN_WINDOW_SIZE = 320;
+constexpr int K_MAX_WINDOW_SIZE = 7680;
+constexpr std::string_view K_DEFAULT_ICON = "default";
 
-constexpr Vec4 k_info_color{ 0.62F, 0.62F, 0.62F, 1.F };
-constexpr Vec4 k_warning_color{ 0.83F, 0.67F, 0.29F, 1.F };
-constexpr Vec4 k_error_color{ 0.87F, 0.45F, 0.45F, 1.F };
-constexpr Vec4 k_success_color{ 0.29F, 0.72F, 0.44F, 1.F };
+constexpr Vec4 K_INFO_COLOR{ 0.62F, 0.62F, 0.62F, 1.F };
+constexpr Vec4 K_WARNING_COLOR{ 0.83F, 0.67F, 0.29F, 1.F };
+constexpr Vec4 K_ERROR_COLOR{ 0.87F, 0.45F, 0.45F, 1.F };
+constexpr Vec4 K_SUCCESS_COLOR{ 0.29F, 0.72F, 0.44F, 1.F };
 
 std::string describe(const Player::BuildStep &step) {
 	switch (step.kind) {
@@ -178,7 +178,7 @@ void BuildWindow::build_settings(View &content) {
 	for (DragInt *field : { m_width, m_height }) {
 		field->add_class("split-DragInt");
 		field->add_class("build-size-field");
-		field->set_int_range(k_min_window_size, k_max_window_size);
+		field->set_int_range(K_MIN_WINDOW_SIZE, K_MAX_WINDOW_SIZE);
 	}
 	m_width->set_int_value(static_cast<int>(settings.window_width));
 	m_height->set_int_value(static_cast<int>(settings.window_height));
@@ -187,12 +187,12 @@ void BuildWindow::build_settings(View &content) {
 	m_icon->set_variant("props-dropdown");
 	m_icon->set_chevron(m_context.icon("chevron-down"));
 	m_icon->set_icon(m_context.icon("image"));
-	m_icon->add_option(std::string(k_default_icon), "Aquila logo");
+	m_icon->add_option(std::string(K_DEFAULT_ICON), "Aquila logo");
 	const fs::path content_dir = fs::path(project.native_directory) / Aquila::SharedConstants::PROJECT_CONTENT_FOLDER;
 	for (const fs::path &png : project_pngs(content_dir)) {
 		m_icon->add_option(png.string(), png.lexically_relative(content_dir).generic_string());
 	}
-	m_icon->set_value(std::string(k_default_icon));
+	m_icon->set_value(std::string(K_DEFAULT_ICON));
 	if (!settings.icon.empty()) {
 		const fs::path icon = fs::path(project.native_directory) / settings.icon;
 		if (fs::is_regular_file(icon)) {
@@ -326,8 +326,8 @@ void BuildWindow::remember_choices() {
 	if (m_icon != nullptr) {
 		const std::string value = m_icon->get_value();
 		const fs::path relative = fs::path(value).lexically_relative(project.native_directory);
-		const bool inside = value != k_default_icon && !relative.empty() && *relative.begin() != "..";
-		if (value == k_default_icon) {
+		const bool inside = value != K_DEFAULT_ICON && !relative.empty() && *relative.begin() != "..";
+		if (value == K_DEFAULT_ICON) {
 			settings.icon.clear();
 		} else if (inside) {
 			settings.icon = relative.generic_string();
@@ -346,7 +346,7 @@ Player::BuildRequest BuildWindow::make_request() const {
 		.output_dir = m_output != nullptr ? m_output->get_text() : std::string(),
 		.window_width = static_cast<Uint32>(m_width != nullptr ? m_width->get_int_value() : 0),
 		.window_height = static_cast<Uint32>(m_height != nullptr ? m_height->get_int_value() : 0),
-		.icon_path = m_icon != nullptr && m_icon->get_value() != k_default_icon ? m_icon->get_value() : std::string(),
+		.icon_path = m_icon != nullptr && m_icon->get_value() != K_DEFAULT_ICON ? m_icon->get_value() : std::string(),
 		.window_title = project.settings.window_title,
 		.maximized = project.settings.start_maximized,
 		.tone_mapper = project.settings.tone_mapper,
@@ -494,7 +494,7 @@ void BuildWindow::log(LineKind kind, std::string text) {
 	if (m_log == nullptr) {
 		return;
 	}
-	constexpr std::array<Vec4, 5> colors{ k_info_color, Vec4(0.F), k_warning_color, k_error_color, k_success_color };
+	constexpr std::array<Vec4, 5> colors{ K_INFO_COLOR, Vec4(0.F), K_WARNING_COLOR, K_ERROR_COLOR, K_SUCCESS_COLOR };
 	m_log->add_line(std::move(text), colors[static_cast<Usize>(kind)]);
 	if (m_log_scroll != nullptr) {
 		m_log_scroll->scroll_to_bottom();

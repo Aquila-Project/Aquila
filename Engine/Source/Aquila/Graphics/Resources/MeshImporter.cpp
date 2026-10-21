@@ -11,7 +11,7 @@ namespace Aquila::Graphics::Resources {
 
 namespace {
 
-constexpr Int64 k_full_processing_limit = 5 * 1024 * 1024;
+constexpr Int64 K_FULL_PROCESSING_LIMIT = 5 * 1024 * 1024;
 
 void center_at_origin(std::vector<RHI::Vertex> &vertices) {
 	if (vertices.empty()) {
@@ -142,7 +142,7 @@ Option<MeshData> import_mesh(const std::string &path) {
 	}
 
 	Uint32 flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality;
-	if (file_size < k_full_processing_limit) {
+	if (file_size < K_FULL_PROCESSING_LIMIT) {
 		flags |= aiProcess_GenSmoothNormals | aiProcess_GenUVCoords;
 	}
 

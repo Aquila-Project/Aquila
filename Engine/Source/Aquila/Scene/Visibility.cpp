@@ -6,8 +6,8 @@
 namespace Aquila::SceneManagement {
 
 bool is_visible_in_hierarchy(const entt::registry &registry, entt::entity entity) {
-	constexpr int k_max_depth = 64;
-	for (int depth = 0; depth < k_max_depth && registry.valid(entity); ++depth) {
+	constexpr int K_MAX_DEPTH = 64;
+	for (int depth = 0; depth < K_MAX_DEPTH && registry.valid(entity); ++depth) {
 		if (const auto *metadata = registry.try_get<Components::MetadataComponent>(entity);
 			metadata != nullptr && !metadata->is_visible()) {
 			return false;

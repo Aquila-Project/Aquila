@@ -9,15 +9,15 @@ namespace Aquila::UI::Core {
 
 namespace {
 
-constexpr std::string_view k_fonts_dir = "/resources/Engine/Fonts";
-constexpr std::string_view k_fallback_font = "/resources/Engine/Fonts/Outfit/Outfit-Regular.ttf";
+constexpr std::string_view K_FONTS_DIR = "/resources/Engine/Fonts";
+constexpr std::string_view K_FALLBACK_FONT = "/resources/Engine/Fonts/Outfit/Outfit-Regular.ttf";
 
 std::string family_to_path(const std::string &family) {
 	auto *vfs = Platform::Filesystem::VirtualFileSystem::get();
-	const std::string dir = std::string(k_fonts_dir) + "/" + family;
+	const std::string dir = std::string(K_FONTS_DIR) + "/" + family;
 	if (family.empty() || family.find('/') != std::string::npos || vfs == nullptr || !vfs->is_directory(dir)) {
 		AQUILA_LOG_WARNING("FontManager: no font family '{}', using Outfit", family);
-		return std::string(k_fallback_font);
+		return std::string(K_FALLBACK_FONT);
 	}
 	std::vector<std::string> files = vfs->list_directory(dir);
 	std::erase_if(files, [](const std::string &file) { return !file.ends_with(".ttf") && !file.ends_with(".otf"); });
@@ -28,7 +28,7 @@ std::string family_to_path(const std::string &family) {
 	if (regular != files.end()) {
 		return dir + "/" + *regular;
 	}
-	return files.empty() ? std::string(k_fallback_font) : dir + "/" + files.front();
+	return files.empty() ? std::string(K_FALLBACK_FONT) : dir + "/" + files.front();
 }
 
 }
@@ -39,8 +39,8 @@ std::vector<std::string> FontManager::available_families() {
 	if (vfs == nullptr) {
 		return families;
 	}
-	for (const std::string &entry : vfs->list_directory(std::string(k_fonts_dir))) {
-		if (vfs->is_directory(std::string(k_fonts_dir) + "/" + entry)) {
+	for (const std::string &entry : vfs->list_directory(std::string(K_FONTS_DIR))) {
+		if (vfs->is_directory(std::string(K_FONTS_DIR) + "/" + entry)) {
 			families.push_back(entry);
 		}
 	}

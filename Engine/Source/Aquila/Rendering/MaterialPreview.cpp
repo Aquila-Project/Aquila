@@ -27,19 +27,19 @@ namespace Aquila::Rendering {
 
 namespace {
 
-constexpr Uint32 k_frame_slot = 0;
-constexpr F32 k_camera_distance = 4.4F;
-constexpr F32 k_fov_degrees = 30.F;
-constexpr F32 k_near_plane = 0.1F;
-constexpr F32 k_far_plane = 20.F;
-constexpr F32 k_ev100 = 12.F;
-constexpr F32 k_key_lux = 10000.F;
-constexpr F32 k_key_angular_diameter = 3.F;
-const Vec3 k_sky_nits{ 600.F, 620.F, 680.F };
-const Vec3 k_sky_gradient_nits{ 320.F, 330.F, 360.F };
-const Vec4 k_backdrop{ 0.03F, 0.03F, 0.035F, 1.F };
-constexpr F32 k_sh_band0 = 0.282095F;
-constexpr F32 k_sh_band1 = 0.488603F;
+constexpr Uint32 K_FRAME_SLOT = 0;
+constexpr F32 K_CAMERA_DISTANCE = 4.4F;
+constexpr F32 K_FOV_DEGREES = 30.F;
+constexpr F32 K_NEAR_PLANE = 0.1F;
+constexpr F32 K_FAR_PLANE = 20.F;
+constexpr F32 K_EV100 = 12.F;
+constexpr F32 K_KEY_LUX = 10000.F;
+constexpr F32 K_KEY_ANGULAR_DIAMETER = 3.F;
+const Vec3 K_SKY_NITS{ 600.F, 620.F, 680.F };
+const Vec3 K_SKY_GRADIENT_NITS{ 320.F, 330.F, 360.F };
+const Vec4 K_BACKDROP{ 0.03F, 0.03F, 0.035F, 1.F };
+constexpr F32 K_SH_BAND0 = 0.282095F;
+constexpr F32 K_SH_BAND1 = 0.488603F;
 
 struct ToneMapPushConstants {
 	Uint32 tone_mapper = 0;
@@ -48,12 +48,12 @@ struct ToneMapPushConstants {
 
 GpuCameraData preview_camera(Uint32 size) {
 	Mat4 world(1.F);
-	world[3] = Vec4(0.F, 0.F, -k_camera_distance, 1.F);
+	world[3] = Vec4(0.F, 0.F, -K_CAMERA_DISTANCE, 1.F);
 
 	GpuCameraData data{};
 	data.view = Math::inverse(world);
 	data.projection =
-		Math::perspective_vulkan(Math::radians(k_fov_degrees), 1.F, k_near_plane, k_far_plane);
+		Math::perspective_vulkan(Math::radians(K_FOV_DEGREES), 1.F, K_NEAR_PLANE, K_FAR_PLANE);
 	data.projection[1][1] *= -1.F;
 	data.view_projection = data.projection * data.view;
 	data.inverse_view = world;
@@ -64,18 +64,18 @@ GpuCameraData preview_camera(Uint32 size) {
 	data.forward = Vec4(0.F, 0.F, 1.F, 0.F);
 	data.up = Vec4(0.F, 1.F, 0.F, 0.F);
 	data.right = Vec4(1.F, 0.F, 0.F, 0.F);
-	data.near_plane = k_near_plane;
-	data.far_plane = k_far_plane;
-	data.fov = k_fov_degrees;
+	data.near_plane = K_NEAR_PLANE;
+	data.far_plane = K_FAR_PLANE;
+	data.fov = K_FOV_DEGREES;
 	data.aspect_ratio = 1.F;
 	data.resolution = Vec2(static_cast<F32>(size));
 	return data;
 }
 
 GpuLightData key_light() {
-	const F32 half_angle = Math::radians(k_key_angular_diameter * 0.5F);
+	const F32 half_angle = Math::radians(K_KEY_ANGULAR_DIAMETER * 0.5F);
 	GpuLightData light{};
-	light.m_color_and_intensity = Vec4(1.F, 0.97F, 0.93F, k_key_lux);
+	light.m_color_and_intensity = Vec4(1.F, 0.97F, 0.93F, K_KEY_LUX);
 	light.m_direction_and_type = Vec4(Math::normalize(Vec3(0.55F, -0.6F, 0.6F)),
 									  static_cast<F32>(SceneManagement::Components::LightComponent::Type::Directional));
 	light.m_cos_inner_angle = 1.F;
@@ -87,8 +87,8 @@ GpuLightData key_light() {
 
 GpuEnvironmentData studio_environment() {
 	GpuEnvironmentData environment{};
-	environment.m_sh_coeffs[0] = Vec4(k_sky_nits / k_sh_band0, 0.F);
-	environment.m_sh_coeffs[1] = Vec4(-k_sky_gradient_nits / k_sh_band1, 0.F);
+	environment.m_sh_coeffs[0] = Vec4(K_SKY_NITS / K_SH_BAND0, 0.F);
+	environment.m_sh_coeffs[1] = Vec4(-K_SKY_GRADIENT_NITS / K_SH_BAND1, 0.F);
 	environment.m_tint_and_intensity = Vec4(1.F);
 	environment.m_enabled = 1;
 	return environment;
@@ -163,13 +163,13 @@ void MaterialPreview::create_resources() {
 		return m_ctx.create_render_pass(desc);
 	};
 	m_scene_pass = scene_pass(Vec4(0.F));
-	m_backdrop_pass = scene_pass(k_backdrop);
+	m_backdrop_pass = scene_pass(K_BACKDROP);
 
 	GpuFrameData frame{};
 	frame.main_camera = preview_camera(m_size);
 	frame.screen_resolution = Vec2(static_cast<F32>(m_size));
 	frame.light_count = 1;
-	frame.exposure = Foundation::Photometry::exposure(k_ev100);
+	frame.exposure = Foundation::Photometry::exposure(K_EV100);
 
 	const GpuLightData light = key_light();
 	const GpuEnvironmentData environment = studio_environment();
@@ -309,12 +309,12 @@ Ref<GFX::GfxTexture> MaterialPreview::render(Graphics::Material &material, Ref<G
 	const F32 size = static_cast<F32>(m_size);
 
 	m_ctx.wait_idle();
-	material.flush(k_frame_slot);
+	material.flush(K_FRAME_SLOT);
 	m_ctx.execute_immediate(RHI::CommandListType::Graphics, [&](GFX::GfxCommandList &cmd) {
 		scene_pass.begin(cmd);
 		cmd.set_viewport(0.F, 0.F, size, size);
 		cmd.set_scissor(0, 0, m_size, m_size);
-		material.bind(cmd, 1, k_frame_slot);
+		material.bind(cmd, 1, K_FRAME_SLOT);
 		cmd.bind_descriptor_set(0, *m_scene_set);
 		cmd.push_constants(push, RHI::ShaderStageFlags::Vertex | RHI::ShaderStageFlags::Fragment);
 		cmd.bind_vertex_buffer(m_sphere->get_vertex_buffer());

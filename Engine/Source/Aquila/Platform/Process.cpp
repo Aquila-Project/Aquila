@@ -96,15 +96,15 @@ const char *file_manager_action_name() {
 namespace {
 
 std::string file_uri(const std::string &path) {
-	constexpr std::string_view k_hex = "0123456789ABCDEF";
+	constexpr std::string_view K_HEX = "0123456789ABCDEF";
 	std::string uri = "file://";
 	for (const unsigned char c : path) {
 		if (std::isalnum(c) != 0 || c == '/' || c == '-' || c == '_' || c == '.' || c == '~') {
 			uri += static_cast<char>(c);
 		} else {
 			uri += '%';
-			uri += k_hex[c >> 4];
-			uri += k_hex[c & 15];
+			uri += K_HEX[c >> 4];
+			uri += K_HEX[c & 15];
 		}
 	}
 	return uri;

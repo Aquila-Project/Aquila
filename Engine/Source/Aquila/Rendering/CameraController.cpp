@@ -11,8 +11,8 @@ using Platform::Input;
 namespace Events = Platform::Events;
 
 namespace {
-constexpr F32 kRotateSensitivity = 0.0035F;
-constexpr F32 kOrbitSensitivity = 0.0075F;
+constexpr F32 K_ROTATE_SENSITIVITY = 0.0035F;
+constexpr F32 K_ORBIT_SENSITIVITY = 0.0075F;
 
 bool point_in_rect(Vec2 point, Vec2 position, Vec2 size) {
 	return point.x >= position.x && point.y >= position.y && point.x < position.x + size.x &&
@@ -158,11 +158,11 @@ void CameraController::update(F32 delta_time) {
 
 	const Vec2 look = Vec2(delta.x, m_invert_y ? -delta.y : delta.y) * m_look_sensitivity;
 	if (m_nav_mode == NavMode::Orbit) {
-		m_camera.orbit_rotate(look.x * kOrbitSensitivity, -look.y * kOrbitSensitivity);
+		m_camera.orbit_rotate(look.x * K_ORBIT_SENSITIVITY, -look.y * K_ORBIT_SENSITIVITY);
 		return;
 	}
 
-	m_camera.rotate(look.x * kRotateSensitivity, look.y * kRotateSensitivity);
+	m_camera.rotate(look.x * K_ROTATE_SENSITIVITY, look.y * K_ROTATE_SENSITIVITY);
 
 	m_camera.reset_speed();
 	m_camera.get_movement_speed() = m_move_speed;

@@ -48,7 +48,7 @@ struct Fixture {
 	}
 };
 
-constexpr const char *k_long_text = "Build and run the whole project with every scene in it";
+constexpr const char *K_LONG_TEXT = "Build and run the whole project with every scene in it";
 
 F32 single_line_height(const std::function<View *(View &)> &make) {
 	Fixture wide(2000.F);
@@ -62,14 +62,14 @@ F32 single_line_height(const std::function<View *(View &)> &make) {
 TEST_SUITE("Text wrapping") {
 	TEST_CASE("a label wraps inside a narrow clipped column") {
 		Fixture narrow(120.F);
-		auto *label = narrow.box->add_child<Label>(std::string(k_long_text));
+		auto *label = narrow.box->add_child<Label>(std::string(K_LONG_TEXT));
 		narrow.layout();
 		CHECK(label->get_layout_rect().size.x <= 120.F + 0.5F);
 		CHECK(label->get_layout_rect().size.y > test_gpu().font->measure_text("A", 14.F).y * 1.5F);
 	}
 
 	TEST_CASE("a button grows taller when its text wraps") {
-		auto make = [](View &parent) -> View * { return parent.add_child<Button>(std::string(k_long_text)); };
+		auto make = [](View &parent) -> View * { return parent.add_child<Button>(std::string(K_LONG_TEXT)); };
 		const F32 one_line = single_line_height(make);
 
 		Fixture narrow(120.F);
@@ -83,7 +83,7 @@ TEST_SUITE("Text wrapping") {
 		auto make = [](View &parent) -> View * {
 			auto *dropdown = parent.add_child<Dropdown>();
 			dropdown->add_option("short", "Short");
-			dropdown->add_option("long", k_long_text);
+			dropdown->add_option("long", K_LONG_TEXT);
 			dropdown->set_value("long");
 			return dropdown;
 		};
@@ -106,10 +106,10 @@ TEST_SUITE("Text wrapping") {
 		wide.box->merge_style(row);
 		auto *dropdown = wide.box->add_child<Dropdown>();
 		dropdown->add_option("short", "Short");
-		dropdown->add_option("long", k_long_text);
+		dropdown->add_option("long", K_LONG_TEXT);
 		dropdown->set_value("short");
 		wide.layout();
-		CHECK(dropdown->get_layout_rect().size.x > test_gpu().font->measure_text(k_long_text, 14.F).x);
+		CHECK(dropdown->get_layout_rect().size.x > test_gpu().font->measure_text(K_LONG_TEXT, 14.F).x);
 		CHECK(dropdown->get_layout_rect().size.y < 2.F * test_gpu().font->measure_text("A", 14.F).y + 12.F);
 	}
 
@@ -163,7 +163,7 @@ TEST_SUITE("Text wrapping") {
 		fixed_height.height = StyleLength::pixel(200.F);
 		auto *scroll = narrow.box->add_child<ScrollView>();
 		scroll->merge_style(fixed_height);
-		auto *label = scroll->add_child<Label>(std::string(k_long_text));
+		auto *label = scroll->add_child<Label>(std::string(K_LONG_TEXT));
 		narrow.layout();
 		CHECK(label->get_layout_rect().size.x <= 150.F + 0.5F);
 		CHECK(label->get_layout_rect().size.y > test_gpu().font->measure_text("A", 14.F).y * 1.5F);

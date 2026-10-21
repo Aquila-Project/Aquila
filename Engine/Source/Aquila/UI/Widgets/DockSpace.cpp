@@ -609,10 +609,10 @@ DockNode *find_first_leaf(DockNode *node) {
 
 void apply_child_fractions(const std::vector<DockNode *> &leaves, const std::vector<DockNodeDesc> &children,
 						   SplitDirection dir) {
-	constexpr std::size_t k_grower = 1;
+	constexpr std::size_t K_GROWER = 1;
 	for (std::size_t i = 0; i < leaves.size(); ++i) {
 		StyleProperties sp;
-		if (i == k_grower) {
+		if (i == K_GROWER) {
 			sp.flex_grow = 1.F;
 		} else {
 			sp.flex_grow = 0.F;

@@ -47,7 +47,7 @@ void GameWindow::build(UI::Core::View &content) {
 }
 
 bool GameWindow::is_live(const EditorContext &context) {
-	return context.engine().get_play_state() != PlayState::Stopped && context.is_window_visible(k_type_id);
+	return context.engine().get_play_state() != PlayState::Stopped && context.is_window_visible(K_TYPE_ID);
 }
 
 void GameWindow::update(F32) {

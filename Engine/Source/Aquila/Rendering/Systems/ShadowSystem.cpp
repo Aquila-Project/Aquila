@@ -235,7 +235,7 @@ void ShadowSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 
 	auto draw_calls = collect_casters(ctx, false);
 
-	const F32 size = static_cast<F32>(SceneFrameData::kShadowMapSize);
+	const F32 size = static_cast<F32>(SceneFrameData::K_SHADOW_MAP_SIZE);
 	const auto &cascade_vp = frame_data->get_cascade_view_proj();
 
 	for (Uint32 cascade = 0; cascade < SHADOW_CASCADE_COUNT; ++cascade) {

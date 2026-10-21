@@ -67,9 +67,9 @@ void TextInput::on_mouse_press(Platform::MouseButton btn, Vec2 pos) {
 	const float font_size = get_display_style().font_size;
 	const float scale = (font_size > 0.F) ? font_size : SharedConstants::FONT_DEFAULT_SIZE;
 
-	constexpr float k_pad_x = 4.F;
-	const float visible_width = get_layout_rect().size.x - k_pad_x * 2.F;
-	const float local_x = pos.x - get_absolute_position().x - k_pad_x + m_scroll_offset_x;
+	constexpr float K_PAD_X = 4.F;
+	const float visible_width = get_layout_rect().size.x - K_PAD_X * 2.F;
+	const float local_x = pos.x - get_absolute_position().x - K_PAD_X + m_scroll_offset_x;
 	const size_t hit = m_state.hit_test_pos(*font, scale, local_x);
 
 	const bool shift = Platform::Input::is_key_pressed(Platform::KeyCode::LeftShift) ||
@@ -98,9 +98,9 @@ void TextInput::on_mouse_move(Vec2 pos) {
 	const float font_size = get_display_style().font_size;
 	const float scale = (font_size > 0.F) ? font_size : SharedConstants::FONT_DEFAULT_SIZE;
 
-	constexpr float k_pad_x = 4.F;
-	const float visible_width = get_layout_rect().size.x - k_pad_x * 2.F;
-	const float local_x = pos.x - get_absolute_position().x - k_pad_x + m_scroll_offset_x;
+	constexpr float K_PAD_X = 4.F;
+	const float visible_width = get_layout_rect().size.x - K_PAD_X * 2.F;
+	const float local_x = pos.x - get_absolute_position().x - K_PAD_X + m_scroll_offset_x;
 	const size_t hit = m_state.hit_test_pos(*font, scale, local_x);
 	if (hit != m_state.cursor) {
 		m_state.cursor = hit;
@@ -116,8 +116,8 @@ void TextInput::on_key_press(Platform::KeyCode key, int mods) {
 		if (Text::FontAtlas *font = resolve_font()) {
 			const float font_size = get_display_style().font_size;
 			const float scale = (font_size > 0.F) ? font_size : SharedConstants::FONT_DEFAULT_SIZE;
-			constexpr float k_pad_x = 4.F;
-			const float visible_width = get_layout_rect().size.x - k_pad_x * 2.F;
+			constexpr float K_PAD_X = 4.F;
+			const float visible_width = get_layout_rect().size.x - K_PAD_X * 2.F;
 			clamp_scroll_offset(font, scale, visible_width);
 		}
 		reset_blink();
@@ -162,16 +162,16 @@ void TextInput::on_focus_lost() {
 }
 
 bool TextInput::on_update(F32) {
-	constexpr F64 k_blink_period = 0.53;
+	constexpr F64 K_BLINK_PERIOD = 0.53;
 	const F64 elapsed = Foundation::elapsed_seconds(m_blink_start, Foundation::now());
-	const auto phase = static_cast<Int64>(elapsed / k_blink_period);
+	const auto phase = static_cast<Int64>(elapsed / K_BLINK_PERIOD);
 	const bool visible = phase % 2 == 0;
 	if (visible != m_caret_visible) {
 		m_caret_visible = visible;
 		queue_redraw();
 	}
 	if (Canvas *canvas = get_canvas(); canvas != nullptr && is_focused()) {
-		canvas->request_frame_in((static_cast<F64>(phase + 1) * k_blink_period) - elapsed);
+		canvas->request_frame_in((static_cast<F64>(phase + 1) * K_BLINK_PERIOD) - elapsed);
 	}
 	return false;
 }
@@ -210,24 +210,24 @@ void TextInput::on_draw_self(Rendering::DrawList &draw_list) {
 
 	const float scale = font_size;
 	const float line_h = font->get_line_height() * scale;
-	const float k_pad_x = style.padding.left.value;
-	const float k_pad_y = style.padding.top.value;
-	const float content_h = rect.size.y - (k_pad_y * 2.0F);
-	const float text_y = rect.position.y + k_pad_y + ((content_h - line_h) * 0.5F);
+	const float K_PAD_X = style.padding.left.value;
+	const float K_PAD_Y = style.padding.top.value;
+	const float content_h = rect.size.y - (K_PAD_Y * 2.0F);
+	const float text_y = rect.position.y + K_PAD_Y + ((content_h - line_h) * 0.5F);
 
 	const Rect text_rect = {
     .position = {
-        rect.position.x + k_pad_x - m_scroll_offset_x,
+        rect.position.x + K_PAD_X - m_scroll_offset_x,
         text_y,
     },
     .size = {
-        rect.size.x - (k_pad_x * 2.0F),
+        rect.size.x - (K_PAD_X * 2.0F),
         line_h,
     },
 };
 	const Rect clip = {
-		.position = { rect.position.x + k_pad_x - 1.F, rect.position.y },
-		.size = { Math::max(rect.size.x - (k_pad_x * 2.F) + 2.F, 0.F), rect.size.y },
+		.position = { rect.position.x + K_PAD_X - 1.F, rect.position.y },
+		.size = { Math::max(rect.size.x - (K_PAD_X * 2.F) + 2.F, 0.F), rect.size.y },
 	};
 	draw_list.push_clip(clip, z + 1);
 

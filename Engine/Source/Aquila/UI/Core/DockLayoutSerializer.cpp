@@ -14,8 +14,8 @@ namespace Aquila::UI::Core {
 
 namespace {
 
-constexpr std::array<Uint8, 4> k_magic = { 'A', 'Q', 'D', 'L' };
-constexpr Uint32 k_version = 1;
+constexpr std::array<Uint8, 4> K_MAGIC = { 'A', 'Q', 'D', 'L' };
+constexpr Uint32 K_VERSION = 1;
 
 void put_u8(std::vector<Uint8> &out, Uint8 value) {
 	out.push_back(value);
@@ -207,23 +207,23 @@ DockLayoutDesc DockLayoutSerializer::capture(const DockSpace &space) {
 
 std::vector<Uint8> DockLayoutSerializer::encode(const DockLayoutDesc &desc) {
 	std::vector<Uint8> out;
-	out.insert(out.end(), k_magic.begin(), k_magic.end());
-	put_u32(out, k_version);
+	out.insert(out.end(), K_MAGIC.begin(), K_MAGIC.end());
+	put_u32(out, K_VERSION);
 	encode_node(out, desc.root);
 	return out;
 }
 
 Option<DockLayoutDesc> DockLayoutSerializer::decode(const Uint8 *data, Usize size) {
 	Reader reader{ data, size };
-	if (!reader.ensure(k_magic.size() + 4)) {
+	if (!reader.ensure(K_MAGIC.size() + 4)) {
 		return std::nullopt;
 	}
-	for (const Uint8 expected : k_magic) {
+	for (const Uint8 expected : K_MAGIC) {
 		if (reader.u8() != expected) {
 			return std::nullopt;
 		}
 	}
-	if (reader.u32() != k_version) {
+	if (reader.u32() != K_VERSION) {
 		return std::nullopt;
 	}
 

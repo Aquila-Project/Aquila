@@ -67,10 +67,10 @@ static Clay_TextAlignment to_clay_text_align(TextAlign align) {
 	}
 }
 
-static constexpr F32 k_font_size_units = 100.F;
+static constexpr F32 K_FONT_SIZE_UNITS = 100.F;
 
 static uint16_t to_clay_font_size(F32 font_size) {
-	return static_cast<uint16_t>(Math::clamp(Math::round(font_size * k_font_size_units), 0.F, 65535.F));
+	return static_cast<uint16_t>(Math::clamp(Math::round(font_size * K_FONT_SIZE_UNITS), 0.F, 65535.F));
 }
 
 static uint16_t to_clay_font_id(const Text::FontAtlas *font) {
@@ -85,7 +85,7 @@ static Clay_Dimensions measure_clay_text(Clay_StringSlice text, Clay_TextElement
 		return { 0.F, 0.F };
 	}
 	const std::string_view slice(text.chars, static_cast<size_t>(text.length));
-	const Vec2 dims = font->measure_text(slice, static_cast<F32>(config->fontSize) / k_font_size_units);
+	const Vec2 dims = font->measure_text(slice, static_cast<F32>(config->fontSize) / K_FONT_SIZE_UNITS);
 	return { dims.x, dims.y };
 }
 
@@ -244,8 +244,8 @@ void LayoutEngine::run_layout(View *root, Vec2 mouse_pos, bool mouse_down, Vec2 
 	Clay_UpdateScrollContainers(false, { scroll_delta.x, scroll_delta.y }, delta_time);
 	m_size_changed = false;
 	m_resized_nodes.clear();
-	constexpr int k_max_wrap_passes = 3;
-	for (int pass = 0; pass < k_max_wrap_passes; ++pass) {
+	constexpr int K_MAX_WRAP_PASSES = 3;
+	for (int pass = 0; pass < K_MAX_WRAP_PASSES; ++pass) {
 		m_wrap_lines.clear();
 		m_intrinsic_sizes.clear();
 		Clay_BeginLayout();

@@ -9,9 +9,9 @@
 namespace Aquila::UI::Core {
 
 namespace {
-constexpr Uint32 k_floating_width = 800;
-constexpr Uint32 k_floating_height = 600;
-constexpr Vec2 k_floating_cursor_offset = { 60.F, 12.F };
+constexpr Uint32 K_FLOATING_WIDTH = 800;
+constexpr Uint32 K_FLOATING_HEIGHT = 600;
+constexpr Vec2 K_FLOATING_CURSOR_OFFSET = { 60.F, 12.F };
 
 bool contains_local(Vec2 local, Vec2 size) {
 	return local.x >= 0.F && local.y >= 0.F && local.x < size.x && local.y < size.y;
@@ -137,7 +137,7 @@ void DockWindowManager::handle_tear_off(Aquila::Rendering::RenderWindowId source
 
 void DockWindowManager::spawn_floating_panel(Unique<View> panel_subtree, std::string title, Vec2 screen_pos) {
 	auto floating = std::make_unique<FloatingPanelWindow>();
-	floating->build(std::move(panel_subtree), title, k_floating_width, k_floating_height, m_style_paths);
+	floating->build(std::move(panel_subtree), title, K_FLOATING_WIDTH, K_FLOATING_HEIGHT, m_style_paths);
 	FloatingPanelWindow *panel = floating.get();
 
 	Aquila::Rendering::RenderWindowCallbacks callbacks;
@@ -151,8 +151,8 @@ void DockWindowManager::spawn_floating_panel(Unique<View> panel_subtree, std::st
 	callbacks.forward_events = true;
 
 	const Aquila::Rendering::RenderWindowId window =
-		m_host.create_window(k_floating_width, k_floating_height, title, std::move(callbacks));
-	m_host.set_window_position(window, screen_pos - k_floating_cursor_offset);
+		m_host.create_window(K_FLOATING_WIDTH, K_FLOATING_HEIGHT, title, std::move(callbacks));
+	m_host.set_window_position(window, screen_pos - K_FLOATING_CURSOR_OFFSET);
 
 	wire_dock_space(panel->get_dock_space(), window);
 

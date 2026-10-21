@@ -23,7 +23,7 @@ using Reflection::PropertyMark;
 
 namespace {
 
-constexpr std::array<PropertyMark, 6> k_illuminance_marks = { {
+constexpr std::array<PropertyMark, 6> K_ILLUMINANCE_MARKS = { {
 	{ .value = 0.25F, .label = "Full moon" },
 	{ .value = 10.F, .label = "Twilight" },
 	{ .value = 400.F, .label = "Sunrise" },
@@ -32,7 +32,7 @@ constexpr std::array<PropertyMark, 6> k_illuminance_marks = { {
 	{ .value = 100000.F, .label = "Clear noon sun" },
 } };
 
-constexpr std::array<PropertyMark, 6> k_lumen_marks = { {
+constexpr std::array<PropertyMark, 6> K_LUMEN_MARKS = { {
 	{ .value = 12.F, .label = "Candle" },
 	{ .value = 450.F, .label = "40 W bulb" },
 	{ .value = 800.F, .label = "60 W bulb" },
@@ -41,7 +41,7 @@ constexpr std::array<PropertyMark, 6> k_lumen_marks = { {
 	{ .value = 100000.F, .label = "Stadium light" },
 } };
 
-constexpr std::array<PropertyMark, 5> k_candela_marks = { {
+constexpr std::array<PropertyMark, 5> K_CANDELA_MARKS = { {
 	{ .value = 1.F, .label = "Candle" },
 	{ .value = 65.F, .label = "60 W bulb" },
 	{ .value = 1000.F, .label = "Flashlight" },
@@ -49,7 +49,7 @@ constexpr std::array<PropertyMark, 5> k_candela_marks = { {
 	{ .value = 200000.F, .label = "Searchlight" },
 } };
 
-constexpr std::array<PropertyMark, 6> k_temperature_marks = { {
+constexpr std::array<PropertyMark, 6> K_TEMPERATURE_MARKS = { {
 	{ .value = 1900.F, .label = "Candle" },
 	{ .value = 2700.F, .label = "Tungsten bulb" },
 	{ .value = 3400.F, .label = "Halogen lamp" },
@@ -58,14 +58,14 @@ constexpr std::array<PropertyMark, 6> k_temperature_marks = { {
 	{ .value = 9000.F, .label = "Blue sky" },
 } };
 
-constexpr std::array<PropertyMark, 4> k_sun_size_marks = { {
+constexpr std::array<PropertyMark, 4> K_SUN_SIZE_MARKS = { {
 	{ .value = Foundation::Photometry::SUN_ANGULAR_DIAMETER, .label = "Clear sky sun" },
 	{ .value = 1.5F, .label = "Hazy sun" },
 	{ .value = 5.F, .label = "Thin clouds" },
 	{ .value = 15.F, .label = "Overcast glow" },
 } };
 
-constexpr std::array<PropertyMark, 6> k_exposure_marks = { {
+constexpr std::array<PropertyMark, 6> K_EXPOSURE_MARKS = { {
 	{ .value = -2.F, .label = "Full moon night" },
 	{ .value = 3.F, .label = "Candle light" },
 	{ .value = 7.F, .label = "Indoors" },
@@ -74,22 +74,22 @@ constexpr std::array<PropertyMark, 6> k_exposure_marks = { {
 	{ .value = 15.F, .label = "Sunny day" },
 } };
 
-constexpr std::array<PropertyMark, 4> k_fog_density_marks = { {
+constexpr std::array<PropertyMark, 4> K_FOG_DENSITY_MARKS = { {
 	{ .value = 0.002F, .label = "Light haze" },
 	{ .value = 0.02F, .label = "Mist" },
 	{ .value = 0.1F, .label = "Fog" },
 	{ .value = 0.5F, .label = "Dense fog" },
 } };
 
-constexpr F32 k_min_temperature = 1667.F;
-constexpr F32 k_max_temperature = 12000.F;
+constexpr F32 K_MIN_TEMPERATURE = 1667.F;
+constexpr F32 K_MAX_TEMPERATURE = 12000.F;
 
 const std::array<Vec4, 16> &temperature_gradient() {
 	static const std::array<Vec4, 16> colors = [] {
 		std::array<Vec4, 16> out{};
 		for (Usize i = 0; i < out.size(); ++i) {
 			const F32 t = static_cast<F32>(i) / static_cast<F32>(out.size() - 1);
-			Vec3 color = Foundation::Photometry::blackbody(Math::lerp(k_min_temperature, k_max_temperature, t));
+			Vec3 color = Foundation::Photometry::blackbody(Math::lerp(K_MIN_TEMPERATURE, K_MAX_TEMPERATURE, t));
 			color /= Math::max(Math::max(color.r, color.g), Math::max(color.b, 1e-4F));
 			out[i] = Vec4(Math::pow(color, Vec3(1.F / 2.2F)), 1.F);
 		}
@@ -138,7 +138,7 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .unit = "EV",
 								 .slider_min = -6.F,
 								 .slider_max = 18.F,
-								 .marks = k_exposure_marks })
+								 .marks = K_EXPOSURE_MARKS })
 		.visible_if([](const CameraComponent &camera) { return !camera.auto_exposure; })
 		.property("Bloom", &CameraComponent::bloom, PropertyHints{ .toggle = true })
 		.property("Bloom Intensity", &CameraComponent::bloom_intensity,
@@ -189,7 +189,7 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .logarithmic = true,
 								 .slider_min = 0.01F,
 								 .slider_max = 150000.F,
-								 .marks = k_illuminance_marks })
+								 .marks = K_ILLUMINANCE_MARKS })
 		.visible_if(is_directional)
 		.property("Intensity", &LightComponent::get_intensity, &LightComponent::set_intensity,
 				  PropertyHints{ .min = 0.F,
@@ -199,7 +199,7 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .logarithmic = true,
 								 .slider_min = 1.F,
 								 .slider_max = 1000000.F,
-								 .marks = k_lumen_marks })
+								 .marks = K_LUMEN_MARKS })
 		.visible_if(in_unit(IntensityUnit::Lumen))
 		.property("Intensity", &LightComponent::get_candela, &LightComponent::set_candela,
 				  PropertyHints{ .min = 0.F,
@@ -209,16 +209,16 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .logarithmic = true,
 								 .slider_min = 0.1F,
 								 .slider_max = 1000000.F,
-								 .marks = k_candela_marks })
+								 .marks = K_CANDELA_MARKS })
 		.visible_if(in_unit(IntensityUnit::Candela))
 		.property("Use Temperature", &LightComponent::get_use_temperature, &LightComponent::set_use_temperature,
 				  PropertyHints{ .toggle = true })
 		.property("Temperature", &LightComponent::get_temperature, &LightComponent::set_temperature,
-				  PropertyHints{ .min = k_min_temperature,
-								 .max = k_max_temperature,
+				  PropertyHints{ .min = K_MIN_TEMPERATURE,
+								 .max = K_MAX_TEMPERATURE,
 								 .precision = 0,
 								 .unit = "K",
-								 .marks = k_temperature_marks,
+								 .marks = K_TEMPERATURE_MARKS,
 								 .gradient = temperature_gradient() })
 		.visible_if([](const LightComponent &light) { return light.get_use_temperature(); })
 		.property("Cast Shadows", &LightComponent::get_cast_shadows, &LightComponent::set_cast_shadows,
@@ -237,7 +237,7 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .logarithmic = true,
 								 .slider_min = 0.1F,
 								 .slider_max = 20.F,
-								 .marks = k_sun_size_marks })
+								 .marks = K_SUN_SIZE_MARKS })
 		.visible_if(is_directional)
 		.property(
 			"Direction", &LightComponent::get_direction,
@@ -286,7 +286,7 @@ void register_builtin_components(ComponentRegistry &registry) {
 								 .logarithmic = true,
 								 .slider_min = 0.0001F,
 								 .slider_max = 1.F,
-								 .marks = k_fog_density_marks })
+								 .marks = K_FOG_DENSITY_MARKS })
 		.property("Height Falloff", &FogComponent::height_falloff,
 				  PropertyHints{ .min = 0.F, .max = 5.F, .speed = 0.005F, .precision = 3, .unit = "/m" })
 		.property("Base Height", &FogComponent::base_height,

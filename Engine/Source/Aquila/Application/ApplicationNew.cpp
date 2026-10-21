@@ -44,8 +44,8 @@ namespace Aquila::Application {
 using namespace SceneManagement;
 
 namespace {
-constexpr F32 k_resume_delta = 1.F / 60.F;
-constexpr std::chrono::milliseconds k_hot_reload_interval{ 500 };
+constexpr F32 K_RESUME_DELTA = 1.F / 60.F;
+constexpr std::chrono::milliseconds K_HOT_RELOAD_INTERVAL{ 500 };
 
 bool is_cursor_event(const Platform::Events::Event &event) {
 	return (event.get_category() & Platform::Events::EventCategory::Mouse) &&
@@ -60,7 +60,7 @@ struct FrameGuard {
 	bool &m_flag;
 };
 
-constexpr Uint32 k_max_icon_size = 256;
+constexpr Uint32 K_MAX_ICON_SIZE = 256;
 
 std::vector<Uint8> halve(const std::vector<Uint8> &rgba, Uint32 &width, Uint32 &height) {
 	const Uint32 half_width = Math::max(width / 2, 1U);
@@ -100,7 +100,7 @@ void apply_window_icon(Window &window, const std::string &png_file) {
 	std::vector<Uint8> rgba(pixels, pixels + static_cast<Usize>(icon_width) * icon_height * 4);
 	stbi_image_free(pixels);
 
-	while (icon_width > k_max_icon_size || icon_height > k_max_icon_size) {
+	while (icon_width > K_MAX_ICON_SIZE || icon_height > K_MAX_ICON_SIZE) {
 		rgba = halve(rgba, icon_width, icon_height);
 	}
 	window.set_icon(icon_width, icon_height, rgba);
@@ -264,7 +264,7 @@ F32 Application::next_frame_delta() {
 	m_timer->tick();
 	m_frame_delta = m_timer->get_delta_time();
 	if (m_resumed_from_idle) {
-		m_frame_delta = std::min(m_frame_delta, k_resume_delta);
+		m_frame_delta = std::min(m_frame_delta, K_RESUME_DELTA);
 		m_resumed_from_idle = false;
 	}
 	return m_frame_delta;
@@ -288,7 +288,7 @@ void Application::poll_shader_hot_reload() {
 	if (current < m_next_hot_reload_check) {
 		return;
 	}
-	m_next_hot_reload_check = current + k_hot_reload_interval;
+	m_next_hot_reload_check = current + K_HOT_RELOAD_INTERVAL;
 	auto *hot_reload = Graphics::Shader::ShaderHotReload::get();
 	hot_reload->tick();
 	if (hot_reload->is_enabled() && Graphics::TextureLibrary::get()->poll_changes(*m_ctx)) {

@@ -19,7 +19,7 @@ namespace Aquila::Rendering {
 class BloomSystem : public RenderingSystemBase {
   public:
 	/// The first mip is half the render size, every next one half again.
-	static constexpr Uint32 k_mip_count = 6;
+	static constexpr Uint32 K_MIP_COUNT = 6;
 
 	BloomSystem() = default;
 	~BloomSystem() override = default;
@@ -33,9 +33,9 @@ class BloomSystem : public RenderingSystemBase {
 
 	Ref<GFX::GfxDescriptorSetLayout> m_layout;
 	Ref<GFX::GfxDescriptorSetLayout> m_final_layout;
-	std::array<std::array<Ref<GFX::GfxDescriptorSet>, k_mip_count>, SharedConstants::MAX_FRAMES_IN_FLIGHT>
+	std::array<std::array<Ref<GFX::GfxDescriptorSet>, K_MIP_COUNT>, SharedConstants::MAX_FRAMES_IN_FLIGHT>
 		m_downsample_sets;
-	std::array<std::array<Ref<GFX::GfxDescriptorSet>, k_mip_count - 1>, SharedConstants::MAX_FRAMES_IN_FLIGHT>
+	std::array<std::array<Ref<GFX::GfxDescriptorSet>, K_MIP_COUNT - 1>, SharedConstants::MAX_FRAMES_IN_FLIGHT>
 		m_upsample_sets;
 	std::array<Ref<GFX::GfxDescriptorSet>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_final_sets;
 	Ref<Graphics::Shader::ReloadablePipeline> m_downsample_pipeline;
@@ -43,7 +43,7 @@ class BloomSystem : public RenderingSystemBase {
 	Ref<Graphics::Shader::ReloadablePipeline> m_final_pipeline;
 
 	Ref<GFX::GfxTexture> m_emissive;
-	std::array<Ref<GFX::GfxTexture>, k_mip_count> m_mips;
+	std::array<Ref<GFX::GfxTexture>, K_MIP_COUNT> m_mips;
 	Ref<GFX::GfxTexture> m_final;
 	Uint32 m_width = 0;
 	Uint32 m_height = 0;

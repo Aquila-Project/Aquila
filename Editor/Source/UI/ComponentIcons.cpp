@@ -12,7 +12,7 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, std::string_view>, 11> k_component_icons = { {
+constexpr std::array<std::pair<std::string_view, std::string_view>, 11> K_COMPONENT_ICONS = { {
 	{ "Transform", "move-3d" },
 	{ "Metadata", "info" },
 	{ "Scene Node", "folder-tree" },
@@ -29,7 +29,7 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 11> k_compon
 }
 
 std::string_view component_icon(std::string_view component) {
-	for (const auto &[name, icon] : k_component_icons) {
+	for (const auto &[name, icon] : K_COMPONENT_ICONS) {
 		if (name == component) {
 			return icon;
 		}
@@ -53,7 +53,7 @@ std::string_view entity_icon(Aquila::SceneManagement::Entity entity) {
 	if (entity.has_component<MeshComponent>()) {
 		return component_icon("Mesh");
 	}
-	return k_empty_entity_icon;
+	return K_EMPTY_ENTITY_ICON;
 }
 
 } // namespace Editor

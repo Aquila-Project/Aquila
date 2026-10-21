@@ -802,9 +802,9 @@ void Renderer2D::flush() {
 }
 
 void Renderer2D::retire_set(Ref<GFX::GfxDescriptorSet> set) {
-	constexpr Usize k_max_stale_sets = 64;
+	constexpr Usize K_MAX_STALE_SETS = 64;
 	m_stale_sets.push_back(std::move(set));
-	while (m_stale_sets.size() > k_max_stale_sets) {
+	while (m_stale_sets.size() > K_MAX_STALE_SETS) {
 		m_stale_sets.pop_front();
 	}
 }

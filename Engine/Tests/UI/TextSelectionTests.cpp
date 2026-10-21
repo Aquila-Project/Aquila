@@ -16,36 +16,36 @@ float monospace(std::string_view text) {
 	return width;
 }
 
-const std::vector<std::string> k_lines = { "first line", "second", "third one" };
+const std::vector<std::string> K_LINES = { "first line", "second", "third one" };
 
 } // namespace
 
 TEST_SUITE("TextSelection") {
 	TEST_CASE("an empty selection yields no text") {
-		CHECK(extract_text(k_lines, {}).empty());
+		CHECK(extract_text(K_LINES, {}).empty());
 		CHECK(extract_text({}, { { 0, 0 }, { 1, 3 } }).empty());
 	}
 
 	TEST_CASE("a selection inside one line is a substring") {
-		CHECK(extract_text(k_lines, { { 0, 6 }, { 0, 10 } }) == "line");
+		CHECK(extract_text(K_LINES, { { 0, 6 }, { 0, 10 } }) == "line");
 	}
 
 	TEST_CASE("a selection across lines joins them with newlines") {
-		CHECK(extract_text(k_lines, { { 0, 6 }, { 2, 5 } }) == "line\nsecond\nthird");
+		CHECK(extract_text(K_LINES, { { 0, 6 }, { 2, 5 } }) == "line\nsecond\nthird");
 	}
 
 	TEST_CASE("selecting backwards gives the same text") {
-		CHECK(extract_text(k_lines, { { 2, 5 }, { 0, 6 } }) == "line\nsecond\nthird");
+		CHECK(extract_text(K_LINES, { { 2, 5 }, { 0, 6 } }) == "line\nsecond\nthird");
 	}
 
 	TEST_CASE("out of range positions are clamped") {
-		CHECK(extract_text(k_lines, { { 1, 0 }, { 9, 99 } }) == "second\nthird one");
-		CHECK(extract_text(k_lines, { { 0, -5 }, { 0, 5 } }) == "first");
+		CHECK(extract_text(K_LINES, { { 1, 0 }, { 9, 99 } }) == "second\nthird one");
+		CHECK(extract_text(K_LINES, { { 0, -5 }, { 0, 5 } }) == "first");
 	}
 
 	TEST_CASE("select all covers every line") {
-		const TextSelection all = select_all(k_lines);
-		CHECK(extract_text(k_lines, all) == "first line\nsecond\nthird one");
+		const TextSelection all = select_all(K_LINES);
+		CHECK(extract_text(K_LINES, all) == "first line\nsecond\nthird one");
 		CHECK(select_all({}).is_empty());
 	}
 

@@ -280,13 +280,13 @@ void OverlayToolbar::update_dock_hint(OverlayEdge edge) {
 		m_hint = parent->add_child(std::move(hint));
 	}
 
-	constexpr F32 k_thickness = 3.F;
+	constexpr F32 K_THICKNESS = 3.F;
 	const Vec2 area = parent->get_absolute_rect().size;
 	const bool horizontal = is_horizontal_edge(edge);
 
 	StyleProperties size;
-	size.width = StyleLength::pixel(horizontal ? area.x : k_thickness);
-	size.height = StyleLength::pixel(horizontal ? k_thickness : area.y);
+	size.width = StyleLength::pixel(horizontal ? area.x : K_THICKNESS);
+	size.height = StyleLength::pixel(horizontal ? K_THICKNESS : area.y);
 	m_hint->set_style(size);
 
 	FloatingConfig floating;

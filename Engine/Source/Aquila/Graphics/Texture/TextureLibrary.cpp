@@ -65,7 +65,7 @@ std::vector<std::vector<Uint8>> build_mips(const Uint8 *pixels, Uint32 width, Ui
 	return levels;
 }
 
-constexpr Usize k_upload_budget_bytes = 64ULL * 1024ULL * 1024ULL;
+constexpr Usize K_UPLOAD_BUDGET_BYTES = 64ULL * 1024ULL * 1024ULL;
 
 }
 
@@ -195,7 +195,7 @@ bool TextureLibrary::update(GFX::GfxContext &ctx) {
 		}
 		Usize budget = 0;
 		auto split = m_inbox->done.begin();
-		while (split != m_inbox->done.end() && (budget == 0 || budget + split->size_bytes() <= k_upload_budget_bytes)) {
+		while (split != m_inbox->done.end() && (budget == 0 || budget + split->size_bytes() <= K_UPLOAD_BUDGET_BYTES)) {
 			budget += split->size_bytes();
 			++split;
 		}

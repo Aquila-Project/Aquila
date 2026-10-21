@@ -7,12 +7,12 @@ namespace Aquila::UI::Core {
 
 namespace {
 
-constexpr F32 k_track_height = 4.F;
-constexpr F32 k_gradient_height = 8.F;
-constexpr F32 k_handle_size = 12.F;
-constexpr F32 k_tick_height = 10.F;
-constexpr F32 k_snap_distance = 0.015F;
-constexpr int k_gradient_segments = 48;
+constexpr F32 K_TRACK_HEIGHT = 4.F;
+constexpr F32 K_GRADIENT_HEIGHT = 8.F;
+constexpr F32 K_HANDLE_SIZE = 12.F;
+constexpr F32 K_TICK_HEIGHT = 10.F;
+constexpr F32 K_SNAP_DISTANCE = 0.015F;
+constexpr int K_GRADIENT_SEGMENTS = 48;
 
 F32 round_to_significant(F32 value, int digits) {
 	if (value == 0.F) {
@@ -69,35 +69,35 @@ class SliderFieldTrack : public Control {
 		const Int32 z = 0;
 		const Vec4 accent = style.effective_accent_color();
 		const Vec4 ink = style.color;
-		const F32 left = rect.position.x + k_handle_size * 0.5F;
-		const F32 width = Math::max(rect.size.x - k_handle_size, 1.F);
+		const F32 left = rect.position.x + K_HANDLE_SIZE * 0.5F;
+		const F32 width = Math::max(rect.size.x - K_HANDLE_SIZE, 1.F);
 		const F32 cy = rect.position.y + rect.size.y * 0.5F;
 		const F32 t = m_field.to_track(m_field.get_value());
 		const auto &gradient = m_field.get_gradient();
 
 		if (!gradient.empty()) {
-			const F32 segment = width / static_cast<F32>(k_gradient_segments);
-			for (int i = 0; i < k_gradient_segments; ++i) {
-				const F32 at = (static_cast<F32>(i) + 0.5F) / static_cast<F32>(k_gradient_segments);
+			const F32 segment = width / static_cast<F32>(K_GRADIENT_SEGMENTS);
+			for (int i = 0; i < K_GRADIENT_SEGMENTS; ++i) {
+				const F32 at = (static_cast<F32>(i) + 0.5F) / static_cast<F32>(K_GRADIENT_SEGMENTS);
 				const Rect piece = {
-					.position = { left + segment * static_cast<F32>(i), cy - k_gradient_height * 0.5F },
-					.size = { segment + 0.5F, k_gradient_height },
+					.position = { left + segment * static_cast<F32>(i), cy - K_GRADIENT_HEIGHT * 0.5F },
+					.size = { segment + 0.5F, K_GRADIENT_HEIGHT },
 				};
-				const F32 round_left = i == 0 ? k_gradient_height * 0.5F : 0.F;
-				const F32 round_right = i == k_gradient_segments - 1 ? k_gradient_height * 0.5F : 0.F;
+				const F32 round_left = i == 0 ? K_GRADIENT_HEIGHT * 0.5F : 0.F;
+				const F32 round_right = i == K_GRADIENT_SEGMENTS - 1 ? K_GRADIENT_HEIGHT * 0.5F : 0.F;
 				draw_list.draw_rect(piece, sample_gradient(gradient, at),
 									Vec4(round_left, round_right, round_right, round_left), 0.F, Vec4(0.F), z + 1);
 			}
 		} else {
 			const Rect track = {
-				.position = { left, cy - k_track_height * 0.5F },
-				.size = { width, k_track_height },
+				.position = { left, cy - K_TRACK_HEIGHT * 0.5F },
+				.size = { width, K_TRACK_HEIGHT },
 			};
-			draw_list.draw_rect(track, Vec4(ink.r, ink.g, ink.b, ink.a * 0.18F), Vec4(k_track_height * 0.5F), 0.F,
+			draw_list.draw_rect(track, Vec4(ink.r, ink.g, ink.b, ink.a * 0.18F), Vec4(K_TRACK_HEIGHT * 0.5F), 0.F,
 								Vec4(0.F), z + 1);
 			if (t > 0.F) {
-				const Rect fill = { .position = track.position, .size = { width * t, k_track_height } };
-				draw_list.draw_rect(fill, accent, Vec4(k_track_height * 0.5F), 0.F, Vec4(0.F), z + 1);
+				const Rect fill = { .position = track.position, .size = { width * t, K_TRACK_HEIGHT } };
+				draw_list.draw_rect(fill, accent, Vec4(K_TRACK_HEIGHT * 0.5F), 0.F, Vec4(0.F), z + 1);
 			}
 		}
 
@@ -105,25 +105,25 @@ class SliderFieldTrack : public Control {
 		for (const SliderField::Mark &mark : m_field.get_marks()) {
 			const F32 x = left + m_field.to_track(mark.value) * width;
 			const Rect tick = {
-				.position = { x - 0.5F, cy - k_tick_height * 0.5F },
-				.size = { 1.F, k_tick_height },
+				.position = { x - 0.5F, cy - K_TICK_HEIGHT * 0.5F },
+				.size = { 1.F, K_TICK_HEIGHT },
 			};
 			draw_list.draw_rect(tick, tick_color, Vec4(0.F), 0.F, Vec4(0.F), z + 2);
 		}
 
 		const Vec4 handle_color = gradient.empty() ? accent : sample_gradient(gradient, t);
 		const Rect handle = {
-			.position = { left + t * width - k_handle_size * 0.5F, cy - k_handle_size * 0.5F },
-			.size = { k_handle_size, k_handle_size },
+			.position = { left + t * width - K_HANDLE_SIZE * 0.5F, cy - K_HANDLE_SIZE * 0.5F },
+			.size = { K_HANDLE_SIZE, K_HANDLE_SIZE },
 		};
-		draw_list.draw_rect(handle, handle_color, Vec4(k_handle_size * 0.5F), 1.5F, ink, z + 3);
+		draw_list.draw_rect(handle, handle_color, Vec4(K_HANDLE_SIZE * 0.5F), 1.5F, ink, z + 3);
 	}
 
   private:
 	[[nodiscard]] F32 track_position(F32 x) const {
 		const Rect rect = get_absolute_rect();
-		const F32 left = rect.position.x + k_handle_size * 0.5F;
-		const F32 width = Math::max(rect.size.x - k_handle_size, 1.F);
+		const F32 left = rect.position.x + K_HANDLE_SIZE * 0.5F;
+		const F32 width = Math::max(rect.size.x - K_HANDLE_SIZE, 1.F);
 		return Math::clamp((x - left) / width, 0.F, 1.F);
 	}
 
@@ -223,7 +223,7 @@ void SliderField::edit_from_track(F32 t) {
 	F32 value = from_track(t);
 	bool snapped = false;
 	for (const Mark &mark : m_marks) {
-		if (std::abs(to_track(mark.value) - t) < k_snap_distance) {
+		if (std::abs(to_track(mark.value) - t) < K_SNAP_DISTANCE) {
 			value = mark.value;
 			snapped = true;
 			break;

@@ -336,9 +336,9 @@ class ViewRef {
 	WeakRef<void> m_alive;
 };
 
-/// Cheap type check through get_kind(), T needs a static k_kind. view_cast() is the cast.
+/// Cheap type check through get_kind(), T needs a static K_KIND. view_cast() is the cast.
 template <typename T> [[nodiscard]] bool view_is(const View *view) {
-	return view != nullptr && view->get_kind() == T::k_kind;
+	return view != nullptr && view->get_kind() == T::K_KIND;
 }
 
 template <typename T> [[nodiscard]] T *view_cast(View *view) {

@@ -11,8 +11,8 @@ namespace Aquila::UI::Rendering {
 
 namespace {
 
-constexpr F32 k_glyph_dilation_px = 1.F;
-constexpr F32 k_wrap_tolerance_px = 0.5F;
+constexpr F32 K_GLYPH_DILATION_PX = 1.F;
+constexpr F32 K_WRAP_TOLERANCE_PX = 0.5F;
 
 }
 
@@ -234,8 +234,8 @@ void DrawList::submit(Graphics::Renderer2D &r2d, GFX::GfxCommandList &cmd) {
 								const Vec2 em_per_pixel = (slug->em_max - slug->em_min) / glyph_size;
 
 								Graphics::GlyphSpec spec{};
-								spec.position = Vec2(glyph_x, glyph_y) - Vec2(k_glyph_dilation_px);
-								spec.size = glyph_size + Vec2(2.F * k_glyph_dilation_px);
+								spec.position = Vec2(glyph_x, glyph_y) - Vec2(K_GLYPH_DILATION_PX);
+								spec.size = glyph_size + Vec2(2.F * K_GLYPH_DILATION_PX);
 								spec.color = c.color;
 								spec.depth = depth;
 								spec.glyph_loc_x = slug->glyph_loc_x;
@@ -243,8 +243,8 @@ void DrawList::submit(Graphics::Renderer2D &r2d, GFX::GfxCommandList &cmd) {
 								spec.band_max_x = slug->band_max_x;
 								spec.band_max_y = slug->band_max_y;
 								spec.banding = slug->band_transform;
-								spec.em_min = slug->em_min - (em_per_pixel * k_glyph_dilation_px);
-								spec.em_max = slug->em_max + (em_per_pixel * k_glyph_dilation_px);
+								spec.em_min = slug->em_min - (em_per_pixel * K_GLYPH_DILATION_PX);
+								spec.em_max = slug->em_max + (em_per_pixel * K_GLYPH_DILATION_PX);
 								spec.curve_texture = curve_texture;
 								spec.band_texture = band_texture;
 								r2d.draw_glyph(spec);
@@ -298,7 +298,7 @@ void DrawList::submit(Graphics::Renderer2D &r2d, GFX::GfxCommandList &cmd) {
 								line_start = word_start;
 								line_end = word_end;
 								line_w = word_w;
-							} else if (line_w + space_w + word_w <= max_w + k_wrap_tolerance_px) {
+							} else if (line_w + space_w + word_w <= max_w + K_WRAP_TOLERANCE_PX) {
 								line_end = word_end;
 								line_w += space_w + word_w;
 							} else {

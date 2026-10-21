@@ -13,7 +13,7 @@ struct DefaultShortcut {
 	std::string_view scope{};
 };
 
-constexpr std::array k_default_shortcuts{
+constexpr std::array K_DEFAULT_SHORTCUTS{
 	DefaultShortcut{ .command = "scene.new", .chord = "Ctrl+N" },
 	DefaultShortcut{ .command = "scene.open", .chord = "Ctrl+O" },
 	DefaultShortcut{ .command = "scene.save", .chord = "Ctrl+S" },
@@ -57,7 +57,7 @@ constexpr std::array k_default_shortcuts{
 } // namespace
 
 void bind_default_shortcuts(Aquila::UI::Core::Shortcuts &shortcuts) {
-	for (const DefaultShortcut &shortcut : k_default_shortcuts) {
+	for (const DefaultShortcut &shortcut : K_DEFAULT_SHORTCUTS) {
 		shortcuts.bind(shortcut.command, shortcut.chord, shortcut.scope);
 	}
 }

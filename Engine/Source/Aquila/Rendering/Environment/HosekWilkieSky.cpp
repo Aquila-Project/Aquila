@@ -115,11 +115,11 @@ SHCoefficients HosekWilkieSky::bake_sh(const GpuSkyData &data, int samples) {
 		}
 	}
 
-	constexpr std::array<F32, 9> k_cosine_lobe = { 1.0F,		 2.0F / 3.0F, 2.0F / 3.0F, 2.0F / 3.0F, 0.25F,
+	constexpr std::array<F32, 9> K_COSINE_LOBE = { 1.0F,		 2.0F / 3.0F, 2.0F / 3.0F, 2.0F / 3.0F, 0.25F,
 												   0.25F, 0.25F,		0.25F,		 0.25F };
 	const F32 weight = 4.0F * Math::PI / static_cast<F32>(samples);
 	for (int i = 0; i < 9; ++i) {
-		sh.coeffs[i] *= weight * k_cosine_lobe[i];
+		sh.coeffs[i] *= weight * K_COSINE_LOBE[i];
 	}
 	return sh;
 }

@@ -20,7 +20,7 @@ using Platform::Filesystem::VirtualFileSystem;
 
 namespace {
 
-const std::string k_materials_dir = std::string(SharedConstants::PROJECT_CONTENT_DIR) + "/Materials";
+const std::string K_MATERIALS_DIR = std::string(SharedConstants::PROJECT_CONTENT_DIR) + "/Materials";
 
 std::string safe_file_name(std::string name) {
 	for (char &c : name) {
@@ -114,13 +114,13 @@ void MaterialComponentUI::save_as_asset(Entity entity) {
 		return;
 	}
 	auto *vfs = VirtualFileSystem::get();
-	vfs->create_dir(k_materials_dir);
+	vfs->create_dir(K_MATERIALS_DIR);
 
 	const std::string stem = safe_file_name(entity.get_name());
 	const std::string extension(Graphics::MATERIAL_EXTENSION);
-	std::string path = k_materials_dir + "/" + stem + extension;
+	std::string path = K_MATERIALS_DIR + "/" + stem + extension;
 	for (int i = 1; vfs->exists(path); ++i) {
-		path = k_materials_dir + "/" + stem + std::to_string(i) + extension;
+		path = K_MATERIALS_DIR + "/" + stem + std::to_string(i) + extension;
 	}
 
 	const Graphics::MaterialData data = component->material ? component->material->get_data() : component->embedded;

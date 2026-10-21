@@ -107,9 +107,9 @@ void DockSplitter::on_mouse_move(Vec2 pos) {
 	}
 
 	// Each side must stay at least kMin pixels wide/tall regardless of layout context.
-	constexpr float k_min = 60.F;
-	const float min_px = k_min;
-	const float max_px = Math::max(min_px, parent_px - 5.F - k_min);
+	constexpr float K_MIN = 60.F;
+	const float min_px = K_MIN;
+	const float max_px = Math::max(min_px, parent_px - 5.F - K_MIN);
 
 	StyleProperties sp;
 	if (m_resize_before) {

@@ -5,7 +5,7 @@ namespace Aquila::UI::Core {
 
 namespace {
 
-constexpr F32 k_sizer_height = 0.001F;
+constexpr F32 K_SIZER_HEIGHT = 0.001F;
 
 }
 
@@ -32,7 +32,7 @@ Dropdown::Dropdown() {
 	m_sizer->add_class("dropdown-sizer");
 	StyleProperties sizer_style;
 	sizer_style.flex_direction = FlexDirection::Column;
-	sizer_style.height = StyleLength::pixel(k_sizer_height);
+	sizer_style.height = StyleLength::pixel(K_SIZER_HEIGHT);
 	sizer_style.overflow = Overflow::Clip;
 	sizer_style.opacity = 0.F;
 	m_sizer->merge_style(sizer_style);

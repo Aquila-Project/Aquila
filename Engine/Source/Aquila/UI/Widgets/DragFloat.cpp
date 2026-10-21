@@ -189,10 +189,10 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 	const float scale = font_size;
 	const float line_h = font->get_line_height() * scale;
 	const float text_y = rect.position.y + (rect.size.y - line_h) * 0.5F;
-	constexpr float k_pad_x = 4.F;
+	constexpr float K_PAD_X = 4.F;
 	const Rect text_rect = {
-		.position = { rect.position.x + k_pad_x, text_y },
-		.size = { rect.size.x - k_pad_x * 2.F, line_h },
+		.position = { rect.position.x + K_PAD_X, text_y },
+		.size = { rect.size.x - K_PAD_X * 2.F, line_h },
 	};
 
 	if (m_mode == Mode::Edit) {
@@ -248,16 +248,16 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 		}
 
 		// Small arrows hint that the field is draggable.
-		constexpr float k_arrow_size = 4.F;
+		constexpr float K_ARROW_SIZE = 4.F;
 		const float cy = rect.position.y + rect.size.y * 0.5F;
 		const Vec4 arrow_color = Vec4(style.color.r, style.color.g, style.color.b, style.color.a * 0.4F);
 		const Rect left_arrow = {
-			.position = { rect.position.x + 3.F, cy - k_arrow_size * 0.5F },
-			.size = { k_arrow_size, k_arrow_size },
+			.position = { rect.position.x + 3.F, cy - K_ARROW_SIZE * 0.5F },
+			.size = { K_ARROW_SIZE, K_ARROW_SIZE },
 		};
 		const Rect right_arrow = {
-			.position = { rect.position.x + rect.size.x - k_arrow_size - 3.F, cy - k_arrow_size * 0.5F },
-			.size = { k_arrow_size, k_arrow_size },
+			.position = { rect.position.x + rect.size.x - K_ARROW_SIZE - 3.F, cy - K_ARROW_SIZE * 0.5F },
+			.size = { K_ARROW_SIZE, K_ARROW_SIZE },
 		};
 		draw_list.draw_rect(left_arrow, arrow_color, Vec4(1.F), 0.F, Vec4(0.F), z + 2);
 		draw_list.draw_rect(right_arrow, arrow_color, Vec4(1.F), 0.F, Vec4(0.F), z + 2);

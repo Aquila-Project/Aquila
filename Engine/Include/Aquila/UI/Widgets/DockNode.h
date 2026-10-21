@@ -18,8 +18,8 @@ class DockNode : public View {
 	explicit DockNode(DockDragContext *drag_ctx = nullptr);
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "DockNode"; }
-	static constexpr ViewKind k_kind = ViewKind::DockNode;
-	[[nodiscard]] ViewKind get_kind() const override { return k_kind; }
+	static constexpr ViewKind K_KIND = ViewKind::DockNode;
+	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 
 	std::pair<DockNode *, DockNode *> split(SplitDirection dir, bool anchor_first = true);
 	DockNode *append_leaf(SplitDirection dir);

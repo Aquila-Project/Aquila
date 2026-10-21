@@ -22,7 +22,7 @@ template <> struct aquiLua::Converter<Aquila::Platform::Events::KeyCode> {
 	static constexpr const char *luau_type = "string";
 
 	static Option<KeyCode> from_name(std::string_view name) {
-		constexpr std::array<std::pair<std::string_view, KeyCode>, 6> k_sides{ {
+		constexpr std::array<std::pair<std::string_view, KeyCode>, 6> K_SIDES{ {
 			{ "LeftShift", KeyCode::LeftShift },
 			{ "RightShift", KeyCode::RightShift },
 			{ "LeftCtrl", KeyCode::LeftControl },
@@ -30,7 +30,7 @@ template <> struct aquiLua::Converter<Aquila::Platform::Events::KeyCode> {
 			{ "LeftAlt", KeyCode::LeftAlt },
 			{ "RightAlt", KeyCode::RightAlt },
 		} };
-		for (const auto &[side, key] : k_sides) {
+		for (const auto &[side, key] : K_SIDES) {
 			if (side == name) {
 				return key;
 			}
@@ -58,14 +58,14 @@ template <> struct aquiLua::Converter<Aquila::Platform::Events::MouseButton> {
 	using MouseButton = Aquila::Platform::Events::MouseButton;
 
 	static constexpr const char *luau_type = "string";
-	static constexpr std::array<std::pair<std::string_view, MouseButton>, 3> k_names{ {
+	static constexpr std::array<std::pair<std::string_view, MouseButton>, 3> K_NAMES{ {
 		{ "Left", MouseButton::Left },
 		{ "Right", MouseButton::Right },
 		{ "Middle", MouseButton::Middle },
 	} };
 
 	static void push(lua_State *state, MouseButton button) {
-		for (const auto &[name, value] : k_names) {
+		for (const auto &[name, value] : K_NAMES) {
 			if (value == button) {
 				aquiLua::push(state, name);
 				return;
@@ -76,7 +76,7 @@ template <> struct aquiLua::Converter<Aquila::Platform::Events::MouseButton> {
 
 	static MouseButton check(lua_State *state, int index) {
 		const std::string_view name = luaL_checkstring(state, index);
-		for (const auto &[button_name, button] : k_names) {
+		for (const auto &[button_name, button] : K_NAMES) {
 			if (button_name == name) {
 				return button;
 			}

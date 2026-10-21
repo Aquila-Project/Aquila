@@ -20,14 +20,14 @@ MeshSource MeshSource::asset(std::string path) {
 }
 
 Option<MeshSource> MeshSource::from_legacy_path(std::string_view path) {
-	constexpr std::string_view k_scheme = "procedural://";
+	constexpr std::string_view K_SCHEME = "procedural://";
 	if (path.empty()) {
 		return std::nullopt;
 	}
-	if (!path.starts_with(k_scheme)) {
+	if (!path.starts_with(K_SCHEME)) {
 		return asset(std::string(path));
 	}
-	path.remove_prefix(k_scheme.size());
+	path.remove_prefix(K_SCHEME.size());
 
 	std::vector<std::string_view> parts;
 	for (Usize start = 0; start <= path.size();) {

@@ -17,7 +17,7 @@ using namespace SceneManagement::Components;
 
 namespace {
 
-constexpr Uint32 k_timestamp_queries = 128;
+constexpr Uint32 K_TIMESTAMP_QUERIES = 128;
 
 }
 
@@ -28,7 +28,7 @@ RenderPipeline::RenderPipeline(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 	m_auto_exposure = std::make_unique<AutoExposure>(ctx);
 	rebuild_targets();
 	for (auto &pool : m_timestamp_pools) {
-		pool = m_ctx.create_timestamp_pool(k_timestamp_queries);
+		pool = m_ctx.create_timestamp_pool(K_TIMESTAMP_QUERIES);
 	}
 }
 

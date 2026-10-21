@@ -16,9 +16,9 @@ using Reflection::PropertyValue;
 
 namespace {
 
-constexpr Int32 k_shader_lit = 0;
-constexpr Int32 k_shader_unlit = 1;
-constexpr Int32 k_shader_custom = 2;
+constexpr Int32 K_SHADER_LIT = 0;
+constexpr Int32 K_SHADER_UNLIT = 1;
+constexpr Int32 K_SHADER_CUSTOM = 2;
 
 bool name_has(std::string_view name, std::string_view word) {
 	std::string lowered(name);
@@ -31,7 +31,7 @@ bool is_color_name(std::string_view name) {
 	return name_has(name, "color") || name_has(name, "colour") || name_has(name, "tint") || name_has(name, "albedo");
 }
 
-constexpr std::array<Reflection::PropertyMark, 6> k_luminance_marks = { {
+constexpr std::array<Reflection::PropertyMark, 6> K_LUMINANCE_MARKS = { {
 	{ .value = 80.F, .label = "Monitor white" },
 	{ .value = 500.F, .label = "Phone screen" },
 	{ .value = 12000.F, .label = "Fluorescent tube" },
@@ -144,7 +144,7 @@ Reflection::Property make_parameter_property(const MaterialParameter &param) {
 			property.hints.logarithmic = true;
 			property.hints.slider_min = 1.F;
 			property.hints.slider_max = 10000000.F;
-			property.hints.marks = k_luminance_marks;
+			property.hints.marks = K_LUMINANCE_MARKS;
 		} else if (name_has(param.name, "intensity")) {
 			property.hints.min = 0.F;
 			property.hints.speed = 1.F;
@@ -220,25 +220,25 @@ void MaterialEditorRows::build_settings() {
 	Reflection::Property shader;
 	shader.name = "Shader";
 	shader.kind = PropertyKind::Enum;
-	shader.options = { { .name = "Lit (PBR)", .value = k_shader_lit },
-					   { .name = "Unlit", .value = k_shader_unlit },
-					   { .name = "Custom Shader", .value = k_shader_custom } };
+	shader.options = { { .name = "Lit (PBR)", .value = K_SHADER_LIT },
+					   { .name = "Unlit", .value = K_SHADER_UNLIT },
+					   { .name = "Custom Shader", .value = K_SHADER_CUSTOM } };
 	shader.get = [](const void *instance) -> PropertyValue {
 		const auto &rows = *static_cast<const MaterialEditorRows *>(instance);
 		if (rows.m_custom || !is_builtin(rows.m_data.shader)) {
-			return k_shader_custom;
+			return K_SHADER_CUSTOM;
 		}
-		return rows.m_data.shader == Graphics::UNLIT_SHADER ? k_shader_unlit : k_shader_lit;
+		return rows.m_data.shader == Graphics::UNLIT_SHADER ? K_SHADER_UNLIT : K_SHADER_LIT;
 	};
 	shader.set = [](void *instance, const PropertyValue &value) {
 		auto &rows = *static_cast<MaterialEditorRows *>(instance);
 		const Int32 choice = std::get<Int32>(value);
-		if (choice == k_shader_custom) {
+		if (choice == K_SHADER_CUSTOM) {
 			rows.m_custom = true;
 			return;
 		}
 		rows.m_custom = false;
-		const std::string target(choice == k_shader_unlit ? Graphics::UNLIT_SHADER : Graphics::STANDARD_SHADER);
+		const std::string target(choice == K_SHADER_UNLIT ? Graphics::UNLIT_SHADER : Graphics::STANDARD_SHADER);
 		if (target != rows.m_data.shader) {
 			rows.m_data.shader = target;
 			rows.notify(true);

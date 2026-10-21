@@ -4,7 +4,7 @@
 
 namespace Editor {
 
-inline constexpr std::string_view k_empty_entity_icon = "circle-dashed";
+inline constexpr std::string_view K_EMPTY_ENTITY_ICON = "circle-dashed";
 
 /// The one table of component icons, shared by the hierarchy, the inspector and Add Component.
 [[nodiscard]] std::string_view component_icon(std::string_view component);

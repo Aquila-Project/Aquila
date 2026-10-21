@@ -49,11 +49,11 @@ template <int N, typename VecT> class VecFieldBase : public Control {
 
 	/// One row per axis with X/Y/Z inside the fields, the Blender look.
 	void set_stacked(bool stacked) {
-		constexpr const char *k_axes[] = { "X", "Y", "Z", "W" };
+		constexpr const char *K_AXES[] = { "X", "Y", "Z", "W" };
 		set_class("vec-field-stacked", stacked);
 		for (int i = 0; i < N; ++i) {
 			DragFloat *drag = m_components[i];
-			drag->set_label(stacked ? k_axes[i] : "");
+			drag->set_label(stacked ? K_AXES[i] : "");
 			if (stacked) {
 				drag->set_prefix("");
 			}

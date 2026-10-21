@@ -13,8 +13,8 @@ class TextInput : public Control {
 	explicit TextInput(std::string placeholder);
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "TextInput"; }
-	static constexpr ViewKind k_kind = ViewKind::TextInput;
-	[[nodiscard]] ViewKind get_kind() const override { return k_kind; }
+	static constexpr ViewKind K_KIND = ViewKind::TextInput;
+	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 
 	void set_text(const std::string &text);
 	void set_font(Text::FontAtlas *font) override;

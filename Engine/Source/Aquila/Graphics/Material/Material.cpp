@@ -9,7 +9,7 @@ namespace Aquila::Graphics {
 
 namespace {
 
-constexpr Uint32 k_all_slots = (1U << SharedConstants::MAX_FRAMES_IN_FLIGHT) - 1U;
+constexpr Uint32 K_ALL_SLOTS = (1U << SharedConstants::MAX_FRAMES_IN_FLIGHT) - 1U;
 
 bool name_has(std::string_view name, std::string_view word) {
 	if (word.size() > name.size()) {
@@ -413,7 +413,7 @@ void Material::bind_texture(MaterialParameter &param, Ref<GFX::GfxTexture> textu
 }
 
 void Material::mark_dirty() {
-	m_dirty_slot_mask = k_all_slots;
+	m_dirty_slot_mask = K_ALL_SLOTS;
 }
 
 template <typename T> void Material::write_ubo(Uint32 offset, const T &v) {

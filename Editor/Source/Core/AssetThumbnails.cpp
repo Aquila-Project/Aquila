@@ -19,11 +19,11 @@ using Aquila::Platform::Filesystem::VirtualFileSystem;
 
 namespace {
 
-constexpr Uint32 k_material_size = 128;
-constexpr Usize k_renders_per_frame = 2;
-constexpr F64 k_edit_delay = 0.3;
-constexpr Int64 k_max_image_bytes = 64 * 1024 * 1024;
-constexpr Uint32 k_image_size = 256;
+constexpr Uint32 K_MATERIAL_SIZE = 128;
+constexpr Usize K_RENDERS_PER_FRAME = 2;
+constexpr F64 K_EDIT_DELAY = 0.3;
+constexpr Int64 K_MAX_IMAGE_BYTES = 64 * 1024 * 1024;
+constexpr Uint32 K_IMAGE_SIZE = 256;
 
 std::string lowered(std::string_view path) {
 	std::string file(path);
@@ -73,7 +73,7 @@ std::vector<Uint8> halve(const std::vector<Uint8> &source, Uint32 width, Uint32 
 
 std::vector<std::vector<Uint8>> thumbnail_mips(const Uint8 *pixels, Uint32 &width, Uint32 &height) {
 	std::vector<Uint8> level(pixels, pixels + (static_cast<Usize>(width) * height * 4U));
-	while (std::max(width, height) > k_image_size) {
+	while (std::max(width, height) > K_IMAGE_SIZE) {
 		level = halve(level, width, height);
 		width = std::max(1U, width / 2U);
 		height = std::max(1U, height / 2U);
@@ -101,11 +101,11 @@ bool uses_texture(const Aquila::Graphics::MaterialData &data, const std::string 
 
 AssetThumbnails::AssetThumbnails(Aquila::GFX::GfxContext &gfx, Aquila::UI::Core::TextureCache &textures)
 	: m_gfx(gfx), m_textures(textures),
-	  m_preview(std::make_unique<Aquila::Rendering::MaterialPreview>(gfx, k_material_size)) {
+	  m_preview(std::make_unique<Aquila::Rendering::MaterialPreview>(gfx, K_MATERIAL_SIZE)) {
 	m_material_connection =
 		Aquila::Graphics::MaterialAssets::get()->on_changed.connect([this](const std::string &path) {
 			if (m_materials.contains(path)) {
-				queue(path, k_edit_delay);
+				queue(path, K_EDIT_DELAY);
 			}
 		});
 	m_texture_connection = Aquila::Graphics::TextureLibrary::get()->on_reloaded.connect(
@@ -163,7 +163,7 @@ void AssetThumbnails::queue(const std::string &path, F64 delay_seconds) {
 
 void AssetThumbnails::request_image(const std::string &path) {
 	auto *vfs = VirtualFileSystem::get();
-	if (m_image_requests.contains(path) || vfs->get_file_size(path) > k_max_image_bytes) {
+	if (m_image_requests.contains(path) || vfs->get_file_size(path) > K_MAX_IMAGE_BYTES) {
 		return;
 	}
 	m_image_requests.insert(path);
@@ -227,7 +227,7 @@ void AssetThumbnails::update() {
 	}
 	const auto current = Aquila::Foundation::now();
 	std::vector<std::string> due;
-	for (auto it = m_queue.begin(); it != m_queue.end() && due.size() < k_renders_per_frame;) {
+	for (auto it = m_queue.begin(); it != m_queue.end() && due.size() < K_RENDERS_PER_FRAME;) {
 		if (it->due <= current) {
 			due.push_back(std::move(it->path));
 			it = m_queue.erase(it);
@@ -273,7 +273,7 @@ void AssetThumbnails::on_texture_loaded(const std::string &path) {
 	for (const auto &[material_path, texture] : m_materials) {
 		Ref<Aquila::Graphics::Material> material = Aquila::Graphics::MaterialAssets::get()->load(m_gfx, material_path);
 		if (material && uses_texture(material->get_data(), path)) {
-			queue(material_path, k_edit_delay);
+			queue(material_path, K_EDIT_DELAY);
 		}
 	}
 }

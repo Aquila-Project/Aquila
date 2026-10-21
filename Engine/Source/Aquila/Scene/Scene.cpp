@@ -27,8 +27,8 @@ using Graphics::Resources::MeshParams;
 using Graphics::Resources::MeshSource;
 using Graphics::Resources::MeshSourceKind;
 
-constexpr int k_scene_version = 2;
-constexpr int k_photometric_version = 2;
+constexpr int K_SCENE_VERSION = 2;
+constexpr int K_PHOTOMETRIC_VERSION = 2;
 
 F32 legacy_light_scale() {
 	return 1.F / Foundation::Photometry::exposure(Foundation::Photometry::DAYLIGHT_EV100);
@@ -475,7 +475,7 @@ bool Scene::serialize(const std::string &filepath) {
 	nlohmann::ordered_json scene_json;
 
 	scene_json["scene_name"] = m_scene_name;
-	scene_json["version"] = k_scene_version;
+	scene_json["version"] = K_SCENE_VERSION;
 
 	auto &registry = get_registry();
 	scene_json["entities"] = nlohmann::ordered_json::object();
@@ -724,7 +724,7 @@ bool Scene::deserialize(const std::string &filepath) {
 	}
 
 	m_scene_name = scene_json.value("scene_name", "Untitled Scene");
-	const bool legacy_light_units = scene_json.value("version", 1) < k_photometric_version;
+	const bool legacy_light_units = scene_json.value("version", 1) < K_PHOTOMETRIC_VERSION;
 	clear();
 
 	const auto &entities_json = scene_json["entities"];

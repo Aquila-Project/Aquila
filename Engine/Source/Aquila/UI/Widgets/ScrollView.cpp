@@ -29,7 +29,7 @@ class ScrollThumb : public View {
 	ScrollView *m_owner;
 };
 
-constexpr float k_min_thumb_height = 24.F;
+constexpr float K_MIN_THUMB_HEIGHT = 24.F;
 
 } // namespace
 
@@ -68,9 +68,9 @@ void ScrollView::remove_oldest_content() {
 }
 
 void ScrollView::scroll_to_bottom() {
-	constexpr float k_end_of_content = 1.0e9F;
+	constexpr float K_END_OF_CONTENT = 1.0e9F;
 	if (Canvas *canvas = get_canvas()) {
-		canvas->set_scroll_offset(this, k_end_of_content);
+		canvas->set_scroll_offset(this, K_END_OF_CONTENT);
 	}
 }
 
@@ -100,8 +100,8 @@ bool ScrollView::on_scroll(Vec2 delta) {
 		return false;
 	}
 
-	constexpr float k_wheel_speed = 40.F;
-	const float new_offset = m.offset - delta.y * k_wheel_speed;
+	constexpr float K_WHEEL_SPEED = 40.F;
+	const float new_offset = m.offset - delta.y * K_WHEEL_SPEED;
 	if (Canvas *canvas = get_canvas()) {
 		canvas->set_scroll_offset(this, new_offset);
 	}
@@ -127,8 +127,8 @@ ScrollView::ScrollMetrics ScrollView::measure() const {
 
 	const float ratio = (m.content_h > 0.F) ? (m.viewport_h / m.content_h) : 1.F;
 	m.thumb_h = m.viewport_h * ratio;
-	if (m.thumb_h < k_min_thumb_height) {
-		m.thumb_h = k_min_thumb_height;
+	if (m.thumb_h < K_MIN_THUMB_HEIGHT) {
+		m.thumb_h = K_MIN_THUMB_HEIGHT;
 	}
 	if (m.thumb_h > m.viewport_h) {
 		m.thumb_h = m.viewport_h;

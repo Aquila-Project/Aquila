@@ -145,8 +145,8 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 
 		for (Uint32 c = 0; c < SHADOW_CASCADE_COUNT; ++c) {
 			m_shadow_maps[i][c] = ctx.create_texture({
-				.width = kShadowMapSize,
-				.height = kShadowMapSize,
+				.width = K_SHADOW_MAP_SIZE,
+				.height = K_SHADOW_MAP_SIZE,
 				.format = RHI::TextureFormat::Depth32,
 				.usage = RHI::TextureUsage::DepthAttachment | RHI::TextureUsage::Sampled,
 				.view_type = RHI::TextureViewType::Tex2D,
@@ -156,16 +156,16 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 		}
 
 		m_local_shadow_buffers[i] = ctx.create_buffer({
-			.size = sizeof(GpuLocalShadow) * (kLocalShadowAtlasSize / kLocalShadowTileSize) *
-				(kLocalShadowAtlasSize / kLocalShadowTileSize),
+			.size = sizeof(GpuLocalShadow) * (K_LOCAL_SHADOW_ATLAS_SIZE / K_LOCAL_SHADOW_TILE_SIZE) *
+				(K_LOCAL_SHADOW_ATLAS_SIZE / K_LOCAL_SHADOW_TILE_SIZE),
 			.usage = RHI::BufferUsage::StorageBuffer,
 			.domain = RHI::MemoryDomain::CpuToGpu,
 			.debug_name = "LocalShadows_" + std::to_string(i),
 		});
 
 		m_local_shadow_atlases[i] = ctx.create_texture({
-			.width = kLocalShadowAtlasSize,
-			.height = kLocalShadowAtlasSize,
+			.width = K_LOCAL_SHADOW_ATLAS_SIZE,
+			.height = K_LOCAL_SHADOW_ATLAS_SIZE,
 			.format = RHI::TextureFormat::Depth32,
 			.usage = RHI::TextureUsage::DepthAttachment | RHI::TextureUsage::Sampled,
 			.view_type = RHI::TextureViewType::Tex2D,
@@ -358,10 +358,10 @@ static Graphics::GpuSurfaceData surface_of(const MaterialComponent &component) {
 	return surface;
 }
 
-constexpr Uint32 k_max_emissive_lights = 64;
-constexpr F32 k_max_emissive_range = 100.F;
-constexpr F32 k_emissive_cutoff_pixel = 0.001F;
-const Vec3 k_luminance_weights(0.2126F, 0.7152F, 0.0722F);
+constexpr Uint32 K_MAX_EMISSIVE_LIGHTS = 64;
+constexpr F32 K_MAX_EMISSIVE_RANGE = 100.F;
+constexpr F32 K_EMISSIVE_CUTOFF_PIXEL = 0.001F;
+const Vec3 K_LUMINANCE_WEIGHTS(0.2126F, 0.7152F, 0.0722F);
 
 struct EmissiveLight {
 	GpuLightData data{};
@@ -374,7 +374,7 @@ static Option<EmissiveLight> emissive_light_of(const Graphics::Material &materia
 	if (!emission) {
 		return std::nullopt;
 	}
-	const F32 luminance = Math::dot(*emission, k_luminance_weights);
+	const F32 luminance = Math::dot(*emission, K_LUMINANCE_WEIGHTS);
 	if (luminance <= 0.F) {
 		return std::nullopt;
 	}
@@ -384,7 +384,7 @@ static Option<EmissiveLight> emissive_light_of(const Graphics::Material &materia
 	const F32 area = surface.get_scaled_area(scale);
 	const F32 intensity = Foundation::Photometry::emitter_intensity(luminance, area);
 	const F32 radius = Foundation::Photometry::emitter_radius(area);
-	const F32 range = Math::min(Math::sqrt(intensity / cutoff_lux), k_max_emissive_range);
+	const F32 range = Math::min(Math::sqrt(intensity / cutoff_lux), K_MAX_EMISSIVE_RANGE);
 	if (intensity <= 0.F || range <= radius) {
 		return std::nullopt;
 	}
@@ -409,7 +409,7 @@ static void append_emissive_lights(entt::registry &registry, const RenderView &v
 	if (exposure <= 0.F || light_count >= SharedConstants::MAX_LIGHTS) {
 		return;
 	}
-	const F32 cutoff_lux = k_emissive_cutoff_pixel * Math::PI / exposure;
+	const F32 cutoff_lux = K_EMISSIVE_CUTOFF_PIXEL * Math::PI / exposure;
 
 	std::vector<EmissiveLight> found;
 	for (auto entity : registry.view<TransformComponent, MeshComponent, MaterialComponent>()) {
@@ -426,7 +426,7 @@ static void append_emissive_lights(entt::registry &registry, const RenderView &v
 		}
 	}
 
-	const Usize budget = Math::min<Usize>(k_max_emissive_lights, SharedConstants::MAX_LIGHTS - light_count);
+	const Usize budget = Math::min<Usize>(K_MAX_EMISSIVE_LIGHTS, SharedConstants::MAX_LIGHTS - light_count);
 	if (found.size() > budget) {
 		std::ranges::nth_element(found, found.begin() + static_cast<std::ptrdiff_t>(budget), std::ranges::greater{},
 								 &EmissiveLight::importance);
@@ -450,27 +450,27 @@ static Vec3 face_up(const Vec3 &direction) {
 
 static GpuShadowData compute_shadow_data(const RenderView &camera, const Vec3 &light_dir, F32 angular_diameter,
 										 Uint32 shadow_map_size, std::array<Mat4, SHADOW_CASCADE_COUNT> &out_vp) {
-	constexpr F32 kSplitLambda = 0.95F;
-	constexpr F32 kDepthBias = 0.0015F;
-	constexpr F32 kNormalBias = 0.03F;
-	constexpr F32 kMaxShadowDistance = 100.0F;
+	constexpr F32 K_SPLIT_LAMBDA = 0.95F;
+	constexpr F32 K_DEPTH_BIAS = 0.0015F;
+	constexpr F32 K_NORMAL_BIAS = 0.03F;
+	constexpr F32 K_MAX_SHADOW_DISTANCE = 100.0F;
 
 	const F32 light_tan = std::tan(Math::radians(Math::clamp(angular_diameter, 0.F, 20.F) * 0.5F));
 
 	GpuShadowData sd{};
 	sd.m_num_cascades = static_cast<Int32>(SHADOW_CASCADE_COUNT);
 	sd.m_light_direction = Vec4(Math::normalize(light_dir), 0.F);
-	sd.m_params = Vec4(kDepthBias, kNormalBias, light_tan, static_cast<F32>(shadow_map_size));
+	sd.m_params = Vec4(K_DEPTH_BIAS, K_NORMAL_BIAS, light_tan, static_cast<F32>(shadow_map_size));
 
 	const F32 near_plane = camera.near_plane;
-	const F32 far_plane = Math::min(camera.far_plane, kMaxShadowDistance);
+	const F32 far_plane = Math::min(camera.far_plane, K_MAX_SHADOW_DISTANCE);
 
 	F32 splits[SHADOW_CASCADE_COUNT];
 	for (Uint32 i = 0; i < SHADOW_CASCADE_COUNT; ++i) {
 		const F32 p = static_cast<F32>(i + 1) / static_cast<F32>(SHADOW_CASCADE_COUNT);
 		const F32 log_split = near_plane * Math::pow(far_plane / near_plane, p);
 		const F32 uni_split = near_plane + (far_plane - near_plane) * p;
-		splits[i] = kSplitLambda * log_split + (1.0F - kSplitLambda) * uni_split;
+		splits[i] = K_SPLIT_LAMBDA * log_split + (1.0F - K_SPLIT_LAMBDA) * uni_split;
 	}
 
 	const Mat4 cam_view = camera.view;
@@ -595,7 +595,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 	GpuShadowData shadow_data{};
 	m_shadows_enabled = false;
 	if (shadows_allowed && primary_view.valid && caster_index >= 0 && caster->m_cast_shadows) {
-		shadow_data = compute_shadow_data(primary_view, caster_dir, caster->m_angular_diameter, kShadowMapSize,
+		shadow_data = compute_shadow_data(primary_view, caster_dir, caster->m_angular_diameter, K_SHADOW_MAP_SIZE,
 										  m_cascade_view_proj);
 		shadow_data.m_enabled = 1;
 		lights[caster_index].m_shadow_index = 0;
@@ -606,11 +606,11 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 	m_local_shadow_views.clear();
 	std::vector<GpuLocalShadow> local_shadows;
 	if (shadows_allowed && primary_view.valid && !local_casters.empty()) {
-		constexpr Uint32 tiles_per_row = kLocalShadowAtlasSize / kLocalShadowTileSize;
+		constexpr Uint32 tiles_per_row = K_LOCAL_SHADOW_ATLAS_SIZE / K_LOCAL_SHADOW_TILE_SIZE;
 		constexpr Uint32 tile_count = tiles_per_row * tiles_per_row;
-		constexpr F32 atlas_size = static_cast<F32>(kLocalShadowAtlasSize);
-		constexpr F32 tile_size = static_cast<F32>(kLocalShadowTileSize);
-		static const std::array<Vec3, 6> k_face_directions = { {
+		constexpr F32 atlas_size = static_cast<F32>(K_LOCAL_SHADOW_ATLAS_SIZE);
+		constexpr F32 tile_size = static_cast<F32>(K_LOCAL_SHADOW_TILE_SIZE);
+		static const std::array<Vec3, 6> K_FACE_DIRECTIONS = { {
 			{ 1.F, 0.F, 0.F },
 			{ -1.F, 0.F, 0.F },
 			{ 0.F, 1.F, 0.F },
@@ -618,7 +618,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			{ 0.F, 0.F, 1.F },
 			{ 0.F, 0.F, -1.F },
 		} };
-		const F32 point_fov = 2.F * std::atan(tile_size / (tile_size - 2.F * static_cast<F32>(kLocalShadowGuardTexels)));
+		const F32 point_fov = 2.F * std::atan(tile_size / (tile_size - 2.F * static_cast<F32>(K_LOCAL_SHADOW_GUARD_TEXELS)));
 
 		std::ranges::sort(local_casters, {}, &LocalCaster::priority);
 		Uint32 next_tile = 0;
@@ -639,11 +639,11 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			lights[local.light_index].m_shadow_index = static_cast<Int32>(next_tile);
 			for (Uint32 face = 0; face < needed; ++face) {
 				const Uint32 tile = next_tile + face;
-				const Vec3 direction = point ? k_face_directions[face] : light_direction(light);
+				const Vec3 direction = point ? K_FACE_DIRECTIONS[face] : light_direction(light);
 				const Mat4 view_proj =
 					projection * Math::look_in_direction(local.position, direction, face_up(direction));
-				const Uint32 x = (tile % tiles_per_row) * kLocalShadowTileSize;
-				const Uint32 y = (tile / tiles_per_row) * kLocalShadowTileSize;
+				const Uint32 x = (tile % tiles_per_row) * K_LOCAL_SHADOW_TILE_SIZE;
+				const Uint32 y = (tile / tiles_per_row) * K_LOCAL_SHADOW_TILE_SIZE;
 
 				GpuLocalShadow gpu{};
 				for (int column = 0; column < 4; ++column) {
@@ -660,7 +660,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 					.view_proj = view_proj,
 					.x = x,
 					.y = y,
-					.size = kLocalShadowTileSize,
+					.size = K_LOCAL_SHADOW_TILE_SIZE,
 					.light_position = local.position,
 					.range = far_plane,
 				});

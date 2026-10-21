@@ -34,7 +34,7 @@ using namespace Aquila::SceneManagement::Components;
 
 namespace {
 
-constexpr std::array<std::string_view, 11> k_component_order = {
+constexpr std::array<std::string_view, 11> K_COMPONENT_ORDER = {
 	"Transform", "Metadata", "Scene Node", "Mesh",	  "Material",		   "Light",
 	"Sky Light", "Fog",		 "Camera",	   "Shadows", "Fullscreen Effect",
 };
@@ -167,7 +167,7 @@ void InspectorPanel::build_tabs_and_sections() {
 		return components_tab;
 	};
 
-	for (std::string_view name : k_component_order) {
+	for (std::string_view name : K_COMPONENT_ORDER) {
 		const ComponentDescriptor *descriptor = registry.find(name);
 		if (descriptor == nullptr) {
 			continue;
@@ -179,7 +179,7 @@ void InspectorPanel::build_tabs_and_sections() {
 		add_section(tab_for(descriptor->get_category()), descriptor->get_name(), std::move(ui));
 	}
 	for (const auto &descriptor : registry.get_all()) {
-		if (std::ranges::find(k_component_order, descriptor->get_name()) != k_component_order.end()) {
+		if (std::ranges::find(K_COMPONENT_ORDER, descriptor->get_name()) != K_COMPONENT_ORDER.end()) {
 			continue;
 		}
 		add_section(tab_for(descriptor->get_category()), descriptor->get_name(), make_ui(*descriptor));
@@ -333,7 +333,7 @@ void InspectorPanel::build_component_registry() {
 	bool has_other = false;
 	for (const auto &descriptor : ComponentRegistry::instance().get_all()) {
 		const std::string &name = descriptor->get_name();
-		if (std::ranges::find(k_component_order, name) != k_component_order.end() || !descriptor->can_add() ||
+		if (std::ranges::find(K_COMPONENT_ORDER, name) != K_COMPONENT_ORDER.end() || !descriptor->can_add() ||
 			!descriptor->is_removable()) {
 			continue;
 		}

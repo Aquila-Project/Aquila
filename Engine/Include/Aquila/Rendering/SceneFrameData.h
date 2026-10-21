@@ -50,12 +50,12 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 	[[nodiscard]] GFX::GfxBuffer &get_light_index_list_buffer() const { return *m_light_index_list_buffer; }
 	[[nodiscard]] GFX::GfxBuffer &get_cluster_light_info_buffer() const { return *m_cluster_light_info_buffer; }
 
-	static constexpr Uint32 kShadowMapSize = 2048;
+	static constexpr Uint32 K_SHADOW_MAP_SIZE = 2048;
 	/// Point and spot shadows share one atlas of square tiles. 64 tiles: a point light takes 6, a spot 1.
-	static constexpr Uint32 kLocalShadowAtlasSize = 4096;
-	static constexpr Uint32 kLocalShadowTileSize = 512;
+	static constexpr Uint32 K_LOCAL_SHADOW_ATLAS_SIZE = 4096;
+	static constexpr Uint32 K_LOCAL_SHADOW_TILE_SIZE = 512;
 	/// Point light faces see a bit past 90 degrees so soft shadow taps near a cube edge stay inside the tile.
-	static constexpr Uint32 kLocalShadowGuardTexels = 16;
+	static constexpr Uint32 K_LOCAL_SHADOW_GUARD_TEXELS = 16;
 
 	/// A tile ShadowSystem has to render this frame. `x`, `y`, `size` are atlas texels.
 	struct LocalShadowView {

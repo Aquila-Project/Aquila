@@ -67,7 +67,7 @@ class VariableResolver {
 	explicit VariableResolver(const Variables &vars) : m_vars(vars) {}
 
 	std::string resolve(std::string_view text, int depth = 0) {
-		if (depth > k_max_depth) {
+		if (depth > K_MAX_DEPTH) {
 			AQUILA_LOG_WARNING("StyleParser: variables reference each other in a cycle near '{}'", text);
 			return std::string(text);
 		}
@@ -117,7 +117,7 @@ class VariableResolver {
 	}
 
   private:
-	static constexpr int k_max_depth = 16;
+	static constexpr int K_MAX_DEPTH = 16;
 
 	const Variables &m_vars;
 	std::unordered_set<std::string> m_reported;

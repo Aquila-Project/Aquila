@@ -44,13 +44,13 @@ struct Everything {
 		"/project/Content/Materials_Tiles_03/JPEG/Tiles_GreenAndGoldPattern_01/Tiles_GreenAndGoldPattern_01_basecolor.jpg";
 };
 
-constexpr std::array<PropertyMark, 3> k_marks = { {
+constexpr std::array<PropertyMark, 3> K_MARKS = { {
 	{ .value = 0.25F, .label = "Full moon" },
 	{ .value = 2000.F, .label = "Overcast day" },
 	{ .value = 100000.F, .label = "Clear noon sun" },
 } };
 
-const std::array<Vec4, 2> k_gradient = { Vec4(1.F, 0.5F, 0.F, 1.F), Vec4(0.5F, 0.7F, 1.F, 1.F) };
+const std::array<Vec4, 2> K_GRADIENT = { Vec4(1.F, 0.5F, 0.F, 1.F), Vec4(0.5F, 0.7F, 1.F, 1.F) };
 
 const TypeInfo &everything_type() {
 	static const TypeInfo type = [] {
@@ -66,9 +66,9 @@ const TypeInfo &everything_type() {
 						.logarithmic = true,
 						.slider_min = 0.01F,
 						.slider_max = 150000.F,
-						.marks = k_marks })
+						.marks = K_MARKS })
 			.property("Temperature", &Everything::temperature,
-					  { .min = 1667.F, .max = 12000.F, .precision = 0, .unit = "K", .gradient = k_gradient })
+					  { .min = 1667.F, .max = 12000.F, .precision = 0, .unit = "K", .gradient = K_GRADIENT })
 			.property("Count", &Everything::count)
 			.property("Visible", &Everything::visible)
 			.property("Cast Shadows", &Everything::shadows, { .toggle = true })

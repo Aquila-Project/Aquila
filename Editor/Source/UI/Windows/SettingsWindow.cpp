@@ -38,7 +38,7 @@ using Config::EditorPreferences;
 
 namespace {
 
-constexpr std::array<PropertyMark, 4> k_fly_speed_marks = { {
+constexpr std::array<PropertyMark, 4> K_FLY_SPEED_MARKS = { {
 	{ .value = 1.5F, .label = "Walking" },
 	{ .value = 5.F, .label = "Running" },
 	{ .value = 15.F, .label = "Driving" },
@@ -257,7 +257,7 @@ void SettingsWindow::add_editor_pages() {
 								 .logarithmic = true,
 								 .slider_min = 0.5F,
 								 .slider_max = 100.F,
-								 .marks = k_fly_speed_marks })
+								 .marks = K_FLY_SPEED_MARKS })
 		.property("Look Sensitivity", &Navigation::look_sensitivity,
 				  PropertyHints{ .min = 0.1F, .max = 4.F, .speed = 0.01F, .precision = 2, .slider = true })
 		.property("Invert Y", &Navigation::invert_y, PropertyHints{ .toggle = true })

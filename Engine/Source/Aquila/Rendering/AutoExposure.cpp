@@ -16,26 +16,26 @@ using Aquila::Foundation::EnginePaths::shaders_dir;
 
 namespace {
 
-constexpr Usize k_bin_count = 256;
-constexpr Uint32 k_sample_step = 4;
-constexpr F32 k_min_log2 = -12.F;
-constexpr F32 k_log2_range = 32.F;
-constexpr F64 k_low_percentile = 0.5;
-constexpr F64 k_high_percentile = 0.95;
-constexpr F32 k_min_ev100 = -6.F;
-constexpr F32 k_max_ev100 = 18.F;
-constexpr F32 k_speed_brighter = 3.F;
-constexpr F32 k_speed_darker = 1.2F;
-constexpr F32 k_settled_ev = 0.005F;
-constexpr F32 k_target_hysteresis_ev = 0.05F;
+constexpr Usize K_BIN_COUNT = 256;
+constexpr Uint32 K_SAMPLE_STEP = 4;
+constexpr F32 K_MIN_LOG2 = -12.F;
+constexpr F32 K_LOG2_RANGE = 32.F;
+constexpr F64 K_LOW_PERCENTILE = 0.5;
+constexpr F64 K_HIGH_PERCENTILE = 0.95;
+constexpr F32 K_MIN_EV100 = -6.F;
+constexpr F32 K_MAX_EV100 = 18.F;
+constexpr F32 K_SPEED_BRIGHTER = 3.F;
+constexpr F32 K_SPEED_DARKER = 1.2F;
+constexpr F32 K_SETTLED_EV = 0.005F;
+constexpr F32 K_TARGET_HYSTERESIS_EV = 0.05F;
 
 struct HistogramPush {
 	Uint32 width = 0;
 	Uint32 height = 0;
-	Uint32 step = k_sample_step;
+	Uint32 step = K_SAMPLE_STEP;
 	F32 inverse_exposure = 1.F;
-	F32 min_log2 = k_min_log2;
-	F32 inverse_log2_range = 1.F / k_log2_range;
+	F32 min_log2 = K_MIN_LOG2;
+	F32 inverse_log2_range = 1.F / K_LOG2_RANGE;
 };
 
 }
@@ -58,14 +58,14 @@ AutoExposure::AutoExposure(GFX::GfxContext &ctx) : m_ctx(ctx) {
 
 	for (Uint32 slot = 0; slot < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++slot) {
 		m_histograms[slot] = ctx.create_buffer({
-			.size = sizeof(Uint32) * k_bin_count,
+			.size = sizeof(Uint32) * K_BIN_COUNT,
 			.usage = RHI::BufferUsage::StorageBuffer,
 			.domain = RHI::MemoryDomain::GpuToCpu,
 			.debug_name = "ExposureHistogram_" + std::to_string(slot),
 		});
 		auto *bins = static_cast<Uint32 *>(m_histograms[slot]->map());
 		if (bins != nullptr) {
-			std::memset(bins, 0, sizeof(Uint32) * k_bin_count);
+			std::memset(bins, 0, sizeof(Uint32) * K_BIN_COUNT);
 			m_histograms[slot]->flush();
 			m_histograms[slot]->unmap();
 		}
@@ -117,7 +117,7 @@ F32 AutoExposure::begin_frame(Uint32 frame_slot, const RenderView &view, bool me
 	m_measure = measure;
 	if (m_has_target) {
 		const F32 difference = m_target_ev100 - m_ev100;
-		const F32 speed = difference > 0.F ? k_speed_brighter : k_speed_darker;
+		const F32 speed = difference > 0.F ? K_SPEED_BRIGHTER : K_SPEED_DARKER;
 		m_ev100 += difference * (1.F - std::exp(-Math::max(delta_time, 0.F) * speed));
 		if (is_settled()) {
 			m_ev100 = m_target_ev100;
@@ -146,8 +146,8 @@ void AutoExposure::add_pass(RG::RenderGraph &graph, FrameContext &ctx) {
 		.height = ctx.height,
 		.inverse_exposure = 1.F / Math::max(m_exposure, 1e-30F),
 	};
-	const Uint32 groups_x = (((ctx.width + k_sample_step - 1) / k_sample_step) + 15) / 16;
-	const Uint32 groups_y = (((ctx.height + k_sample_step - 1) / k_sample_step) + 15) / 16;
+	const Uint32 groups_x = (((ctx.width + K_SAMPLE_STEP - 1) / K_SAMPLE_STEP) + 15) / 16;
+	const Uint32 groups_y = (((ctx.height + K_SAMPLE_STEP - 1) / K_SAMPLE_STEP) + 15) / 16;
 
 	graph.add_pass(
 		"ExposureHistogram",
@@ -201,25 +201,25 @@ void AutoExposure::read_histogram(Uint32 slot) {
 	if (bins == nullptr) {
 		return;
 	}
-	std::array<Uint32, k_bin_count> counts{};
-	std::memcpy(counts.data(), bins, sizeof(Uint32) * k_bin_count);
-	std::memset(bins, 0, sizeof(Uint32) * k_bin_count);
+	std::array<Uint32, K_BIN_COUNT> counts{};
+	std::memcpy(counts.data(), bins, sizeof(Uint32) * K_BIN_COUNT);
+	std::memset(bins, 0, sizeof(Uint32) * K_BIN_COUNT);
 	buffer.flush();
 	buffer.unmap();
 
 	F64 total = 0.0;
-	for (Usize i = 1; i < k_bin_count; ++i) {
+	for (Usize i = 1; i < K_BIN_COUNT; ++i) {
 		total += static_cast<F64>(counts[i]);
 	}
 
-	F32 target = k_min_ev100;
+	F32 target = K_MIN_EV100;
 	if (total > 0.0) {
-		const F64 low = total * k_low_percentile;
-		const F64 high = total * k_high_percentile;
+		const F64 low = total * K_LOW_PERCENTILE;
+		const F64 high = total * K_HIGH_PERCENTILE;
 		F64 seen = 0.0;
 		F64 weight = 0.0;
 		F64 sum = 0.0;
-		for (Usize i = 1; i < k_bin_count; ++i) {
+		for (Usize i = 1; i < K_BIN_COUNT; ++i) {
 			const F64 begin = seen;
 			seen += static_cast<F64>(counts[i]);
 			const F64 inside = std::min(seen, high) - std::max(begin, low);
@@ -227,7 +227,7 @@ void AutoExposure::read_histogram(Uint32 slot) {
 				continue;
 			}
 			const F64 log2_luminance =
-				k_min_log2 + ((static_cast<F64>(i) - 0.5) / static_cast<F64>(k_bin_count - 2)) * k_log2_range;
+				K_MIN_LOG2 + ((static_cast<F64>(i) - 0.5) / static_cast<F64>(K_BIN_COUNT - 2)) * K_LOG2_RANGE;
 			sum += inside * log2_luminance;
 			weight += inside;
 		}
@@ -236,18 +236,18 @@ void AutoExposure::read_histogram(Uint32 slot) {
 		}
 	}
 
-	target = Math::clamp(target, k_min_ev100, k_max_ev100);
+	target = Math::clamp(target, K_MIN_EV100, K_MAX_EV100);
 	if (!m_has_target) {
 		m_target_ev100 = target;
 		m_ev100 = target;
 		m_has_target = true;
-	} else if (std::abs(target - m_target_ev100) > k_target_hysteresis_ev) {
+	} else if (std::abs(target - m_target_ev100) > K_TARGET_HYSTERESIS_EV) {
 		m_target_ev100 = target;
 	}
 }
 
 bool AutoExposure::is_settled() const {
-	return !m_has_target || std::abs(m_target_ev100 - m_ev100) < k_settled_ev;
+	return !m_has_target || std::abs(m_target_ev100 - m_ev100) < K_SETTLED_EV;
 }
 
 }

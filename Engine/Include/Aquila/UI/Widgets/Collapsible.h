@@ -15,8 +15,8 @@ class Collapsible : public View {
 	explicit Collapsible(std::string title = "");
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "Collapsible"; }
-	static constexpr ViewKind k_kind = ViewKind::Collapsible;
-	[[nodiscard]] ViewKind get_kind() const override { return k_kind; }
+	static constexpr ViewKind K_KIND = ViewKind::Collapsible;
+	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 
 	void set_title(std::string title);
 	void set_icon(GFX::GfxTexture *icon);

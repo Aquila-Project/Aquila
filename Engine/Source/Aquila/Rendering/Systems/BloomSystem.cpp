@@ -144,7 +144,7 @@ void BloomSystem::ensure_targets(Uint32 width, Uint32 height) {
 
 	Uint32 mip_width = width;
 	Uint32 mip_height = height;
-	for (Uint32 i = 0; i < k_mip_count; ++i) {
+	for (Uint32 i = 0; i < K_MIP_COUNT; ++i) {
 		mip_width = std::max(1U, mip_width / 2);
 		mip_height = std::max(1U, mip_height / 2);
 		m_mips[i] = m_ctx->create_texture({
@@ -244,13 +244,13 @@ void BloomSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 			}
 		});
 
-	std::array<RG::RGTextureHandle, k_mip_count> mips;
-	for (Uint32 i = 0; i < k_mip_count; ++i) {
+	std::array<RG::RGTextureHandle, K_MIP_COUNT> mips;
+	for (Uint32 i = 0; i < K_MIP_COUNT; ++i) {
 		mips[i] = graph.import_texture(m_mips[i].get(), m_mips[i]->get_desc().debug_name);
 	}
 
 	auto *downsample_pipeline = m_downsample_pipeline.get();
-	for (Uint32 i = 0; i < k_mip_count; ++i) {
+	for (Uint32 i = 0; i < K_MIP_COUNT; ++i) {
 		const RG::RGTextureHandle h_source = i == 0 ? h_emissive : mips[i - 1];
 		auto *set = m_downsample_sets[ctx.frame_slot][i].get();
 
@@ -270,7 +270,7 @@ void BloomSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 	}
 
 	auto *upsample_pipeline = m_upsample_pipeline.get();
-	for (Int32 level = static_cast<Int32>(k_mip_count) - 2; level >= 0; --level) {
+	for (Int32 level = static_cast<Int32>(K_MIP_COUNT) - 2; level >= 0; --level) {
 		const RG::RGTextureHandle h_source = mips[level + 1];
 		auto *set = m_upsample_sets[ctx.frame_slot][level].get();
 
@@ -290,7 +290,7 @@ void BloomSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 
 	const BloomFinalPushConstants push{
 		.scene_weight = 1.F,
-		.bloom_weight = ctx.bloom_intensity / static_cast<F32>(k_mip_count),
+		.bloom_weight = ctx.bloom_intensity / static_cast<F32>(K_MIP_COUNT),
 	};
 	const RG::RGTextureHandle h_scene = ctx.h_scene_color;
 	const RG::RGTextureHandle h_bloom = mips[0];

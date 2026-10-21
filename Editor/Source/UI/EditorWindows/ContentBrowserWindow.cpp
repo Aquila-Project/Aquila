@@ -29,11 +29,11 @@ using Aquila::UI::StyleProperties;
 
 namespace {
 
-constexpr std::string_view k_root = Aquila::SharedConstants::PROJECT_CONTENT_DIR;
-constexpr Usize k_line_length = 12;
-constexpr std::chrono::milliseconds k_double_click{ 400 };
-constexpr F32 k_tile_padding = 40.F;
-constexpr F32 k_icon_scale = 0.75F;
+constexpr std::string_view K_ROOT = Aquila::SharedConstants::PROJECT_CONTENT_DIR;
+constexpr Usize K_LINE_LENGTH = 12;
+constexpr std::chrono::milliseconds K_DOUBLE_CLICK{ 400 };
+constexpr F32 K_TILE_PADDING = 40.F;
+constexpr F32 K_ICON_SCALE = 0.75F;
 
 std::string lower(std::string_view text) {
 	std::string out(text);
@@ -112,9 +112,9 @@ bool is_break(std::string_view name, Usize i) {
 
 std::string wrap_name(std::string_view name) {
 	std::string wrapped;
-	while (name.size() > k_line_length) {
-		Usize cut = k_line_length;
-		for (Usize i = k_line_length; i > 0; --i) {
+	while (name.size() > K_LINE_LENGTH) {
+		Usize cut = K_LINE_LENGTH;
+		for (Usize i = K_LINE_LENGTH; i > 0; --i) {
 			if (is_break(name, i)) {
 				cut = i;
 				break;
@@ -179,7 +179,7 @@ class ContentTile final : public View {
 		set_tooltip(m_payload.display_name);
 		add_class("content-tile");
 		StyleProperties tile_style;
-		tile_style.width = StyleLength::pixel(m_size + k_tile_padding);
+		tile_style.width = StyleLength::pixel(m_size + K_TILE_PADDING);
 		merge_style(tile_style);
 
 		auto *preview = add_child<View>();
@@ -195,8 +195,8 @@ class ContentTile final : public View {
 			m_image->add_class("content-tile-icon");
 			m_image->set_class("content-tile-folder", is_directory);
 			StyleProperties icon_style;
-			icon_style.width = StyleLength::pixel(std::round(m_size * k_icon_scale));
-			icon_style.height = StyleLength::pixel(std::round(m_size * k_icon_scale));
+			icon_style.width = StyleLength::pixel(std::round(m_size * K_ICON_SCALE));
+			icon_style.height = StyleLength::pixel(std::round(m_size * K_ICON_SCALE));
 			m_image->set_style(icon_style);
 		}
 		const std::string_view name = m_payload.display_name;
@@ -284,7 +284,7 @@ void clear_children(View &view) {
 
 } // namespace
 
-ContentBrowserWindow::ContentBrowserWindow(EditorContext &context) : EditorWindow(context), m_directory(k_root) {}
+ContentBrowserWindow::ContentBrowserWindow(EditorContext &context) : EditorWindow(context), m_directory(K_ROOT) {}
 
 void ContentBrowserWindow::build(View &content) {
 	auto layout = load_layout("content_browser.aqlayout");
@@ -304,7 +304,7 @@ void ContentBrowserWindow::build(View &content) {
 	m_filter->on_changed.connect([this](const std::string &) { apply_filter(); });
 	if (auto *up = root->find_by_id<Button>("content-up")) {
 		up->on_click.connect([this] {
-			if (m_directory != k_root) {
+			if (m_directory != K_ROOT) {
 				navigate(m_directory.substr(0, m_directory.find_last_of('/')));
 			}
 		});
@@ -360,8 +360,8 @@ void ContentBrowserWindow::defer(Delegate<void()> action) {
 }
 
 void ContentBrowserWindow::open(const std::string &directory) {
-	const bool inside = directory == k_root || directory.starts_with(std::string(k_root) + "/");
-	m_directory = inside && VirtualFileSystem::get()->is_directory(directory) ? directory : std::string(k_root);
+	const bool inside = directory == K_ROOT || directory.starts_with(std::string(K_ROOT) + "/");
+	m_directory = inside && VirtualFileSystem::get()->is_directory(directory) ? directory : std::string(K_ROOT);
 	build_path();
 	build_grid();
 	if (!m_rename_after_open.empty()) {
@@ -386,8 +386,8 @@ void ContentBrowserWindow::build_path() {
 		crumb->on_click.connect([this, path = std::move(path)] { navigate(path); });
 	};
 
-	add_crumb(std::string(Aquila::SharedConstants::PROJECT_CONTENT_FOLDER), std::string(k_root));
-	Usize start = k_root.size() + 1;
+	add_crumb(std::string(Aquila::SharedConstants::PROJECT_CONTENT_FOLDER), std::string(K_ROOT));
+	Usize start = K_ROOT.size() + 1;
 	while (start <= m_directory.size()) {
 		const Usize end = std::min(m_directory.find('/', start), m_directory.size());
 		add_crumb(m_directory.substr(start, end - start), m_directory.substr(0, end));
@@ -560,7 +560,7 @@ void ContentBrowserWindow::rename(const std::string &path, const std::string &na
 
 void ContentBrowserWindow::press(const std::string &path) {
 	const auto now = std::chrono::steady_clock::now();
-	const bool double_click = path == m_selected && now - m_last_press < k_double_click;
+	const bool double_click = path == m_selected && now - m_last_press < K_DOUBLE_CLICK;
 	m_last_press = now;
 	m_selected = path;
 

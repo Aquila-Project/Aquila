@@ -54,8 +54,8 @@ class TreeNode : public View {
 	TreeNode(std::string label, TreeView &owner, int depth);
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "TreeNode"; }
-	static constexpr ViewKind k_kind = ViewKind::TreeNode;
-	[[nodiscard]] ViewKind get_kind() const override { return k_kind; }
+	static constexpr ViewKind K_KIND = ViewKind::TreeNode;
+	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 
 	TreeNode *add_child_node(std::string label);
 	View *add_child(Unique<View> node) override;

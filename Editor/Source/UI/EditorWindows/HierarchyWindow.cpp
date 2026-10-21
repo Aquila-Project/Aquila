@@ -24,7 +24,7 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 	m_panel->build(&content, overlay_root());
 	m_panel->set_tree_icons(context().icon("chevron-right"), context().icon("chevron-down"));
 	m_panel->set_entity_icons(EntityIcons{
-		.empty = context().icon(k_empty_entity_icon),
+		.empty = context().icon(K_EMPTY_ENTITY_ICON),
 		.mesh = context().icon(component_icon("Mesh")),
 		.light = context().icon(component_icon("Light")),
 		.camera = context().icon(component_icon("Camera")),

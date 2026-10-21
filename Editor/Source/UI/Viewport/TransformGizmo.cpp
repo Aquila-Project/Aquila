@@ -18,20 +18,20 @@ using SceneManagement::Components::TransformComponent;
 
 namespace {
 
-constexpr F32 k_pick_radius_px = 7.F;
-constexpr F32 k_center_radius_px = 9.F;
-constexpr F32 k_plane_offset = 0.3F;
-constexpr F32 k_plane_half_px = 7.F;
-constexpr F32 k_min_axis_px = 14.F;
-constexpr int k_ring_segments = 64;
+constexpr F32 K_PICK_RADIUS_PX = 7.F;
+constexpr F32 K_CENTER_RADIUS_PX = 9.F;
+constexpr F32 K_PLANE_OFFSET = 0.3F;
+constexpr F32 K_PLANE_HALF_PX = 7.F;
+constexpr F32 K_MIN_AXIS_PX = 14.F;
+constexpr int K_RING_SEGMENTS = 64;
 
-constexpr std::array<Vec4, 3> k_axis_colors = {
+constexpr std::array<Vec4, 3> K_AXIS_COLORS = {
 	Vec4(0.86F, 0.36F, 0.36F, 1.F),
 	Vec4(0.42F, 0.74F, 0.40F, 1.F),
 	Vec4(0.33F, 0.55F, 0.90F, 1.F),
 };
-constexpr Vec4 k_center_color = Vec4(0.92F, 0.92F, 0.92F, 1.F);
-constexpr std::array<const char *, 3> k_axis_names = { "X", "Y", "Z" };
+constexpr Vec4 K_CENTER_COLOR = Vec4(0.92F, 0.92F, 0.92F, 1.F);
+constexpr std::array<const char *, 3> K_AXIS_NAMES = { "X", "Y", "Z" };
 
 F32 snap_value(F32 value, F32 step) {
 	return step > 0.F ? Math::round(value / step) * step : value;
@@ -121,13 +121,13 @@ TransformGizmo::Frame TransformGizmo::compute_frame(const Rect &viewport, const 
 		const Option<Vec2> tip =
 			Rendering::project_to_screen(view, viewport, frame.origin + (frame.axes[i] * frame.length));
 		frame.tips[i] = tip.value_or(frame.center);
-		frame.axis_visible[i] = tip.has_value() && Math::length(frame.tips[i] - frame.center) > k_min_axis_px;
+		frame.axis_visible[i] = tip.has_value() && Math::length(frame.tips[i] - frame.center) > K_MIN_AXIS_PX;
 	}
 
 	for (Usize normal = 0; normal < 3; ++normal) {
 		const Vec3 a = frame.axes[(normal + 1) % 3];
 		const Vec3 b = frame.axes[(normal + 2) % 3];
-		const Vec3 point = frame.origin + ((a + b) * (frame.length * k_plane_offset));
+		const Vec3 point = frame.origin + ((a + b) * (frame.length * K_PLANE_OFFSET));
 		const Option<Vec2> projected = Rendering::project_to_screen(view, viewport, point);
 		frame.plane_centers[normal] = projected.value_or(frame.center);
 		const F32 facing = Math::abs(Math::dot(frame.axes[normal], view.forward));
@@ -139,10 +139,10 @@ TransformGizmo::Frame TransformGizmo::compute_frame(const Rect &viewport, const 
 		const Vec3 v = frame.axes[(axis + 2) % 3];
 		auto &points = frame.rings[axis];
 		auto &front = frame.ring_front[axis];
-		points.reserve(k_ring_segments + 1);
-		front.reserve(k_ring_segments + 1);
-		for (int s = 0; s <= k_ring_segments; ++s) {
-			const F32 angle = (static_cast<F32>(s) / static_cast<F32>(k_ring_segments)) * Math::TAU;
+		points.reserve(K_RING_SEGMENTS + 1);
+		front.reserve(K_RING_SEGMENTS + 1);
+		for (int s = 0; s <= K_RING_SEGMENTS; ++s) {
+			const F32 angle = (static_cast<F32>(s) / static_cast<F32>(K_RING_SEGMENTS)) * Math::TAU;
 			const Vec3 offset = ((u * Math::cos(angle)) + (v * Math::sin(angle))) * frame.length;
 			const Option<Vec2> projected = Rendering::project_to_screen(view, viewport, frame.origin + offset);
 			points.push_back(projected.value_or(frame.center));
@@ -214,7 +214,7 @@ TransformGizmo::Handle TransformGizmo::pick(Vec2 point) const {
 
 	if (m_frame.tool == TransformTool::Rotate) {
 		Handle best = Handle::None;
-		F32 best_distance = k_pick_radius_px;
+		F32 best_distance = K_PICK_RADIUS_PX;
 		for (Usize axis = 0; axis < 3; ++axis) {
 			const auto &points = m_frame.rings[axis];
 			const auto &front = m_frame.ring_front[axis];
@@ -232,21 +232,21 @@ TransformGizmo::Handle TransformGizmo::pick(Vec2 point) const {
 		return best;
 	}
 
-	if (Math::length(point - m_frame.center) < k_center_radius_px) {
+	if (Math::length(point - m_frame.center) < K_CENTER_RADIUS_PX) {
 		return Handle::Center;
 	}
 
 	if (m_frame.tool == TransformTool::Translate) {
 		for (Usize plane = 0; plane < 3; ++plane) {
 			const Vec2 delta = Math::abs(point - m_frame.plane_centers[plane]);
-			if (m_frame.plane_visible[plane] && delta.x <= k_plane_half_px && delta.y <= k_plane_half_px) {
+			if (m_frame.plane_visible[plane] && delta.x <= K_PLANE_HALF_PX && delta.y <= K_PLANE_HALF_PX) {
 				return plane_handle(plane);
 			}
 		}
 	}
 
 	Handle best = Handle::None;
-	F32 best_distance = k_pick_radius_px;
+	F32 best_distance = K_PICK_RADIUS_PX;
 	for (Usize axis = 0; axis < 3; ++axis) {
 		if (!m_frame.axis_visible[axis]) {
 			continue;
@@ -346,7 +346,7 @@ bool TransformGizmo::begin(Handle handle, Vec2 mouse, bool modal, bool local_axe
 				nearest = s;
 			}
 		}
-		const F32 theta = (static_cast<F32>(nearest) / static_cast<F32>(k_ring_segments)) * Math::TAU;
+		const F32 theta = (static_cast<F32>(nearest) / static_cast<F32>(K_RING_SEGMENTS)) * Math::TAU;
 		const Vec3 u = f.axes[(axis + 1) % 3];
 		const Vec3 v = f.axes[(axis + 2) % 3];
 		const Vec3 radial = (u * Math::cos(theta)) + (v * Math::sin(theta));
@@ -616,7 +616,7 @@ std::string TransformGizmo::readout() const {
 	case TransformTool::Translate:
 		if (on_axis) {
 			std::snprintf(buffer.data(), buffer.size(), "D: %.3f m  along %s %s%s",
-						  Math::dot(m_drag.applied_offset, m_drag.frame.axes[axis]), space, k_axis_names[axis], snap);
+						  Math::dot(m_drag.applied_offset, m_drag.frame.axes[axis]), space, K_AXIS_NAMES[axis], snap);
 		} else {
 			std::snprintf(buffer.data(), buffer.size(), "D: %.3f m  %.3f m  %.3f m%s", m_drag.applied_offset.x,
 						  m_drag.applied_offset.y, m_drag.applied_offset.z, snap);
@@ -625,7 +625,7 @@ std::string TransformGizmo::readout() const {
 	case TransformTool::Rotate:
 		if (on_axis) {
 			std::snprintf(buffer.data(), buffer.size(), "Rot: %.1f°  around %s %s%s",
-						  Math::degrees(m_drag.applied_angle), space, k_axis_names[axis], snap);
+						  Math::degrees(m_drag.applied_angle), space, K_AXIS_NAMES[axis], snap);
 		} else {
 			std::snprintf(buffer.data(), buffer.size(), "Rot: %.1f°  around view%s",
 						  Math::degrees(m_drag.applied_angle), snap);
@@ -633,7 +633,7 @@ std::string TransformGizmo::readout() const {
 		break;
 	case TransformTool::Scale:
 		if (on_axis) {
-			std::snprintf(buffer.data(), buffer.size(), "Scale %s: %.3f%s", k_axis_names[axis],
+			std::snprintf(buffer.data(), buffer.size(), "Scale %s: %.3f%s", K_AXIS_NAMES[axis],
 						  m_drag.applied_scale[static_cast<int>(axis)], snap);
 		} else {
 			std::snprintf(buffer.data(), buffer.size(), "Scale: %.3f%s", m_drag.applied_scale.x, snap);
@@ -715,7 +715,7 @@ void TransformGizmo::draw_constraint(UI::Rendering::DrawList &draw_list) const {
 
 	if (start < stop) {
 		draw_list.draw_line(center + (direction * start), center + (direction * stop), 1.5F,
-							Vec4(Vec3(k_axis_colors[axis]), 0.8F), 1);
+							Vec4(Vec3(K_AXIS_COLORS[axis]), 0.8F), 1);
 	}
 }
 
@@ -725,9 +725,9 @@ void TransformGizmo::draw_translate(UI::Rendering::DrawList &draw_list) const {
 		if (!m_frame.plane_visible[plane]) {
 			continue;
 		}
-		const Vec4 color = color_for(plane_handle(plane), k_axis_colors[plane]);
-		const Rect square = { .position = m_frame.plane_centers[plane] - Vec2(k_plane_half_px),
-							  .size = Vec2(k_plane_half_px * 2.F) };
+		const Vec4 color = color_for(plane_handle(plane), K_AXIS_COLORS[plane]);
+		const Rect square = { .position = m_frame.plane_centers[plane] - Vec2(K_PLANE_HALF_PX),
+							  .size = Vec2(K_PLANE_HALF_PX * 2.F) };
 		draw_list.draw_rect(square, Vec4(Vec3(color), 0.35F), Vec4(2.F), 1.F, color, 1);
 	}
 
@@ -738,13 +738,13 @@ void TransformGizmo::draw_translate(UI::Rendering::DrawList &draw_list) const {
 		if (!m_frame.axis_visible[axis] || !shown) {
 			continue;
 		}
-		const Vec4 color = color_for(handle, k_axis_colors[axis]);
+		const Vec4 color = color_for(handle, K_AXIS_COLORS[axis]);
 		draw_list.draw_line(m_frame.center, m_frame.tips[axis], 2.5F, color, 1);
 		draw_list.draw_rect({ .position = m_frame.tips[axis] - Vec2(5.F), .size = Vec2(10.F) }, color, Vec4(5.F), 0.F,
 							Vec4(0.F), 2);
 	}
 
-	const Vec4 center = color_for(Handle::Center, k_center_color);
+	const Vec4 center = color_for(Handle::Center, K_CENTER_COLOR);
 	draw_list.draw_rect({ .position = m_frame.center - Vec2(6.F), .size = Vec2(12.F) }, Vec4(0.F), Vec4(6.F), 1.5F,
 						center, 3);
 }
@@ -755,7 +755,7 @@ void TransformGizmo::draw_rotate(UI::Rendering::DrawList &draw_list) const {
 		if (m_active && handle != m_drag.handle) {
 			continue;
 		}
-		const Vec4 color = color_for(handle, k_axis_colors[axis]);
+		const Vec4 color = color_for(handle, K_AXIS_COLORS[axis]);
 		const auto &points = m_frame.rings[axis];
 		for (Usize s = 0; s + 1 < points.size(); ++s) {
 			draw_list.draw_line(points[s], points[s + 1], 2.5F, color, 2);
@@ -771,9 +771,9 @@ void TransformGizmo::draw_rotate(UI::Rendering::DrawList &draw_list) const {
 		const Usize axis = axis_of(m_drag.handle);
 		const Vec3 u = f.axes[(axis + 1) % 3];
 		const Vec3 v = f.axes[(axis + 2) % 3];
-		const Vec4 fill = Vec4(Vec3(k_axis_colors[axis]), 0.9F);
+		const Vec4 fill = Vec4(Vec3(K_AXIS_COLORS[axis]), 0.9F);
 		const int steps = Math::max(
-			2, static_cast<int>(Math::abs(m_drag.applied_angle) / Math::TAU * static_cast<F32>(k_ring_segments)));
+			2, static_cast<int>(Math::abs(m_drag.applied_angle) / Math::TAU * static_cast<F32>(K_RING_SEGMENTS)));
 		Option<Vec2> previous;
 		for (int s = 0; s <= steps; ++s) {
 			const F32 theta =
@@ -789,7 +789,7 @@ void TransformGizmo::draw_rotate(UI::Rendering::DrawList &draw_list) const {
 			previous = projected;
 		}
 	} else {
-		draw_list.draw_line(f.center, m_drag.mouse, 1.5F, Vec4(Vec3(k_center_color), 0.7F), 3);
+		draw_list.draw_line(f.center, m_drag.mouse, 1.5F, Vec4(Vec3(K_CENTER_COLOR), 0.7F), 3);
 	}
 }
 
@@ -799,17 +799,17 @@ void TransformGizmo::draw_scale(UI::Rendering::DrawList &draw_list) const {
 		if (!m_frame.axis_visible[axis] || (m_active && is_axis(m_drag.handle) && handle != m_drag.handle)) {
 			continue;
 		}
-		const Vec4 color = color_for(handle, k_axis_colors[axis]);
+		const Vec4 color = color_for(handle, K_AXIS_COLORS[axis]);
 		draw_list.draw_line(m_frame.center, m_frame.tips[axis], 2.5F, color, 1);
 		draw_list.draw_rect({ .position = m_frame.tips[axis] - Vec2(5.F), .size = Vec2(10.F) }, color, Vec4(1.5F), 0.F,
 							Vec4(0.F), 2);
 	}
 
-	const Vec4 center = color_for(Handle::Center, k_center_color);
+	const Vec4 center = color_for(Handle::Center, K_CENTER_COLOR);
 	draw_list.draw_rect({ .position = m_frame.center - Vec2(6.F), .size = Vec2(12.F) }, Vec4(Vec3(center), 0.25F),
 						Vec4(2.F), 1.5F, center, 3);
 	if (m_active && m_drag.modal) {
-		draw_list.draw_line(m_frame.center, m_drag.mouse, 1.5F, Vec4(Vec3(k_center_color), 0.7F), 3);
+		draw_list.draw_line(m_frame.center, m_drag.mouse, 1.5F, Vec4(Vec3(K_CENTER_COLOR), 0.7F), 3);
 	}
 }
 

@@ -21,7 +21,7 @@ namespace Editor {
 /// so a viewport showing at the same time hides its gizmo and overlays and shows the game too.
 class GameWindow final : public EditorWindow {
   public:
-	static constexpr std::string_view k_type_id = "game";
+	static constexpr std::string_view K_TYPE_ID = "game";
 
 	explicit GameWindow(EditorContext &context);
 	~GameWindow() override;

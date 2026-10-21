@@ -22,13 +22,13 @@ using Graphics::Resources::MeshSourceKind;
 namespace {
 
 const char *primitive_icon(std::string_view id) {
-	static constexpr std::array<std::pair<std::string_view, const char *>, 4> k_icons{ {
+	static constexpr std::array<std::pair<std::string_view, const char *>, 4> K_ICONS{ {
 		{ "cube", "box" },
 		{ "sphere", "circle" },
 		{ "plane", "square" },
 		{ "cylinder", "cylinder" },
 	} };
-	for (const auto &[generator, icon] : k_icons) {
+	for (const auto &[generator, icon] : K_ICONS) {
 		if (generator == id) {
 			return icon;
 		}

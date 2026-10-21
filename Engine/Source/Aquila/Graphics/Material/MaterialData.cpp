@@ -7,7 +7,7 @@ namespace Aquila::Graphics {
 
 namespace {
 
-constexpr int k_material_version = 1;
+constexpr int K_MATERIAL_VERSION = 1;
 
 std::string_view blend_mode_name(BlendMode mode) {
 	switch (mode) {
@@ -79,15 +79,15 @@ bool is_srgb_texture_name(std::string_view parameter_name) {
 	std::string lowered(parameter_name);
 	std::ranges::transform(lowered, lowered.begin(),
 						   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	constexpr std::array<std::string_view, 7> k_color_words = { "color", "colour", "tint", "albedo",
+	constexpr std::array<std::string_view, 7> K_COLOR_WORDS = { "color", "colour", "tint", "albedo",
 																 "diffuse", "emissive", "emission" };
-	return std::ranges::any_of(k_color_words,
+	return std::ranges::any_of(K_COLOR_WORDS,
 							   [&lowered](std::string_view word) { return lowered.find(word) != std::string::npos; });
 }
 
 nlohmann::ordered_json material_to_json(const MaterialData &data) {
 	nlohmann::ordered_json json;
-	json["version"] = k_material_version;
+	json["version"] = K_MATERIAL_VERSION;
 	json["shader"] = portable_shader_path(data.shader);
 	json["double_sided"] = data.double_sided;
 	json["blend_mode"] = std::string(blend_mode_name(data.blend_mode));

@@ -543,7 +543,7 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 	} else if (prop == "font-family") {
 		props.font_family = std::string(value);
 	} else if (prop == "font-size") {
-		static const std::unordered_map<std::string_view, FontSize> k_font_size_names = {
+		static const std::unordered_map<std::string_view, FontSize> K_FONT_SIZE_NAMES = {
 			{ "Tiny", FontSize::Tiny },			  { "XSmall", FontSize::XSmall },
 			{ "Small", FontSize::Small },		  { "Body", FontSize::Body },
 			{ "BodyLarge", FontSize::BodyLarge }, { "Subtitle", FontSize::Subtitle },
@@ -551,7 +551,7 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 			{ "Title", FontSize::Title },		  { "TitleLarge", FontSize::TitleLarge },
 			{ "Display", FontSize::Display },	  { "DisplayLarge", FontSize::DisplayLarge },
 		};
-		if (auto it = k_font_size_names.find(value); it != k_font_size_names.end()) {
+		if (auto it = K_FONT_SIZE_NAMES.find(value); it != K_FONT_SIZE_NAMES.end()) {
 			props.font_size = font_size_to_pixels(it->second);
 		} else {
 			props.font_size = parse_float(value);

@@ -10,9 +10,9 @@ namespace Aquila::UI::DevTools {
 using namespace Aquila::UI::Core;
 
 namespace {
-constexpr float k_badge_font = 12.F;
-constexpr float k_badge_pad_x = 6.F;
-constexpr float k_badge_pad_y = 3.F;
+constexpr float K_BADGE_FONT = 12.F;
+constexpr float K_BADGE_PAD_X = 6.F;
+constexpr float K_BADGE_PAD_Y = 3.F;
 } // namespace
 
 PickerOverlay::PickerOverlay() {
@@ -69,8 +69,8 @@ void PickerOverlay::on_draw_self(Aquila::UI::Rendering::DrawList &draw_list) {
 	}
 	text += std::to_string(width) + " × " + std::to_string(height);
 
-	const Vec2 measured = m_font->measure_text(text, k_badge_font);
-	const Vec2 badge_size = { measured.x + k_badge_pad_x * 2.F, measured.y + k_badge_pad_y * 2.F };
+	const Vec2 measured = m_font->measure_text(text, K_BADGE_FONT);
+	const Vec2 badge_size = { measured.x + K_BADGE_PAD_X * 2.F, measured.y + K_BADGE_PAD_Y * 2.F };
 
 	Vec2 badge_pos = { m_target.position.x, m_target.position.y - badge_size.y - 2.F };
 	if (badge_pos.y < 0.F) {
@@ -81,9 +81,9 @@ void PickerOverlay::on_draw_self(Aquila::UI::Rendering::DrawList &draw_list) {
 	const Vec4 badge_bg = { 0.09F, 0.09F, 0.09F, 0.94F };
 	draw_list.draw_rect(badge_rect, badge_bg, Vec4(3.F), 0.F, Vec4(0.F), 1);
 
-	const Rect text_rect = { { badge_pos.x + k_badge_pad_x, badge_pos.y + k_badge_pad_y }, measured };
+	const Rect text_rect = { { badge_pos.x + K_BADGE_PAD_X, badge_pos.y + K_BADGE_PAD_Y }, measured };
 	const Vec4 text_color = { 0.94F, 0.94F, 0.94F, 1.F };
-	draw_list.draw_text(text_rect, text, m_font, text_color, k_badge_font, Aquila::UI::TextAlign::Left, 2);
+	draw_list.draw_text(text_rect, text, m_font, text_color, K_BADGE_FONT, Aquila::UI::TextAlign::Left, 2);
 }
 
 } // namespace Aquila::UI::DevTools

@@ -47,12 +47,12 @@ DockNode::DockNode(DockDragContext *drag_ctx) : m_drag_ctx(drag_ctx) {
 	m_panel_area = add_child(std::move(panel_area));
 
 	using AP = FloatingAttachPoint;
-	constexpr float k_step = 52.F;
+	constexpr float K_STEP = 52.F;
 	m_zone_center = make_zone_indicator(AP::Center, AP::Center, { 0.F, 0.F }, "dock-zone-center-ind");
-	m_zone_left = make_zone_indicator(AP::Center, AP::Center, { -k_step, 0.F }, "dock-zone-left-ind");
-	m_zone_right = make_zone_indicator(AP::Center, AP::Center, { k_step, 0.F }, "dock-zone-right-ind");
-	m_zone_top = make_zone_indicator(AP::Center, AP::Center, { 0.F, -k_step }, "dock-zone-top-ind");
-	m_zone_bottom = make_zone_indicator(AP::Center, AP::Center, { 0.F, k_step }, "dock-zone-bottom-ind");
+	m_zone_left = make_zone_indicator(AP::Center, AP::Center, { -K_STEP, 0.F }, "dock-zone-left-ind");
+	m_zone_right = make_zone_indicator(AP::Center, AP::Center, { K_STEP, 0.F }, "dock-zone-right-ind");
+	m_zone_top = make_zone_indicator(AP::Center, AP::Center, { 0.F, -K_STEP }, "dock-zone-top-ind");
+	m_zone_bottom = make_zone_indicator(AP::Center, AP::Center, { 0.F, K_STEP }, "dock-zone-bottom-ind");
 
 	decorate_tab_bar();
 }
@@ -518,18 +518,18 @@ DropZone DockNode::hit_test_drop_zone(Vec2 abs_pos) const {
 
 	const float rel_x = (abs_pos.x - r.position.x) / r.size.x;
 	const float rel_y = (abs_pos.y - r.position.y) / r.size.y;
-	constexpr float k_edge = 0.25F;
+	constexpr float K_EDGE = 0.25F;
 
-	if (rel_x < k_edge) {
+	if (rel_x < K_EDGE) {
 		return DropZone::Left;
 	}
-	if (rel_x > 1.F - k_edge) {
+	if (rel_x > 1.F - K_EDGE) {
 		return DropZone::Right;
 	}
-	if (rel_y < k_edge) {
+	if (rel_y < K_EDGE) {
 		return DropZone::Top;
 	}
-	if (rel_y > 1.F - k_edge) {
+	if (rel_y > 1.F - K_EDGE) {
 		return DropZone::Bottom;
 	}
 	return DropZone::None;
