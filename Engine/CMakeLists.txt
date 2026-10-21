@@ -83,8 +83,10 @@ add_subdirectory(Source/Aquila/Player)
 
 aquila_add_shader_baker()
 
-enable_testing()
-add_subdirectory(Tests)
+if (AQUILA_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(Tests)
+endif ()
 
 set(AQUILA_ENGINE_MODULES Foundation Platform RHI GFX Graphics Scene Rendering Application UI Scripting Player)
 
@@ -115,13 +117,15 @@ function(aquila_link_engine target)
     endif ()
 endfunction()
 
-add_executable(AquilaEngine
-    ${ENGINE_ROOT_DIR}/main.cpp
-)
-target_precompile_headers(AquilaEngine PRIVATE
-    ${ENGINE_INCLUDE_DIR}/GraphicsPCH.h
-)
-aquila_link_engine(AquilaEngine)
+if (NOT AQUILA_SHIPPING)
+    add_executable(AquilaEngine
+        ${ENGINE_ROOT_DIR}/main.cpp
+    )
+    target_precompile_headers(AquilaEngine PRIVATE
+        ${ENGINE_INCLUDE_DIR}/GraphicsPCH.h
+    )
+    aquila_link_engine(AquilaEngine)
+endif ()
 
 add_executable(AquilaPlayer
     ${ENGINE_ROOT_DIR}/Player/main.cpp

@@ -28,6 +28,7 @@ target_precompile_headers(AquilaEditor PRIVATE
 )
 
 aquila_link_engine(AquilaEditor)
+aquila_shipping_editor_layout(AquilaEditor)
 
 set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
@@ -52,27 +53,29 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     )
 endif()
 
-if (EXISTS ${CMAKE_SOURCE_DIR}/aquila-logo.ico)
-    add_custom_command(TARGET AquilaEditor POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${CMAKE_SOURCE_DIR}/aquila-logo.ico
-            $<TARGET_FILE_DIR:AquilaEditor>/aquila-logo.ico
-        COMMENT "Copying Aquila logo"
-    )
-endif()
-
-foreach (_aquila_content IN ITEMS Assets Resources)
-    if (_aquila_content STREQUAL "Assets")
-        set(_aquila_content_source ${AQUILA_ASSET_PATH})
-    else ()
-        set(_aquila_content_source ${AQUILA_RESOURCES_PATH})
-    endif ()
-    if (EXISTS ${_aquila_content_source})
+if (NOT AQUILA_SHIPPING)
+    if (EXISTS ${CMAKE_SOURCE_DIR}/aquila-logo.ico)
         add_custom_command(TARGET AquilaEditor POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                ${_aquila_content_source} $<TARGET_FILE_DIR:AquilaEditor>/${_aquila_content}
-            COMMENT "Copying ${_aquila_content}"
-            VERBATIM
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${CMAKE_SOURCE_DIR}/aquila-logo.ico
+                $<TARGET_FILE_DIR:AquilaEditor>/aquila-logo.ico
+            COMMENT "Copying Aquila logo"
         )
-    endif ()
-endforeach ()
+    endif()
+
+    foreach (_aquila_content IN ITEMS Assets Resources)
+        if (_aquila_content STREQUAL "Assets")
+            set(_aquila_content_source ${AQUILA_ASSET_PATH})
+        else ()
+            set(_aquila_content_source ${AQUILA_RESOURCES_PATH})
+        endif ()
+        if (EXISTS ${_aquila_content_source})
+            add_custom_command(TARGET AquilaEditor POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    ${_aquila_content_source} $<TARGET_FILE_DIR:AquilaEditor>/${_aquila_content}
+                COMMENT "Copying ${_aquila_content}"
+                VERBATIM
+            )
+        endif ()
+    endforeach ()
+endif ()

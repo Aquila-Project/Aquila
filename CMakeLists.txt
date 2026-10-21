@@ -12,6 +12,9 @@ endif ()
 
 option(AQUILA_BUILD_EDITOR "Build the Aquila editor" ON)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(AquilaShipping)
+
 if (CMAKE_BUILD_TYPE MATCHES "^(Release|RelWithDebInfo)$" AND NOT (WIN32 AND NOT MINGW))
     set(AQUILA_SHARED_ENGINE_DEFAULT ON)
 else ()
@@ -27,8 +30,12 @@ if (AQUILA_SHARED_ENGINE)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif ()
 
+option(AQUILA_BUILD_TESTS "Build the engine tests and run them as part of the build" ${AQUILA_BUILD_TESTS_DEFAULT})
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Shared engine library: ${AQUILA_SHARED_ENGINE}")
+message(STATUS "Shipping: ${AQUILA_SHIPPING}")
+message(STATUS "Tests: ${AQUILA_BUILD_TESTS}")
 
 if (MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "MSVC (cl.exe) is not supported. Use Clang/clang-cl or GCC instead.")
@@ -254,7 +261,6 @@ add_compile_definitions(
 
 message(STATUS "Aquila Version: ${AQUILA_VERSION_COMPOSED} (${GIT_BRANCH}@${GIT_COMMIT_HASH}${GIT_DIRTY_FLAG})")
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(AquilaDependencies)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -324,27 +330,30 @@ if (AQUILA_BUILD_EDITOR)
 endif ()
 
 aquila_stage_player_template()
-aquila_depend_on_engine_shaders(AquilaEditor AquilaPlayer AquilaEngine RunAllTests PlayerTemplate)
+aquila_stage_shipping_editor()
+aquila_depend_on_engine_shaders(AquilaEditor AquilaPlayer AquilaEngine RunAllTests PlayerTemplate EditorData)
 include(AquilaLint)
 
-if (AQUILA_BUILD_EDITOR)
-    install(TARGETS AquilaEditor
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
-    )
-endif ()
+if (NOT AQUILA_SHIPPING)
+    if (AQUILA_BUILD_EDITOR)
+        install(TARGETS AquilaEditor
+                RUNTIME DESTINATION bin
+                LIBRARY DESTINATION lib
+                ARCHIVE DESTINATION lib
+        )
+    endif ()
 
-if (AQUILA_SHARED_ENGINE)
-    install(TARGETS AquilaRuntime
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION lib
-    )
-endif ()
+    if (AQUILA_SHARED_ENGINE)
+        install(TARGETS AquilaRuntime
+                RUNTIME DESTINATION bin
+                LIBRARY DESTINATION lib
+        )
+    endif ()
 
-if (EXISTS ${AQUILA_ASSET_PATH})
-    install(DIRECTORY ${AQUILA_ASSET_PATH}
-            DESTINATION share/aquila/assets
-            PATTERN "*.tmp" EXCLUDE
-    )
+    if (EXISTS ${AQUILA_ASSET_PATH})
+        install(DIRECTORY ${AQUILA_ASSET_PATH}
+                DESTINATION share/aquila/assets
+                PATTERN "*.tmp" EXCLUDE
+        )
+    endif ()
 endif ()

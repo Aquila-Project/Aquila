@@ -2,6 +2,8 @@
 
 #include "Aquila/Application/ApplicationNew.h"
 #include "Aquila/Foundation/EnginePaths.h"
+#include "Aquila/Platform/Filesystem/Filesystem.h"
+#include "Aquila/Player/BuildLayout.h"
 #include "Aquila/Scripting/ScriptModule.h"
 
 int main(int argc, char **argv) {
@@ -11,6 +13,12 @@ int main(int argc, char **argv) {
 			project = argv[i + 1];
 		}
 	}
+
+#ifdef AQUILA_SHIPPING
+	const Aquila::Player::BuildLayout layout{ .root = Aquila::Platform::Filesystem::path_executable_dir() };
+	Aquila::Foundation::EnginePaths::set_shaders_dir(layout.engine_shaders_dir());
+	Aquila::Foundation::EnginePaths::set_resources_dir(layout.engine_resources_dir());
+#endif
 
 	ApplicationSpec spec;
 	spec.name = std::string("Aquila Studio | ") + AQUILA_VERSION_STRING;

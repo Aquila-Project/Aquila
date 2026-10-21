@@ -73,6 +73,41 @@ function(_aquila_player_slang_runtime out_files out_dirs)
     set(${out_dirs} "${_dirs}" PARENT_SCOPE)
 endfunction()
 
+function(aquila_engine_data_commands out root target)
+    cmake_parse_arguments(PARSE_ARGV 3 _arg "PLAYER" "" "")
+    _aquila_player_slang_runtime(_slang_files _slang_dirs)
+    set(_libraries ${_slang_files} "$<TARGET_RUNTIME_DLLS:${target}>")
+    if (AQUILA_SHARED_ENGINE AND NOT WIN32)
+        list(APPEND _libraries "$<TARGET_FILE:AquilaRuntime>")
+    endif ()
+
+    set(_lib_root "${root}/${AQUILA_PLAYER_LIBRARIES_DIR}")
+    set(_commands
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${root}" "${_lib_root}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${_libraries} "${_lib_root}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
+            "${AQUILA_RESOURCES_PATH}" "${root}/${AQUILA_PLAYER_ENGINE_RESOURCES_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${AQUILA_ENGINE_SHADERS_DIR}" "${root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
+    )
+    foreach (_dir IN LISTS _slang_dirs)
+        get_filename_component(_name "${_dir}" NAME)
+        if (_arg_PLAYER AND AQUILA_PRECOMPILED_SHADERS)
+            list(APPEND _commands COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_lib_root}/${_name}")
+        else ()
+            list(APPEND _commands
+                COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${_dir}" "${_lib_root}/${_name}")
+        endif ()
+    endforeach ()
+    if (_arg_PLAYER)
+        list(APPEND _commands
+            COMMAND "${CMAKE_COMMAND}" -E rm -rf "${root}/${AQUILA_PLAYER_ENGINE_RESOURCES_DIR}/Engine/Templates")
+    endif ()
+
+    set(${out} "${_commands}" PARENT_SCOPE)
+endfunction()
+
 function(aquila_stage_player_template)
     if (NOT TARGET AquilaPlayer)
         return()
@@ -87,33 +122,8 @@ function(aquila_stage_player_template)
     endif ()
 
     _aquila_player_slang_runtime(_slang_files _slang_dirs)
-    set(_libraries ${_slang_files} "$<TARGET_RUNTIME_DLLS:AquilaPlayer>")
-    if (AQUILA_SHARED_ENGINE AND NOT WIN32)
-        list(APPEND _libraries "$<TARGET_FILE:AquilaRuntime>")
-    endif ()
-
-    set(_lib_root "${_root}/${AQUILA_PLAYER_LIBRARIES_DIR}")
-    set(_commands
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_root}" "${_lib_root}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:AquilaPlayer>" "${_root}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${_libraries} "${_lib_root}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
-            "${AQUILA_RESOURCES_PATH}" "${_root}/${AQUILA_PLAYER_ENGINE_RESOURCES_DIR}"
-        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${AQUILA_ENGINE_SHADERS_DIR}" "${_root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
-    )
-    foreach (_dir IN LISTS _slang_dirs)
-        get_filename_component(_name "${_dir}" NAME)
-        if (AQUILA_PRECOMPILED_SHADERS)
-            list(APPEND _commands COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_lib_root}/${_name}")
-        else ()
-            list(APPEND _commands
-                COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${_dir}" "${_lib_root}/${_name}")
-        endif ()
-    endforeach ()
-    list(APPEND _commands
-        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_root}/${AQUILA_PLAYER_ENGINE_RESOURCES_DIR}/Engine/Templates")
+    aquila_engine_data_commands(_commands "${_root}" AquilaPlayer PLAYER)
+    list(APPEND _commands COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:AquilaPlayer>" "${_root}")
 
     add_custom_target(PlayerTemplate ALL
         ${_commands}

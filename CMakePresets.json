@@ -48,6 +48,16 @@
                 "AQUILA_BUILD_EDITOR": "ON"
             }
         },
+        {
+            "name": "editor-shipping",
+            "displayName": "Editor | Shipping",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "AQUILA_BUILD_EDITOR": "ON",
+                "AQUILA_SHIPPING": "ON"
+            }
+        },
 
         {
             "name": "engine-debug",
@@ -132,6 +142,16 @@
             "targets": ["AquilaEditor"]
         },
         {
+            "name": "editor-shipping",
+            "configurePreset": "editor-shipping",
+            "targets": ["AquilaEditor"]
+        },
+        {
+            "name": "editor-shipping-package",
+            "configurePreset": "editor-shipping",
+            "targets": ["Package"]
+        },
+        {
             "name": "engine-debug",
             "configurePreset": "engine-debug",
             "targets": ["AquilaEngine"]
@@ -165,6 +185,16 @@
             "name": "engine-release-gcc",
             "configurePreset": "engine-release-gcc",
             "targets": ["AquilaEngine"]
+        }
+    ],
+
+    "workflowPresets": [
+        {
+            "name": "editor-shipping",
+            "steps": [
+                { "type": "configure", "name": "editor-shipping" },
+                { "type": "build", "name": "editor-shipping-package" }
+            ]
         }
     ]
 }
