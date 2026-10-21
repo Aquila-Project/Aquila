@@ -1,6 +1,7 @@
 #include "Aquila/Player/BuildPlan.h"
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Player/BuildLayout.h"
 #include "Aquila/Player/BuildManifest.h"
 
@@ -16,8 +17,8 @@ BuildPlan plan_build(const BuildRequest &request) {
 	}
 
 	if (!request.icon_path.empty()) {
-		std::string extension = std::filesystem::path(request.icon_path).extension().string();
-		std::ranges::transform(extension, extension.begin(), [](unsigned char c) { return std::tolower(c); });
+		const std::string extension =
+			Foundation::to_lower(std::filesystem::path(request.icon_path).extension().string());
 		std::error_code error;
 		if (extension != ".png") {
 			plan.errors.emplace_back("The icon has to be a .png file: " + request.icon_path);

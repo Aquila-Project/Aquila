@@ -8,11 +8,9 @@
 
 namespace Aquila::UI::ParserHelper {
 
-std::string_view trim_sv(std::string_view s);
-std::string trim(std::string_view s);
+using Foundation::split;
 using Foundation::to_lower;
-
-std::vector<std::string> split(std::string_view s, char delim);
+using Foundation::trim;
 
 std::vector<std::string> split_ws(std::string_view s);
 

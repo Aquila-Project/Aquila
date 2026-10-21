@@ -212,28 +212,18 @@ struct Parser {
 	}
 
 	void apply_inline_style(UI::StyleProperties &props, std::string_view decls, size_t at_offset) {
-		auto trim_sv = [](std::string_view s) {
-			while (!s.empty() && static_cast<unsigned char>(s.front()) <= ' ') {
-				s.remove_prefix(1);
-			}
-			while (!s.empty() && static_cast<unsigned char>(s.back()) <= ' ') {
-				s.remove_suffix(1);
-			}
-			return s;
-		};
-
 		while (!decls.empty()) {
 			const auto semi = decls.find(';');
-			const std::string_view decl = trim_sv((semi != std::string_view::npos) ? decls.substr(0, semi) : decls);
+			const std::string_view decl = Foundation::trim((semi != std::string_view::npos) ? decls.substr(0, semi) : decls);
 			decls = (semi != std::string_view::npos) ? decls.substr(semi + 1) : std::string_view{};
 			if (decl.empty()) {
 				continue;
 			}
 
 			const auto colon = decl.find(':');
-			const std::string_view prop = colon == std::string_view::npos ? decl : trim_sv(decl.substr(0, colon));
+			const std::string_view prop = colon == std::string_view::npos ? decl : Foundation::trim(decl.substr(0, colon));
 			const std::string_view val =
-				colon == std::string_view::npos ? std::string_view{} : trim_sv(decl.substr(colon + 1));
+				colon == std::string_view::npos ? std::string_view{} : Foundation::trim(decl.substr(colon + 1));
 			if (prop.empty() || val.empty()) {
 				AQUILA_LOG_ERROR("LayoutLoader: {}: style declaration '{}' needs 'property: value'",
 								 location(at_offset), decl);

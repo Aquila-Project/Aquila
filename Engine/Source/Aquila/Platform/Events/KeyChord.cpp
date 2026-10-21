@@ -73,23 +73,9 @@ constexpr int code_of(KeyCode key) {
 	return static_cast<int>(key);
 }
 
-std::string_view trim(std::string_view text) {
-	while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0) {
-		text.remove_prefix(1);
-	}
-	while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())) != 0) {
-		text.remove_suffix(1);
-	}
-	return text;
-}
-
-bool equals_ignoring_case(std::string_view a, std::string_view b) {
-	return a.size() == b.size() && Foundation::to_lower(a) == Foundation::to_lower(b);
-}
-
 int modifier_from_name(std::string_view name) {
 	for (const ModifierName &modifier : K_MODIFIER_NAMES) {
-		if (equals_ignoring_case(name, modifier.name)) {
+		if (Foundation::equals_ignore_case(name, modifier.name)) {
 			return modifier.mod;
 		}
 	}
@@ -127,7 +113,7 @@ std::string_view key_name(KeyCode key) {
 }
 
 Option<KeyCode> key_from_name(std::string_view name) {
-	name = trim(name);
+	name = Foundation::trim(name);
 	if (name.empty()) {
 		return std::nullopt;
 	}
@@ -148,7 +134,7 @@ Option<KeyCode> key_from_name(std::string_view name) {
 		}
 	}
 
-	if (name.size() > 3 && equals_ignoring_case(name.substr(0, 3), "key")) {
+	if (name.size() > 3 && Foundation::equals_ignore_case(name.substr(0, 3), "key")) {
 		if (const Option<int> code = parse_number(name.substr(3)); code && *code > 0 && *code < 512) {
 			return static_cast<KeyCode>(*code);
 		}
@@ -156,7 +142,7 @@ Option<KeyCode> key_from_name(std::string_view name) {
 
 	for (const auto &table : { std::span<const KeyName>(K_KEY_NAMES), std::span<const KeyName>(K_KEY_ALIASES) }) {
 		for (const KeyName &entry : table) {
-			if (equals_ignoring_case(name, entry.name)) {
+			if (Foundation::equals_ignore_case(name, entry.name)) {
 				return entry.key;
 			}
 		}
@@ -165,14 +151,14 @@ Option<KeyCode> key_from_name(std::string_view name) {
 }
 
 Option<KeyChord> KeyChord::parse(std::string_view text) {
-	text = trim(text);
+	text = Foundation::trim(text);
 	int mods = 0;
 	while (true) {
 		const Usize plus = text.find('+');
 		if (plus == std::string_view::npos || plus == 0) {
 			break;
 		}
-		const int mod = modifier_from_name(trim(text.substr(0, plus)));
+		const int mod = modifier_from_name(Foundation::trim(text.substr(0, plus)));
 		if (mod == 0) {
 			break;
 		}

@@ -4,37 +4,6 @@
 
 namespace Aquila::UI::ParserHelper {
 
-std::string_view trim_sv(std::string_view s) {
-	while (!s.empty() && (std::isspace(static_cast<unsigned char>(s.front())) != 0)) {
-		s.remove_prefix(1);
-	}
-	while (!s.empty() && (std::isspace(static_cast<unsigned char>(s.back())) != 0)) {
-		s.remove_suffix(1);
-	}
-	return s;
-}
-
-std::string trim(std::string_view s) {
-	return std::string(trim_sv(s));
-}
-
-std::vector<std::string> split(std::string_view s, char delim) {
-	std::vector<std::string> result;
-	while (!s.empty()) {
-		size_t pos = s.find(delim);
-		std::string_view tok = (pos == std::string_view::npos) ? s : s.substr(0, pos);
-		std::string t = trim(tok);
-		if (!t.empty()) {
-			result.push_back(std::move(t));
-		}
-		if (pos == std::string_view::npos) {
-			break;
-		}
-		s.remove_prefix(pos + 1);
-	}
-	return result;
-}
-
 std::vector<std::string> split_ws(std::string_view s) {
 	std::vector<std::string> result;
 	size_t i = 0;
@@ -82,14 +51,14 @@ std::string strip_comments(std::string_view src) {
 }
 
 float parse_float(std::string_view s) {
-	s = trim_sv(s);
+	s = trim(s);
 	float v = 0.F;
 	std::from_chars(s.data(), s.data() + s.size(), v);
 	return v;
 }
 
 float parse_duration_ms(std::string_view s) {
-	s = trim_sv(s);
+	s = trim(s);
 	if (s.ends_with("ms")) {
 		return parse_float(s.substr(0, s.size() - 2));
 	}
@@ -249,7 +218,7 @@ Option<Vec4> parse_radius(std::string_view s) {
 Option<BoxShadow> parse_one_shadow(std::string_view raw) {
 	std::vector<std::string> tokens;
 	size_t i = 0;
-	std::string s = trim(raw);
+	std::string s(trim(raw));
 	while (i < s.size()) {
 		while (i < s.size() && (std::isspace(static_cast<unsigned char>(s[i])) != 0)) {
 			++i;
@@ -287,7 +256,7 @@ Option<BoxShadow> parse_one_shadow(std::string_view raw) {
 		lengths.push_back(tok);
 	}
 	auto px = [](std::string_view v) -> float {
-		std::string t = trim(v);
+		std::string t(trim(v));
 		if (t.ends_with("px")) {
 			t = t.substr(0, t.size() - 2);
 		}
@@ -311,7 +280,7 @@ Option<BoxShadow> parse_one_shadow(std::string_view raw) {
 
 void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::string_view value_raw) {
 	std::string prop = to_lower(trim(prop_raw));
-	std::string value = trim(value_raw);
+	std::string value(trim(value_raw));
 	std::string value_lower = to_lower(value);
 
 	// CSS custom properties (--name) are handled by the variable extraction pass;
@@ -614,7 +583,7 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 
 	} else if (prop == "transition") {
 		for (std::string_view token : split(value, ' ')) {
-			token = trim_sv(token);
+			token = trim(token);
 			if (token.empty() || token == "all") {
 				continue;
 			}
@@ -635,7 +604,7 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 
 void parse_block(std::string_view selector_list, std::string_view body, StyleSheet &sheet) {
 	StyleProperties props;
-	const std::string selectors = trim(selector_list);
+	const std::string selectors(trim(selector_list));
 
 	for (const auto &decl : split(body, ';')) {
 		const size_t colon = decl.find(':');
@@ -643,8 +612,8 @@ void parse_block(std::string_view selector_list, std::string_view body, StyleShe
 			AQUILA_LOG_WARNING("StyleParser: '{}': declaration '{}' is missing ':'", selectors, decl);
 			continue;
 		}
-		const std::string_view property = trim_sv(std::string_view(decl).substr(0, colon));
-		const std::string_view value = trim_sv(std::string_view(decl).substr(colon + 1));
+		const std::string_view property = trim(std::string_view(decl).substr(0, colon));
+		const std::string_view value = trim(std::string_view(decl).substr(colon + 1));
 		if (property.empty() || value.empty()) {
 			AQUILA_LOG_WARNING("StyleParser: '{}': declaration '{}' needs 'property: value'", selectors, decl);
 			continue;

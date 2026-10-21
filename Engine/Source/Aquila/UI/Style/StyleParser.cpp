@@ -48,7 +48,7 @@ static Variables extract_variables(std::string_view src) {
 			break;
 		}
 
-		std::string name = ParserHelper::trim(src.substr(dash_pos, colon_pos - dash_pos));
+		std::string name(ParserHelper::trim(src.substr(dash_pos, colon_pos - dash_pos)));
 		if (colon_pos > end_pos || !is_variable_name(name) || !starts_declaration(src, dash_pos)) {
 			i = dash_pos + 2;
 			continue;
@@ -101,11 +101,11 @@ class VariableResolver {
 
 			out.append(text.substr(i, start - i));
 			const size_t name_end = comma == std::string_view::npos ? close : comma;
-			const std::string name = ParserHelper::trim(text.substr(start + 4, name_end - start - 4));
+			const std::string name(ParserHelper::trim(text.substr(start + 4, name_end - start - 4)));
 			if (const auto it = m_vars.find(name); it != m_vars.end()) {
 				out += resolve(it->second, depth + 1);
 			} else if (comma != std::string_view::npos) {
-				out += resolve(ParserHelper::trim_sv(text.substr(comma + 1, close - comma - 1)), depth + 1);
+				out += resolve(ParserHelper::trim(text.substr(comma + 1, close - comma - 1)), depth + 1);
 			} else {
 				if (m_reported.insert(name).second) {
 					AQUILA_LOG_WARNING("StyleParser: undefined variable '{}'", name);
@@ -129,14 +129,14 @@ static Option<MediaCondition> parse_media_condition(std::string_view raw) {
 	using Axis = MediaCondition::Axis;
 	using Op = MediaCondition::Op;
 
-	const std::string c = ParserHelper::trim(raw);
+	const std::string c(ParserHelper::trim(raw));
 	if (c.empty()) {
 		return std::nullopt;
 	}
 
 	const size_t colon_pos = c.find(':');
 	if (colon_pos != std::string::npos) {
-		const std::string prop = ParserHelper::trim(c.substr(0, colon_pos));
+		const std::string prop(ParserHelper::trim(c.substr(0, colon_pos)));
 		const float val = ParserHelper::parse_float(ParserHelper::trim(c.substr(colon_pos + 1)));
 		if (prop == "min-width") {
 			return MediaCondition{ .axis = Axis::Width, .op = Op::GreaterEq, .value = val };
@@ -171,7 +171,7 @@ static Option<MediaCondition> parse_media_condition(std::string_view raw) {
 		return std::nullopt;
 	}
 
-	const std::string rest = ParserHelper::trim(c.substr(axis_end));
+	const std::string rest(ParserHelper::trim(c.substr(axis_end)));
 	if (rest.empty()) {
 		return std::nullopt;
 	}
@@ -200,7 +200,7 @@ static Option<MediaCondition> parse_media_condition(std::string_view raw) {
 
 static void parse_at_block(std::string_view cond_text, std::string_view body, StyleSheet &sheet, bool is_container) {
 	std::vector<MediaCondition> conditions;
-	const std::string cond_str = ParserHelper::trim(cond_text);
+	const std::string cond_str(ParserHelper::trim(cond_text));
 	size_t j = 0;
 	while (j < cond_str.size()) {
 		while (j < cond_str.size() && (std::isspace((unsigned char)cond_str[j]) != 0)) {
@@ -247,7 +247,7 @@ static void parse_at_block(std::string_view cond_text, std::string_view body, St
 			break;
 		}
 
-		const std::string inner_sel = ParserHelper::trim(body.substr(k, inner_open - k));
+		const std::string inner_sel(ParserHelper::trim(body.substr(k, inner_open - k)));
 
 		const size_t inner_close = find_matching_close(body, inner_open);
 		if (inner_close == std::string_view::npos) {
@@ -331,7 +331,7 @@ bool StyleParser::LoadString(std::string_view css, StyleSheet &sheet, bool clear
 			break;
 		}
 
-		const std::string selector = ParserHelper::trim(std::string_view(src).substr(i, brace_open - i));
+		const std::string selector(ParserHelper::trim(std::string_view(src).substr(i, brace_open - i)));
 
 		const size_t brace_close = find_matching_close(src, brace_open);
 		if (brace_close == std::string::npos) {
