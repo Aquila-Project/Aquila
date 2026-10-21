@@ -1,3 +1,17 @@
+import Utils;
+import Utility.FrameData;
+import Utility.LightData;
+import Utility.SurfaceData;
+import Utility.ClusterData;
+import Utility.EnvironmentData;
+import Utility.ShadowData;
+import Aquila.Surface;
+import Aquila.Lit;
+
+using namespace Aquila::Shading;
+
+extern void aquilaSurface(inout Surface s, SurfaceInput input);
+
 struct AquilaMeshPush {
 	column_major float4x4 model;
 	float4 color;
@@ -63,7 +77,7 @@ float4 fragmentMain(AquilaVertexOutput fragmentInput) : SV_Target {
 	surfaceInput.pixel = fragmentInput.sv_position.xy;
 
 	Surface surfaceResult = DefaultSurface(surfaceInput);
-	surface(surfaceResult, surfaceInput);
+	aquilaSurface(surfaceResult, surfaceInput);
 	surfaceResult.baseColor *= aquilaPush.color.rgb;
 	if (surfaceResult.alpha < aquilaPush.alphaCutoff) {
 		discard;

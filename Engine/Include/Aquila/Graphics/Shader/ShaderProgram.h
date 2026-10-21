@@ -61,6 +61,8 @@ class ShaderProgram {
 	bool add_stage_from_slang(const std::string &slang_path, std::string &error_log);
 	/// Compiles what `provider` returns instead of a file, and remembers it for reload().
 	bool add_stages_from_provider(SourceProvider provider, std::string &error_log);
+	/// Precompiled (shader pack) programs never hot reload.
+	bool load_material(const std::string &shader_path, ShaderVariant variant, std::string &error_log);
 	bool reload(std::string &error_log, Ref<GFX::GfxDescriptorSetLayout> &out_new_layout);
 	void commit_new_layout(Ref<GFX::GfxDescriptorSetLayout> new_layout);
 	bool reflect();
@@ -87,6 +89,15 @@ class ShaderProgram {
 	// Returns SPIRV stage desc for pipeline creation via GfxContext
 	[[nodiscard]] RHI::ShaderStageDesc get_stage_desc(RHI::ShaderStageFlags stage) const;
 	[[nodiscard]] bool reads_frame_time() const;
+	[[nodiscard]] bool is_precompiled() const { return m_precompiled; }
+
+	[[nodiscard]] static std::vector<ShaderStage> make_stages(std::vector<RHI::VulkanCompiledStage> &compiled);
+	/// Stage flags cover every stage that declares the binding. Empty for precompiled stages.
+	[[nodiscard]] static std::vector<ReflectedBinding> reflect_stages(const std::vector<ShaderStage> &stages);
+	[[nodiscard]] static std::vector<Uint8> write_metadata(ShaderDomain domain,
+														   const std::vector<ReflectedBinding> &bindings);
+	static bool read_metadata(std::span<const Uint8> data, ShaderDomain &domain,
+							  std::vector<ReflectedBinding> &bindings);
 
   private:
 	bool compile_from_provider(std::string &error_log);
@@ -102,19 +113,13 @@ class ShaderProgram {
 	RHI::TextureFormat m_depth_format = RHI::TextureFormat::Depth32;
 	std::vector<ReflectedBinding> m_reflected_bindings;
 	std::vector<ShaderStage> m_stages;
-
-	struct BindingInfo {
-		RHI::DescriptorType descriptor_type = RHI::DescriptorType::UniformBuffer;
-		RHI::ShaderStageFlags stage_flags = RHI::ShaderStageFlags::None;
-		Uint32 descriptor_count = 1;
-		bool occupied = false;
-	};
+	bool m_precompiled = false;
 
 	static bool slang_type_to_descriptor(slang::TypeLayoutReflection *type_layout, RHI::DescriptorType &out_type,
 									  ReflectedBindingType &out_reflected_type);
 
-	void process_binding(slang::VariableLayoutReflection *var, RHI::ShaderStageFlags stage_flags,
-						std::map<Uint32, std::map<Uint32, BindingInfo>> &sets);
+	static void process_binding(slang::VariableLayoutReflection *var, RHI::ShaderStageFlags stage_flags,
+								std::vector<ReflectedBinding> &out);
 
 	bool reflect_into(Ref<GFX::GfxDescriptorSetLayout> &out_layout);
 };

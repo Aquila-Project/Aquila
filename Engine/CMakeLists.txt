@@ -81,6 +81,8 @@ add_subdirectory(Source/Aquila/UI)
 add_subdirectory(Source/Aquila/Scripting)
 add_subdirectory(Source/Aquila/Player)
 
+aquila_add_shader_baker()
+
 enable_testing()
 add_subdirectory(Tests)
 

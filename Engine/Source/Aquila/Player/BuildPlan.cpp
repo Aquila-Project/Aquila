@@ -84,6 +84,13 @@ BuildPlan plan_build(const BuildRequest &request) {
 		.content = "",
 	});
 
+	plan.steps.push_back(BuildStep{
+		.kind = BuildStepKind::BakeShaders,
+		.source = request.project_dir,
+		.target = plan.layout.shader_pack_file(),
+		.content = "",
+	});
+
 	// WriteFile write_manifest(manifest) -> layout.manifest_file()
 	plan.steps.push_back(BuildStep{
 		.kind = BuildStepKind::WriteFile,

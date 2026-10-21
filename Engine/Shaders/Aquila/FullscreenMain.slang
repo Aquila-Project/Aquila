@@ -1,3 +1,11 @@
+import Utils;
+import Utility.FrameData;
+import Aquila.Fullscreen;
+
+using namespace Aquila::Shading;
+
+extern float4 aquilaFullscreen(FullscreenInput input);
+
 struct AquilaFullscreenVertex {
 	float4 position : SV_Position;
 	[[vk::location(0)]] float2 uv : TEXCOORD0;
@@ -16,5 +24,5 @@ float4 fragmentMain(AquilaFullscreenVertex fragmentInput) : SV_Target {
 	FullscreenInput fullscreenInput;
 	fullscreenInput.uv = fragmentInput.uv;
 	fullscreenInput.pixel = fragmentInput.position.xy;
-	return fullscreen(fullscreenInput);
+	return aquilaFullscreen(fullscreenInput);
 }

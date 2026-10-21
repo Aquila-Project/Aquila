@@ -1,4 +1,5 @@
 #include "Aquila/Player/BuildLayout.h"
+#include "Aquila/RHI/ShaderPack.h"
 
 namespace Aquila::Player {
 
@@ -26,6 +27,10 @@ std::string BuildLayout::project_dir() const {
 
 std::string BuildLayout::icon_file() const {
 	return (std::filesystem::path(root) / AQUILA_PLAYER_ICON).string();
+}
+
+std::string BuildLayout::shader_pack_file() const {
+	return (std::filesystem::path(project_dir()) / RHI::PROJECT_SHADER_PACK).string();
 }
 
 std::string player_template_dir(std::string_view editor_dir) {

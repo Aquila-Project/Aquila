@@ -1,3 +1,12 @@
+import Utils;
+import Utility.FrameData;
+import Aquila.Surface;
+import Aquila.Unlit;
+
+using namespace Aquila::Shading;
+
+extern float4 aquilaUnlit(SurfaceInput input);
+
 struct AquilaMeshPush {
 	column_major float4x4 model;
 	float4 color;
@@ -52,7 +61,7 @@ float4 fragmentMain(AquilaVertexOutput fragmentInput) : SV_Target {
 	surfaceInput.viewDirection = normalize(GetCameraPosition() - fragmentInput.worldPosition);
 	surfaceInput.pixel = fragmentInput.sv_position.xy;
 
-	float4 unlitResult = unlit(surfaceInput);
+	float4 unlitResult = aquilaUnlit(surfaceInput);
 	if (unlitResult.a < aquilaPush.alphaCutoff) {
 		discard;
 	}

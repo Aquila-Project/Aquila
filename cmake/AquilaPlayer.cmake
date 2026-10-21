@@ -99,13 +99,21 @@ function(aquila_stage_player_template)
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different ${_libraries} "${_lib_root}"
         COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
             "${AQUILA_RESOURCES_PATH}" "${_root}/${AQUILA_PLAYER_ENGINE_RESOURCES_DIR}"
-        COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
-            "${CMAKE_SOURCE_DIR}/Engine/Shaders" "${_root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${AQUILA_ENGINE_SHADERS_DIR}" "${_root}/${AQUILA_PLAYER_ENGINE_SHADERS_DIR}"
     )
     foreach (_dir IN LISTS _slang_dirs)
         get_filename_component(_name "${_dir}" NAME)
-        list(APPEND _commands COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${_dir}" "${_lib_root}/${_name}")
+        if (AQUILA_PRECOMPILED_SHADERS)
+            list(APPEND _commands COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_lib_root}/${_name}")
+        else ()
+            list(APPEND _commands
+                COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${_dir}" "${_lib_root}/${_name}")
+        endif ()
     endforeach ()
+    list(APPEND _commands
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${_root}/${AQUILA_PLAYER_ENGINE_RESOURCES_DIR}/Engine/Templates")
 
     add_custom_target(PlayerTemplate ALL
         ${_commands}

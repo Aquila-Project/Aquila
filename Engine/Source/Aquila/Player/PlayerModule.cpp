@@ -8,6 +8,7 @@
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/InputState.h"
+#include "Aquila/RHI/ShaderPack.h"
 #include "Aquila/Rendering/RenderPipeline.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/DefaultScenes.h"
@@ -42,6 +43,15 @@ void PlayerModule::on_attach(Application::EngineContext &engine) {
 						 SharedConstants::PROJECT_MOUNT);
 		engine.request_close();
 		return;
+	}
+
+	const std::string shader_pack = m_layout.shader_pack_file();
+	std::error_code ec;
+	if (std::filesystem::is_regular_file(shader_pack, ec)) {
+		std::string error;
+		if (!RHI::ShaderPacks::mount(shader_pack, error)) {
+			AQUILA_LOG_ERROR("PlayerModule: {}", error);
+		}
 	}
 
 	SceneManagement::Scene &scene = engine.get_scene();

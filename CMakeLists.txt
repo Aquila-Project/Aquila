@@ -299,8 +299,9 @@ mark_as_advanced(
         ENABLE_SPVREMAPPER BUILD_EXTERNAL ENABLE_CTEST
 )
 
+include(AquilaShaders)
 add_compile_definitions(
-    AQUILA_SHADERS_DIR="${CMAKE_SOURCE_DIR}/Engine/Shaders/"
+    AQUILA_SHADERS_DIR="${AQUILA_ENGINE_SHADERS_DIR}/"
     AQUILA_RESOURCES_DIR="${CMAKE_SOURCE_DIR}/Resources/"
 )
 
@@ -323,6 +324,7 @@ if (AQUILA_BUILD_EDITOR)
 endif ()
 
 aquila_stage_player_template()
+aquila_depend_on_engine_shaders(AquilaEditor AquilaPlayer AquilaEngine RunAllTests PlayerTemplate)
 include(AquilaLint)
 
 if (AQUILA_BUILD_EDITOR)

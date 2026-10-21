@@ -101,11 +101,7 @@ MaterialFactory::Entry *MaterialFactory::get_entry(GFX::GfxContext &ctx, const s
 	Entry entry;
 	entry.program = Ref<Shader::ShaderProgram>(new Shader::ShaderProgram(ctx, shader_path));
 	std::string err;
-	const bool compiled = entry.program->add_stages_from_provider(
-		[shader_path](Shader::ShaderSource &out, std::string &error) {
-			return Shader::load_shader_source(shader_path, out, error);
-		},
-		err);
+	const bool compiled = entry.program->load_material(shader_path, Shader::ShaderVariant::Main, err);
 	if (!compiled) {
 		AQUILA_LOG_ERROR("MaterialFactory: compile failed for '{}': {}", shader_path, err);
 		return nullptr;
@@ -174,11 +170,7 @@ Ref<GFX::GfxPipeline> MaterialFactory::get_depth_pipeline(GFX::GfxContext &ctx, 
 	if (!entry.depth_program) {
 		auto program = Ref<Shader::ShaderProgram>(new Shader::ShaderProgram(ctx, shader_path + " (depth)"));
 		std::string err;
-		const bool compiled = program->add_stages_from_provider(
-			[shader_path](Shader::ShaderSource &out, std::string &error) {
-				return Shader::load_shader_source(shader_path, out, error, Shader::ShaderVariant::Depth);
-			},
-			err);
+		const bool compiled = program->load_material(shader_path, Shader::ShaderVariant::Depth, err);
 		if (!compiled || !program->reflect()) {
 			AQUILA_LOG_ERROR("MaterialFactory: depth variant of '{}' failed: {}", shader_path, err);
 			return nullptr;
@@ -229,11 +221,7 @@ GFX::GfxPipeline *MaterialFactory::get_emissive_pipeline(GFX::GfxContext &ctx, c
 		const std::string &shader_path = it->first;
 		auto program = Ref<Shader::ShaderProgram>(new Shader::ShaderProgram(ctx, shader_path + " (emissive)"));
 		std::string err;
-		const bool compiled = program->add_stages_from_provider(
-			[shader_path](Shader::ShaderSource &out, std::string &error) {
-				return Shader::load_shader_source(shader_path, out, error, Shader::ShaderVariant::Emissive);
-			},
-			err);
+		const bool compiled = program->load_material(shader_path, Shader::ShaderVariant::Emissive, err);
 		if (!compiled || !program->reflect()) {
 			AQUILA_LOG_ERROR("MaterialFactory: emissive variant of '{}' failed: {}", shader_path, err);
 			entry.emissive_failed = true;

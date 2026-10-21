@@ -1,7 +1,34 @@
 #include "Aquila/Player/BuildRunner.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Graphics/Shader/ShaderBaker.h"
 
 namespace Aquila::Player {
+
+namespace {
+
+bool remove_shader_sources(const std::filesystem::path &folder, std::error_code &ec) {
+	namespace fs = std::filesystem;
+	if (!fs::is_directory(folder, ec)) {
+		ec.clear();
+		return true;
+	}
+	std::vector<fs::path> sources;
+	for (auto it = fs::recursive_directory_iterator(folder, ec); !ec && it != fs::recursive_directory_iterator();
+		 it.increment(ec)) {
+		if (it->path().extension() == ".slang" && it->is_regular_file(ec)) {
+			sources.push_back(it->path());
+		}
+	}
+	for (const fs::path &source : sources) {
+		if (ec) {
+			break;
+		}
+		fs::remove(source, ec);
+	}
+	return !ec;
+}
+
+}
 
 BuildResult run_build(const BuildPlan &plan, const BuildProgressCallback &on_progress) {
 	BuildResult result;
@@ -57,6 +84,9 @@ BuildResult run_build(const BuildPlan &plan, const BuildProgressCallback &on_pro
 				break;
 			case BuildStepKind::CopyFile:
 				step_name = "Copying file: " + step.target;
+				break;
+			case BuildStepKind::BakeShaders:
+				step_name = "Compiling shaders: " + step.target;
 				break;
 			}
 
@@ -143,6 +173,27 @@ BuildResult run_build(const BuildPlan &plan, const BuildProgressCallback &on_pro
 				AQUILA_LOG_ERROR("{}", err);
 				result.errors.push_back(err);
 				return result;
+			}
+			break;
+		}
+		case BuildStepKind::BakeShaders: {
+			const Graphics::Shader::ShaderBakeReport report =
+				Graphics::Shader::bake_project_shaders(step.source, step.target);
+			if (!report.ok()) {
+				for (const std::string &error : report.errors) {
+					std::string err = "Step failed [BakeShaders]: " + error;
+					AQUILA_LOG_ERROR("{}", err);
+					result.errors.push_back(std::move(err));
+				}
+				return result;
+			}
+			for (const std::string &folder : { plan.layout.project_dir(), plan.layout.engine_resources_dir() }) {
+				if (!remove_shader_sources(folder, ec)) {
+					std::string err = "Step failed [BakeShaders]: can't remove shader sources: " + ec.message();
+					AQUILA_LOG_ERROR("{}", err);
+					result.errors.push_back(err);
+					return result;
+				}
 			}
 			break;
 		}

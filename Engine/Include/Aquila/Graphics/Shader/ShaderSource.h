@@ -32,17 +32,27 @@ struct ShaderSource {
 	std::vector<std::string> search_paths;
 	/// The file on disk hot reload watches. Empty when there's none.
 	std::string watch_path;
+	/// Empty for Custom shaders.
+	std::string entry_module;
 };
 
 [[nodiscard]] ShaderDomain detect_shader_domain(std::string_view code);
 [[nodiscard]] std::string_view domain_name(ShaderDomain domain);
+/// "", "depth" or "emissive".
+[[nodiscard]] std::string_view variant_name(ShaderVariant variant);
+/// Main first.
+[[nodiscard]] std::vector<ShaderVariant> domain_variants(ShaderDomain domain);
+[[nodiscard]] std::span<const std::string_view> entry_modules();
 
-/// `path` is a full engine shader path or a VFS path. Domain shaders get the engine's entry points appended, with
-/// #line markers so errors still point into the user's file. The Depth variant fails for Fullscreen and Custom, the
-/// Emissive one for anything but Lit.
+/// `path` is an engine shader path or a VFS path. Depth fails for Fullscreen and Custom, Emissive for
+/// anything but Lit.
 bool load_shader_source(const std::string &path, ShaderSource &out, std::string &error,
 						ShaderVariant variant = ShaderVariant::Main);
 
+/// Same as load_shader_source() for code in memory. `directory` is where its imports are looked up, empty for
+/// none. Reads no files, any thread.
+bool compose_shader_source(const std::string &name, const std::string &code, const std::string &directory,
+						   ShaderVariant variant, ShaderSource &out, std::string &error);
 }
 
 #endif

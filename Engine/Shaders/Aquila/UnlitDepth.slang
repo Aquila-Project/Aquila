@@ -1,3 +1,12 @@
+import Utils;
+import Utility.FrameData;
+import Aquila.Surface;
+import Aquila.Unlit;
+
+using namespace Aquila::Shading;
+
+extern float4 aquilaUnlit(SurfaceInput input);
+
 struct AquilaDepthPush {
 	column_major float4x4 model;
 	column_major float4x4 viewProjection;
@@ -49,7 +58,7 @@ void fragmentMain(AquilaDepthVertex fragmentInput) {
 	surfaceInput.viewDirection = normalize(GetCameraPosition() - fragmentInput.worldPosition);
 	surfaceInput.pixel = fragmentInput.sv_position.xy;
 
-	if (unlit(surfaceInput).a < aquilaPush.alphaCutoff) {
+	if (aquilaUnlit(surfaceInput).a < aquilaPush.alphaCutoff) {
 		discard;
 	}
 }

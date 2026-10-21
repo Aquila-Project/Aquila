@@ -58,7 +58,8 @@ struct BuildRequest {
 	}
 };
 
-enum class BuildStepKind : Uint8 { MakeDirectory, CopyDirectory, Rename, WriteFile, CopyFile };
+/// BakeShaders also deletes every .slang from the game, games never ship shader source.
+enum class BuildStepKind : Uint8 { MakeDirectory, CopyDirectory, Rename, WriteFile, CopyFile, BakeShaders };
 
 struct BuildStep {
 	BuildStepKind kind = BuildStepKind::MakeDirectory;

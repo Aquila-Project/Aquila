@@ -5,6 +5,8 @@
 #include "Aquila/Player/BuildManifest.h"
 #include "Aquila/Player/BuildPlan.h"
 #include "Aquila/Player/BuildRunner.h"
+#include "Aquila/Graphics/Shader/ShaderProgram.h"
+#include "Aquila/RHI/ShaderPack.h"
 
 using namespace Aquila::Player;
 namespace fs = std::filesystem;
@@ -144,13 +146,17 @@ TEST_SUITE("Player build") {
 		CHECK(plan.manifest.window_width == 1600);
 		REQUIRE(kinds(plan) ==
 				std::vector{ BuildStepKind::MakeDirectory, BuildStepKind::CopyDirectory, BuildStepKind::Rename,
-							 BuildStepKind::CopyDirectory, BuildStepKind::WriteFile });
+							 BuildStepKind::CopyDirectory, BuildStepKind::BakeShaders, BuildStepKind::WriteFile });
 
 		const BuildStep &rename = plan.steps[2];
 		CHECK(fs::path(rename.source) == fs::path(plan.layout.root) / AQUILA_PLAYER_EXECUTABLE_NAME);
 		CHECK(rename.target == plan.layout.executable("My_Game"));
 
-		const BuildStep &manifest = plan.steps[4];
+		const BuildStep &bake = plan.steps[4];
+		CHECK(bake.source == "/projects/MyGame");
+		CHECK(bake.target == plan.layout.shader_pack_file());
+
+		const BuildStep &manifest = plan.steps[5];
 		CHECK(manifest.target == plan.layout.manifest_file());
 		CHECK(read_manifest(manifest.content).has_value());
 	}
@@ -190,6 +196,76 @@ TEST_SUITE("Player build") {
 #ifndef _WIN32
 		CHECK((fs::status(result.executable).permissions() & fs::perms::owner_exec) != fs::perms::none);
 #endif
+	}
+
+	TEST_CASE("a build compiles the project's shaders and ships no shader source") {
+		const Sandbox sandbox;
+		write(sandbox.root / "template" / AQUILA_PLAYER_ENGINE_RESOURCES_DIR / "Engine" / "Templates" / "lit.slang",
+			  "import Aquila.Lit;");
+		write(sandbox.root / "project" / "Content" / "Shaders" / "Tint.slang",
+			  "float3 tint(float3 color) { return color * 0.5; }\n");
+		write(sandbox.root / "project" / "Content" / "Shaders" / "Water.slang", R"(import Aquila.Lit;
+import Tint;
+
+[[vk::binding(0, 1)]]
+cbuffer Material {
+	float4 baseColor;
+	float roughness;
+};
+
+[[vk::binding(1, 1)]] Sampler2D foamMap;
+
+void surface(inout Surface s, SurfaceInput input) {
+	s.baseColor = tint(baseColor.rgb) * foamMap.Sample(input.uv).rgb;
+	s.roughness = roughness;
+}
+)");
+
+		const BuildPlan plan = plan_build(sandbox.request("Shaded"));
+		REQUIRE(plan.ok());
+		const BuildResult result = run_build(plan);
+		REQUIRE_MESSAGE(result.success, (result.errors.empty() ? std::string() : result.errors.front()));
+
+		Aquila::RHI::ShaderPack pack;
+		std::string error;
+		REQUIRE_MESSAGE(pack.load(plan.layout.shader_pack_file(), error), error);
+		CHECK(pack.size() == 3);
+		const Aquila::RHI::ShaderPackEntry *water = pack.find("/project/Content/Shaders/Water.slang");
+		REQUIRE(water != nullptr);
+		CHECK(water->stages.size() == 2);
+		CHECK(pack.find("/project/Content/Shaders/Water.slang:depth") != nullptr);
+		CHECK(pack.find("/project/Content/Shaders/Water.slang:emissive") != nullptr);
+
+		using Aquila::Graphics::Shader::ShaderProgram;
+		Aquila::Graphics::Shader::ShaderDomain domain{};
+		std::vector<ShaderProgram::ReflectedBinding> bindings;
+		REQUIRE(ShaderProgram::read_metadata(water->metadata, domain, bindings));
+		CHECK(domain == Aquila::Graphics::Shader::ShaderDomain::Lit);
+		const auto material = std::ranges::find_if(bindings, [](const auto &b) {
+			return b.set == 1 && b.type == ShaderProgram::ReflectedBindingType::UniformBuffer;
+		});
+		REQUIRE(material != bindings.end());
+		REQUIRE(material->ubo_fields.size() == 2);
+		CHECK(material->ubo_fields[1].name == "roughness");
+		CHECK(material->ubo_fields[1].offset == 16);
+		CHECK(std::ranges::any_of(bindings, [](const auto &b) { return b.name == "foamMap" && b.binding_index == 1; }));
+
+		for (const fs::path folder :
+			 { fs::path(plan.layout.project_dir()), fs::path(plan.layout.engine_resources_dir()) }) {
+			for (const auto &entry : fs::recursive_directory_iterator(folder)) {
+				CHECK_MESSAGE(entry.path().extension() != ".slang", entry.path().string());
+			}
+		}
+		CHECK(read(sandbox.root / "project" / "Content" / "Shaders" / "Tint.slang").starts_with("float3"));
+	}
+
+	TEST_CASE("a shader that doesn't compile fails the build") {
+		const Sandbox sandbox;
+		write(sandbox.root / "project" / "Content" / "Broken.slang", "import Aquila.Lit;\nvoid surface(oops) {}\n");
+		const BuildResult result = run_build(plan_build(sandbox.request("Broken")));
+		CHECK_FALSE(result.success);
+		REQUIRE_FALSE(result.errors.empty());
+		CHECK(result.errors.front().find("/project/Content/Broken.slang") != std::string::npos);
 	}
 
 	TEST_CASE("a rebuild replaces an earlier build but never a foreign folder") {

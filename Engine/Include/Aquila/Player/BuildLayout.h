@@ -13,6 +13,8 @@ struct BuildLayout {
 	[[nodiscard]] std::string project_dir() const;
 	/// The game's window icon, only there when the build picked one.
 	[[nodiscard]] std::string icon_file() const;
+	/// Only when the project has shaders.
+	[[nodiscard]] std::string shader_pack_file() const;
 };
 
 [[nodiscard]] std::string player_template_dir(std::string_view editor_dir);

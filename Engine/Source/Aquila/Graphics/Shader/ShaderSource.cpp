@@ -1,5 +1,5 @@
 #include "Aquila/Graphics/Shader/ShaderSource.h"
-#include "Aquila/Foundation/EnginePaths.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
 namespace Aquila::Graphics::Shader {
@@ -13,16 +13,6 @@ bool read_native(const std::string &path, std::string &out) {
 	}
 	out.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 	return true;
-}
-
-std::string_view trim(std::string_view text) {
-	while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0) {
-		text.remove_prefix(1);
-	}
-	while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())) != 0) {
-		text.remove_suffix(1);
-	}
-	return text;
 }
 
 std::string line_marker(const std::string &file) {
@@ -54,30 +44,43 @@ const char *prelude(ShaderDomain domain) {
 	return "";
 }
 
-const char *template_file(ShaderDomain domain, ShaderVariant variant) {
+const char *entry_module_for(ShaderDomain domain, ShaderVariant variant) {
 	if (variant == ShaderVariant::Emissive) {
-		return domain == ShaderDomain::Lit ? "Aquila/LitEmissive.slang" : nullptr;
+		return domain == ShaderDomain::Lit ? "Aquila/LitEmissive" : nullptr;
 	}
 	const bool depth = variant == ShaderVariant::Depth;
 	switch (domain) {
 	case ShaderDomain::Lit:
-		return depth ? "Aquila/LitDepth.slang" : "Aquila/LitMain.slang";
+		return depth ? "Aquila/LitDepth" : "Aquila/LitMain";
 	case ShaderDomain::Unlit:
-		return depth ? "Aquila/UnlitDepth.slang" : "Aquila/UnlitMain.slang";
+		return depth ? "Aquila/UnlitDepth" : "Aquila/UnlitMain";
 	case ShaderDomain::Fullscreen:
-		return depth ? nullptr : "Aquila/FullscreenMain.slang";
+		return depth ? nullptr : "Aquila/FullscreenMain";
 	case ShaderDomain::Custom:
 		break;
 	}
 	return nullptr;
 }
 
+const char *entry_export(ShaderDomain domain) {
+	switch (domain) {
+	case ShaderDomain::Lit:
+		return "export void aquilaSurface(inout Surface s, SurfaceInput input) {\n\tsurface(s, input);\n}\n";
+	case ShaderDomain::Unlit:
+		return "export float4 aquilaUnlit(SurfaceInput input) {\n\treturn unlit(input);\n}\n";
+	case ShaderDomain::Fullscreen:
+		return "export float4 aquilaFullscreen(FullscreenInput input) {\n\treturn fullscreen(input);\n}\n";
+	case ShaderDomain::Custom:
+		break;
+	}
+	return "";
+}
 }
 
 ShaderDomain detect_shader_domain(std::string_view code) {
 	while (!code.empty()) {
 		const Usize end = code.find('\n');
-		std::string_view line = trim(code.substr(0, end));
+		std::string_view line = Foundation::trim(code.substr(0, end));
 		code = end == std::string_view::npos ? std::string_view{} : code.substr(end + 1);
 		if (!line.starts_with("import")) {
 			continue;
@@ -122,49 +125,89 @@ std::string_view domain_name(ShaderDomain domain) {
 	return "Custom";
 }
 
+std::string_view variant_name(ShaderVariant variant) {
+	switch (variant) {
+	case ShaderVariant::Main:
+		break;
+	case ShaderVariant::Depth:
+		return "depth";
+	case ShaderVariant::Emissive:
+		return "emissive";
+	}
+	return {};
+}
+
+std::vector<ShaderVariant> domain_variants(ShaderDomain domain) {
+	switch (domain) {
+	case ShaderDomain::Lit:
+		return { ShaderVariant::Main, ShaderVariant::Depth, ShaderVariant::Emissive };
+	case ShaderDomain::Unlit:
+		return { ShaderVariant::Main, ShaderVariant::Depth };
+	case ShaderDomain::Fullscreen:
+	case ShaderDomain::Custom:
+		break;
+	}
+	return { ShaderVariant::Main };
+}
+
+std::span<const std::string_view> entry_modules() {
+	static constexpr std::array<std::string_view, 6> K_MODULES = {
+		"Aquila/LitMain",	"Aquila/LitDepth",	 "Aquila/LitEmissive",
+		"Aquila/UnlitMain", "Aquila/UnlitDepth", "Aquila/FullscreenMain",
+	};
+	return K_MODULES;
+}
+
 bool load_shader_source(const std::string &path, ShaderSource &out, std::string &error, ShaderVariant variant) {
 	auto *vfs = Platform::Filesystem::VirtualFileSystem::get();
 	const std::string native = vfs->to_native_path(path).value_or(path);
 
 	std::string user_code;
+	std::string directory;
 	if (read_native(native, user_code)) {
-		out.watch_path = native;
-		out.search_paths = { std::filesystem::path(native).parent_path().string() };
+		directory = std::filesystem::path(native).parent_path().string();
 	} else {
 		user_code = vfs->read_text_file(path);
 		if (user_code.empty()) {
 			error = "Can't read shader '" + path + "'";
 			return false;
 		}
-		out.watch_path.clear();
-		out.search_paths.clear();
 	}
 
-	out.name = path;
-	out.domain = detect_shader_domain(user_code);
-	out.code = std::string(prelude(out.domain)) + line_marker(path) + user_code;
-
-	const bool has_depth_variant = out.domain == ShaderDomain::Lit || out.domain == ShaderDomain::Unlit;
-	if (variant == ShaderVariant::Depth && !has_depth_variant) {
-		error = "'" + path + "' is a " + std::string(domain_name(out.domain)) + " shader, it has no depth variant";
+	if (!compose_shader_source(path, user_code, directory, variant, out, error)) {
 		return false;
 	}
-	if (variant == ShaderVariant::Emissive && out.domain != ShaderDomain::Lit) {
-		error = "'" + path + "' is a " + std::string(domain_name(out.domain)) + " shader, it has no emissive variant";
-		return false;
-	}
-
-	if (const char *main_file = template_file(out.domain, variant)) {
-		const std::string template_path = Foundation::EnginePaths::shaders_dir() + main_file;
-		std::string template_code;
-		if (!read_native(template_path, template_code)) {
-			error = "Can't read the engine's " + std::string(domain_name(out.domain)) + " template '" +
-				template_path + "'";
-			return false;
-		}
-		out.code += "\n" + line_marker(main_file) + template_code;
-	}
+	out.watch_path = directory.empty() ? std::string() : native;
 	return true;
 }
 
+bool compose_shader_source(const std::string &name, const std::string &code, const std::string &directory,
+						   ShaderVariant variant, ShaderSource &out, std::string &error) {
+	out.name = name;
+	out.domain = detect_shader_domain(code);
+	out.search_paths.clear();
+	if (!directory.empty()) {
+		out.search_paths.push_back(directory);
+	}
+	out.watch_path.clear();
+
+	const bool has_depth_variant = out.domain == ShaderDomain::Lit || out.domain == ShaderDomain::Unlit;
+	if (variant == ShaderVariant::Depth && !has_depth_variant) {
+		error = "'" + name + "' is a " + std::string(domain_name(out.domain)) + " shader, it has no depth variant";
+		return false;
+	}
+	if (variant == ShaderVariant::Emissive && out.domain != ShaderDomain::Lit) {
+		error = "'" + name + "' is a " + std::string(domain_name(out.domain)) + " shader, it has no emissive variant";
+		return false;
+	}
+
+	out.code = std::string(prelude(out.domain)) + line_marker(name) + code + "\n";
+	if (out.domain != ShaderDomain::Custom) {
+		out.code += line_marker("Aquila " + std::string(domain_name(out.domain)) + " entry point");
+		out.code += entry_export(out.domain);
+	}
+	const char *module = entry_module_for(out.domain, variant);
+	out.entry_module = module != nullptr ? module : "";
+	return true;
+}
 }
