@@ -60,6 +60,7 @@ using namespace Aquila;
 using namespace Aquila::SceneManagement;
 using namespace Aquila::SceneManagement::Components;
 using namespace Aquila::Application;
+using namespace Aquila::UI::Core;
 namespace Events = Aquila::Platform::Events;
 
 namespace {
@@ -76,7 +77,7 @@ void EditorModule::on_attach(EngineContext &engine) {
 	m_engine = &engine;
 
 	Window &main_window = m_engine->get_window();
-	m_ui_host = std::make_unique<Aquila::UI::Core::UIHost>(Aquila::UI::Core::UIHostDesc{
+	m_ui_host = std::make_unique<UIHost>(UIHostDesc{
 		.overlay_renderer = m_engine->get_overlay_renderer(),
 		.width = main_window.get_width(),
 		.height = main_window.get_height(),
@@ -86,16 +87,16 @@ void EditorModule::on_attach(EngineContext &engine) {
 
 	Config::get_preferences().load_from_file();
 	m_applied_preferences = Config::get_preferences();
-	Aquila::UI::Core::FontRegistry::set_ui_scale(Config::get_preferences().ui_scale);
+	FontRegistry::set_ui_scale(Config::get_preferences().ui_scale);
 	if (Aquila::Graphics::Shader::ShaderHotReload::is_alive()) {
 		Aquila::Graphics::Shader::ShaderHotReload::get()->enable(Config::get_preferences().advanced.shader_hot_reload);
 	}
 
-	Aquila::UI::Core::FontManager::get().initialize(m_engine->get_context(), Config::get_preferences().fonts);
+	FontManager::get().initialize(m_engine->get_context(), Config::get_preferences().fonts);
 
 	m_project_manager = std::make_unique<ProjectManager>();
-	m_texture_cache = std::make_unique<Aquila::UI::Core::TextureCache>(m_engine->get_context(),
-																	   Config::get_preferences().ui.resources_path);
+	m_texture_cache =
+		std::make_unique<TextureCache>(m_engine->get_context(), Config::get_preferences().ui.resources_path);
 
 	if (!m_startup_project.empty()) {
 		const std::string directory = std::string(ProjectManager::K_ROOT) + "/" +
@@ -178,9 +179,9 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 
 void EditorModule::on_detach() {
 	save_settings_if_due(true);
-	Aquila::UI::Core::AssetSlot::set_adapter("entity", {});
-	Aquila::UI::Core::AssetSlot::set_adapter("texture", {});
-	Aquila::UI::Core::AssetSlot::set_adapter("material", {});
+	AssetSlot::set_adapter("entity", {});
+	AssetSlot::set_adapter("texture", {});
+	AssetSlot::set_adapter("material", {});
 	if (m_windows) {
 		m_windows->shutdown();
 	}
@@ -197,7 +198,7 @@ void EditorModule::on_detach() {
 	m_context.reset();
 	m_thumbnails.reset();
 	m_texture_cache.reset();
-	Aquila::UI::Core::FontManager::get().shutdown();
+	FontManager::get().shutdown();
 }
 
 void EditorModule::on_pre_render(F32 delta_time) {
@@ -249,9 +250,9 @@ void EditorModule::on_pre_render(F32 delta_time) {
 	m_engine->get_window().set_cursor(m_ui_host->get_active_cursor());
 }
 
-Aquila::UI::Core::Canvas *EditorModule::canvas_for(Events::EventSource source) const {
+Canvas *EditorModule::canvas_for(Events::EventSource source) const {
 	if (source == m_engine->get_window_host().get_main_window()) {
-		return &m_ui_host->get_canvas(Aquila::UI::Core::UILayer::Editor);
+		return &m_ui_host->get_canvas(UILayer::Editor);
 	}
 	return m_dock_manager ? m_dock_manager->find_canvas(source) : nullptr;
 }
@@ -264,7 +265,7 @@ void EditorModule::drop_destroyed_selection() {
 
 void EditorModule::on_event(Events::Event &event) {
 	drop_destroyed_selection();
-	Aquila::UI::Core::Canvas *source_canvas = canvas_for(event.get_source());
+	Canvas *source_canvas = canvas_for(event.get_source());
 	if (source_canvas == nullptr) {
 		return;
 	}
@@ -289,8 +290,7 @@ void EditorModule::on_event(Events::Event &event) {
 		if (!m_context) {
 			return false;
 		}
-		const bool typing =
-			to_game || Aquila::UI::Core::view_is<Aquila::UI::Core::TextInput>(source_canvas->get_focused_view());
+		const bool typing = to_game || view_is<TextInput>(source_canvas->get_focused_view());
 		return m_context->shortcuts.handle(Events::KeyChord::from(e), e.is_repeat(), typing);
 	});
 }
@@ -392,8 +392,7 @@ void EditorModule::start_playing() {
 
 void EditorModule::show_game_view() {
 	if (!Config::get_preferences().play.switch_to_game_view || !m_workspaces ||
-		m_context->is_window_visible(GameWindow::K_TYPE_ID) ||
-		m_workspaces->get_active() == K_GAME_WORKSPACE) {
+		m_context->is_window_visible(GameWindow::K_TYPE_ID) || m_workspaces->get_active() == K_GAME_WORKSPACE) {
 		return;
 	}
 	m_workspace_before_play = m_workspaces->get_active();
@@ -423,9 +422,9 @@ void EditorModule::restore_edit_scene() {
 	AQUILA_LOG_INFO("EditorModule: stopped, scene restored");
 }
 
-void EditorModule::wire_play_controls(Aquila::UI::Core::View *layout_root) {
+void EditorModule::wire_play_controls(View *layout_root) {
 	const auto wire = [this, layout_root](std::string_view id, std::string_view command) {
-		auto *button = layout_root->find_by_id<Aquila::UI::Core::Button>(id);
+		auto *button = layout_root->find_by_id<Button>(id);
 		if (button != nullptr) {
 			button->on_click.connect([this, command = std::string(command)] { m_context->shortcuts.execute(command); });
 		}
@@ -436,7 +435,7 @@ void EditorModule::wire_play_controls(Aquila::UI::Core::View *layout_root) {
 	m_stop_button = wire("topbar-stop", "play.stop");
 
 	for (std::string_view id : { "topbar", "dock-root", "hud-status" }) {
-		if (Aquila::UI::Core::View *view = layout_root->find_by_id(id)) {
+		if (View *view = layout_root->find_by_id(id)) {
 			m_play_tinted.push_back(view);
 		}
 	}
@@ -458,7 +457,7 @@ void EditorModule::sync_play_controls() {
 	if (m_stop_button != nullptr) {
 		m_stop_button->set_enabled(state != PlayState::Stopped);
 	}
-	for (Aquila::UI::Core::View *view : m_play_tinted) {
+	for (View *view : m_play_tinted) {
 		view->set_class("play-tint", state != PlayState::Stopped);
 	}
 }
@@ -584,7 +583,7 @@ void EditorModule::add_window_type(EditorWindowType type) {
 	m_pending_window_types.push_back(std::move(type));
 }
 
-void EditorModule::add_workspace(std::string name, Aquila::UI::Core::DockLayoutDesc preset) {
+void EditorModule::add_workspace(std::string name, DockLayoutDesc preset) {
 	if (m_workspaces) {
 		m_workspaces->add(std::move(name), std::move(preset));
 		return;
@@ -620,7 +619,7 @@ void EditorModule::register_content_creators() {
 }
 
 void EditorModule::register_workspaces() {
-	using namespace Aquila::UI::Core::DockLayout;
+	using namespace DockLayout;
 
 	m_workspaces->add(
 		"Scene",
@@ -655,17 +654,17 @@ void EditorModule::register_workspaces() {
 }
 
 void EditorModule::setup_editor_ui() {
-	auto &editor_canvas = m_ui_host->get_canvas(Aquila::UI::Core::UILayer::Editor);
+	auto &editor_canvas = m_ui_host->get_canvas(UILayer::Editor);
 	const auto &cfg = Config::get_preferences();
 
 	load_styles();
 
-	m_layout_loader.register_font("regular", Aquila::UI::Core::FontManager::get().get_font("regular"));
+	m_layout_loader.register_font("regular", FontManager::get().get_font("regular"));
 	m_layout_loader.register_texture_cache(m_texture_cache.get());
-	m_layout_loader.register_widget(
-		"ColorPicker", [this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<Aquila::UI::Core::View> {
-			return std::make_unique<Aquila::UI::Core::ColorPicker>(m_engine->get_context());
-		});
+	m_layout_loader.register_widget("ColorPicker",
+									[this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+										return std::make_unique<ColorPicker>(m_engine->get_context());
+									});
 
 	const std::string layout_dir = cfg.ui.layout_path.substr(0, cfg.ui.layout_path.find_last_of('/') + 1);
 	m_context =
@@ -695,10 +694,10 @@ void EditorModule::setup_editor_ui() {
 		return;
 	}
 
-	Aquila::UI::Core::View *layout_root = editor_canvas.get_root()->add_child(std::move(root));
+	View *layout_root = editor_canvas.get_root()->add_child(std::move(root));
 	m_context->set_overlay_root(layout_root);
 
-	m_dock_space = layout_root->find_by_id<Aquila::UI::Core::DockSpace>("editor-dock");
+	m_dock_space = layout_root->find_by_id<DockSpace>("editor-dock");
 	if (m_dock_space == nullptr) {
 		AQUILA_LOG_ERROR("EditorModule: 'editor-dock' not found, check editor.aqlayout");
 		return;
@@ -716,8 +715,7 @@ void EditorModule::setup_editor_ui() {
 	m_context->set_window_visibility(
 		[this](std::string_view type_id) { return m_windows && m_windows->is_visible(type_id); });
 
-	m_dock_manager =
-		std::make_unique<Aquila::UI::Core::DockWindowManager>(m_engine->get_window_host(), cfg.ui.style_paths);
+	m_dock_manager = std::make_unique<DockWindowManager>(m_engine->get_window_host(), cfg.ui.style_paths);
 	m_dock_manager->set_main_dock_space(m_dock_space);
 
 	m_context->selection.on_changed.connect([this](Entity entity) { set_outlined_entity(entity); });
@@ -743,13 +741,13 @@ void EditorModule::setup_editor_ui() {
 	m_status_bar = std::make_unique<StatusBar>();
 	m_status_bar->build(layout_root);
 
-	if (auto *settings = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-settings")) {
+	if (auto *settings = layout_root->find_by_id<Button>("topbar-settings")) {
 		settings->on_click.connect([this] { open_settings_window(); });
 	}
-	if (auto *build = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-build")) {
+	if (auto *build = layout_root->find_by_id<Button>("topbar-build")) {
 		build->on_click.connect([this] { open_build_window(); });
 	}
-	if (auto *reset = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-reset")) {
+	if (auto *reset = layout_root->find_by_id<Button>("topbar-reset")) {
 		reset->on_click.connect([this] { m_workspaces->reset_active(); });
 	}
 
@@ -764,8 +762,7 @@ void EditorModule::setup_editor_ui() {
 }
 
 void EditorModule::register_entity_slots() {
-	using Aquila::UI::Core::AssetPayload;
-	Aquila::UI::Core::AssetSlot::set_adapter(
+	AssetSlot::set_adapter(
 		"entity",
 		{
 			.from_drag = [](const std::any &payload) -> Option<AssetPayload> {
@@ -790,23 +787,23 @@ void EditorModule::register_entity_slots() {
 
 void EditorModule::register_thumbnail_slots() {
 	for (const char *type : { "texture", "material" }) {
-		Aquila::UI::Core::AssetSlot::set_adapter(
-			type, { .thumbnail = [this](const std::string &path) { return m_thumbnails->get(path); } });
+		AssetSlot::set_adapter(type,
+							   { .thumbnail = [this](const std::string &path) { return m_thumbnails->get(path); } });
 	}
 }
 
 void EditorModule::load_styles() {
 	const auto &style_paths = Config::get_preferences().ui.style_paths;
-	for (Uint8 layer = 0; layer < static_cast<Uint8>(Aquila::UI::Core::UILayer::Count); ++layer) {
-		auto &canvas = m_ui_host->get_canvas(static_cast<Aquila::UI::Core::UILayer>(layer));
+	for (Uint8 layer = 0; layer < static_cast<Uint8>(UILayer::Count); ++layer) {
+		auto &canvas = m_ui_host->get_canvas(static_cast<UILayer>(layer));
 		Aquila::UI::StyleParser::load_files(style_paths, canvas.get_style_sheet());
 	}
 	reload_styles();
 }
 
 void EditorModule::reload_styles() {
-	for (Uint8 layer = 0; layer < static_cast<Uint8>(Aquila::UI::Core::UILayer::Count); ++layer) {
-		m_ui_host->get_canvas(static_cast<Aquila::UI::Core::UILayer>(layer)).reload_styles();
+	for (Uint8 layer = 0; layer < static_cast<Uint8>(UILayer::Count); ++layer) {
+		m_ui_host->get_canvas(static_cast<UILayer>(layer)).reload_styles();
 	}
 	if (m_dock_manager) {
 		m_dock_manager->reload_styles();
@@ -857,7 +854,7 @@ void EditorModule::set_ui_scale(F32 scale) {
 	prefs.save_to_file();
 	m_applied_preferences.ui_scale = prefs.ui_scale;
 
-	Aquila::UI::Core::FontRegistry::set_ui_scale(prefs.ui_scale);
+	FontRegistry::set_ui_scale(prefs.ui_scale);
 	reload_styles();
 	AQUILA_LOG_INFO("EditorModule: interface scale {:.2f}", prefs.ui_scale);
 }
@@ -865,8 +862,8 @@ void EditorModule::set_ui_scale(F32 scale) {
 void EditorModule::apply_font_settings() {
 	const auto &prefs = Config::get_preferences();
 
-	Aquila::UI::Core::FontManager::get().reload(m_engine->get_context(), prefs.fonts);
-	Aquila::UI::Core::FontRegistry::set_ui_scale(prefs.ui_scale);
+	FontManager::get().reload(m_engine->get_context(), prefs.fonts);
+	FontRegistry::set_ui_scale(prefs.ui_scale);
 	reload_styles();
 }
 
@@ -944,7 +941,7 @@ void EditorModule::save_settings_if_due(bool now) {
 }
 
 void EditorModule::register_commands() {
-	Aquila::UI::Core::Shortcuts &shortcuts = m_context->shortcuts;
+	Shortcuts &shortcuts = m_context->shortcuts;
 
 	const auto editing = [this] { return is_editing(); };
 	shortcuts.add_command(
@@ -1093,10 +1090,8 @@ void EditorModule::add_window_command(const EditorWindowType &type) {
 		{ .id = "window.open." + type.id, .title = type.title, .run = [this, id = type.id] { m_windows->open(id); } });
 }
 
-void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
-	using Aquila::UI::Core::PopupMenu;
-
-	auto *menu_button = layout_root->find_by_id<Aquila::UI::Core::Button>("topbar-menu");
+void EditorModule::wire_main_menu(View *layout_root) {
+	auto *menu_button = layout_root->find_by_id<Button>("topbar-menu");
 	if (menu_button == nullptr) {
 		return;
 	}
@@ -1106,7 +1101,7 @@ void EditorModule::wire_main_menu(Aquila::UI::Core::View *layout_root) {
 	m_main_menu = dynamic_cast<PopupMenu *>(layout_root->add_child(std::move(popup)));
 
 	const auto add = [this](PopupMenu *menu, std::string_view command_id, std::string_view icon) {
-		const Aquila::UI::Core::Command *command = m_context->shortcuts.find_command(command_id);
+		const Command *command = m_context->shortcuts.find_command(command_id);
 		if (command == nullptr) {
 			AQUILA_LOG_WARNING("EditorModule: menu command '{}' is not registered", command_id);
 			return;
