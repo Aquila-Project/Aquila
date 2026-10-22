@@ -2,6 +2,7 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
+#include "Aquila/Graphics/Texture/MipChain.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
@@ -12,49 +13,6 @@
 namespace Aquila::UI::Core {
 
 namespace {
-
-std::vector<std::vector<Uint8>> build_mip_chain(const Uint8 *pixels, Uint32 width, Uint32 height) {
-	std::vector<std::vector<Uint8>> levels;
-	levels.emplace_back(pixels, pixels + (static_cast<Usize>(width) * height * 4U));
-
-	Uint32 w = width;
-	Uint32 h = height;
-	while (w > 1 || h > 1) {
-		const Uint32 next_w = std::max(1U, w / 2U);
-		const Uint32 next_h = std::max(1U, h / 2U);
-		const std::vector<Uint8> &src = levels.back();
-		std::vector<Uint8> dst(static_cast<Usize>(next_w) * next_h * 4U);
-
-		for (Uint32 y = 0; y < next_h; ++y) {
-			for (Uint32 x = 0; x < next_w; ++x) {
-				F32 premultiplied[3] = { 0.F, 0.F, 0.F };
-				F32 alpha = 0.F;
-				for (Uint32 dy = 0; dy < 2; ++dy) {
-					for (Uint32 dx = 0; dx < 2; ++dx) {
-						const Uint32 sx = std::min(w - 1, (x * 2U) + dx);
-						const Uint32 sy = std::min(h - 1, (y * 2U) + dy);
-						const Uint8 *texel = &src[((static_cast<Usize>(sy) * w) + sx) * 4U];
-						const F32 a = static_cast<F32>(texel[3]) / 255.F;
-						for (int c = 0; c < 3; ++c) {
-							premultiplied[c] += static_cast<F32>(texel[c]) * a;
-						}
-						alpha += a;
-					}
-				}
-				Uint8 *out = &dst[((static_cast<Usize>(y) * next_w) + x) * 4U];
-				for (int c = 0; c < 3; ++c) {
-					out[c] = alpha > 0.F ? static_cast<Uint8>(std::lround(premultiplied[c] / alpha)) : 0U;
-				}
-				out[3] = static_cast<Uint8>(std::lround(alpha * 0.25F * 255.F));
-			}
-		}
-
-		levels.push_back(std::move(dst));
-		w = next_w;
-		h = next_h;
-	}
-	return levels;
-}
 
 std::unordered_map<const GFX::GfxTexture *, TextureCache *> &vector_owners() {
 	static std::unordered_map<const GFX::GfxTexture *, TextureCache *> owners;
@@ -121,26 +79,17 @@ GFX::GfxTexture *TextureCache::load_raster(const std::string &resolved, const st
 		return nullptr;
 	}
 
-	const std::vector<std::vector<Uint8>> mips =
-		build_mip_chain(pixels, static_cast<Uint32>(width), static_cast<Uint32>(height));
+	const Graphics::Texture::MipChain mips = Graphics::Texture::build_mip_chain(
+		pixels, static_cast<Uint32>(width), static_cast<Uint32>(height), Graphics::Texture::MipFilter::AlphaWeighted);
 	stbi_image_free(pixels);
 
-	RHI::TextureDesc desc{};
-	desc.width = static_cast<Uint32>(width);
-	desc.height = static_cast<Uint32>(height);
-	desc.format = RHI::TextureFormat::RGBA8;
-	desc.usage = RHI::TextureUsage::Sampled | RHI::TextureUsage::TransferDst;
-	desc.mip_levels = static_cast<Uint32>(mips.size());
-	desc.sampler = RHI::SamplerDesc::ui_image(static_cast<F32>(mips.size()));
-	desc.debug_name = resolved;
-
-	Ref<GFX::GfxTexture> tex = m_ctx.create_texture(desc);
+	Ref<GFX::GfxTexture> tex =
+		Graphics::Texture::upload_mip_chain(m_ctx, mips, RHI::TextureFormat::RGBA8,
+											RHI::SamplerDesc::ui_image(static_cast<F32>(mips.levels.size())), resolved);
 	if (!tex) {
-		AQUILA_LOG_ERROR("TextureCache: GfxContext::CreateTexture failed for '{}'", resolved);
+		AQUILA_LOG_ERROR("TextureCache: can't create a texture for '{}'", resolved);
 		return nullptr;
 	}
-
-	m_ctx.upload_texture_mips(*tex, mips);
 
 	GFX::GfxTexture *raw = tex.get();
 	m_cache.emplace(resolved, std::move(tex));

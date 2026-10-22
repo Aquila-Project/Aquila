@@ -2,68 +2,13 @@
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/GFX/GfxContext.h"
+#include "Aquila/Graphics/Texture/MipChain.h"
 #include "Aquila/Graphics/Texture/TextureLoader.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
 namespace Aquila::Graphics {
 
 namespace {
-
-const std::array<F32, 256> &srgb_to_linear_table() {
-	static const std::array<F32, 256> table = [] {
-		std::array<F32, 256> out{};
-		for (Usize i = 0; i < out.size(); ++i) {
-			const F32 c = static_cast<F32>(i) / 255.F;
-			out[i] = c <= 0.04045F ? c / 12.92F : std::pow((c + 0.055F) / 1.055F, 2.4F);
-		}
-		return out;
-	}();
-	return table;
-}
-
-Uint8 linear_to_srgb_byte(F32 linear) {
-	const F32 c = std::clamp(linear, 0.F, 1.F);
-	const F32 encoded = c <= 0.0031308F ? c * 12.92F : 1.055F * std::pow(c, 1.F / 2.4F) - 0.055F;
-	return static_cast<Uint8>(std::lround(encoded * 255.F));
-}
-
-std::vector<std::vector<Uint8>> build_mips(const Uint8 *pixels, Uint32 width, Uint32 height, bool srgb) {
-	std::vector<std::vector<Uint8>> levels;
-	levels.emplace_back(pixels, pixels + static_cast<Usize>(width) * height * 4);
-	const auto &to_linear = srgb_to_linear_table();
-
-	Uint32 w = width;
-	Uint32 h = height;
-	while (w > 1 || h > 1) {
-		const Uint32 next_w = std::max(1U, w / 2);
-		const Uint32 next_h = std::max(1U, h / 2);
-		const std::vector<Uint8> &src = levels.back();
-		std::vector<Uint8> dst(static_cast<Usize>(next_w) * next_h * 4);
-		for (Uint32 y = 0; y < next_h; ++y) {
-			for (Uint32 x = 0; x < next_w; ++x) {
-				for (Uint32 c = 0; c < 4; ++c) {
-					F32 sum = 0.F;
-					for (Uint32 dy = 0; dy < 2; ++dy) {
-						for (Uint32 dx = 0; dx < 2; ++dx) {
-							const Uint32 sx = std::min(x * 2 + dx, w - 1);
-							const Uint32 sy = std::min(y * 2 + dy, h - 1);
-							const Uint8 value = src[(static_cast<Usize>(sy) * w + sx) * 4 + c];
-							sum += srgb && c < 3 ? to_linear[value] : static_cast<F32>(value) / 255.F;
-						}
-					}
-					const F32 average = sum * 0.25F;
-					dst[(static_cast<Usize>(y) * next_w + x) * 4 + c] = srgb && c < 3
-						? linear_to_srgb_byte(average)
-						: static_cast<Uint8>(std::lround(std::clamp(average, 0.F, 1.F) * 255.F));
-				}
-			}
-		}
-		levels.push_back(std::move(dst));
-		w = next_w;
-		h = next_h;
-	}
-	return levels;
-}
 
 constexpr Usize K_UPLOAD_BUDGET_BYTES = 64ULL * 1024ULL * 1024ULL;
 
@@ -73,15 +18,13 @@ struct TextureLibrary::Decoded {
 	Key key;
 	Uint64 generation = 0;
 	Uint64 write_time = 0;
-	Uint32 width = 0;
-	Uint32 height = 0;
-	std::vector<std::vector<Uint8>> mips;
+	Texture::MipChain image;
 	Vec4 average = Vec4(1.F);
 
-	[[nodiscard]] bool is_valid() const { return !mips.empty(); }
+	[[nodiscard]] bool is_valid() const { return !image.levels.empty(); }
 	[[nodiscard]] Usize size_bytes() const {
 		Usize total = 0;
-		for (const std::vector<Uint8> &level : mips) {
+		for (const std::vector<Uint8> &level : image.levels) {
 			total += level.size();
 		}
 		return total;
@@ -140,14 +83,12 @@ TextureLibrary::Decoded TextureLibrary::decode(const std::string &path, const Op
 		return decoded;
 	}
 
-	decoded.width = image.width;
-	decoded.height = image.height;
-	decoded.mips = build_mips(image.pixels.get(), image.width, image.height, srgb);
-	const std::vector<Uint8> &smallest = decoded.mips.back();
-	const auto &to_linear = srgb_to_linear_table();
+	decoded.image = Texture::build_mip_chain(image.pixels.get(), image.width, image.height,
+											 srgb ? Texture::MipFilter::BoxSrgb : Texture::MipFilter::Box);
+	const std::vector<Uint8> &smallest = decoded.image.levels.back();
 	for (Uint32 c = 0; c < 4; ++c) {
 		decoded.average[static_cast<int>(c)] =
-			srgb && c < 3 ? to_linear[smallest[c]] : static_cast<F32>(smallest[c]) / 255.F;
+			srgb && c < 3 ? Texture::srgb_to_linear(smallest[c]) : static_cast<F32>(smallest[c]) / 255.F;
 	}
 	return decoded;
 }
@@ -168,22 +109,6 @@ void TextureLibrary::start(const Key &key, Foundation::JobPriority priority) {
 		Foundation::FrameScheduler::get()->request_frame();
 	};
 	Foundation::JobSystem::get()->schedule(priority, "Load texture " + key.first, std::move(job));
-}
-
-Ref<GFX::GfxTexture> TextureLibrary::upload(GFX::GfxContext &ctx, const std::string &path, Decoded &decoded) const {
-	RHI::TextureDesc desc{};
-	desc.width = decoded.width;
-	desc.height = decoded.height;
-	desc.format = decoded.key.second ? RHI::TextureFormat::RgbA8Srgb : RHI::TextureFormat::RGBA8;
-	desc.usage = RHI::TextureUsage::Sampled | RHI::TextureUsage::TransferDst;
-	desc.mip_levels = static_cast<Uint32>(decoded.mips.size());
-	desc.sampler = RHI::SamplerDesc::texture2_d(static_cast<F32>(decoded.mips.size()));
-	desc.debug_name = path;
-	Ref<GFX::GfxTexture> texture = ctx.create_texture(desc);
-	if (texture) {
-		ctx.upload_texture_mips(*texture, decoded.mips);
-	}
-	return texture;
 }
 
 bool TextureLibrary::update(GFX::GfxContext &ctx) {
@@ -215,7 +140,11 @@ bool TextureLibrary::update(GFX::GfxContext &ctx) {
 		}
 		const Key &key = decoded.key;
 		m_loading.erase(key);
-		Ref<GFX::GfxTexture> texture = decoded.is_valid() ? upload(ctx, key.first, decoded) : nullptr;
+		Ref<GFX::GfxTexture> texture = decoded.is_valid()
+			? Texture::upload_mip_chain(
+				  ctx, decoded.image, key.second ? RHI::TextureFormat::RgbA8Srgb : RHI::TextureFormat::RGBA8,
+				  RHI::SamplerDesc::texture2_d(static_cast<F32>(decoded.image.levels.size())), key.first)
+			: nullptr;
 		auto existing = m_textures.find(key);
 		if (!texture) {
 			if (existing == m_textures.end()) {
@@ -313,12 +242,9 @@ GFX::GfxTexture &TextureLibrary::get_default(GFX::GfxContext &ctx, DefaultTextur
 		} else if (kind == DefaultTexture::Gray) {
 			pixel = { 128, 128, 128, 255 };
 		}
-		RHI::TextureDesc desc{};
-		desc.format = RHI::TextureFormat::RGBA8;
-		desc.usage = RHI::TextureUsage::Sampled | RHI::TextureUsage::TransferDst;
-		desc.debug_name = "DefaultMaterialTexture";
-		slot = ctx.create_texture(desc);
-		ctx.upload_texture_mips(*slot, { std::vector<Uint8>(pixel.begin(), pixel.end()) });
+		const Texture::MipChain chain{ .width = 1, .height = 1, .levels = { { pixel.begin(), pixel.end() } } };
+		slot = Texture::upload_mip_chain(ctx, chain, RHI::TextureFormat::RGBA8, RHI::SamplerDesc::texture2_d(),
+										 "DefaultMaterialTexture");
 	}
 	return *slot;
 }

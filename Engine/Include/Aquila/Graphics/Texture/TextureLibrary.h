@@ -87,7 +87,6 @@ class TextureLibrary : public Foundation::Singleton<TextureLibrary> {
 	/// the job doesn't depend on the mounts. Invalid when it can't.
 	[[nodiscard]] static Decoded decode(const std::string &path, const Option<std::string> &native_path, bool srgb);
 	void start(const Key &key, Foundation::JobPriority priority);
-	[[nodiscard]] Ref<GFX::GfxTexture> upload(GFX::GfxContext &ctx, const std::string &path, Decoded &decoded) const;
 
 	std::map<Key, Entry> m_textures;
 	std::map<Key, Uint64> m_failed;
