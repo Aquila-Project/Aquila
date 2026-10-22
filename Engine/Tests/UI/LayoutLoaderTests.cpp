@@ -22,7 +22,7 @@ Loaded load(std::string_view xml) {
 	Logger::set_sink(&stream);
 	Logger::set_log_level(LogLevel::Warning);
 	LayoutLoader loader;
-	Unique<View> root = loader.LoadString(xml);
+	Unique<View> root = loader.load_string(xml);
 	Logger::set_sink(nullptr);
 	Logger::set_log_level(previous);
 	return { std::move(root), stream.str() };

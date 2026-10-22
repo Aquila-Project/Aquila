@@ -9,7 +9,7 @@ using namespace Aquila::UI::Core;
 TEST_SUITE("Floating XML attributes") {
 	TEST_CASE("float attributes build a floating config") {
 		LayoutLoader loader;
-		auto view = loader.LoadString(
+		auto view = loader.load_string(
 			R"(<View float-attach="root" float-element="center-bottom" float-parent="center-bottom" float-offset="0 -16" float-z="30"/>)");
 		REQUIRE(view != nullptr);
 		REQUIRE(view->has_floating());
@@ -25,7 +25,7 @@ TEST_SUITE("Floating XML attributes") {
 
 	TEST_CASE("offset accepts a comma separator") {
 		LayoutLoader loader;
-		auto view = loader.LoadString(R"(<View float-offset="16, 56"/>)");
+		auto view = loader.load_string(R"(<View float-offset="16, 56"/>)");
 		REQUIRE(view != nullptr);
 		REQUIRE(view->has_floating());
 		CHECK(view->get_floating().offset.x == doctest::Approx(16.F));
@@ -34,7 +34,7 @@ TEST_SUITE("Floating XML attributes") {
 
 	TEST_CASE("a view without float attributes is not floating") {
 		LayoutLoader loader;
-		auto view = loader.LoadString(R"(<View width="100px"/>)");
+		auto view = loader.load_string(R"(<View width="100px"/>)");
 		REQUIRE(view != nullptr);
 		CHECK_FALSE(view->has_floating());
 	}

@@ -38,7 +38,7 @@ class LayoutLoader : public IResourceResolver {
 
 	/// VFS path. Null when the file can't be read or an <Include> loops.
 	Unique<View> load_file(const std::string &path);
-	Unique<View> LoadString(std::string_view xml);
+	Unique<View> load_string(std::string_view xml);
 
 	[[nodiscard]] Text::FontAtlas *resolve_font(const std::string &name) const;
 	[[nodiscard]] Unique<View> create_widget(const std::string &type, std::string_view text,

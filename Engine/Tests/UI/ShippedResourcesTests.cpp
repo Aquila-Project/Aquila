@@ -72,7 +72,7 @@ TEST_SUITE("Shipped UI resources") {
 		for (const auto &path : files) {
 			LogCapture capture;
 			Core::LayoutLoader loader;
-			const auto root = loader.LoadString(read(path));
+			const auto root = loader.load_string(read(path));
 			CHECK_MESSAGE(root != nullptr, path.string());
 			const std::string log = capture.stream.str();
 			CHECK_MESSAGE(log.find("<string>:") == std::string::npos, (path.string() + "\n" + log));

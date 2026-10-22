@@ -494,14 +494,14 @@ Unique<View> LayoutLoader::load_file(const std::string &path) {
 	m_current_dir = (slash != std::string::npos) ? resolved.substr(0, slash) : std::string();
 	m_include_stack.push_back(resolved);
 
-	Unique<View> result = LoadString(src);
+	Unique<View> result = load_string(src);
 
 	m_include_stack.pop_back();
 	m_current_dir = prev_dir;
 	return result;
 }
 
-Unique<View> LayoutLoader::LoadString(std::string_view xml) {
+Unique<View> LayoutLoader::load_string(std::string_view xml) {
 	const std::string_view source = m_include_stack.empty() ? std::string_view("<string>") : m_include_stack.back();
 	Parser p{ .src = xml, .source_name = source, .pos = 0, .loader = *this };
 	return p.parse();
