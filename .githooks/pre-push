@@ -1,0 +1,43 @@
+#!/bin/sh
+set -u
+set -f
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+[ -f .gitmodules ] || exit 0
+
+on_remote() {
+	[ -n "$(git -C "$1" branch -r --contains "$2" 2>/dev/null)" ] ||
+		[ -n "$(git -C "$1" tag --contains "$2" 2>/dev/null)" ]
+}
+
+nl='
+'
+zero=0000000000000000000000000000000000000000
+status=0
+paths=$(git config --file .gitmodules --get-regexp '\.path$' | sed 's/^[^ ]* //')
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+	[ "$local_sha" = "$zero" ] && continue
+	IFS=$nl
+	for path in $paths; do
+		IFS=' 	'
+		pinned=$(git ls-tree "$local_sha" -- "$path" | awk '$2 == "commit" { print $3 }')
+		[ -n "$pinned" ] || continue
+		[ -e "$path/.git" ] || continue
+		git -C "$path" cat-file -e "$pinned^{commit}" 2>/dev/null || continue
+		on_remote "$path" "$pinned" || git -C "$path" fetch --quiet 2>/dev/null
+		if ! on_remote "$path" "$pinned"; then
+			echo "pre-push: $path is pinned to $pinned, which its remote doesn't have."
+			echo "  Push $path first, a fresh clone can't check that commit out."
+			status=1
+		fi
+	done
+	IFS=' 	'
+done
+
+if [ "$status" -ne 0 ]; then
+	echo "Push stopped. 'git push --no-verify' skips this check."
+fi
+exit "$status"

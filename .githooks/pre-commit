@@ -1,0 +1,77 @@
+#!/bin/sh
+set -u
+set -f
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+nl='
+'
+IFS=$nl
+status=0
+
+sources=$(git diff --cached --name-only --diff-filter=ACMR -- \
+	'*.h' '*.hpp' '*.c' '*.cpp' ':(exclude)Engine/Vendor')
+if [ -n "$sources" ]; then
+	if ! command -v git-clang-format >/dev/null 2>&1 || ! command -v clang-format >/dev/null 2>&1; then
+		echo "pre-commit: git-clang-format not found (it comes with clang), not formatting"
+	elif git clang-format --staged --diff -- $sources 2>/dev/null | grep -q '^diff --git'; then
+		partial=$(git diff --name-only -- $sources)
+		if [ -n "$partial" ]; then
+			echo "pre-commit: these need formatting but are only partly staged:"
+			echo "$partial" | sed 's/^/  /'
+			echo "Run 'git clang-format --staged -f', check the result and stage it again."
+			git clang-format --staged --diff -- $sources
+			status=1
+		else
+			git clang-format --staged --quiet -- $sources >/dev/null 2>&1
+			git add -- $sources || exit 1
+			echo "pre-commit: formatted the staged lines of"
+			echo "$sources" | sed 's/^/  /'
+		fi
+	fi
+fi
+
+markup=$(git diff --cached --name-only --diff-filter=ACMR -- '*.aqlayout' '*.aqstyle')
+if [ -n "$markup" ]; then
+	aqlint=""
+	set +f
+	for candidate in build/*/aqlint/release/aqlint build/*/aqlint/release/aqlint.exe; do
+		if [ -x "$candidate" ]; then
+			aqlint=$candidate
+			break
+		fi
+	done
+	set -f
+	if [ -z "$aqlint" ] && command -v cargo >/dev/null 2>&1 && [ -f Tools/aqlint/Cargo.toml ]; then
+		if cargo build --release --quiet --manifest-path Tools/aqlint/Cargo.toml --target-dir build/hooks/aqlint; then
+			aqlint=build/hooks/aqlint/release/aqlint
+			[ -x "$aqlint" ] || aqlint=build/hooks/aqlint/release/aqlint.exe
+		fi
+	fi
+	if [ -z "$aqlint" ]; then
+		echo "pre-commit: aqlint not found and cargo can't build it, not linting the UI markup"
+	elif ! "$aqlint" $markup; then
+		echo "pre-commit: aqlint found errors in the staged layouts and styles"
+		status=1
+	fi
+fi
+
+if ! git diff --cached --check; then
+	echo "pre-commit: whitespace errors or conflict markers in the staged changes"
+	status=1
+fi
+
+if git diff --cached --name-only -- .gitmodules | grep -q .; then
+	urls=$(git show :.gitmodules 2>/dev/null | grep -E '^[[:space:]]*url[[:space:]]*=' | grep -v 'https://')
+	if [ -n "$urls" ]; then
+		echo "pre-commit: submodule URLs have to be anonymous https, fresh clones can't fetch these:"
+		echo "$urls" | sed 's/^[[:space:]]*/  /'
+		status=1
+	fi
+fi
+
+if [ "$status" -ne 0 ]; then
+	echo "Commit stopped. 'git commit --no-verify' skips these checks."
+fi
+exit "$status"

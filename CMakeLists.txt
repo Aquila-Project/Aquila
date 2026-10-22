@@ -261,6 +261,7 @@ add_compile_definitions(
 
 message(STATUS "Aquila Version: ${AQUILA_VERSION_COMPOSED} (${GIT_BRANCH}@${GIT_COMMIT_HASH}${GIT_DIRTY_FLAG})")
 
+include(AquilaGitHooks)
 include(AquilaDependencies)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
