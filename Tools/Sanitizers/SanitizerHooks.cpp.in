@@ -1,0 +1,18 @@
+#define AQUILA_SANITIZER_HOOK \
+	extern "C" __attribute__((visibility("default"), used, no_sanitize("address", "thread", "undefined")))
+
+AQUILA_SANITIZER_HOOK const char *__asan_default_options() {
+	return "@AQUILA_ASAN_OPTIONS@";
+}
+
+AQUILA_SANITIZER_HOOK const char *__lsan_default_options() {
+	return "@AQUILA_LSAN_OPTIONS@";
+}
+
+AQUILA_SANITIZER_HOOK const char *__ubsan_default_options() {
+	return "@AQUILA_UBSAN_OPTIONS@";
+}
+
+AQUILA_SANITIZER_HOOK const char *__tsan_default_options() {
+	return "@AQUILA_TSAN_OPTIONS@";
+}

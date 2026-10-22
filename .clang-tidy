@@ -30,6 +30,9 @@ Checks: >
 
   -misc-non-private-member-variables-in-classes,
   -misc-no-recursion,
+  -misc-include-cleaner,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -portability-avoid-pragma-once,
 
   -clang-analyzer-security.insecureAPI.strcpy,
   -clang-analyzer-security.insecureAPI.rand
@@ -49,6 +52,7 @@ WarningsAsErrors: >
   performance-no-automatic-move
 
 HeaderFilterRegex: '.*(Aquila|Engine)/.*\.(h|hpp)$'
+ExcludeHeaderFilterRegex: '.*/Engine/Vendor/.*'
 
 FormatStyle: none
 

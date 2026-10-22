@@ -6,6 +6,10 @@ add_subdirectory(Scene)
 add_subdirectory(Scripting)
 add_subdirectory(Player)
 
+if (AQUILA_FUZZ)
+    add_subdirectory(Fuzz)
+endif ()
+
 set(TEST_COMMANDS "")
 list(LENGTH ALL_TEST_TARGETS TARGET_COUNT)
 math(EXPR LAST_INDEX "${TARGET_COUNT} - 1")

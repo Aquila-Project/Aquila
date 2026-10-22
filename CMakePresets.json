@@ -122,6 +122,68 @@
                 "CMAKE_BUILD_TYPE": "Release",
                 "AQUILA_BUILD_EDITOR": "OFF"
             }
+        },
+
+        {
+            "name": "checks",
+            "hidden": true,
+            "inherits": "base",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "AQUILA_BUILD_EDITOR": "ON",
+                "AQUILA_SHARED_ENGINE": "OFF"
+            }
+        },
+        {
+            "name": "editor-asan",
+            "displayName": "Editor | Debug | ASan + UBSan",
+            "inherits": "checks",
+            "cacheVariables": {
+                "AQUILA_SANITIZERS": "address;undefined"
+            }
+        },
+        {
+            "name": "engine-tsan",
+            "displayName": "Engine | Debug | TSan (CPU tests only)",
+            "inherits": "checks",
+            "cacheVariables": {
+                "AQUILA_BUILD_EDITOR": "OFF",
+                "AQUILA_SANITIZERS": "thread",
+                "AQUILA_LINT_UI": "OFF"
+            }
+        },
+        {
+            "name": "editor-coverage",
+            "displayName": "Editor | Debug | Coverage",
+            "inherits": "checks",
+            "cacheVariables": {
+                "AQUILA_COVERAGE": "ON"
+            }
+        },
+        {
+            "name": "editor-tidy",
+            "displayName": "Editor | Debug | clang-tidy",
+            "inherits": "checks",
+            "cacheVariables": {
+                "AQUILA_CLANG_TIDY": "ON"
+            }
+        },
+        {
+            "name": "engine-fuzz",
+            "displayName": "Engine | RelWithDebInfo | libFuzzer + ASan + UBSan",
+            "inherits": "checks",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "AQUILA_BUILD_EDITOR": "OFF",
+                "AQUILA_SANITIZERS": "address;undefined",
+                "AQUILA_FUZZ": "ON",
+                "AQUILA_LINT_UI": "OFF"
+            }
         }
     ],
 
@@ -185,6 +247,71 @@
             "name": "engine-release-gcc",
             "configurePreset": "engine-release-gcc",
             "targets": ["AquilaEngine"]
+        },
+
+        {
+            "name": "editor-asan",
+            "configurePreset": "editor-asan"
+        },
+        {
+            "name": "engine-tsan",
+            "configurePreset": "engine-tsan",
+            "targets": ["FoundationTests", "PlatformTests", "SceneTests", "ScriptingTests", "PlayerTests"]
+        },
+        {
+            "name": "editor-coverage",
+            "configurePreset": "editor-coverage",
+            "targets": ["Coverage"]
+        },
+        {
+            "name": "editor-tidy",
+            "configurePreset": "editor-tidy",
+            "targets": ["AquilaEditor", "AquilaEngine", "AquilaPlayer"]
+        },
+        {
+            "name": "engine-fuzz",
+            "configurePreset": "engine-fuzz",
+            "targets": ["Fuzzers"]
+        }
+    ],
+
+    "testPresets": [
+        {
+            "name": "editor-debug",
+            "configurePreset": "editor-debug",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error" }
+        },
+        {
+            "name": "engine-debug",
+            "configurePreset": "engine-debug",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error" }
+        },
+        {
+            "name": "editor-asan",
+            "configurePreset": "editor-asan",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error" }
+        },
+        {
+            "name": "engine-tsan",
+            "configurePreset": "engine-tsan",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error" },
+            "filter": { "exclude": { "name": "^(RHITests|UITests)$" } }
+        },
+        {
+            "name": "editor-coverage",
+            "configurePreset": "editor-coverage",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error" }
+        },
+        {
+            "name": "engine-fuzz",
+            "configurePreset": "engine-fuzz",
+            "output": { "outputOnFailure": true },
+            "execution": { "noTestsAction": "error" }
         }
     ],
 

@@ -262,6 +262,8 @@ add_compile_definitions(
 message(STATUS "Aquila Version: ${AQUILA_VERSION_COMPOSED} (${GIT_BRANCH}@${GIT_COMMIT_HASH}${GIT_DIRTY_FLAG})")
 
 include(AquilaGitHooks)
+include(AquilaSanitizers)
+include(AquilaCoverage)
 include(AquilaDependencies)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -324,6 +326,7 @@ if (PROJECT_IS_TOP_LEVEL AND CMAKE_EXPORT_COMPILE_COMMANDS)
 endif ()
 
 include(AquilaPlayer)
+enable_testing()
 add_subdirectory(Engine)
 
 if (AQUILA_BUILD_EDITOR)
@@ -334,6 +337,7 @@ aquila_stage_player_template()
 aquila_stage_shipping_editor()
 aquila_depend_on_engine_shaders(AquilaEditor AquilaPlayer AquilaEngine RunAllTests PlayerTemplate EditorData)
 include(AquilaLint)
+include(AquilaCodeChecks)
 
 if (NOT AQUILA_SHIPPING)
     if (AQUILA_BUILD_EDITOR)

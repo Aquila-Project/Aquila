@@ -52,7 +52,7 @@ AlignOperands: DontAlign
 AlignArrayOfStructures: None
 
 ReflowComments: false
-FixNamespaceComments: true
+FixNamespaceComments: false
 
 IndentGotoLabels: false
 AlignEscapedNewlines: Left
