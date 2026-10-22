@@ -22,6 +22,8 @@ The first configure takes a while because it pulls the submodules and downloads 
 
 Presets are `editor-debug`, `editor-release` and `editor-relwithdebinfo`, plus the same three starting with `engine-` if you don't want the editor. In release the engine gets built as a shared library and the executables just link against it.
 
+What each build is for, how to make a shipping build, and the sanitizer, coverage and fuzzing ones are in [BUILDING.md](BUILDING.md).
+
 Some options if you need them: `AQUILA_FETCH_VULKAN` and `AQUILA_FETCH_SLANG` always download those instead of using the SDK, `AQUILA_VALIDATION_LAYERS` turns the validation layers on or off, and `AQUILA_AUTO_INSTALL` lets CMake install missing system packages for you.
 
 I shifted my work to Linux. Windows should work but I haven't tested the Windows build in a while, let alone this setup. macOS isn't supported just yet, but if there is someone that wants to port it to macOS, you are more than welcome to do so.
