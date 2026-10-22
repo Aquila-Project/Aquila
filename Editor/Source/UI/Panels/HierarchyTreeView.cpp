@@ -64,7 +64,8 @@ EntityGroup HierarchyTreeView::group_for(Entity entity) {
 }
 
 bool HierarchyTreeView::is_group_node(const View *view) const {
-	return std::ranges::any_of(m_groups, [view](const Group &group) { return group.node != nullptr && group.node == view; });
+	return std::ranges::any_of(m_groups,
+							   [view](const Group &group) { return group.node != nullptr && group.node == view; });
 }
 
 TreeNode *HierarchyTreeView::ensure_group(EntityGroup group) {

@@ -56,8 +56,7 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 			m_selected_node = m_tree_view->find_node_for_entity(entity);
 			if (m_node_context_menu != nullptr) {
 				m_node_context_menu->open_at(pos);
-			} 
-			else {
+			} else {
 				AQUILA_LOG_DEBUG("Node context menu is nullptr");
 			}
 		});
@@ -145,7 +144,7 @@ void HierarchyPanel::populate_tree() {
 	});
 }
 
-void HierarchyPanel::populate_hierarchy_context_menu(){
+void HierarchyPanel::populate_hierarchy_context_menu() {
 	auto node_ctx_uniq = std::make_unique<UI::Core::PopupMenu>();
 	m_node_context_menu = dynamic_cast<UI::Core::PopupMenu *>(m_tree_view->add_child(std::move(node_ctx_uniq)));
 
@@ -207,9 +206,8 @@ void HierarchyPanel::sync() {
 			return it->second;
 		}
 		HierarchyTreeNode *parent = nullptr;
-		if (const auto *scene_node = entity.try_get_component<SceneNodeComponent>();
-			scene_node != nullptr && scene_node->parent.is_valid() &&
-			scene_node->parent.has_component<MetadataComponent>()) {
+		if (const auto *scene_node = entity.try_get_component<SceneNodeComponent>(); scene_node != nullptr &&
+			scene_node->parent.is_valid() && scene_node->parent.has_component<MetadataComponent>()) {
 			parent = self(self, scene_node->parent);
 		}
 		HierarchyTreeNode *node = m_tree_view->add_entity_node(entity.get_name(), entity, parent);

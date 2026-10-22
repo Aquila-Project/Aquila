@@ -48,7 +48,7 @@ class HierarchyPanel : public IEditorPanel {
 	Aquila::SceneManagement::EntityManager &m_entity_manager;
 	HierarchyTreeView *m_tree_view = nullptr;
 	HierarchyTreeNode *m_selected_node = nullptr;
-	Aquila::UI::Core::PopupMenu* m_node_context_menu = nullptr;
+	Aquila::UI::Core::PopupMenu *m_node_context_menu = nullptr;
 };
 
 } // namespace Editor

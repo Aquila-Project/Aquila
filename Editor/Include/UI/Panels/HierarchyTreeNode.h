@@ -13,9 +13,8 @@ class HierarchyTreeView;
 
 class HierarchyTreeNode : public Aquila::UI::Core::TreeNode {
   public:
-	HierarchyTreeNode(std::string label, HierarchyTreeView &owner, int depth,
-	                  Aquila::SceneManagement::Entity entity,
-	                  Aquila::SceneManagement::EntityManager &entity_manager);
+	HierarchyTreeNode(std::string label, HierarchyTreeView &owner, int depth, Aquila::SceneManagement::Entity entity,
+					  Aquila::SceneManagement::EntityManager &entity_manager);
 
 	[[nodiscard]] Aquila::SceneManagement::Entity get_entity() const { return m_entity; }
 	void refresh_visibility();
