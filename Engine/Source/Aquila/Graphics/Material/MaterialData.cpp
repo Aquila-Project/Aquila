@@ -1,6 +1,7 @@
 #include "Aquila/Graphics/Material/MaterialData.h"
 #include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 
 namespace Aquila::Graphics {
@@ -8,6 +9,11 @@ namespace Aquila::Graphics {
 namespace {
 
 constexpr int K_MATERIAL_VERSION = 1;
+
+bool contains_any(std::string_view name, std::initializer_list<std::string_view> words) {
+	return std::ranges::any_of(words,
+							   [name](std::string_view word) { return Foundation::contains_ignore_case(name, word); });
+}
 
 std::string_view blend_mode_name(BlendMode mode) {
 	switch (mode) {
@@ -75,14 +81,29 @@ Option<MaterialValue> value_from_json(const nlohmann::ordered_json &json) {
 
 }
 
+bool is_color_name(std::string_view parameter_name) {
+	return contains_any(parameter_name, { "color", "colour", "tint", "albedo" });
+}
+
+bool is_emission_name(std::string_view parameter_name) {
+	return contains_any(parameter_name, { "emissive", "emission" });
+}
+
+bool is_emission_strength_name(std::string_view parameter_name) {
+	return is_emission_name(parameter_name) && contains_any(parameter_name, { "intensity", "strength" });
+}
+
+bool is_unit_range_name(std::string_view parameter_name) {
+	return contains_any(parameter_name, { "metallic", "roughness", "occlusion", "opacity", "alpha" });
+}
+
+bool is_normal_map_name(std::string_view parameter_name) {
+	return Foundation::contains_ignore_case(parameter_name, "normal");
+}
+
 bool is_srgb_texture_name(std::string_view parameter_name) {
-	std::string lowered(parameter_name);
-	std::ranges::transform(lowered, lowered.begin(),
-						   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	constexpr std::array<std::string_view, 7> K_COLOR_WORDS = { "color", "colour", "tint", "albedo",
-																 "diffuse", "emissive", "emission" };
-	return std::ranges::any_of(K_COLOR_WORDS,
-							   [&lowered](std::string_view word) { return lowered.find(word) != std::string::npos; });
+	return is_color_name(parameter_name) || is_emission_name(parameter_name) ||
+		Foundation::contains_ignore_case(parameter_name, "diffuse");
 }
 
 nlohmann::ordered_json material_to_json(const MaterialData &data) {

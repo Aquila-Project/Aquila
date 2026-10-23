@@ -4,6 +4,7 @@
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/SharedConstants.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 
 namespace Aquila::Graphics {
 
@@ -11,35 +12,11 @@ namespace {
 
 constexpr Uint32 K_ALL_SLOTS = (1U << SharedConstants::MAX_FRAMES_IN_FLIGHT) - 1U;
 
-bool name_has(std::string_view name, std::string_view word) {
-	if (word.size() > name.size()) {
-		return false;
-	}
-	for (Usize i = 0; i + word.size() <= name.size(); ++i) {
-		bool match = true;
-		for (Usize j = 0; j < word.size(); ++j) {
-			if (std::tolower(static_cast<unsigned char>(name[i + j])) !=
-				std::tolower(static_cast<unsigned char>(word[j]))) {
-				match = false;
-				break;
-			}
-		}
-		if (match) {
-			return true;
-		}
-	}
-	return false;
-}
-
-bool is_color_name(std::string_view name) {
-	return name_has(name, "color") || name_has(name, "colour") || name_has(name, "tint") || name_has(name, "albedo");
-}
-
 DefaultTexture loading_placeholder(const MaterialParameter &param) {
 	if (param.default_texture == DefaultTexture::FlatNormal) {
 		return DefaultTexture::FlatNormal;
 	}
-	if (name_has(param.name, "emissive") || name_has(param.name, "emission")) {
+	if (is_emission_name(param.name)) {
 		return DefaultTexture::Black;
 	}
 	return param.srgb ? DefaultTexture::Gray : DefaultTexture::White;
@@ -52,10 +29,11 @@ bool is_engine_input(std::string_view name) {
 ParameterValue default_value(const std::string &name, ParameterType t) {
 	switch (t) {
 	case ParameterType::Float:
-		if (name_has(name, "roughness")) {
+		if (Foundation::contains_ignore_case(name, "roughness")) {
 			return 0.5F;
 		}
-		if (name_has(name, "strength") || name_has(name, "scale") || name_has(name, "opacity")) {
+		if (Foundation::contains_ignore_case(name, "strength") || Foundation::contains_ignore_case(name, "scale") ||
+			Foundation::contains_ignore_case(name, "opacity")) {
 			return 1.F;
 		}
 		return 0.F;
@@ -64,7 +42,9 @@ ParameterValue default_value(const std::string &name, ParameterType t) {
 	case ParameterType::Bool:
 		return false;
 	case ParameterType::Vec2:
-		return name_has(name, "scale") || name_has(name, "tiling") ? Vec2{ 1.F, 1.F } : Vec2{ 0.F, 0.F };
+		return Foundation::contains_ignore_case(name, "scale") || Foundation::contains_ignore_case(name, "tiling")
+			? Vec2{ 1.F, 1.F }
+			: Vec2{ 0.F, 0.F };
 	case ParameterType::Vec3:
 		return is_color_name(name) ? Vec3{ 1.F, 1.F, 1.F } : Vec3{ 0.F, 0.F, 0.F };
 	case ParameterType::Vec4:
@@ -173,7 +153,7 @@ void Material::build_parameters(Shader::ShaderProgram &shader) {
 			p.texture_binding = binding.binding_index;
 			p.hidden = is_engine_input(binding.name);
 			p.srgb = is_srgb_texture_name(binding.name);
-			p.default_texture = name_has(binding.name, "normal") ? DefaultTexture::FlatNormal : DefaultTexture::White;
+			p.default_texture = is_normal_map_name(binding.name) ? DefaultTexture::FlatNormal : DefaultTexture::White;
 			m_parameters.push_back(std::move(p));
 		}
 	}
@@ -317,13 +297,13 @@ Option<Vec3> Material::get_average_emission() const {
 	bool declared = false;
 	Vec3 emission(1.F);
 	for (const MaterialParameter &p : m_parameters) {
-		if (p.hidden || (!name_has(p.name, "emissive") && !name_has(p.name, "emission"))) {
+		if (p.hidden || !is_emission_name(p.name)) {
 			continue;
 		}
 		const MaterialValue value = get_value(p);
 		switch (p.type) {
 		case ParameterType::Float:
-			if (name_has(p.name, "intensity") || name_has(p.name, "strength")) {
+			if (is_emission_strength_name(p.name)) {
 				emission *= as_float(value);
 				declared = true;
 			}

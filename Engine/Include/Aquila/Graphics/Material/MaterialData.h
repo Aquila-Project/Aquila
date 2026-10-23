@@ -45,6 +45,12 @@ struct MaterialData {
 	bool operator==(const MaterialData &) const = default;
 };
 
+/// Case doesn't matter: "tintColour" is a color.
+[[nodiscard]] bool is_color_name(std::string_view parameter_name);
+[[nodiscard]] bool is_emission_name(std::string_view parameter_name);
+[[nodiscard]] bool is_emission_strength_name(std::string_view parameter_name);
+[[nodiscard]] bool is_unit_range_name(std::string_view parameter_name);
+[[nodiscard]] bool is_normal_map_name(std::string_view parameter_name);
 /// Texture parameters named like colors (baseColorMap, albedo, diffuse, emissiveMap...) hold sRGB images, the rest
 /// hold data (normals, roughness, masks) and are read as is.
 [[nodiscard]] bool is_srgb_texture_name(std::string_view parameter_name);
