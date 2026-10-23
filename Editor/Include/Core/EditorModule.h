@@ -69,7 +69,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	void register_windows();
 	void register_workspaces();
 	void register_content_creators();
-	void register_commands();
+	void register_editor_commands();
 	void add_window_command(const EditorWindowType &type);
 
 	[[nodiscard]] Aquila::UI::Core::Canvas *canvas_for(Aquila::Platform::Events::EventSource source) const;

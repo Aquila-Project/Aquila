@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/Math/Rect.h"
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Scene/Entity.h"
+#include "Aquila/UI/Core/Command.h"
 #include "Aquila/UI/Core/Shortcuts.h"
 #include "Core/ContentCreators.h"
 #include "Core/EditorTools.h"
@@ -120,7 +121,8 @@ class EditorContext {
 
 	EditorSelection selection;
 	EditorTools tools;
-	Aquila::UI::Core::Shortcuts shortcuts;
+	Aquila::UI::Core::Commands commands;
+	Aquila::UI::Core::Shortcuts shortcuts{ commands };
 	std::vector<ContentCreator> content_creators;
 	Signal<void()> on_render_output_changed;
 	/// Fires after the preferences (Config::get_preferences()) or the project settings changed, from the Settings

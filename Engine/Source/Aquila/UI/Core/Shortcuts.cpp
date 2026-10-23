@@ -6,24 +6,6 @@ namespace Aquila::UI::Core {
 
 using Platform::Events::KeyChord;
 
-void Shortcuts::add_command(Command command) {
-	if (const auto it = std::ranges::find(m_commands, command.id, &Command::id); it != m_commands.end()) {
-		AQUILA_LOG_WARNING("Shortcuts: command '{}' is registered twice, the last one wins", command.id);
-		*it = std::move(command);
-		return;
-	}
-	m_commands.push_back(std::move(command));
-}
-
-void Shortcuts::remove_command(std::string_view id) {
-	std::erase_if(m_commands, [id](const Command &command) { return command.id == id; });
-}
-
-const Command *Shortcuts::find_command(std::string_view id) const {
-	const auto it = std::ranges::find(m_commands, id, &Command::id);
-	return it == m_commands.end() ? nullptr : &*it;
-}
-
 void Shortcuts::bind(std::string_view command, KeyChord chord, std::string_view scope) {
 	for (const ShortcutBinding &existing : m_defaults) {
 		if (existing.chord == chord && existing.scope == scope && existing.command != command) {
@@ -88,20 +70,6 @@ bool Shortcuts::is_scope_active(std::string_view scope) const {
 	return scope.empty() || (m_scope_resolver && m_scope_resolver(scope));
 }
 
-bool Shortcuts::can_run(const Command &command) {
-	return command.run && (!command.enabled || command.enabled());
-}
-
-bool Shortcuts::execute(std::string_view command_id) {
-	const Command *command = find_command(command_id);
-	if (command == nullptr || !can_run(*command)) {
-		return false;
-	}
-	const Delegate<void()> run = command->run;
-	run();
-	return true;
-}
-
 bool Shortcuts::handle(const KeyChord &chord, bool is_repeat, bool is_typing) {
 	if (!chord.is_valid() || chord.is_modifier_only() || (is_typing && !chord.works_while_typing())) {
 		return false;
@@ -115,8 +83,8 @@ bool Shortcuts::handle(const KeyChord &chord, bool is_repeat, bool is_typing) {
 		if (!is_scope_active(binding.scope)) {
 			continue;
 		}
-		const Command *command = find_command(binding.command);
-		if (command == nullptr || !can_run(*command)) {
+		const Command *command = m_commands.find(binding.command);
+		if (command == nullptr || !m_commands.is_enabled(binding.command)) {
 			continue;
 		}
 		if (is_repeat && !command->repeatable) {

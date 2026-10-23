@@ -455,13 +455,43 @@ GFX::GfxTexture *LayoutLoader::resolve_texture(const std::string &path) const {
 	return m_texture_cache->load(path);
 }
 
-void LayoutLoader::register_command(const std::string &name, Delegate<void()> command) {
-	m_commands[name] = std::move(command);
+Delegate<void()> LayoutLoader::resolve_command(const std::string &name) const {
+	if (m_command_source == nullptr) {
+		return {};
+	}
+	if (m_command_source->find(name) == nullptr) {
+		AQUILA_LOG_WARNING("LayoutLoader: unknown command '{}'", name);
+		return {};
+	}
+	return [cmds = m_command_source, name] { cmds->execute(name); };
 }
 
-Delegate<void()> LayoutLoader::resolve_command(const std::string &name) const {
-	auto it = m_commands.find(name);
-	return (it != m_commands.end()) ? it->second : Delegate<void()>{};
+CommandInfo LayoutLoader::query_command(std::string_view name) const {
+	CommandInfo info;
+	if (m_command_source == nullptr) {
+		return info;
+	}
+	const Command *cmd = m_command_source->find(name);
+	if (cmd == nullptr) {
+		return info;
+	}
+	info.known = true;
+	info.enabled = m_command_source->is_enabled(name);
+	info.title = cmd->title;
+	if (m_shortcut_source != nullptr) {
+		info.shortcut = m_shortcut_source->get_label(name);
+	}
+	return info;
+}
+
+void LayoutLoader::set_command_source(const Commands *commands, const Shortcuts *shortcuts) {
+	if (commands != nullptr) {
+		m_command_source = commands;
+	}
+
+	if (shortcuts != nullptr) {
+		m_shortcut_source = shortcuts;
+	}
 }
 
 Unique<View> LayoutLoader::create_widget(const std::string &type, std::string_view text, Text::FontAtlas *font) const {

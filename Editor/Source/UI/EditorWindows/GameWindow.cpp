@@ -33,8 +33,8 @@ void GameWindow::build(UI::Core::View &content) {
 	m_no_camera = content.find_by_id("game-no-camera");
 	m_camera_name = content.find_by_id<UI::Core::Label>("game-camera");
 	m_pause_button = content.find_by_id<UI::Core::Button>("game-pause");
-	if (m_image == nullptr || m_stage == nullptr || m_idle == nullptr || m_no_camera == nullptr || m_camera_name == nullptr ||
-		m_pause_button == nullptr) {
+	if (m_image == nullptr || m_stage == nullptr || m_idle == nullptr || m_no_camera == nullptr ||
+		m_camera_name == nullptr || m_pause_button == nullptr) {
 		AQUILA_LOG_ERROR("GameWindow: game.aqlayout is missing one of its ids");
 		m_image = nullptr;
 		return;
@@ -43,7 +43,7 @@ void GameWindow::build(UI::Core::View &content) {
 	m_image->set_texture(&context().engine().get_render_output());
 	listen(context().on_render_output_changed,
 		   [this] { m_image->set_texture(&context().engine().get_render_output()); });
-	m_pause_button->on_click.connect([this] { context().shortcuts.execute("play.pause"); });
+	m_pause_button->on_click.connect([this] { context().commands.execute("play.pause"); });
 }
 
 bool GameWindow::is_live(const EditorContext &context) {

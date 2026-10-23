@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/UI/Core/Shortcuts.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Core/IResourceResolver.h"
 #include "Aquila/UI/Core/TextureCache.h"
@@ -13,11 +14,11 @@ namespace Aquila::UI::Core {
 /// @code
 /// LayoutLoader loader;
 /// loader.set_default_font(font);
-/// loader.register_command("file.save", [this] { save(); });
+/// loader.set_command_source(&commands, &shortcuts);
 /// Unique<View> root = loader.load_file("/resources/Engine/UI/editor.aqlayout");
 /// @endcode
 ///
-/// The command is then usable from markup: `<Button on-click="file.save">Save</Button>`.
+/// Commands are then usable from markup: `<Button on-click="file.save">Save</Button>`.
 class LayoutLoader : public IResourceResolver {
   public:
 	using WidgetFactory = Delegate<Unique<View>(std::string_view text, Text::FontAtlas *font)>;
@@ -33,8 +34,10 @@ class LayoutLoader : public IResourceResolver {
 	void register_texture_cache(TextureCache *cache);
 	[[nodiscard]] GFX::GfxTexture *resolve_texture(const std::string &path) const override;
 
-	void register_command(const std::string &name, Delegate<void()> command);
+	/// Add the commands before loading, on-click is resolved while the markup loads.
+	void set_command_source(const Commands *commands, const Shortcuts *shortcuts = nullptr);
 	[[nodiscard]] Delegate<void()> resolve_command(const std::string &name) const override;
+	[[nodiscard]] CommandInfo query_command(std::string_view name) const override;
 
 	/// VFS path. Null when the file can't be read or an <Include> loops.
 	Unique<View> load_file(const std::string &path);
@@ -54,6 +57,9 @@ class LayoutLoader : public IResourceResolver {
 
 	std::string m_current_dir;
 	std::vector<std::string> m_include_stack;
+
+	const Commands *m_command_source = nullptr;
+	const Shortcuts *m_shortcut_source = nullptr;
 
 	template <typename T> void Register(const std::string &type_name) {
 		m_factories[type_name] = [](std::string_view, Text::FontAtlas *) -> Unique<View> {

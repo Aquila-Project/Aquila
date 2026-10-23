@@ -426,7 +426,7 @@ void EditorModule::wire_play_controls(View *layout_root) {
 	const auto wire = [this, layout_root](std::string_view id, std::string_view command) {
 		auto *button = layout_root->find_by_id<Button>(id);
 		if (button != nullptr) {
-			button->on_click.connect([this, command = std::string(command)] { m_context->shortcuts.execute(command); });
+			button->on_click.connect([this, command = std::string(command)] { m_context->commands.execute(command); });
 		}
 		return button;
 	};
@@ -678,15 +678,6 @@ void EditorModule::setup_editor_ui() {
 	register_entity_slots();
 	register_thumbnail_slots();
 	register_content_creators();
-	bind_default_shortcuts(m_context->shortcuts);
-	apply_user_shortcuts(m_context->shortcuts, cfg.shortcuts);
-
-	m_layout_loader.register_command("entity.create", [this] { m_context->shortcuts.execute("entity.create"); });
-	m_layout_loader.register_command("console.clear", [this] {
-		if (auto *console = m_windows->find<ConsoleWindow>()) {
-			console->clear();
-		}
-	});
 
 	auto root = m_layout_loader.load_file(cfg.ui.layout_path);
 	if (!root) {
@@ -708,6 +699,13 @@ void EditorModule::setup_editor_ui() {
 	for (EditorWindowType &type : m_pending_window_types) {
 		m_windows->add(std::move(type));
 	}
+
+	register_editor_commands();
+	bind_default_shortcuts(m_context->shortcuts);
+	apply_user_shortcuts(m_context->shortcuts, cfg.shortcuts);
+
+	m_layout_loader.set_command_source(&m_context->commands, &m_context->shortcuts);
+
 	m_pending_window_types.clear();
 	m_windows->attach(*m_dock_space);
 	m_context->shortcuts.set_scope_resolver(
@@ -735,7 +733,6 @@ void EditorModule::setup_editor_ui() {
 	}
 	m_workspaces->activate("Scene");
 
-	register_commands();
 	wire_main_menu(layout_root);
 	wire_play_controls(layout_root);
 	m_status_bar = std::make_unique<StatusBar>();
@@ -940,54 +937,51 @@ void EditorModule::save_settings_if_due(bool now) {
 	}
 }
 
-void EditorModule::register_commands() {
-	Shortcuts &shortcuts = m_context->shortcuts;
+void EditorModule::register_editor_commands() {
+	Commands &commands = m_context->commands;
 
 	const auto editing = [this] { return is_editing(); };
-	shortcuts.add_command(
-		{ .id = "scene.new", .title = "New scene", .run = [this] { new_empty_scene(); }, .enabled = editing });
-	shortcuts.add_command({
+	commands.add({ .id = "scene.new", .title = "New scene", .run = [this] { new_empty_scene(); }, .enabled = editing });
+	commands.add({
 		.id = "scene.open",
 		.title = "Open scene",
 		.run = [this] { open_scene(); },
 		.enabled = editing,
 	});
-	shortcuts.add_command(
-		{ .id = "scene.save", .title = "Save scene", .run = [this] { save_scene(); }, .enabled = editing });
-	shortcuts.add_command(
+	commands.add({ .id = "scene.save", .title = "Save scene", .run = [this] { save_scene(); }, .enabled = editing });
+	commands.add(
 		{ .id = "scene.save_as", .title = "Save scene as", .run = [this] { save_scene_as(); }, .enabled = editing });
-	shortcuts.add_command({
+	commands.add({
 		.id = "scene.reset_demo",
 		.title = "Reset demo scene",
 		.run = [this] { reset_to_demo_scene(); },
 		.enabled = editing,
 	});
 
-	shortcuts.add_command({
+	commands.add({
 		.id = "play.start",
 		.title = "Play",
 		.run = [this] { start_playing(); },
 		.enabled = [this] { return m_engine->get_play_state() != PlayState::Playing; },
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "play.pause",
 		.title = "Pause",
 		.run = [this] { toggle_pause(); },
 		.enabled = [this] { return !is_editing(); },
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "play.stop",
 		.title = "Stop",
 		.run = [this] { m_engine->stop(); },
 		.enabled = [this] { return !is_editing(); },
 	});
 
-	shortcuts.add_command(
-		{ .id = "editor.preferences", .title = "Preferences", .run = [this] { open_settings_window(); } });
-	shortcuts.add_command({ .id = "editor.quit", .title = "Quit", .run = [this] { m_engine->request_close(); } });
+	commands.add({ .id = "editor.preferences", .title = "Preferences", .run = [this] { open_settings_window(); } });
+	commands.add({ .id = "editor.quit", .title = "Quit", .run = [this] { m_engine->request_close(); } });
 
-	shortcuts.add_command({ .id = "window.open.build", .title = "Build", .run = [this] { open_build_window(); } });
-	shortcuts.add_command({
+	commands.add({ .id = "window.open.build", .title = "Build", .run = [this] { open_build_window(); } });
+	commands.add({
 		.id = "project.build",
 		.title = "Build project",
 		.run =
@@ -997,7 +991,7 @@ void EditorModule::register_commands() {
 			},
 		.enabled = [this] { return !m_build_window || !m_build_window->is_busy(); },
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "editor.reload_layout",
 		.title = "Reload layout",
 		.run =
@@ -1006,7 +1000,7 @@ void EditorModule::register_commands() {
 				AQUILA_LOG_INFO("Editor layout reloaded");
 			},
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "editor.reload_styles",
 		.title = "Reload styles",
 		.run =
@@ -1015,31 +1009,41 @@ void EditorModule::register_commands() {
 				AQUILA_LOG_INFO("Stylesheet reloaded");
 			},
 	});
-
-	shortcuts.add_command({
+	commands.add({
+		.id = "console.clear",
+		.title = "Clear console",
+		.run =
+			[this] {
+				if (auto *console = m_windows->find<ConsoleWindow>()) {
+					console->clear();
+				}
+			},
+		.enabled = [this] { return m_windows->find<ConsoleWindow>() != nullptr; },
+	});
+	commands.add({
 		.id = "ui.zoom_in",
 		.title = "Zoom in",
 		.run = [this] { set_ui_scale(Config::get_preferences().ui_scale + 0.05F); },
 		.repeatable = true,
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "ui.zoom_out",
 		.title = "Zoom out",
 		.run = [this] { set_ui_scale(Config::get_preferences().ui_scale - 0.05F); },
 		.repeatable = true,
 	});
-	shortcuts.add_command({ .id = "ui.zoom_reset", .title = "Reset zoom", .run = [this] { set_ui_scale(1.F); } });
+	commands.add({ .id = "ui.zoom_reset", .title = "Reset zoom", .run = [this] { set_ui_scale(1.F); } });
 
-	shortcuts.add_command(
+	commands.add(
 		{ .id = "workspace.next", .title = "Next workspace", .run = [this] { m_workspaces->activate_relative(1); } });
-	shortcuts.add_command({
+	commands.add({
 		.id = "workspace.previous",
 		.title = "Previous workspace",
 		.run = [this] { m_workspaces->activate_relative(-1); },
 	});
-	shortcuts.add_command(
+	commands.add(
 		{ .id = "workspace.reset", .title = "Reset workspace", .run = [this] { m_workspaces->reset_active(); } });
-	shortcuts.add_command({
+	commands.add({
 		.id = "view.status_bar",
 		.title = "Status bar",
 		.run =
@@ -1050,20 +1054,20 @@ void EditorModule::register_commands() {
 			},
 	});
 
-	shortcuts.add_command({
+	commands.add({
 		.id = "devtools.ui_inspector",
 		.title = "UI inspector",
 		.run = [this] { m_devtools->open_inspector_window(); },
 		.enabled = [this] { return m_devtools != nullptr; },
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "devtools.widget_gallery",
 		.title = "Widget gallery",
 		.run = [this] { m_devtools->open_widget_gallery(m_engine->get_context(), m_texture_cache.get()); },
 		.enabled = [this] { return m_devtools != nullptr; },
 	});
 
-	shortcuts.add_command({
+	commands.add({
 		.id = "entity.create",
 		.title = "Create entity",
 		.run =
@@ -1073,7 +1077,7 @@ void EditorModule::register_commands() {
 				m_context->selection.select(entity);
 			},
 	});
-	shortcuts.add_command({
+	commands.add({
 		.id = "entity.delete",
 		.title = "Delete entity",
 		.run = [this] { m_context->destroy_entity(m_context->selection.get()); },
@@ -1086,7 +1090,7 @@ void EditorModule::register_commands() {
 }
 
 void EditorModule::add_window_command(const EditorWindowType &type) {
-	m_context->shortcuts.add_command(
+	m_context->commands.add(
 		{ .id = "window.open." + type.id, .title = type.title, .run = [this, id = type.id] { m_windows->open(id); } });
 }
 
@@ -1101,13 +1105,13 @@ void EditorModule::wire_main_menu(View *layout_root) {
 	m_main_menu = layout_root->add_child(std::move(popup));
 
 	const auto add = [this](PopupMenu *menu, std::string_view command_id, std::string_view icon) {
-		const Command *command = m_context->shortcuts.find_command(command_id);
+		const Command *command = m_context->commands.find(command_id);
 		if (command == nullptr) {
 			AQUILA_LOG_WARNING("EditorModule: menu command '{}' is not registered", command_id);
 			return;
 		}
 		menu->add_item(command->title, m_context->shortcuts.get_label(command_id), m_context->icon(icon),
-					   [this, id = std::string(command_id)] { m_context->shortcuts.execute(id); });
+					   [this, id = std::string(command_id)] { m_context->commands.execute(id); });
 	};
 
 	PopupMenu *file_menu = m_main_menu->add_submenu("File", m_context->icon("folder-open"));

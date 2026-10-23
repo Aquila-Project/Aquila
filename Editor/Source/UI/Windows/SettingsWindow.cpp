@@ -653,8 +653,9 @@ void SettingsWindow::show_page(Page &page, const std::string &query, bool full) 
 
 void SettingsWindow::show_shortcuts(View &host, const std::string &query) {
 	Shortcuts &shortcuts = m_context.shortcuts;
+	Commands &editor_commands = m_context.commands;
 	std::vector<const Command *> commands;
-	for (const Command &command : shortcuts.get_commands()) {
+	for (const Command &command : editor_commands.all()) {
 		if (matches(command.title, query) || matches(command.id, query) ||
 			matches(shortcuts.get_label(command.id), query)) {
 			commands.push_back(&command);
@@ -712,7 +713,7 @@ void SettingsWindow::show_shortcuts(View &host, const std::string &query) {
 
 		std::vector<std::string> clashes;
 		for (const Aquila::UI::Core::ShortcutBinding &binding : shortcuts.get_bindings(id)) {
-			for (const Command &other : shortcuts.get_commands()) {
+			for (const Command &other : editor_commands.all()) {
 				if (other.id == id) {
 					continue;
 				}

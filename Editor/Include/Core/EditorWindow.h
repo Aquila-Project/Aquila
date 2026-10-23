@@ -50,8 +50,8 @@ class EditorWindow : public Aquila::UI::Core::DockPanelContent {
 	/// The command exists while the window is open.
 	void add_command(Aquila::UI::Core::Command command) {
 		std::string id = command.id;
-		m_context.shortcuts.add_command(std::move(command));
-		m_disconnects.emplace_back([this, id = std::move(id)] { m_context.shortcuts.remove_command(id); });
+		m_context.commands.add(std::move(command));
+		m_disconnects.emplace_back([this, id = std::move(id)] { m_context.commands.remove(id); });
 	}
 
 	[[nodiscard]] Unique<Aquila::UI::Core::View> load_layout(std::string_view file_name) const {

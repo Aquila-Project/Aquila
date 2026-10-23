@@ -3,21 +3,14 @@
 
 #include "Aquila/Foundation/Defines.h"
 #include "Aquila/Platform/Events/KeyChord.h"
+#include "Aquila/UI/Core/Command.h"
 
 namespace Aquila::UI::Core {
-
-struct Command {
-	std::string id;
-	std::string title;
-	Delegate<void()> run;
-	Delegate<bool()> enabled{};
-	bool repeatable = false;
-};
 
 struct ShortcutBinding {
 	std::string command;
 	Platform::Events::KeyChord chord;
-	std::string scope{};
+	std::string scope;
 };
 
 /// Commands plus the keymap. Scoped bindings win over global ones,
@@ -30,12 +23,9 @@ struct ShortcutBinding {
 /// @endcode
 class Shortcuts {
   public:
-	using ScopeResolver = Delegate<bool(std::string_view scope)>;
+	explicit Shortcuts(const Commands &commands) : m_commands(commands) {}
 
-	void add_command(Command command);
-	void remove_command(std::string_view id);
-	[[nodiscard]] const Command *find_command(std::string_view id) const;
-	[[nodiscard]] const std::vector<Command> &get_commands() const { return m_commands; }
+	using ScopeResolver = Delegate<bool(std::string_view scope)>;
 
 	void bind(std::string_view command, Platform::Events::KeyChord chord, std::string_view scope = {});
 	void bind(std::string_view command, std::string_view chord, std::string_view scope = {});
@@ -53,7 +43,6 @@ class Shortcuts {
 	/// Decides whether a scope is active right now. In the editor: is the mouse over that window.
 	void set_scope_resolver(ScopeResolver resolver) { m_scope_resolver = std::move(resolver); }
 
-	bool execute(std::string_view command);
 	/// @return false when nothing ran, so the key can go somewhere else.
 	/// Key repeats only run repeatable commands, the others swallow the repeat.
 	bool handle(const Platform::Events::KeyChord &chord, bool is_repeat, bool is_typing);
@@ -61,9 +50,8 @@ class Shortcuts {
   private:
 	[[nodiscard]] std::vector<ShortcutBinding> effective_bindings() const;
 	[[nodiscard]] bool is_scope_active(std::string_view scope) const;
-	[[nodiscard]] static bool can_run(const Command &command);
 
-	std::vector<Command> m_commands;
+	const Commands &m_commands;
 	std::vector<ShortcutBinding> m_defaults;
 	std::unordered_map<std::string, std::vector<Platform::Events::KeyChord>> m_overrides;
 	ScopeResolver m_scope_resolver;
