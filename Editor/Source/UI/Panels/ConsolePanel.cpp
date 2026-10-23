@@ -12,22 +12,6 @@ using namespace Aquila::Foundation;
 using namespace Aquila::GFX;
 using namespace Aquila::UI;
 
-namespace {
-
-class ClickableView : public UI::Core::View {
-  public:
-	Signal<void()> on_click;
-
-	void on_mouse_release(Platform::MouseButton btn, Vec2 pos) override {
-		View::on_mouse_release(btn, pos);
-		if (btn == Platform::MouseButton::Left) {
-			on_click();
-		}
-	}
-};
-
-} // namespace
-
 int LogCaptureBuf::overflow(int c) {
 	if (c == traits_type::eof()) {
 		return traits_type::eof();
@@ -85,7 +69,7 @@ void ConsolePanel::build(UI::Core::View *panel, UI::Core::View * /*overlayRoot*/
 
 	auto make_filter_btn = [&](Vec4 icon_tint, FilterGroup group, UI::Core::View *&btn_out,
 							   UI::Core::Label *&count_out) {
-		auto btn = std::make_unique<ClickableView>();
+		auto btn = std::make_unique<UI::Core::Clickable>();
 		btn->add_class("console-filter-btn");
 		btn_out = btn.get();
 

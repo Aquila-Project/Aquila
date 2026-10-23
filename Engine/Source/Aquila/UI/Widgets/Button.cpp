@@ -4,12 +4,9 @@
 
 namespace Aquila::UI::Core {
 
-Button::Button() {
-	set_input_leaf(true);
-}
+Button::Button() = default;
 
 Button::Button(std::string text, Text::FontAtlas *font) {
-	set_input_leaf(true);
 	m_content = add_child<IconLabel>(std::move(text), font);
 }
 
@@ -49,14 +46,6 @@ void Button::set_reserve_icon_space(bool reserve) {
 void Button::set_trailing_icon(GFX::GfxTexture *texture) {
 	ensure_content();
 	m_content->set_trailing_icon(texture);
-}
-
-void Button::on_mouse_release(Platform::MouseButton btn, Vec2 pos) {
-	const bool was_pressed = m_is_pressed;
-	View::on_mouse_release(btn, pos);
-	if (btn == Platform::MouseButton::Left && m_is_hovered && was_pressed) {
-		on_click();
-	}
 }
 
 void Button::on_style_resolved() {

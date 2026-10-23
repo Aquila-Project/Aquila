@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Aquila/UI/Widgets/Control.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/IconLabel.h"
 #include "Aquila/UI/Style/StyleProperties.h"
 
@@ -8,7 +8,7 @@ namespace Aquila::UI::Core {
 
 /// In markup, on-click names a command registered on the LayoutLoader:
 /// `<Button on-click="file.save">Save</Button>`.
-class Button : public Control {
+class Button : public Clickable {
   public:
 	Button();
 	Button(std::string text, Text::FontAtlas *font = nullptr);
@@ -24,9 +24,7 @@ class Button : public Control {
 	void set_reserve_icon_space(bool reserve);
 	void set_trailing_icon(GFX::GfxTexture *texture);
 	[[nodiscard]] IconLabel *get_content() const { return m_content; }
-	Signal<void()> on_click;
 
-	void on_mouse_release(Platform::MouseButton btn, Vec2 pos) override;
 	void on_style_resolved() override;
 	void apply_xml_text_content(std::string_view text) override { set_text(std::string(text)); }
 	void apply_xml_attribute(std::string_view name, std::string_view value,
