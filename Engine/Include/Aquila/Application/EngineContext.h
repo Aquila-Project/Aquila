@@ -3,6 +3,10 @@
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
 
+namespace Aquila::Foundation {
+class ServiceRegistry;
+}
+
 namespace Aquila::GFX {
 class GfxContext;
 class GfxTexture;
@@ -46,6 +50,7 @@ class EngineContext {
 	[[nodiscard]] Rendering::ObjectPickingSystem &get_object_picking() const;
 	[[nodiscard]] GFX::GfxTexture &get_render_output() const;
 	[[nodiscard]] Rendering::IRenderWindowHost &get_window_host() const;
+	[[nodiscard]] Foundation::ServiceRegistry &get_services() const;
 
 	/// Renders the 3D scene at this size instead of the window size, from the next frame on.
 	/// The editor passes its viewport size.

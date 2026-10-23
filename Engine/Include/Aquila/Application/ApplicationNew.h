@@ -2,6 +2,7 @@
 #define AQUILA_APPLICATION_H
 
 #include "Aquila/Foundation/Defines.h"
+#include "Aquila/Foundation/ServiceRegistry.h"
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Foundation/Timer.h"
 #include "Aquila/Application/EngineContext.h"
@@ -151,6 +152,7 @@ class Application : public Rendering::IRenderWindowHost {
 	void ensure_window_targets(RenderWindow &rw, Uint32 width, Uint32 height);
 
 	EngineContext m_engine_context{ *this };
+	Foundation::ServiceRegistry m_services;
 	std::vector<Unique<IModule>> m_modules;
 	bool m_modules_attached = false;
 	Usize m_attached_modules = 0;

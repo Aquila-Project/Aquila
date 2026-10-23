@@ -33,7 +33,7 @@ class IModule {
 	AQUILA_NONCOPYABLE(IModule);
 	AQUILA_NONMOVEABLE(IModule);
 
-	/// Rendering and the scene exist by now.
+	/// Rendering, the scene and the services of modules added before this one exist by now.
 	virtual void on_attach(EngineContext &engine) {}
 	/// The GPU is idle. Modules detach in reverse order.
 	virtual void on_detach() {}

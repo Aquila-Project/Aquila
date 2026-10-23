@@ -41,6 +41,10 @@ Rendering::IRenderWindowHost &EngineContext::get_window_host() const {
 	return m_application;
 }
 
+Foundation::ServiceRegistry &EngineContext::get_services() const {
+	return m_application.m_services;
+}
+
 void EngineContext::request_render_resize(Uint32 width, Uint32 height) const {
 	m_application.request_render_resize(width, height);
 }
