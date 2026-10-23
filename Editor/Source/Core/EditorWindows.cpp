@@ -63,7 +63,7 @@ void EditorWindows::attach(DockSpace &dock_space) {
 	if (View *overlay = m_context.overlay_root()) {
 		auto menu = std::make_unique<UI::Core::PopupMenu>();
 		menu->set_submenu_icon(m_context.icon("chevron-right"));
-		m_menu = dynamic_cast<UI::Core::PopupMenu *>(overlay->add_child(std::move(menu)));
+		m_menu = overlay->add_child(std::move(menu));
 	}
 
 	dock_space.set_closable_tabs(true, m_context.icon("x"));

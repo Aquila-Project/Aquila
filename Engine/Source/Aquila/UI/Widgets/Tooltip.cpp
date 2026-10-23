@@ -9,7 +9,7 @@ Tooltip::Tooltip() : FloatingOverlay(48) {
 
 	auto label = std::make_unique<Label>("");
 	label->add_class("tooltip-label");
-	m_label = dynamic_cast<Label *>(add_child(std::move(label)));
+	m_label = add_child(std::move(label));
 }
 
 void Tooltip::show_at(Vec2 canvas_pos, std::string text) {

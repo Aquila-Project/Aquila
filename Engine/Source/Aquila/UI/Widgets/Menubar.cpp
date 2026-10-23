@@ -29,7 +29,7 @@ PopupMenu *MenuBar::add_menu(std::string title) {
 		}
 	});
 
-	Button *btn_ptr = dynamic_cast<Button *>(add_child(std::move(btn)));
+	Button *btn_ptr = add_child(std::move(btn));
 	View *dropdown_parent = (m_overlay_root != nullptr) ? m_overlay_root : static_cast<View *>(this);
 	dropdown_parent->add_child(std::move(dropdown));
 

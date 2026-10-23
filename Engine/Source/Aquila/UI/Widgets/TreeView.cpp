@@ -16,7 +16,7 @@ TreeView::TreeView() {
 
 TreeNode *TreeView::add_node(std::string label) {
 	auto node = std::make_unique<TreeNode>(std::move(label), *this, 0);
-	return dynamic_cast<TreeNode *>(add_child(std::move(node)));
+	return add_child(std::move(node));
 }
 
 View *TreeView::add_child(Unique<View> child) {
@@ -105,7 +105,7 @@ TreeNode::TreeNode(std::string label, TreeView &owner, int depth)
 	header->add_class("tree-node-header");
 	header->on_click.connect([this] { on_header_clicked(); });
 	header->on_context_menu.connect([this](Vec2 pos) { on_header_right_clicked(pos); });
-	m_header = dynamic_cast<Button *>(m_row->add_child(std::move(header)));
+	m_header = m_row->add_child(std::move(header));
 
 	auto actions = std::make_unique<View>();
 	actions->add_class("tree-node-actions");
@@ -136,7 +136,7 @@ void TreeNode::on_drag_leave(DragState &) {
 
 TreeNode *TreeNode::add_child_node(std::string label) {
 	auto node = std::make_unique<TreeNode>(std::move(label), m_owner, m_depth + 1);
-	return dynamic_cast<TreeNode *>(add_child(std::move(node)));
+	return add_child(std::move(node));
 }
 
 void TreeNode::update_depth(int new_depth) {

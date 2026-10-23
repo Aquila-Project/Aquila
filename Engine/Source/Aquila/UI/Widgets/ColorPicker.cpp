@@ -414,7 +414,7 @@ void ColorPicker::init() {
 		auto popup = std::make_unique<Popup>();
 		popup->add_class("cp-popup");
 		popup->set_floating(fc);
-		m_popup = dynamic_cast<Popup *>(add_child(std::move(popup)));
+		m_popup = add_child(std::move(popup));
 	}
 
 	{
@@ -434,7 +434,7 @@ void ColorPicker::init() {
 			sync_all();
 			on_changed(m_color);
 		};
-		m_sv_area = dynamic_cast<PickerArea *>(m_popup->add_child(std::move(sv)));
+		m_sv_area = m_popup->add_child(std::move(sv));
 	}
 
 	{
@@ -462,7 +462,7 @@ void ColorPicker::init() {
 				sync_all();
 				on_changed(m_color);
 			};
-			m_hue_bar = dynamic_cast<PickerArea *>(row_raw->add_child(std::move(hue)));
+			m_hue_bar = row_raw->add_child(std::move(hue));
 		}
 
 		{
@@ -483,7 +483,7 @@ void ColorPicker::init() {
 			sync_all();
 			on_changed(m_color);
 		};
-		m_alpha_bar = dynamic_cast<PickerArea *>(m_popup->add_child(std::move(alpha)));
+		m_alpha_bar = m_popup->add_child(std::move(alpha));
 	}
 
 	{
@@ -513,19 +513,19 @@ void ColorPicker::init() {
 		{
 			auto lbl = std::make_unique<Label>(labels[i]);
 			lbl->add_class("cp-ch-lbl");
-			m_ch[i].label = dynamic_cast<Label *>(m_ch[i].row->add_child(std::move(lbl)));
+			m_ch[i].label = m_ch[i].row->add_child(std::move(lbl));
 		}
 		{
 			auto sl = std::make_unique<Slider>();
 			sl->set_range(0.F, 255.F);
 			sl->set_step(1.F);
 			sl->add_class("cp-ch-slider");
-			m_ch[i].slider = dynamic_cast<Slider *>(m_ch[i].row->add_child(std::move(sl)));
+			m_ch[i].slider = m_ch[i].row->add_child(std::move(sl));
 		}
 		{
 			auto ti = std::make_unique<TextInput>();
 			ti->add_class("cp-ch-input");
-			m_ch[i].input = dynamic_cast<TextInput *>(m_ch[i].row->add_child(std::move(ti)));
+			m_ch[i].input = m_ch[i].row->add_child(std::move(ti));
 		}
 
 		const int idx = i;
@@ -570,7 +570,7 @@ void ColorPicker::init() {
 					on_changed(m_color);
 				}
 			});
-			m_hex_input = dynamic_cast<TextInput *>(m_hex_row->add_child(std::move(ti)));
+			m_hex_input = m_hex_row->add_child(std::move(ti));
 		}
 	}
 

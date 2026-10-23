@@ -19,6 +19,7 @@ class TreeView : public View {
 
 	TreeNode *add_node(std::string label);
 	void remove_node(TreeNode *node);
+	using View::add_child;
 	View *add_child(Unique<View> child) override;
 
 	void on_drag_enter(DragState &state) override;
@@ -58,6 +59,7 @@ class TreeNode : public View {
 	[[nodiscard]] ViewKind get_kind() const override { return K_KIND; }
 
 	TreeNode *add_child_node(std::string label);
+	using View::add_child;
 	View *add_child(Unique<View> node) override;
 	void on_drag_enter(DragState &state) override;
 	void on_drag_leave(DragState &state) override;

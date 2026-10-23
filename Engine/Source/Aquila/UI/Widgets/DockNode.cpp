@@ -61,9 +61,7 @@ void DockNode::decorate_tab_bar() {
 	if (m_tab_actions == nullptr || m_drag_ctx == nullptr || !m_drag_ctx->decorate_tab_bar) {
 		return;
 	}
-	while (!m_tab_actions->get_children().empty()) {
-		m_tab_actions->remove_child(m_tab_actions->get_children().back().get());
-	}
+	m_tab_actions->clear_children();
 	m_drag_ctx->decorate_tab_bar(this, m_tab_actions);
 }
 
@@ -122,8 +120,8 @@ std::pair<DockNode *, DockNode *> DockNode::split(SplitDirection dir, bool ancho
 		second->merge_style(sp2);
 	}
 
-	DockNode *first_raw = dynamic_cast<DockNode *>(add_child(std::move(first)));
-	DockNode *second_raw = dynamic_cast<DockNode *>(add_child(std::move(second)));
+	DockNode *first_raw = add_child(std::move(first));
+	DockNode *second_raw = add_child(std::move(second));
 	second_raw->add_child(std::move(splitter));
 
 	return { first_raw, second_raw };
@@ -157,7 +155,7 @@ DockNode *DockNode::append_leaf(SplitDirection dir) {
 		leaf->merge_style(lp);
 	}
 
-	DockNode *leaf_raw = dynamic_cast<DockNode *>(add_child(std::move(leaf)));
+	DockNode *leaf_raw = add_child(std::move(leaf));
 	leaf_raw->add_child(std::move(splitter));
 
 	return leaf_raw;
@@ -174,7 +172,7 @@ void DockNode::append_tab(DockPanel *panel, std::string title) {
 		btn->set_icon(panel->get_tab_icon());
 	}
 	btn->add_class("dock-tab-btn");
-	DockTabButton *btn_raw = dynamic_cast<DockTabButton *>(wrapper_raw->add_child(std::move(btn)));
+	DockTabButton *btn_raw = wrapper_raw->add_child(std::move(btn));
 
 	btn_raw->set_drag_info(m_drag_ctx, panel, this);
 	btn_raw->on_click.connect([this, panel] { set_active_panel_by_ptr(panel); });
@@ -194,7 +192,7 @@ void DockNode::append_tab(DockPanel *panel, std::string title) {
 
 DockPanel *DockNode::add_panel(std::string title, GFX::GfxTexture *tab_icon) {
 	auto panel = std::make_unique<DockPanel>(title);
-	DockPanel *panel_raw = dynamic_cast<DockPanel *>(m_panel_area->add_child(std::move(panel)));
+	DockPanel *panel_raw = m_panel_area->add_child(std::move(panel));
 	panel_raw->set_tab_icon(tab_icon);
 
 	append_tab(panel_raw, std::move(title));
@@ -395,7 +393,7 @@ void DockNode::accept_panel(Unique<View> panel_view, std::string title, DropZone
 	}
 
 	if (zone == DropZone::Center) {
-		DockPanel *panel_raw = dynamic_cast<DockPanel *>(m_panel_area->add_child(std::move(panel_view)));
+		auto *panel_raw = view_cast<DockPanel>(m_panel_area->add_child(std::move(panel_view)));
 		append_tab(panel_raw, std::move(title));
 		set_active_panel(static_cast<int>(m_tabs.size()) - 1);
 		remove_class("dock-node-empty");

@@ -79,7 +79,7 @@ TreeNode *HierarchyTreeView::ensure_group(EntityGroup group) {
 	node->get_header()->add_class("hierarchy-group-header");
 	slot.count = node->get_actions()->add_child<Label>(std::string{});
 	slot.count->add_class("hierarchy-group-count");
-	slot.node = dynamic_cast<TreeNode *>(add_child(std::move(node)));
+	slot.node = add_child(std::move(node));
 
 	for (Usize next = static_cast<Usize>(group) + 1; next < m_groups.size(); ++next) {
 		if (m_groups[next].node != nullptr) {
@@ -95,7 +95,7 @@ HierarchyTreeNode *HierarchyTreeView::add_entity_node(std::string label, Entity 
 	const int depth = container->get_depth() + 1;
 	auto node = std::make_unique<HierarchyTreeNode>(std::move(label), *this, depth, entity, m_entity_manager);
 
-	auto *raw = dynamic_cast<HierarchyTreeNode *>(container->add_child(std::move(node)));
+	auto *raw = container->add_child(std::move(node));
 	m_node_entity_map[raw] = entity;
 	raw->set_type_icon(icon_for(entity));
 	raw->refresh_visibility();
@@ -224,9 +224,7 @@ void HierarchyTreeView::populate_from_entity(Entity entity, HierarchyTreeNode *p
 void HierarchyTreeView::clear() {
 	deselect();
 	if (m_content != nullptr) {
-		while (!m_content->get_children().empty()) {
-			m_content->remove_child(m_content->get_children().front().get());
-		}
+		m_content->clear_children();
 	}
 	m_node_entity_map.clear();
 	m_groups = {};

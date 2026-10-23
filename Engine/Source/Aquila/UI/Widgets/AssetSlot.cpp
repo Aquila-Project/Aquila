@@ -53,12 +53,12 @@ AssetSlot::AssetSlot() {
 
 	auto label = std::make_unique<Label>("");
 	label->add_class("asset-slot-label");
-	m_label = dynamic_cast<Label *>(add_child(std::move(label)));
+	m_label = add_child(std::move(label));
 
 	auto clear_btn = std::make_unique<Button>("×");
 	clear_btn->add_class("asset-slot-clear");
 	clear_btn->on_click.connect([this] { clear(); });
-	m_clear_button = dynamic_cast<Button *>(add_child(std::move(clear_btn)));
+	m_clear_button = add_child(std::move(clear_btn));
 
 	update_display();
 }

@@ -93,9 +93,7 @@ void UIDebugPanel::refresh() {
 	}
 
 	m_node_to_view.clear();
-	while (!m_tree_host->get_children().empty()) {
-		m_tree_host->remove_child(m_tree_host->get_children().front().get());
-	}
+	m_tree_host->clear_children();
 
 	m_tree = m_tree_host->add_child<TreeView>();
 

@@ -146,7 +146,7 @@ DockSpace::DockSpace() {
 	};
 
 	auto root = std::make_unique<DockNode>(&m_drag_ctx);
-	m_root = dynamic_cast<DockNode *>(add_child(std::move(root)));
+	m_root = add_child(std::move(root));
 }
 
 namespace {

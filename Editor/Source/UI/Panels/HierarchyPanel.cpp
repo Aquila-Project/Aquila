@@ -21,7 +21,7 @@ HierarchyPanel::HierarchyPanel(EntityManager &entity_manager) : m_entity_manager
 
 void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) {
 	auto ctx_uniq = std::make_unique<UI::Core::PopupMenu>();
-	auto *ctx = dynamic_cast<UI::Core::PopupMenu *>(overlay_root->add_child(std::move(ctx_uniq)));
+	auto *ctx = overlay_root->add_child(std::move(ctx_uniq));
 	ctx->add_item("Create Empty", [this] { on_create_requested(); });
 	ctx->add_item("Create Cube", [] { AQUILA_LOG_INFO("HierarchyPanel: Create Cube (not yet implemented)"); });
 
@@ -33,7 +33,7 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 		}
 
 		auto tree_uniq = std::make_unique<HierarchyTreeView>(m_entity_manager);
-		m_tree_view = dynamic_cast<HierarchyTreeView *>(scroll->add_child(std::move(tree_uniq)));
+		m_tree_view = scroll->add_child(std::move(tree_uniq));
 
 		populate_tree();
 		populate_hierarchy_context_menu();
@@ -146,7 +146,7 @@ void HierarchyPanel::populate_tree() {
 
 void HierarchyPanel::populate_hierarchy_context_menu() {
 	auto node_ctx_uniq = std::make_unique<UI::Core::PopupMenu>();
-	m_node_context_menu = dynamic_cast<UI::Core::PopupMenu *>(m_tree_view->add_child(std::move(node_ctx_uniq)));
+	m_node_context_menu = m_tree_view->add_child(std::move(node_ctx_uniq));
 
 	m_node_context_menu->add_item("Add child", [this] {
 		if (m_selected_node != nullptr) {

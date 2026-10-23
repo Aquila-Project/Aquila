@@ -13,11 +13,11 @@ Dropdown::Dropdown() {
 	auto header = std::make_unique<Button>();
 	header->add_class("dropdown-header");
 	header->on_click.connect([this] { toggle_popup(); });
-	m_header = dynamic_cast<Button *>(add_child(std::move(header)));
+	m_header = add_child(std::move(header));
 
 	auto popup = std::make_unique<Popup>();
 	popup->add_class("dropdown-popup");
-	m_popup = dynamic_cast<Popup *>(add_child(std::move(popup)));
+	m_popup = add_child(std::move(popup));
 
 	update_header();
 
@@ -140,9 +140,7 @@ void Dropdown::rebuild_sizer() {
 	if (m_sizer == nullptr) {
 		return;
 	}
-	while (!m_sizer->get_children().empty()) {
-		m_sizer->remove_child(m_sizer->get_children().back().get());
-	}
+	m_sizer->clear_children();
 	const bool reserve_icon = has_any_icon() || m_icon != nullptr;
 	auto add_row = [&](const std::string &text) {
 		if (text.empty()) {

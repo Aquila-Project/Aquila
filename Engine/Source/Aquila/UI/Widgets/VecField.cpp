@@ -7,11 +7,11 @@ LabeledDragFloat::LabeledDragFloat(const char *label) {
 
 	auto lbl = std::make_unique<Label>(label);
 	lbl->add_class("vec-label");
-	m_label = dynamic_cast<Label *>(add_child(std::move(lbl)));
+	m_label = add_child(std::move(lbl));
 
 	auto drag = std::make_unique<DragFloat>();
 	drag->add_class("vec-drag");
-	m_drag = dynamic_cast<DragFloat *>(add_child(std::move(drag)));
+	m_drag = add_child(std::move(drag));
 }
 
 Vec2Field::Vec2Field() {
@@ -40,9 +40,9 @@ Vec3Field::Vec3Field() {
 	auto y_drag = make_drag("Y ", "vec-drag-y");
 	auto z_drag = make_drag("Z ", "vec-drag-z");
 
-	register_component(0, dynamic_cast<DragFloat *>(add_child(std::move(x_drag))));
-	register_component(1, dynamic_cast<DragFloat *>(add_child(std::move(y_drag))));
-	register_component(2, dynamic_cast<DragFloat *>(add_child(std::move(z_drag))));
+	register_component(0, add_child(std::move(x_drag)));
+	register_component(1, add_child(std::move(y_drag)));
+	register_component(2, add_child(std::move(z_drag)));
 }
 
 Vec4Field::Vec4Field() {

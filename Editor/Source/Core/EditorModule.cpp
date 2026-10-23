@@ -1098,7 +1098,7 @@ void EditorModule::wire_main_menu(View *layout_root) {
 
 	auto popup = std::make_unique<PopupMenu>();
 	popup->set_submenu_icon(m_context->icon("chevron-right"));
-	m_main_menu = dynamic_cast<PopupMenu *>(layout_root->add_child(std::move(popup)));
+	m_main_menu = layout_root->add_child(std::move(popup));
 
 	const auto add = [this](PopupMenu *menu, std::string_view command_id, std::string_view icon) {
 		const Command *command = m_context->shortcuts.find_command(command_id);

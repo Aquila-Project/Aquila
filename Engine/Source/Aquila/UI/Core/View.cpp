@@ -349,6 +349,12 @@ void View::remove_child(View *child) {
 	}
 }
 
+void View::clear_children() {
+	while (!m_children.empty()) {
+		remove_child(m_children.back().get());
+	}
+}
+
 Unique<View> View::detach_child(View *child) {
 	auto it = std::ranges::find_if(m_children, [child](const Unique<View> &view) { return view.get() == child; });
 	if (it == m_children.end()) {

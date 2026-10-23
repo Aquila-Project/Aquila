@@ -22,8 +22,8 @@ Canvas::Canvas(Uint32 width, Uint32 height)
 	notify_style_dirty(m_root.get());
 	style_pass();
 
-	m_tooltip = dynamic_cast<Tooltip *>(m_root->add_child(std::make_unique<Tooltip>()));
-	m_drag_ghost = dynamic_cast<DragGhost *>(m_root->add_child(std::make_unique<DragGhost>()));
+	m_tooltip = m_root->add_child(std::make_unique<Tooltip>());
+	m_drag_ghost = m_root->add_child(std::make_unique<DragGhost>());
 
 	register_internal_observers();
 }

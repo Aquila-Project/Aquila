@@ -60,7 +60,7 @@ Collapsible::Collapsible(std::string title) {
 	button->set_text(std::move(title));
 	button->add_class("collapsible-title");
 	button->on_click.connect([this] { toggle(); });
-	m_title_button = dynamic_cast<Button *>(m_header_bar->add_child(std::move(button)));
+	m_title_button = m_header_bar->add_child(std::move(button));
 
 	auto grip = std::make_unique<CollapsibleGrip>(this);
 	grip->add_class("collapsible-grip");
@@ -143,7 +143,7 @@ Button *Collapsible::add_header_action(GFX::GfxTexture *icon, std::string toolti
 	action->set_icon(icon);
 	action->set_tooltip(std::move(tooltip));
 	action->on_click.connect(std::move(on_click));
-	auto *raw = dynamic_cast<Button *>(m_header_bar->add_child(std::move(action)));
+	auto *raw = m_header_bar->add_child(std::move(action));
 	m_header_bar->reorder_child(raw, m_grip);
 	return raw;
 }
@@ -159,7 +159,7 @@ void Collapsible::set_state_icons(GFX::GfxTexture *collapsed, GFX::GfxTexture *e
 			chevron->add_class(m_variant + "-chevron");
 		}
 		chevron->on_click.connect([this] { toggle(); });
-		m_chevron = dynamic_cast<Button *>(m_header_bar->add_child(std::move(chevron)));
+		m_chevron = m_header_bar->add_child(std::move(chevron));
 		m_header_bar->reorder_child(m_chevron, m_title_button);
 	}
 	if (leading) {

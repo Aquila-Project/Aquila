@@ -34,13 +34,13 @@ TextInput *PopupMenu::enable_search(std::string placeholder) {
 	}
 	auto input = std::make_unique<TextInput>(std::move(placeholder));
 	input->add_class("menu-search");
-	m_search_input = dynamic_cast<TextInput *>(add_child(std::move(input)));
+	m_search_input = add_child(std::move(input));
 	return m_search_input;
 }
 
 PopupMenu *PopupMenu::add_submenu(std::string text, GFX::GfxTexture *icon) {
 	auto submenu_uniq = std::make_unique<PopupMenu>();
-	auto *submenu = dynamic_cast<PopupMenu *>(add_child(std::move(submenu_uniq)));
+	auto *submenu = add_child(std::move(submenu_uniq));
 	submenu->m_parent_menu = this;
 
 	FloatingConfig fc = submenu->get_floating();
@@ -124,7 +124,7 @@ void PopupMenu::rebuild() {
 			btn->set_trailing_icon(root_menu()->m_submenu_icon);
 		}
 
-		auto *btn_ptr = dynamic_cast<Button *>(add_child(std::move(btn)));
+		auto *btn_ptr = add_child(std::move(btn));
 		PopupMenu *submenu = item.submenu;
 
 		btn_ptr->on_mouse_entered.connect([this, submenu, btn_ptr] {

@@ -65,8 +65,15 @@ class View {
 		return static_cast<T *>(add_child(std::make_unique<T>(std::forward<Args>(args)...)));
 	}
 
+	template <std::derived_from<View> T>
+		requires(!std::same_as<T, View>)
+	T *add_child(Unique<T> child) {
+		return static_cast<T *>(add_child(Unique<View>(std::move(child))));
+	}
+
 	/// Destroys it. detach_child() hands it back to you instead.
 	void remove_child(View *child);
+	void clear_children();
 	Unique<View> detach_child(View *child);
 	/// Destroys `old`. Null when `old` isn't a child.
 	View *replace_child(View *old, Unique<View> new_child);
@@ -336,7 +343,7 @@ class ViewRef {
 	WeakRef<void> m_alive;
 };
 
-/// Cheap type check through get_kind(), T needs a static K_KIND. view_cast() is the cast.
+/// T needs a static K_KIND.
 template <typename T> [[nodiscard]] bool view_is(const View *view) {
 	return view != nullptr && view->get_kind() == T::K_KIND;
 }

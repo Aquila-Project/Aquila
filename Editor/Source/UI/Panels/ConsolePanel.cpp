@@ -75,8 +75,7 @@ void ConsolePanel::build(UI::Core::View *panel, UI::Core::View * /*overlayRoot*/
 
 	m_scroll_view = panel->find_by_id<UI::Core::ScrollView>("console-scroll");
 	if (m_scroll_view != nullptr) {
-		m_view = dynamic_cast<UI::Core::SelectableTextView *>(
-			m_scroll_view->add_child(std::make_unique<UI::Core::SelectableTextView>()));
+		m_view = m_scroll_view->add_child(std::make_unique<UI::Core::SelectableTextView>());
 	}
 
 	UI::Core::View *toolbar_ptr = panel->find_by_id("console-toolbar");
@@ -108,7 +107,7 @@ void ConsolePanel::build(UI::Core::View *panel, UI::Core::View * /*overlayRoot*/
 
 		auto count = std::make_unique<UI::Core::Label>("0");
 		count->add_class("console-filter-count");
-		count_out = dynamic_cast<UI::Core::Label *>(btn->add_child(std::move(count)));
+		count_out = btn->add_child(std::move(count));
 
 		btn->on_click.connect([this, group]() { toggle_filter(group); });
 		toolbar_ptr->add_child(std::move(btn));

@@ -7,7 +7,7 @@ ListBox::ListBox() {
 
 	auto scroll = std::make_unique<ScrollView>();
 	scroll->add_class("list-box-scroll");
-	m_scroll = dynamic_cast<ScrollView *>(add_child(std::move(scroll)));
+	m_scroll = add_child(std::move(scroll));
 }
 
 void ListBox::add_item(std::string id, std::string display) {
@@ -15,7 +15,7 @@ void ListBox::add_item(std::string id, std::string display) {
 	btn->add_class("list-item");
 	btn->on_click.connect([this, id] { select_item(id); });
 
-	Button *btn_ptr = dynamic_cast<Button *>(m_scroll->add_child(std::move(btn)));
+	Button *btn_ptr = m_scroll->add_child(std::move(btn));
 	m_items.push_back({ std::move(id), std::move(display), btn_ptr });
 }
 
