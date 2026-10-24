@@ -1065,12 +1065,7 @@ void EditorModule::register_editor_commands() {
 	commands.add({
 		.id = "entity.create",
 		.title = "Create entity",
-		.run =
-			[this] {
-				auto entity = m_engine->get_scene().get_entity_manager()->create_entity("New Entity");
-				m_context->selection.on_entity_created(entity);
-				m_context->selection.select(entity);
-			},
+		.run = [this] { m_context->create_entity(); },
 	});
 	commands.add({
 		.id = "entity.delete",

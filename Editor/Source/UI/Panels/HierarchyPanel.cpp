@@ -22,7 +22,7 @@ HierarchyPanel::HierarchyPanel(EntityManager &entity_manager) : m_entity_manager
 void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) {
 	auto ctx_uniq = std::make_unique<UI::Core::PopupMenu>();
 	auto *ctx = overlay_root->add_child(std::move(ctx_uniq));
-	ctx->add_item("Create Empty", [this] { on_create_requested(); });
+	ctx->add_item("Create Empty", [this] { on_create_requested(Entity{}); });
 	ctx->add_item("Create Cube", [] { AQUILA_LOG_INFO("HierarchyPanel: Create Cube (not yet implemented)"); });
 
 	{
@@ -75,14 +75,20 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 		});
 	}
 	if (auto *create = panel->find_by_id<UI::Core::Button>("hierarchy-create")) {
-		create->on_click.connect([this] { on_create_requested(); });
+		create->on_click.connect([this] { on_create_requested(Entity{}); });
 	}
 }
 
 void HierarchyPanel::add_entity(Entity entity) {
-	if (m_tree_view != nullptr) {
-		m_tree_view->add_entity_node(entity.get_name(), entity);
+	if (m_tree_view == nullptr) {
+		return;
 	}
+	HierarchyTreeNode *parent = nullptr;
+	if (const auto *scene_node = entity.try_get_component<SceneNodeComponent>();
+		scene_node != nullptr && !scene_node->parent.is_null()) {
+		parent = m_tree_view->find_node_for_entity(scene_node->parent);
+	}
+	m_tree_view->add_entity_node(entity.get_name(), entity, parent);
 }
 
 void HierarchyPanel::select_entity(Entity entity) {
@@ -150,12 +156,7 @@ void HierarchyPanel::populate_hierarchy_context_menu() {
 
 	m_node_context_menu->add_item("Add child", [this] {
 		if (m_selected_node != nullptr) {
-			auto parent_entity = m_selected_node->get_entity();
-			auto new_entity = m_entity_manager.create_entity("Empty entity");
-			m_entity_manager.add_child(parent_entity, new_entity);
-
-			m_tree_view->add_entity_node(new_entity.get_name(), new_entity, m_selected_node);
-			m_selected_node->set_expanded(true);
+			on_create_requested(m_selected_node->get_entity());
 		}
 	});
 

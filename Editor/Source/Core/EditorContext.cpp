@@ -56,6 +56,17 @@ Unique<Aquila::UI::Core::View> EditorContext::load_layout(std::string_view file_
 	return m_layouts.load_file(m_layout_dir + std::string(file_name));
 }
 
+Entity EditorContext::create_entity(Entity parent) {
+	auto &entities = *m_engine.get_scene().get_entity_manager();
+	Entity entity = entities.create_entity("New Entity");
+	if (parent.is_valid() && parent.exists()) {
+		entities.add_child(parent, entity);
+	}
+	selection.on_entity_created(entity);
+	selection.select(entity);
+	return entity;
+}
+
 void EditorContext::destroy_entity(Entity entity) {
 	if (!entity.is_valid() || !entity.exists()) {
 		return;

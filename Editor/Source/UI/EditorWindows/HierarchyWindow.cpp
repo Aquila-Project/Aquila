@@ -28,11 +28,7 @@ void HierarchyWindow::build(Aquila::UI::Core::View &content) {
 		.eye_off = context().icon("eye-off"),
 	});
 
-	m_panel->on_create_requested.connect([this] {
-		auto entity = context().engine().get_scene().get_entity_manager()->create_entity("New Entity");
-		context().selection.on_entity_created(entity);
-		context().selection.select(entity);
-	});
+	m_panel->on_create_requested.connect([this](Entity parent) { context().create_entity(parent); });
 
 	m_panel->on_delete_requested.connect([this](Entity entity) { context().destroy_entity(entity); });
 

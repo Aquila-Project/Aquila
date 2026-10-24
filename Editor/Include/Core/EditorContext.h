@@ -117,6 +117,8 @@ class EditorContext {
 	/// A file from the editor's layout folder, by name.
 	[[nodiscard]] Unique<Aquila::UI::Core::View> load_layout(std::string_view file_name) const;
 
+	/// Selects it too.
+	Aquila::SceneManagement::Entity create_entity(Aquila::SceneManagement::Entity parent = {});
 	/// Clears the selection when it or one of its parents is selected, fires on_entity_destroying,
 	/// then destroys it with its children. Always delete entities through this.
 	void destroy_entity(Aquila::SceneManagement::Entity entity);
