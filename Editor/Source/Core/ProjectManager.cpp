@@ -2,13 +2,13 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
-#include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
-#include "Aquila/Scene/Components/TransformComponent.h"
+#include "Aquila/Scene/DefaultScenes.h"
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
@@ -37,27 +37,6 @@ bool update_project_file(const ProjectInfo &project, const std::function<void(nl
 	}
 	edit(root);
 	return vfs->write_text_file(project.project_file, root.dump(4));
-}
-
-void remove_directory(const std::string &directory) {
-	auto *vfs = VirtualFileSystem::get();
-	for (const std::string &entry : vfs->list_directory(directory)) {
-		const std::string path = directory + "/" + entry;
-		if (vfs->is_directory(path)) {
-			remove_directory(path);
-		} else {
-			vfs->delete_file_aq(path);
-		}
-	}
-	vfs->delete_directory(directory);
-}
-
-std::string trim(const std::string &text) {
-	const auto first = text.find_first_not_of(" \t");
-	if (first == std::string::npos) {
-		return {};
-	}
-	return text.substr(first, text.find_last_not_of(" \t") - first + 1);
 }
 
 } // namespace
@@ -98,20 +77,6 @@ bool ProjectManager::open(const ProjectInfo &project) const {
 	return true;
 }
 
-std::string ProjectManager::sanitize(const std::string &name) {
-	std::string out;
-	out.reserve(name.size());
-	for (const char c : name) {
-		const auto uc = static_cast<unsigned char>(c);
-		if ((std::isalnum(uc) != 0) || c == '-' || c == '_') {
-			out += c;
-		} else if (c == ' ') {
-			out += '_';
-		}
-	}
-	return out;
-}
-
 const char *ProjectManager::template_name(ProjectTemplate project_template) {
 	switch (project_template) {
 	case ProjectTemplate::Sandbox:
@@ -133,10 +98,10 @@ const char *ProjectManager::template_description(ProjectTemplate project_templat
 }
 
 std::string ProjectManager::validate_name(const std::string &name) const {
-	if (trim(name).empty()) {
+	if (Aquila::Foundation::trim(name).empty()) {
 		return "Enter a project name";
 	}
-	const std::string safe = sanitize(name);
+	const std::string safe = Aquila::Foundation::to_file_name(name);
 	if (safe.empty()) {
 		return "Use letters, numbers, spaces, - or _";
 	}
@@ -167,7 +132,7 @@ void ProjectManager::touch(ProjectInfo &project) const {
 }
 
 bool ProjectManager::rename(ProjectInfo &project, const std::string &name) const {
-	const std::string clean = trim(name);
+	const std::string clean(Aquila::Foundation::trim(name));
 	if (clean.empty()) {
 		return false;
 	}
@@ -182,14 +147,14 @@ bool ProjectManager::remove(const ProjectInfo &project) const {
 	if (!VirtualFileSystem::get()->exists(project.project_file)) {
 		return false;
 	}
-	remove_directory(project.directory);
+	VirtualFileSystem::get()->delete_directory(project.directory, true);
 	return !VirtualFileSystem::get()->exists(project.directory);
 }
 
 Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTemplate project_template) {
 	auto *vfs = VirtualFileSystem::get();
 
-	const std::string safe = sanitize(name);
+	const std::string safe = Aquila::Foundation::to_file_name(name);
 	if (safe.empty()) {
 		AQUILA_LOG_ERROR("ProjectManager: invalid project name '{}'", name);
 		return std::nullopt;
@@ -219,16 +184,8 @@ Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTempl
 	vfs->create_dir(info.directory + "/" + std::string(Aquila::SharedConstants::PROJECT_SCENES_FOLDER));
 
 	Aquila::SceneManagement::Scene scene(name);
+	Aquila::SceneManagement::spawn_default_camera(scene, 16.F / 9.F);
 	auto *entity_manager = scene.get_entity_manager();
-	auto camera = entity_manager->create_entity("Camera");
-	auto &camera_component = camera.add_component<Components::CameraComponent>();
-	camera_component.fov = 60.F;
-	camera_component.near_plane = 0.1F;
-	camera_component.far_plane = 500.F;
-	camera_component.aspect_ratio = 16.F / 9.F;
-	camera_component.primary = true;
-	camera.get_component<Components::TransformComponent>().set_local_position({ 0.F, 1.5F, -5.F });
-	scene.set_active_camera(camera);
 	if (project_template == ProjectTemplate::Sandbox) {
 		auto sun = entity_manager->create_entity("Sun");
 		sun.add_component<Components::LightComponent>();

@@ -1,5 +1,6 @@
 #include "Core/EditorModule.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
 #include "Aquila/Graphics/Texture/TextureLibrary.h"
@@ -101,7 +102,7 @@ void EditorModule::on_attach(EngineContext &engine) {
 
 	if (!m_startup_project.empty()) {
 		const std::string directory = std::string(ProjectManager::K_ROOT) + "/" +
-			ProjectManager::sanitize(std::filesystem::path(m_startup_project).filename().string());
+			Aquila::Foundation::to_file_name(std::filesystem::path(m_startup_project).filename().string());
 		if (Option<ProjectInfo> project = m_project_manager->load(directory)) {
 			m_pending_project = *project;
 			Aquila::Foundation::FrameScheduler::get()->request_frame();

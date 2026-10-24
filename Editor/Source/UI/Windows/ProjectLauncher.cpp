@@ -1,6 +1,7 @@
 #include "UI/Windows/ProjectLauncher.h"
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Platform/Input.h"
 #include "Aquila/Platform/Process.h"
 #include "Aquila/UI/Core/Canvas.h"
@@ -415,7 +416,7 @@ void ProjectLauncher::update_new_form() {
 	const std::string error = m_project_manager->validate_name(name);
 	const bool has_name = !name.empty();
 
-	const std::string safe = ProjectManager::sanitize(name);
+	const std::string safe = Aquila::Foundation::to_file_name(name);
 	m_location_label->set_text(safe.empty() ? "" : std::format("Will be created in Projects/{}", safe));
 	m_error_label->set_text(has_name ? error : "");
 	m_error_label->set_class("hidden", !has_name || error.empty());

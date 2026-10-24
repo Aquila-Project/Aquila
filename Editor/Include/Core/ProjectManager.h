@@ -32,7 +32,6 @@ class ProjectManager {
 	Option<ProjectInfo> create(const std::string &name, ProjectTemplate project_template = ProjectTemplate::Empty);
 	/// Empty when the name is fine, otherwise the reason to show the user.
 	[[nodiscard]] std::string validate_name(const std::string &name) const;
-	[[nodiscard]] static std::string sanitize(const std::string &name);
 	static const char *template_name(ProjectTemplate project_template);
 	static const char *template_description(ProjectTemplate project_template);
 	/// Marks it as just opened, for the recent list.
