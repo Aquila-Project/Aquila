@@ -49,7 +49,6 @@ class EditorModule final : public Aquila::Application::IModule {
 	void on_detach() override;
 	void on_pre_render(F32 delta_time) override;
 	void on_event(Aquila::Platform::Events::Event &event) override;
-	void on_resize(Uint32 width, Uint32 height) override;
 	void on_render_resize(Uint32 width, Uint32 height) override;
 	void on_play() override;
 	void on_pause() override;

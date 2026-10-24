@@ -338,12 +338,6 @@ void EditorModule::set_outlined_entity(Entity entity) {
 	}
 }
 
-void EditorModule::on_resize(Uint32, Uint32) {
-	if (m_context) {
-		m_context->on_render_output_changed();
-	}
-}
-
 void EditorModule::on_render_resize(Uint32, Uint32) {
 	if (m_context) {
 		m_context->on_render_output_changed();

@@ -62,7 +62,6 @@ class ConsolePanel : public IEditorPanel {
 	[[nodiscard]] int &count_for(LogLevel level);
 	static Vec4 level_tag_color(LogLevel level);
 	static std::string_view level_tag(LogLevel level);
-	static Vec4 level_icon_tint(LogLevel level);
 	static constexpr int K_MAX_MESSAGES = 500;
 
 	Aquila::UI::Core::TextureCache *m_texture_cache = nullptr;

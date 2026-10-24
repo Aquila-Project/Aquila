@@ -7,14 +7,6 @@
 
 namespace Editor::Config {
 
-constexpr const char *EDITOR_NAME = "Aquila Editor";
-constexpr const char *EDITOR_VERSION = AQUILA_VERSION_STRING;
-constexpr uint32_t VERSION_MAJOR = AQUILA_VERSION_MAJOR;
-constexpr uint32_t VERSION_MINOR = AQUILA_VERSION_MINOR;
-constexpr uint32_t VERSION_PATCH = AQUILA_VERSION_PATCH;
-constexpr const char *EDITOR_BUILD_DATE = __DATE__;
-constexpr const char *EDITOR_TITLE = "Aquila Editor " AQUILA_VERSION_STRING " | " __DATE__;
-
 using FontSettings = Aquila::UI::Core::FontSettings;
 
 struct UISettings {

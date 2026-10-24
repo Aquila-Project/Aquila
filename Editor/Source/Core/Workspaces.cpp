@@ -43,7 +43,6 @@ void Workspaces::activate(std::string_view name) {
 	m_active = target->name;
 	m_windows.apply_layout(target->current.value_or(target->preset));
 	refresh_tabs();
-	on_activated(m_active);
 }
 
 void Workspaces::activate_relative(int offset) {

@@ -309,21 +309,4 @@ std::string_view ConsolePanel::level_tag(LogLevel level) {
 	}
 }
 
-Vec4 ConsolePanel::level_icon_tint(LogLevel level) {
-	switch (level) {
-	case LogLevel::Warning:
-		return { 0.83F, 0.67F, 0.29F, 1.F };
-	case LogLevel::Error:
-		return { 0.83F, 0.42F, 0.42F, 1.F };
-	case LogLevel::Critical:
-		return { 1.F, 0.25F, 0.25F, 1.F };
-	case LogLevel::Debug:
-		return { 0.42F, 0.69F, 0.86F, 1.F };
-	case LogLevel::Trace:
-		return { 0.53F, 0.53F, 0.53F, 1.F };
-	default:
-		return { 0.42F, 0.69F, 0.86F, 1.F };
-	}
-}
-
 } // namespace Editor

@@ -23,7 +23,6 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 	auto ctx_uniq = std::make_unique<UI::Core::PopupMenu>();
 	auto *ctx = overlay_root->add_child(std::move(ctx_uniq));
 	ctx->add_item("Create Empty", [this] { on_create_requested(Entity{}); });
-	ctx->add_item("Create Cube", [] { AQUILA_LOG_INFO("HierarchyPanel: Create Cube (not yet implemented)"); });
 
 	{
 		auto *scroll = panel->find_by_id<UI::Core::ScrollView>("hierarchy-scroll");
@@ -47,7 +46,6 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 			[this](Entity entity, const UI::Core::AssetPayload &asset) { on_asset_dropped(entity, asset); });
 
 		m_tree_view->on_deselected.connect([this] {
-			AQUILA_LOG_DEBUG("Entity was deselected");
 			m_selected_node = nullptr;
 			on_entity_deselected();
 		});
@@ -56,8 +54,6 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 			m_selected_node = m_tree_view->find_node_for_entity(entity);
 			if (m_node_context_menu != nullptr) {
 				m_node_context_menu->open_at(pos);
-			} else {
-				AQUILA_LOG_DEBUG("Node context menu is nullptr");
 			}
 		});
 
