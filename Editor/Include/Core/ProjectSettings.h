@@ -31,6 +31,7 @@ struct ProjectSettings {
 [[nodiscard]] nlohmann::ordered_json project_settings_to_json(const ProjectSettings &settings);
 /// Missing or wrong keys keep their defaults.
 [[nodiscard]] ProjectSettings project_settings_from_json(const nlohmann::ordered_json &json);
+[[nodiscard]] std::string default_build_output();
 /// RenderSettings::game() with the project's tone mapper and shadows, what the Game view and built games draw with.
 [[nodiscard]] Aquila::Rendering::RenderSettings game_render_settings(const ProjectSettings &settings);
 

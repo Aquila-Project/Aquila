@@ -1,5 +1,7 @@
 #include "Core/ProjectSettings.h"
 
+#include "Aquila/Platform/Filesystem/Filesystem.h"
+
 namespace Editor {
 
 namespace {
@@ -56,4 +58,7 @@ Aquila::Rendering::RenderSettings game_render_settings(const ProjectSettings &se
 	return render;
 }
 
+std::string default_build_output() {
+	return Aquila::Platform::Filesystem::path_executable_dir() + "/Builds";
+}
 }

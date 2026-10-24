@@ -822,20 +822,15 @@ void EditorModule::open_settings_window() {
 		return;
 	}
 
-	constexpr Uint32 width = 860;
-	constexpr Uint32 height = 640;
 	m_settings_window = std::make_unique<SettingsWindow>(*m_context);
-	m_settings_window->build(width, height, Config::get_preferences().ui.style_paths);
+	m_settings_window->build(860, 640, Config::get_preferences().ui.style_paths);
 	m_settings_window->on_preferences_changed = [this] { preferences_edited(); };
-
-	Aquila::Rendering::IRenderWindowHost &host = m_engine->get_window_host();
-	const Aquila::Rendering::RenderWindowId window =
-		Aquila::Rendering::open_content_window(host, *m_settings_window, width, height, "Aquila - Settings", [this] {
-			m_settings_window.reset();
-			save_settings_if_due(true);
-		});
-	host.set_window_min_size(window, { 520.F, 360.F });
-	m_settings_window->on_request_close = [&host, window] { host.request_close(window); };
+	m_settings_window->open(m_engine->get_window_host(), "Aquila - Settings",
+							[this] {
+								m_settings_window.reset();
+								save_settings_if_due(true);
+							},
+							{ 520.F, 360.F });
 }
 
 void EditorModule::open_build_window() {

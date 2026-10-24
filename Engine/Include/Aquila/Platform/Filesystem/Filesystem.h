@@ -22,6 +22,8 @@ bool file_remove(const std::string &path);
 bool file_move(const std::string &from, const std::string &to);
 /// Names only, not full paths. With `recursive` nested names lose their folder.
 std::vector<std::string> dir_list(const std::string &path, bool recursive = false);
+/// Recursive, any case. Relative to `path`, forward slashes, sorted.
+std::vector<std::string> dir_find_files(const std::string &path, std::string_view extension);
 
 // Helpers
 std::string path_to_absolute(const std::string &path);

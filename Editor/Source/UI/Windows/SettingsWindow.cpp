@@ -1,37 +1,34 @@
 #include "UI/Windows/SettingsWindow.h"
 
 #include "Aquila/Foundation/FrameScheduler.h"
-#include "Aquila/Foundation/SharedConstants.h"
-#include "Aquila/Platform/Events/Event.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Platform/Events/KeyChord.h"
-#include "Aquila/Platform/Events/WindowEvent.h"
-#include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/FontManager.h"
 #include "Aquila/UI/Core/Shortcuts.h"
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Core/EditorConfig.h"
 #include "Core/EditorContext.h"
+#include "Core/ProjectSettingsFields.h"
 
 namespace Editor {
 
 using namespace Aquila;
 using namespace Aquila::UI::Core;
+using Aquila::Foundation::contains_ignore_case;
 using Aquila::Platform::Events::KeyChord;
 using Aquila::Reflection::EnumOption;
 using Aquila::Reflection::PropertyHints;
-using Aquila::Reflection::PropertyKind;
 using Aquila::Reflection::PropertyMark;
-using Aquila::Reflection::PropertyValue;
 using Aquila::Reflection::TypeBuilder;
 using Aquila::Reflection::TypeInfo;
 using Config::EditorPreferences;
@@ -57,61 +54,12 @@ const std::vector<EnumOption> &tone_mapper_options() {
 	return options;
 }
 
-std::string lowered(std::string_view text) {
-	std::string out(text);
-	std::ranges::transform(out, out.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	return out;
-}
-
-bool matches(std::string_view text, const std::string &query) {
-	return query.empty() || lowered(text).find(query) != std::string::npos;
-}
-
 std::string group_title(std::string_view command_id) {
 	std::string group(command_id.substr(0, command_id.find('.')));
 	if (!group.empty()) {
 		group[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(group[0])));
 	}
 	return group;
-}
-
-Reflection::Property choice_property(std::string name, const std::vector<std::string> &labels,
-									 Delegate<Int32(const void *)> get, Delegate<void(void *, Int32)> set) {
-	Reflection::Property property;
-	property.name = std::move(name);
-	property.kind = PropertyKind::Enum;
-	for (Usize i = 0; i < labels.size(); ++i) {
-		property.options.push_back({ .name = labels[i], .value = static_cast<Int32>(i) });
-	}
-	property.get = [get = std::move(get)](const void *instance) -> PropertyValue { return get(instance); };
-	property.set = [set = std::move(set)](void *instance, const PropertyValue &value) {
-		set(instance, std::get<Int32>(value));
-	};
-	return property;
-}
-
-Int32 index_of(const std::vector<std::string> &values, const std::string &value) {
-	const auto it = std::ranges::find(values, value);
-	return it == values.end() ? 0 : static_cast<Int32>(it - values.begin());
-}
-
-std::vector<std::string> project_pngs(const std::string &project_dir) {
-	namespace fs = std::filesystem;
-	std::vector<std::string> pngs;
-	const fs::path content = fs::path(project_dir) / SharedConstants::PROJECT_CONTENT_FOLDER;
-	std::error_code error;
-	if (!fs::is_directory(content, error)) {
-		return pngs;
-	}
-	for (auto it = fs::recursive_directory_iterator(content, fs::directory_options::skip_permission_denied, error);
-		 !error && it != fs::recursive_directory_iterator(); it.increment(error)) {
-		std::string extension = it->path().extension().string();
-		if (it->is_regular_file(error) && lowered(extension) == ".png") {
-			pngs.push_back(it->path().lexically_relative(project_dir).generic_string());
-		}
-	}
-	std::ranges::sort(pngs);
-	return pngs;
 }
 
 class ChordButton final : public Button {
@@ -201,19 +149,11 @@ void SettingsWindow::add_editor_pages() {
 
 	Page &interface = add_page(Scope::Editor, "Interface", "palette", "Fonts and size of the whole editor.");
 	interface.instance = &prefs;
-	const auto font_property = [this](std::string name, std::string Config::FontSettings::*family) {
-		return choice_property(
-			std::move(name), m_font_families,
-			[this, family](const void *p) {
-				return index_of(m_font_families, static_cast<const EditorPreferences *>(p)->fonts.*family);
-			},
-			[this, family](void *p, Int32 i) {
-				static_cast<EditorPreferences *>(p)->fonts.*family = m_font_families.at(static_cast<Usize>(i));
-			});
-	};
-	interface.type->add(font_property("Main Font", &Config::FontSettings::main_family));
-	interface.type->add(font_property("Mono Font", &Config::FontSettings::mono_family));
 	TypeBuilder<EditorPreferences>(*interface.type)
+		.choice(
+			"Main Font", [](EditorPreferences &p) -> std::string & { return p.fonts.main_family; }, m_font_families)
+		.choice(
+			"Mono Font", [](EditorPreferences &p) -> std::string & { return p.fonts.mono_family; }, m_font_families)
 		.property("Interface Scale", &EditorPreferences::ui_scale,
 				  PropertyHints{ .min = 0.5F, .max = 2.F, .speed = 0.01F, .precision = 2, .slider = true })
 		.property(
@@ -330,38 +270,13 @@ void SettingsWindow::add_editor_pages() {
 void SettingsWindow::add_project_pages() {
 	const ProjectInfo &project = m_context.project();
 
-	std::vector<std::string> scene_labels = { "First scene of the project" };
-	std::vector<std::string> scenes = { std::string() };
-	for (const std::string &scene : project.scenes) {
-		scene_labels.push_back(scene);
-		scenes.push_back(scene);
-	}
-	std::vector<std::string> icon_labels = { "Aquila logo" };
-	m_icons = { std::string() };
-	for (const std::string &png : project_pngs(project.native_directory)) {
-		icon_labels.push_back(png);
-		m_icons.push_back(png);
-	}
-	if (!m_project.icon.empty() && std::ranges::find(m_icons, m_project.icon) == m_icons.end()) {
-		icon_labels.push_back(m_project.icon);
-		m_icons.push_back(m_project.icon);
-	}
-
 	Page &application = add_page(Scope::Project, "Application", "package", "What the project is and where it starts.");
 	application.instance = &m_project;
 	TypeBuilder<ProjectSettings>(*application.type)
 		.read_only("Name", [this](const ProjectSettings &) { return m_context.project().name; })
 		.read_only("Folder", [this](const ProjectSettings &) { return m_context.project().native_directory; });
-	application.type->add(choice_property(
-		"Startup Scene", scene_labels,
-		[scenes](const void *p) { return index_of(scenes, static_cast<const ProjectSettings *>(p)->startup_scene); },
-		[scenes](void *p, Int32 i) {
-			static_cast<ProjectSettings *>(p)->startup_scene = scenes.at(static_cast<Usize>(i));
-		}));
-	application.type->add(choice_property(
-		"Icon", icon_labels,
-		[this](const void *p) { return index_of(m_icons, static_cast<const ProjectSettings *>(p)->icon); },
-		[this](void *p, Int32 i) { static_cast<ProjectSettings *>(p)->icon = m_icons.at(static_cast<Usize>(i)); }));
+	add_startup_scene_field(*application.type, project);
+	add_icon_field(*application.type, project);
 	application.reset = [this] {
 		const ProjectSettings defaults;
 		m_project.startup_scene = defaults.startup_scene;
@@ -370,12 +285,9 @@ void SettingsWindow::add_project_pages() {
 
 	Page &player = add_page(Scope::Project, "Player", "gamepad-2", "The window a built game opens.");
 	player.instance = &m_project;
+	TypeBuilder<ProjectSettings>(*player.type).property("Window Title", &ProjectSettings::window_title);
+	add_window_size_fields(*player.type);
 	TypeBuilder<ProjectSettings>(*player.type)
-		.property("Window Title", &ProjectSettings::window_title)
-		.property("Width", &ProjectSettings::window_width,
-				  PropertyHints{ .min = 64.F, .max = 16384.F, .speed = 1.F, .unit = "px" })
-		.property("Height", &ProjectSettings::window_height,
-				  PropertyHints{ .min = 64.F, .max = 16384.F, .speed = 1.F, .unit = "px" })
 		.property("Start Maximized", &ProjectSettings::start_maximized, PropertyHints{ .toggle = true });
 	player.reset = [this] {
 		const ProjectSettings defaults;
@@ -401,16 +313,12 @@ void SettingsWindow::add_project_pages() {
 	Page &build = add_page(Scope::Project, "Build", "folder-open",
 						   "Where Build writes the game. Empty uses the Builds folder next to the editor.");
 	build.instance = &m_project;
-	TypeBuilder<ProjectSettings>(*build.type)
-		.property("Output Folder", &ProjectSettings::build_output)
-		.read_only("Default Folder",
-				   [](const ProjectSettings &) { return Platform::Filesystem::path_executable_dir() + "/Builds"; });
+	add_build_output_fields(*build.type);
 	build.reset = [this] { m_project.build_output.clear(); };
 }
 
 void SettingsWindow::build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
-	m_canvas = std::make_unique<Canvas>(width, height);
-	UI::StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	create_canvas(width, height, style_paths);
 
 	m_project = m_context.project().settings;
 	m_font_families = FontManager::available_families();
@@ -423,7 +331,7 @@ void SettingsWindow::build(Uint32 width, Uint32 height, const std::vector<std::s
 	add_editor_pages();
 	add_project_pages();
 
-	auto *root = m_canvas->get_root();
+	auto *root = get_canvas()->get_root();
 	root->set_id("settings-root");
 	root->add_class("settings-root");
 	build_header(*root);
@@ -454,7 +362,7 @@ void SettingsWindow::build(Uint32 width, Uint32 height, const std::vector<std::s
 	});
 
 	select_scope(Scope::Editor);
-	m_canvas->reload_styles();
+	get_canvas()->reload_styles();
 }
 
 void SettingsWindow::build_header(View &root) {
@@ -464,18 +372,11 @@ void SettingsWindow::build_header(View &root) {
 	icon->add_class("settings-header-icon");
 	header->add_child<Label>(std::string("Settings"))->add_class("settings-title");
 
-	auto *tabs = header->add_child<View>();
-	tabs->add_class("settings-scopes");
-	const std::array<std::pair<Scope, const char *>, 2> scopes = { { { Scope::Editor, "Editor" },
-																	 { Scope::Project, "Project" } } };
-	for (const auto &[scope, label] : scopes) {
-		auto *tab = tabs->add_child<Button>(std::string(label));
-		tab->add_class("settings-scope");
-		tab->on_click.connect([this, scope] { select_scope(scope); });
-		m_scope_tabs[static_cast<Usize>(scope)] = tab;
-	}
-	m_scope_tabs[static_cast<Usize>(Scope::Editor)]->set_tooltip("Your preferences, the same in every project");
-	m_scope_tabs[static_cast<Usize>(Scope::Project)]->set_tooltip("Saved in this project, shipped with its builds");
+	m_scope_tabs = header->add_child<TabBar>("settings-scope");
+	m_scope_tabs->add_class("settings-scopes");
+	m_scope_tabs->add_tab("Editor")->set_tooltip("Your preferences, the same in every project");
+	m_scope_tabs->add_tab("Project")->set_tooltip("Saved in this project, shipped with its builds");
+	m_scope_tabs->on_selected.connect([this](int index) { select_scope(static_cast<Scope>(index)); });
 
 	auto *search = header->add_child<View>();
 	search->add_class("settings-search");
@@ -484,7 +385,7 @@ void SettingsWindow::build_header(View &root) {
 	m_search->add_class("settings-search-input");
 	m_search->set_placeholder("Search settings");
 	m_search->on_changed.connect([this](const std::string &text) {
-		m_query = lowered(text);
+		m_query = text;
 		request_rebuild();
 	});
 }
@@ -496,18 +397,12 @@ void SettingsWindow::build_footer(View &root) {
 	m_footer_note->add_class("settings-footer-note");
 	auto *close = footer->add_child<Button>(std::string("Close"));
 	close->add_class("settings-btn");
-	close->on_click.connect([this] {
-		if (on_request_close) {
-			on_request_close();
-		}
-	});
+	close->on_click.connect([this] { this->close(); });
 }
 
 void SettingsWindow::select_scope(Scope scope) {
 	m_scope = scope;
-	for (Usize i = 0; i < m_scope_tabs.size(); ++i) {
-		m_scope_tabs[i]->set_class("settings-scope-active", i == static_cast<Usize>(scope));
-	}
+	m_scope_tabs->set_active(static_cast<int>(scope));
 	m_footer_note->set_text(
 		scope == Scope::Editor ? std::string("Saved for you in editor_preferences.json, for every project.")
 							   : "Saved in " + m_context.project().name + "/project.aqproject and used by its builds.");
@@ -525,16 +420,14 @@ void SettingsWindow::select_page(Usize index) {
 
 void SettingsWindow::request_rebuild() {
 	m_rebuild_pending = true;
-	Foundation::FrameScheduler::get()->request_frame(m_canvas->get_frame_target());
+	Foundation::FrameScheduler::get()->request_frame(get_canvas()->get_frame_target());
 }
 
 void SettingsWindow::rebuild() {
 	m_rebuild_pending = false;
 	m_grids.clear();
 	m_filtered_types.clear();
-	while (!m_content->get_children().empty()) {
-		m_content->remove_child(m_content->get_children().back().get());
-	}
+	m_content->clear_children();
 	rebuild_sidebar();
 
 	if (m_query.empty()) {
@@ -555,7 +448,7 @@ void SettingsWindow::rebuild() {
 	for (Page &page : m_pages) {
 		if (page.scope == m_scope) {
 			const Usize before = m_content->get_children().size();
-			show_page(page, matches(page.name, m_query) ? std::string() : m_query, false);
+			show_page(page, contains_ignore_case(page.name, m_query) ? std::string() : m_query, false);
 			found = found || m_content->get_children().size() > before;
 		}
 	}
@@ -565,9 +458,7 @@ void SettingsWindow::rebuild() {
 }
 
 void SettingsWindow::rebuild_sidebar() {
-	while (!m_sidebar->get_children().empty()) {
-		m_sidebar->remove_child(m_sidebar->get_children().back().get());
-	}
+	m_sidebar->clear_children();
 	Usize ordinal = 0;
 	for (const Page &page : m_pages) {
 		if (page.scope != m_scope) {
@@ -613,7 +504,7 @@ void SettingsWindow::show_page(Page &page, const std::string &query, bool full) 
 	if (!query.empty()) {
 		auto filtered = std::make_unique<TypeInfo>(page.name);
 		for (const Reflection::Property &property : page.type->get_properties()) {
-			if (matches(property.name, query)) {
+			if (contains_ignore_case(property.name, query)) {
 				filtered->add(property);
 			}
 		}
@@ -658,8 +549,8 @@ void SettingsWindow::show_shortcuts(View &host, const std::string &query) {
 	Commands &editor_commands = m_context.commands;
 	std::vector<const Command *> commands;
 	for (const Command &command : editor_commands.all()) {
-		if (matches(command.title, query) || matches(command.id, query) ||
-			matches(shortcuts.get_label(command.id), query)) {
+		if (contains_ignore_case(command.title, query) || contains_ignore_case(command.id, query) ||
+			contains_ignore_case(shortcuts.get_label(command.id), query)) {
 			commands.push_back(&command);
 		}
 	}
@@ -737,6 +628,12 @@ void SettingsWindow::show_shortcuts(View &host, const std::string &query) {
 	}
 }
 
+void SettingsWindow::on_update(F32) {
+	if (m_rebuild_pending) {
+		rebuild();
+	}
+}
+
 void SettingsWindow::edited(const Page &page) {
 	if (page.scope == Scope::Project) {
 		m_context.set_project_settings(m_project);
@@ -745,34 +642,6 @@ void SettingsWindow::edited(const Page &page) {
 	if (on_preferences_changed) {
 		on_preferences_changed();
 	}
-}
-
-void SettingsWindow::update(F32 delta_time) {
-	if (m_rebuild_pending) {
-		rebuild();
-	}
-	m_canvas->update(delta_time);
-	m_canvas->compute();
-}
-
-void SettingsWindow::render(Graphics::Renderer2D &batcher, GFX::GfxCommandList &cmd) {
-	m_canvas->submit_to_quad_batcher(batcher, cmd);
-}
-
-void SettingsWindow::set_frame_target(const void *target) {
-	m_canvas->set_frame_target(target);
-}
-
-void SettingsWindow::on_event(Platform::Events::Event &event) {
-	Platform::Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Platform::Events::WindowResizeEvent>([this](Platform::Events::WindowResizeEvent &e) {
-		if (e.get_width() > 0 && e.get_height() > 0) {
-			m_canvas->resize(e.get_width(), e.get_height());
-		}
-		return false;
-	});
-
-	m_canvas->on_event(event);
 }
 
 } // namespace Editor

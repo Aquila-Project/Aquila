@@ -1,5 +1,6 @@
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 
 #ifdef AQUILA_PLATFORM_LINUX
 #include <sys/types.h>
@@ -261,6 +262,21 @@ std::vector<std::string> dir_list(const std::string &path, bool recursive) {
 	}
 #endif
 	return entries;
+}
+
+std::vector<std::string> dir_find_files(const std::string &path, std::string_view extension) {
+	namespace fs = std::filesystem;
+	std::vector<std::string> files;
+	const std::string wanted = Foundation::to_lower(extension);
+	std::error_code error;
+	for (auto it = fs::recursive_directory_iterator(path, fs::directory_options::skip_permission_denied, error);
+		 !error && it != fs::recursive_directory_iterator(); it.increment(error)) {
+		if (it->is_regular_file(error) && Foundation::to_lower(it->path().extension().string()) == wanted) {
+			files.push_back(it->path().lexically_relative(path).generic_string());
+		}
+	}
+	std::ranges::sort(files);
+	return files;
 }
 
 std::string path_to_absolute(const std::string &path) {
