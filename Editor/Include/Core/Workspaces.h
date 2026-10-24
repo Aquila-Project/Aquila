@@ -5,8 +5,7 @@
 #include "Aquila/UI/Core/DockLayoutSerializer.h"
 
 namespace Aquila::UI::Core {
-class Button;
-class View;
+class TabBar;
 }
 
 namespace Editor {
@@ -22,7 +21,7 @@ class Workspaces {
 	AQUILA_NONMOVEABLE(Workspaces);
 
 	void add(std::string name, Aquila::UI::Core::DockLayoutDesc preset);
-	void build_tabs(Aquila::UI::Core::View &container);
+	void build_tabs(Aquila::UI::Core::TabBar &tabs);
 
 	void activate(std::string_view name);
 	/// Next or previous workspace, wraps around.
@@ -38,17 +37,15 @@ class Workspaces {
 		std::string name;
 		Aquila::UI::Core::DockLayoutDesc preset;
 		Option<Aquila::UI::Core::DockLayoutDesc> current{};
-		Aquila::UI::Core::Button *tab = nullptr;
 	};
 
 	Entry *find(std::string_view name);
-	void create_tab(Entry &entry);
 	void refresh_tabs();
 
 	EditorWindows &m_windows;
 	std::vector<Entry> m_entries;
 	std::string m_active;
-	Aquila::UI::Core::View *m_tab_container = nullptr;
+	Aquila::UI::Core::TabBar *m_tabs = nullptr;
 };
 
 }

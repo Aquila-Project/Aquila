@@ -48,6 +48,7 @@
 #include "Aquila/UI/Widgets/ColorPicker.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
 #include "Aquila/Scene/Scene.h"
@@ -734,7 +735,7 @@ void EditorModule::setup_editor_ui() {
 		m_workspaces->add(std::move(name), std::move(preset));
 	}
 	m_pending_workspaces.clear();
-	if (auto *tabs = layout_root->find_by_id("workspace-tabs")) {
+	if (auto *tabs = layout_root->find_by_id<TabBar>("workspace-tabs")) {
 		m_workspaces->build_tabs(*tabs);
 	}
 	m_workspaces->activate("Scene");

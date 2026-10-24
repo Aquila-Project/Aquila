@@ -3,7 +3,7 @@
     <View id="topbar" class="topbar">
         <Button id="topbar-menu" class="topbar-btn" src="Engine/UI/Icons/menu.svg" tooltip="Menu"/>
         <View class="topbar-sep"/>
-        <View id="workspace-tabs" class="workspace-tabs"/>
+        <TabBar id="workspace-tabs" class="workspace-tabs" tab-class="workspace-tab"/>
         <View class="topbar-spacer"/>
         <Button id="topbar-play" class="topbar-btn" src="Engine/UI/Icons/play.svg" tooltip="Play"/>
         <Button id="topbar-pause" class="topbar-btn" src="Engine/UI/Icons/pause.svg" tooltip="Pause"/>

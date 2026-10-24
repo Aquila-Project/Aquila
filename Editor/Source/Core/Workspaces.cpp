@@ -1,7 +1,7 @@
 #include "Core/Workspaces.h"
 
 #include "Aquila/Foundation/Macros.h"
-#include "Aquila/UI/Widgets/Button.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Core/EditorWindows.h"
 
 namespace Editor {
@@ -12,8 +12,8 @@ void Workspaces::add(std::string name, Aquila::UI::Core::DockLayoutDesc preset) 
 		return;
 	}
 	m_entries.push_back({ .name = std::move(name), .preset = std::move(preset) });
-	if (m_tab_container != nullptr) {
-		create_tab(m_entries.back());
+	if (m_tabs != nullptr) {
+		m_tabs->add_tab(m_entries.back().name);
 		refresh_tabs();
 	}
 }
@@ -23,19 +23,13 @@ Workspaces::Entry *Workspaces::find(std::string_view name) {
 	return it != m_entries.end() ? &*it : nullptr;
 }
 
-void Workspaces::build_tabs(Aquila::UI::Core::View &container) {
-	m_tab_container = &container;
-	for (Entry &entry : m_entries) {
-		create_tab(entry);
+void Workspaces::build_tabs(Aquila::UI::Core::TabBar &tabs) {
+	m_tabs = &tabs;
+	m_tabs->on_selected.connect([this](int index) { activate(m_entries[static_cast<Usize>(index)].name); });
+	for (const Entry &entry : m_entries) {
+		m_tabs->add_tab(entry.name);
 	}
 	refresh_tabs();
-}
-
-void Workspaces::create_tab(Entry &entry) {
-	auto *tab = m_tab_container->add_child<Aquila::UI::Core::Button>(entry.name);
-	tab->add_class("workspace-tab");
-	tab->on_click.connect([this, name = entry.name] { activate(name); });
-	entry.tab = tab;
 }
 
 void Workspaces::activate(std::string_view name) {
@@ -73,11 +67,11 @@ void Workspaces::reset_active() {
 }
 
 void Workspaces::refresh_tabs() {
-	for (Entry &entry : m_entries) {
-		if (entry.tab != nullptr) {
-			entry.tab->set_class("workspace-tab-active", entry.name == m_active);
-		}
+	if (m_tabs == nullptr) {
+		return;
 	}
+	const auto it = std::ranges::find(m_entries, m_active, &Entry::name);
+	m_tabs->set_active(it == m_entries.end() ? -1 : static_cast<int>(it - m_entries.begin()));
 }
 
 } // namespace Editor
