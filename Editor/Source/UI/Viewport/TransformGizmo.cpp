@@ -25,13 +25,7 @@ constexpr F32 K_PLANE_HALF_PX = 7.F;
 constexpr F32 K_MIN_AXIS_PX = 14.F;
 constexpr int K_RING_SEGMENTS = 64;
 
-constexpr std::array<Vec4, 3> K_AXIS_COLORS = {
-	Vec4(0.86F, 0.36F, 0.36F, 1.F),
-	Vec4(0.42F, 0.74F, 0.40F, 1.F),
-	Vec4(0.33F, 0.55F, 0.90F, 1.F),
-};
 constexpr Vec4 K_CENTER_COLOR = Vec4(0.92F, 0.92F, 0.92F, 1.F);
-constexpr std::array<const char *, 3> K_AXIS_NAMES = { "X", "Y", "Z" };
 
 F32 snap_value(F32 value, F32 step) {
 	return step > 0.F ? Math::round(value / step) * step : value;

@@ -23,12 +23,6 @@ constexpr F32 K_AXIS_BUBBLE = 8.F;
 constexpr F32 K_ACTION_SAFE = 0.05F;
 constexpr F32 K_TITLE_SAFE = 0.10F;
 
-constexpr std::array<Vec4, 3> K_AXIS_COLORS = {
-	Vec4(0.86F, 0.36F, 0.36F, 1.F),
-	Vec4(0.42F, 0.74F, 0.40F, 1.F),
-	Vec4(0.33F, 0.55F, 0.90F, 1.F),
-};
-constexpr std::array<const char *, 3> K_AXIS_NAMES = { "X", "Y", "Z" };
 constexpr Usize K_MAX_LISTED_PASSES = 10;
 
 std::string milliseconds(F32 value) {
