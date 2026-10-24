@@ -87,6 +87,33 @@ template <typename T> class TypeBuilder {
 			[](void *, const PropertyValue &) {});
 	}
 
+	/// Strings that aren't in `values` show as the first entry.
+	template <typename Access>
+	TypeBuilder &choice(std::string name, Access access, std::vector<std::string> values,
+						std::vector<std::string> labels = {}) {
+		const std::vector<std::string> &shown = labels.empty() ? values : labels;
+		std::vector<EnumOption> choices;
+		for (Usize i = 0; i < shown.size(); ++i) {
+			choices.push_back({ .name = shown[i], .value = static_cast<Int32>(i) });
+		}
+		add<Int32>(
+			std::move(name), {},
+			[access, values](const void *instance) -> PropertyValue {
+				const std::string &current = std::invoke(access, *const_cast<T *>(static_cast<const T *>(instance)));
+				const auto it = std::ranges::find(values, current);
+				return it == values.end() ? 0 : static_cast<Int32>(it - values.begin());
+			},
+			[access, values](void *instance, const PropertyValue &value) {
+				const auto index = static_cast<Usize>(std::get<Int32>(value));
+				if (index < values.size()) {
+					std::invoke(access, *static_cast<T *>(instance)) = values[index];
+				}
+			});
+		last().kind = PropertyKind::Enum;
+		last().options = std::move(choices);
+		return *this;
+	}
+
 	TypeBuilder &options(std::vector<EnumOption> options) {
 		last().options = std::move(options);
 		return *this;

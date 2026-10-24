@@ -144,4 +144,23 @@ TEST_SUITE("Reflection") {
 		summary.set(&sample, PropertyValue{ std::string("changed") });
 		CHECK(sample.label == "sample");
 	}
+
+	TEST_CASE("choices store a value and show its label") {
+		TypeInfo info("Sample");
+		TypeBuilder<Sample>(info).choice("Label", &Sample::label, { "", "sample", "other" },
+										 { "None", "Sample", "Other" });
+		const Property &label = *info.find("Label");
+		Sample sample;
+
+		CHECK(label.kind == PropertyKind::Enum);
+		REQUIRE(label.options.size() == 3);
+		CHECK(label.options[2].name == "Other");
+		CHECK(std::get<Int32>(label.get(&sample)) == 1);
+		label.set(&sample, PropertyValue{ Int32{ 2 } });
+		CHECK(sample.label == "other");
+		label.set(&sample, PropertyValue{ Int32{ 7 } });
+		CHECK(sample.label == "other");
+		sample.label = "unlisted";
+		CHECK(std::get<Int32>(label.get(&sample)) == 0);
+	}
 }
