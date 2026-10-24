@@ -25,6 +25,24 @@ enum class ToneMapper : Uint32 { None, Aces, AgX, Neutral };
 	return "agx";
 }
 
+/// Best first.
+inline constexpr std::array<ToneMapper, 4> TONE_MAPPERS = { ToneMapper::AgX, ToneMapper::Neutral, ToneMapper::Aces,
+															ToneMapper::None };
+
+[[nodiscard]] inline std::string_view tone_mapper_label(ToneMapper mapper) {
+	switch (mapper) {
+	case ToneMapper::None:
+		return "None (clip)";
+	case ToneMapper::Aces:
+		return "ACES (fitted)";
+	case ToneMapper::Neutral:
+		return "Khronos Neutral";
+	case ToneMapper::AgX:
+		break;
+	}
+	return "AgX";
+}
+
 /// AgX for anything it doesn't know.
 [[nodiscard]] inline ToneMapper tone_mapper_from_name(std::string_view name) {
 	if (name == "none") {

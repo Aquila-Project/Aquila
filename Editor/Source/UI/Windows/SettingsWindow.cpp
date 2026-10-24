@@ -46,12 +46,14 @@ constexpr std::array<PropertyMark, 4> K_FLY_SPEED_MARKS = { {
 } };
 
 const std::vector<EnumOption> &tone_mapper_options() {
-	static const std::vector<EnumOption> options = {
-		{ .name = "AgX", .value = static_cast<Int32>(Rendering::ToneMapper::AgX) },
-		{ .name = "Khronos Neutral", .value = static_cast<Int32>(Rendering::ToneMapper::Neutral) },
-		{ .name = "ACES (fitted)", .value = static_cast<Int32>(Rendering::ToneMapper::Aces) },
-		{ .name = "None (clip)", .value = static_cast<Int32>(Rendering::ToneMapper::None) },
-	};
+	static const std::vector<EnumOption> options = [] {
+		std::vector<EnumOption> result;
+		for (const Rendering::ToneMapper mapper : Rendering::TONE_MAPPERS) {
+			result.push_back(
+				{ .name = std::string(Rendering::tone_mapper_label(mapper)), .value = static_cast<Int32>(mapper) });
+		}
+		return result;
+	}();
 	return options;
 }
 

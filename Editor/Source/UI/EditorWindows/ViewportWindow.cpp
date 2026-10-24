@@ -50,18 +50,6 @@ constexpr std::array<ShadingMode, 7> K_SHADING_MODES = { {
 	{ .view = Rendering::DebugView::LightComplexity, .label = "Light Complexity", .icon = "flame" },
 } };
 
-struct ToneMapperOption {
-	Rendering::ToneMapper mapper;
-	const char *label;
-};
-
-constexpr std::array<ToneMapperOption, 4> K_TONE_MAPPERS = { {
-	{ .mapper = Rendering::ToneMapper::AgX, .label = "AgX" },
-	{ .mapper = Rendering::ToneMapper::Neutral, .label = "Khronos Neutral" },
-	{ .mapper = Rendering::ToneMapper::Aces, .label = "ACES" },
-	{ .mapper = Rendering::ToneMapper::None, .label = "None" },
-} };
-
 struct ShowToggle {
 	const char *label;
 	bool Rendering::RenderSettings::*flag;
@@ -473,8 +461,9 @@ void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
 	m_tone_mapper = grid->add_row<UI::Core::Dropdown>("Tone Mapping");
 	m_tone_mapper->set_variant("props-dropdown");
 	m_tone_mapper->set_chevron(context().icon("chevron-down"));
-	for (const ToneMapperOption &option : K_TONE_MAPPERS) {
-		m_tone_mapper->add_option(std::to_string(static_cast<Uint32>(option.mapper)), option.label);
+	for (const Rendering::ToneMapper mapper : Rendering::TONE_MAPPERS) {
+		m_tone_mapper->add_option(std::to_string(static_cast<Uint32>(mapper)),
+								  std::string(Rendering::tone_mapper_label(mapper)));
 	}
 	m_tone_mapper->on_changed.connect([&settings](const std::string &value) {
 		settings.tone_mapper = static_cast<Rendering::ToneMapper>(std::stoul(value));
