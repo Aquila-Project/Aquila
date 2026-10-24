@@ -88,33 +88,6 @@ void CameraController::set_bloom_intensity(F32 intensity) {
 	Foundation::FrameScheduler::get()->request_frame();
 }
 
-RenderView CameraController::render_view_from(const Mat4 &world, F32 fov_degrees, F32 near_plane,
-											  F32 far_plane) const {
-	Mat4 basis(1.F);
-	for (int i = 0; i < 3; ++i) {
-		const Vec3 axis = Vec3(world[i]);
-		const F32 length = Math::length(axis);
-		basis[i] = Vec4(length > Math::EPSILON ? axis / length : Vec3(0.F), 0.F);
-	}
-	basis[3] = world[3];
-
-	RenderView view;
-	view.view = Math::inverse(basis);
-	view.projection = Math::perspective_vulkan(Math::radians(fov_degrees), m_aspect, near_plane, far_plane);
-	view.projection[1][1] *= -1.F;
-	view.position = Vec3(basis[3]);
-	view.right = Vec3(basis[0]);
-	view.up = Vec3(basis[1]);
-	view.forward = Vec3(basis[2]);
-	view.near_plane = near_plane;
-	view.far_plane = far_plane;
-	view.fov = fov_degrees;
-	view.aspect = m_aspect;
-	view.is_orthographic = false;
-	view.valid = true;
-	return view;
-}
-
 void CameraController::set_viewport_rect(Vec2 position, Vec2 size) {
 	m_viewport_pos = position;
 	m_viewport_size = size;

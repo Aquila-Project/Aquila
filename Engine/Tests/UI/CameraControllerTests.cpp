@@ -2,18 +2,27 @@
 
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Rendering/CameraController.h"
+#include "Aquila/Rendering/SceneFrameData.h"
+#include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/TransformComponent.h"
 
 #include "CanvasTestSupport.h"
 
 using namespace Aquila;
 using namespace Aquila::Rendering;
+using Aquila::SceneManagement::Components::CameraComponent;
+using Aquila::SceneManagement::Components::TransformComponent;
 
 TEST_SUITE("CameraController") {
-	TEST_CASE("a transform with the editor camera's pose gives the same view") {
+	TEST_CASE("a scene camera with the editor camera's pose gives the same view") {
 		CameraController controller;
 		const RenderView editor = controller.get_render_view();
-		const Mat4 world = glm::translate(Mat4(1.F), Vec3(0.F, 1.5F, -5.F));
-		const RenderView from_transform = controller.render_view_from(world, controller.get_fov(), 0.1F, 1000.F);
+		CameraComponent lens;
+		lens.fov = controller.get_fov();
+		lens.near_plane = 0.1F;
+		lens.far_plane = 1000.F;
+		TransformComponent transform(Vec3(0.F, 1.5F, -5.F));
+		const RenderView from_transform = render_view_from_entity(lens, transform, controller.get_aspect());
 
 		for (int column = 0; column < 4; ++column) {
 			for (int row = 0; row < 4; ++row) {
@@ -22,14 +31,27 @@ TEST_SUITE("CameraController") {
 					  doctest::Approx(editor.projection[column][row]).epsilon(1e-4));
 			}
 		}
+		CHECK(Math::dot(from_transform.up, editor.up) == doctest::Approx(1.F));
+		CHECK(Math::dot(from_transform.right, editor.right) == doctest::Approx(1.F));
 	}
 
 	TEST_CASE("scale on the transform does not leak into the view") {
-		CameraController controller;
-		const Mat4 world = glm::scale(glm::translate(Mat4(1.F), Vec3(2.F, 0.F, 0.F)), Vec3(3.F));
-		const RenderView view = controller.render_view_from(world, 60.F, 0.1F, 100.F);
+		CameraComponent lens;
+		TransformComponent transform(Vec3(2.F, 0.F, 0.F), Quaternion(1.F, 0.F, 0.F, 0.F), Vec3(3.F));
+		const RenderView view = render_view_from_entity(lens, transform);
 		CHECK(Math::length(Vec3(view.view[0])) == doctest::Approx(1.F));
 		CHECK(view.position.x == doctest::Approx(2.F));
+		CHECK(view.aspect == doctest::Approx(lens.aspect_ratio));
+	}
+
+	TEST_CASE("a parented camera looks along its world rotation") {
+		CameraComponent lens;
+		TransformComponent transform;
+		transform.set_parent_matrix(glm::rotate(Mat4(1.F), Math::radians(90.F), Vec3(0.F, 1.F, 0.F)));
+		const RenderView view = render_view_from_entity(lens, transform);
+		CHECK(view.forward.x == doctest::Approx(1.F));
+		CHECK(view.forward.z == doctest::Approx(0.F).epsilon(1e-4));
+		CHECK(view.up.y == doctest::Approx(1.F));
 	}
 
 	TEST_CASE("fov is clamped and applied to the projection") {

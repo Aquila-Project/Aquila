@@ -23,8 +23,10 @@ struct TransformComponent;
 
 namespace Aquila::Rendering {
 
+/// Scale is ignored, `aspect` overrides the camera's own.
 RenderView render_view_from_entity(const SceneManagement::Components::CameraComponent &cam,
-								   const SceneManagement::Components::TransformComponent &transform);
+								   SceneManagement::Components::TransformComponent &transform,
+								   Option<F32> aspect = std::nullopt);
 
 /// Uploads the per-frame scene data (camera, lights, materials, shadows, environment) and owns
 /// the scene descriptor set every material binds.

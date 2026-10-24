@@ -7,6 +7,7 @@
 #include "Aquila/Platform/Input.h"
 #include "Aquila/Rendering/CameraController.h"
 #include "Aquila/Rendering/RenderPipeline.h"
+#include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
@@ -401,16 +402,9 @@ Rendering::RenderView ViewportWindow::current_view() const {
 	if (scene_camera.is_valid() && scene_camera.exists() &&
 		scene_camera.has_component<SceneManagement::Components::CameraComponent>() &&
 		scene_camera.has_component<SceneManagement::Components::TransformComponent>()) {
-		const auto &lens = scene_camera.get_component<SceneManagement::Components::CameraComponent>();
-		auto &transform = scene_camera.get_component<SceneManagement::Components::TransformComponent>();
-		Rendering::RenderView view =
-			camera->render_view_from(transform.get_world_matrix_lazy(), lens.fov, lens.near_plane, lens.far_plane);
-		view.ev100 = lens.ev100;
-		view.exposure_compensation = lens.exposure_compensation;
-		view.auto_exposure = lens.auto_exposure;
-		view.bloom = lens.bloom;
-		view.bloom_intensity = lens.bloom_intensity;
-		return view;
+		return Rendering::render_view_from_entity(
+			scene_camera.get_component<SceneManagement::Components::CameraComponent>(),
+			scene_camera.get_component<SceneManagement::Components::TransformComponent>(), camera->get_aspect());
 	}
 	return camera->get_render_view();
 }

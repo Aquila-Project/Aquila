@@ -26,8 +26,7 @@ class CameraController {
 	void on_event(Platform::Events::Event &event);
 
 	[[nodiscard]] RenderView get_render_view() const;
-	/// The view of a scene camera with this world matrix (+Z forward, +Y up). Same conventions as the editor camera.
-	[[nodiscard]] RenderView render_view_from(const Mat4 &world, F32 fov_degrees, F32 near_plane, F32 far_plane) const;
+	[[nodiscard]] F32 get_aspect() const { return m_aspect; }
 
 	void set_fov(F32 fov_degrees);
 	[[nodiscard]] F32 get_fov() const { return m_fov; }

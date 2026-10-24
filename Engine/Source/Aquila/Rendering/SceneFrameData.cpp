@@ -208,21 +208,26 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 	}
 }
 
-RenderView render_view_from_entity(const CameraComponent &cam, const TransformComponent &transform) {
-	const Vec3 pos = transform.get_world_position();
-	const quat rot = transform.get_local_rotation();
+RenderView render_view_from_entity(const CameraComponent &cam, TransformComponent &transform, Option<F32> aspect) {
+	const Mat4 &world = transform.get_world_matrix_lazy();
+	std::array<Vec3, 3> axes{};
+	for (int i = 0; i < 3; ++i) {
+		const Vec3 axis = Vec3(world[i]);
+		const F32 length = Math::length(axis);
+		axes[i] = length > Math::EPSILON ? axis / length : Vec3(0.F);
+	}
 
 	RenderView view;
-	view.view = cam.get_view_matrix(pos, rot);
-	view.projection = cam.get_projection_matrix();
-	view.position = pos;
-	view.forward = cam.get_forward_direction(rot);
-	view.up = cam.get_up_direction(rot);
-	view.right = cam.get_right_direction(rot);
+	view.position = Vec3(world[3]);
+	view.right = axes[0];
+	view.up = axes[1];
+	view.forward = axes[2];
+	view.view = Math::view_from_basis(view.right, view.up, view.forward, view.position);
+	view.aspect = aspect.value_or(cam.aspect_ratio);
+	view.projection = cam.get_projection_matrix(view.aspect);
 	view.near_plane = cam.near_plane;
 	view.far_plane = cam.far_plane;
 	view.fov = cam.fov;
-	view.aspect = cam.aspect_ratio;
 	view.ev100 = cam.ev100;
 	view.exposure_compensation = cam.exposure_compensation;
 	view.auto_exposure = cam.auto_exposure;
