@@ -20,6 +20,21 @@ void settle(Canvas &canvas) {
 }
 
 TEST_SUITE("View removal") {
+	TEST_CASE("a view may remove children while its canvas is destroyed") {
+		struct Owner final : View {
+			View *child = nullptr;
+			~Owner() override { remove_child(child); }
+		};
+		CanvasSingletonsScope singletons;
+		auto canvas = std::make_unique<Canvas>(200, 200);
+		auto *owner = canvas->get_root()->add_child<Owner>();
+		owner->child = owner->add_child<View>();
+		settle(*canvas);
+
+		canvas.reset();
+		CHECK(canvas == nullptr);
+	}
+
 	TEST_CASE("remove_child schedules a relayout and a frame") {
 		CanvasSingletonsScope singletons;
 		Canvas canvas(200, 200);

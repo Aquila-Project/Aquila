@@ -27,6 +27,8 @@ class Canvas {
 
   public:
 	Canvas(Uint32 width, Uint32 height);
+	/// Destroys the views first, their destructors may still remove views.
+	~Canvas();
 
 	void on_event(Platform::Events::Event &event);
 	void update(F32 delta_time);

@@ -28,6 +28,10 @@ Canvas::Canvas(Uint32 width, Uint32 height)
 	register_internal_observers();
 }
 
+Canvas::~Canvas() {
+	m_root.reset();
+}
+
 void Canvas::register_internal_observers() {
 	register_removal_observer([this](View *view) { m_style_engine.remove(view); });
 	register_removal_observer([this](View *view) { m_input_router.on_view_removed(view); });
