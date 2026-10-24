@@ -33,6 +33,9 @@ class MaterialAssets : public Foundation::Singleton<MaterialAssets> {
 	Ref<Material> update(GFX::GfxContext &ctx, const std::string &asset_path, const MaterialData &data);
 	/// Writes the material's data to its .aqmat. False when it has no asset path or the write fails.
 	bool save(const Material &material);
+	/// `rebuild` (shader, double sided, blend mode) goes through update(), other edits are only saved.
+	/// @return the asset's material from now on
+	Ref<Material> edit(GFX::GfxContext &ctx, const std::string &asset_path, const MaterialData &data, bool rebuild);
 
 	/// Forgets every loaded asset, for when the project changes.
 	void clear() { m_assets.clear(); }

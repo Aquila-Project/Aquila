@@ -1,8 +1,9 @@
-#include "UI/Inspectors/MaterialEditorRows.h"
+#include "UI/Inspector/MaterialEditorRows.h"
 
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
-#include "UI/Inspectors/InspectorLabels.h"
+#include "UI/Inspector/InspectorLabels.h"
 
 namespace Editor {
 
@@ -20,17 +21,6 @@ constexpr Int32 K_SHADER_LIT = 0;
 constexpr Int32 K_SHADER_UNLIT = 1;
 constexpr Int32 K_SHADER_CUSTOM = 2;
 
-bool name_has(std::string_view name, std::string_view word) {
-	std::string lowered(name);
-	std::ranges::transform(lowered, lowered.begin(),
-						   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	return lowered.find(word) != std::string::npos;
-}
-
-bool is_color_name(std::string_view name) {
-	return name_has(name, "color") || name_has(name, "colour") || name_has(name, "tint") || name_has(name, "albedo");
-}
-
 constexpr std::array<Reflection::PropertyMark, 6> K_LUMINANCE_MARKS = { {
 	{ .value = 80.F, .label = "Monitor white" },
 	{ .value = 500.F, .label = "Phone screen" },
@@ -41,8 +31,7 @@ constexpr std::array<Reflection::PropertyMark, 6> K_LUMINANCE_MARKS = { {
 } };
 
 bool is_emission_strength(const MaterialParameter &param) {
-	return param.type == ParameterType::Float && (name_has(param.name, "emissive") || name_has(param.name, "emission")) &&
-		(name_has(param.name, "intensity") || name_has(param.name, "strength"));
+	return param.type == ParameterType::Float && Graphics::is_emission_strength_name(param.name);
 }
 
 bool is_builtin(const std::string &shader) {
@@ -128,11 +117,9 @@ Reflection::Property make_parameter_property(const MaterialParameter &param) {
 
 	switch (param.type) {
 	case ParameterType::Float: {
-		const bool unit_range = name_has(param.name, "metallic") || name_has(param.name, "roughness") ||
-			name_has(param.name, "occlusion") || name_has(param.name, "opacity") || name_has(param.name, "alpha");
 		property.hints.speed = 0.01F;
 		property.hints.precision = 3;
-		if (unit_range) {
+		if (Graphics::is_unit_range_name(param.name)) {
 			property.hints.min = 0.F;
 			property.hints.max = 1.F;
 			property.hints.slider = true;
@@ -145,7 +132,7 @@ Reflection::Property make_parameter_property(const MaterialParameter &param) {
 			property.hints.slider_min = 1.F;
 			property.hints.slider_max = 10000000.F;
 			property.hints.marks = K_LUMINANCE_MARKS;
-		} else if (name_has(param.name, "intensity")) {
+		} else if (Foundation::contains_ignore_case(param.name, "intensity")) {
 			property.hints.min = 0.F;
 			property.hints.speed = 1.F;
 			property.hints.precision = 1;
@@ -163,7 +150,7 @@ Reflection::Property make_parameter_property(const MaterialParameter &param) {
 	case ParameterType::Vec3:
 	case ParameterType::Vec4:
 	case ParameterType::Color:
-		property.hints.color = is_color_name(param.name);
+		property.hints.color = Graphics::is_color_name(param.name);
 		property.hints.speed = 0.01F;
 		property.hints.precision = 3;
 		break;
@@ -373,9 +360,7 @@ void MaterialEditorRows::build_parameters() {
 
 	if (m_params == nullptr || visible != m_shown_parameters) {
 		m_params.reset();
-		while (!m_params_grid->get_children().empty()) {
-			m_params_grid->remove_child(m_params_grid->get_children().back().get());
-		}
+		m_params_grid->clear_children();
 		m_shown_parameters = std::move(visible);
 		m_params_type = std::make_unique<Reflection::TypeInfo>("Material Parameters");
 		if (m_material) {

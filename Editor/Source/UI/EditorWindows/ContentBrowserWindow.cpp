@@ -3,12 +3,14 @@
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/GFX/GfxTexture.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/Process.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/Button.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
@@ -16,8 +18,6 @@
 #include "Core/AssetThumbnails.h"
 #include "Core/EditorConfig.h"
 #include "Core/FileDialog.h"
-
-#include <initializer_list>
 
 namespace Editor {
 
@@ -35,42 +35,6 @@ constexpr std::chrono::milliseconds K_DOUBLE_CLICK{ 400 };
 constexpr F32 K_TILE_PADDING = 40.F;
 constexpr F32 K_ICON_SCALE = 0.75F;
 
-std::string lower(std::string_view text) {
-	std::string out(text);
-	std::ranges::transform(out, out.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	return out;
-}
-
-std::string asset_type(std::string_view name) {
-	const std::string file = lower(name);
-	auto has_extension = [&file](std::initializer_list<std::string_view> extensions) {
-		return std::ranges::any_of(extensions,
-								   [&file](std::string_view extension) { return file.ends_with(extension); });
-	};
-	if (file.ends_with(".d.luau")) {
-		return "definitions";
-	}
-	if (has_extension({ ".luau", ".lua" })) {
-		return "script";
-	}
-	if (has_extension({ ".png", ".jpg", ".jpeg", ".hdr", ".tga", ".svg" })) {
-		return "texture";
-	}
-	if (has_extension({ ".gltf", ".glb", ".obj", ".fbx" })) {
-		return "model";
-	}
-	if (has_extension({ ".slang", ".hlsl", ".glsl" })) {
-		return "shader";
-	}
-	if (has_extension({ ".aqmat" })) {
-		return "material";
-	}
-	if (has_extension({ ".aqlayout", ".aqstyle" })) {
-		return "ui";
-	}
-	return "file";
-}
-
 StyleProperties fit_thumbnail(const Aquila::GFX::GfxTexture &texture, F32 size) {
 	const F32 width = static_cast<F32>(std::max(1U, texture.get_width()));
 	const F32 height = static_cast<F32>(std::max(1U, texture.get_height()));
@@ -79,28 +43,6 @@ StyleProperties fit_thumbnail(const Aquila::GFX::GfxTexture &texture, F32 size) 
 	style.width = StyleLength::pixel(width * scale);
 	style.height = StyleLength::pixel(height * scale);
 	return style;
-}
-
-std::string_view icon_for(std::string_view type) {
-	if (type == "folder") {
-		return "folder";
-	}
-	if (type == "script" || type == "definitions" || type == "shader") {
-		return "file-code";
-	}
-	if (type == "texture") {
-		return "image";
-	}
-	if (type == "model") {
-		return "box";
-	}
-	if (type == "material") {
-		return "eclipse";
-	}
-	if (type == "ui") {
-		return "panel-left";
-	}
-	return "file";
 }
 
 bool is_break(std::string_view name, Usize i) {
@@ -169,13 +111,12 @@ class RenameField final : public TextInput {
 	bool m_finished = false;
 };
 
-class ContentTile final : public View {
+class ContentTile final : public Clickable {
   public:
 	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon, bool thumbnail,
 				const Config::ContentBrowserPreferences &prefs)
 		: m_payload(std::move(payload)), m_size(prefs.thumbnail_size) {
 		m_is_draggable = !is_directory;
-		set_input_leaf(true);
 		set_tooltip(m_payload.display_name);
 		add_class("content-tile");
 		StyleProperties tile_style;
@@ -207,7 +148,6 @@ class ContentTile final : public View {
 	}
 
 	Delegate<void(KeyCode)> on_key;
-	Delegate<void()> on_click;
 
 	void set_thumbnail(Aquila::GFX::GfxTexture *texture) {
 		if (texture == nullptr) {
@@ -236,22 +176,8 @@ class ContentTile final : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "ContentTile"; }
 
-	void on_mouse_press(Aquila::Platform::MouseButton button, Vec2 position) override {
-		m_click_armed = button == Aquila::Platform::MouseButton::Left;
-		View::on_mouse_press(button, position);
-	}
-
-	void on_mouse_release(Aquila::Platform::MouseButton button, Vec2 position) override {
-		View::on_mouse_release(button, position);
-		const bool clicked = m_click_armed && button == Aquila::Platform::MouseButton::Left;
-		m_click_armed = false;
-		if (clicked && on_click) {
-			on_click();
-		}
-	}
-
 	void on_drag_start(DragState &state) override {
-		m_click_armed = false;
+		Clickable::on_drag_start(state);
 		state.payload = m_payload;
 		state.label = m_payload.display_name;
 	}
@@ -261,26 +187,7 @@ class ContentTile final : public View {
 	F32 m_size = 48.F;
 	Image *m_image = nullptr;
 	Label *m_name = nullptr;
-	bool m_click_armed = false;
 };
-
-std::string unique_path(const std::string &directory, const std::string &name) {
-	auto *vfs = VirtualFileSystem::get();
-	const Usize dot = name.find('.');
-	const std::string stem = name.substr(0, dot);
-	const std::string extension = dot == std::string::npos ? std::string{} : name.substr(dot);
-	std::string path = directory + "/" + name;
-	for (int i = 2; vfs->exists(path) || vfs->is_directory(path); ++i) {
-		path = directory + "/" + stem + std::to_string(i) + extension;
-	}
-	return path;
-}
-
-void clear_children(View &view) {
-	while (!view.get_children().empty()) {
-		view.remove_child(view.get_children().back().get());
-	}
-}
 
 } // namespace
 
@@ -313,8 +220,8 @@ void ContentBrowserWindow::build(View &content) {
 		refresh->on_click.connect([this] { navigate(m_directory); });
 	}
 
-	m_menu = dynamic_cast<PopupMenu *>(overlay_root()->add_child(std::make_unique<PopupMenu>()));
-	m_confirm = dynamic_cast<PopupMenu *>(overlay_root()->add_child(std::make_unique<PopupMenu>()));
+	m_menu = overlay_root()->add_child(std::make_unique<PopupMenu>());
+	m_confirm = overlay_root()->add_child(std::make_unique<PopupMenu>());
 	m_grid->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
 	listen(context().thumbnails().on_ready, [this](const std::string &path) {
 		for (const Tile &tile : m_tiles) {
@@ -374,7 +281,7 @@ void ContentBrowserWindow::open(const std::string &directory) {
 }
 
 void ContentBrowserWindow::build_path() {
-	clear_children(*m_path);
+	m_path->clear_children();
 
 	const auto add_crumb = [this](std::string label, std::string path) {
 		if (!m_path->get_children().empty()) {
@@ -396,7 +303,7 @@ void ContentBrowserWindow::build_path() {
 }
 
 void ContentBrowserWindow::build_grid() {
-	clear_children(*m_grid);
+	m_grid->clear_children();
 
 	auto *vfs = VirtualFileSystem::get();
 	std::vector<Tile> tiles;
@@ -412,19 +319,21 @@ void ContentBrowserWindow::build_grid() {
 		if (a.is_directory != b.is_directory) {
 			return a.is_directory;
 		}
-		return lower(a.name) < lower(b.name);
+		return Aquila::Foundation::to_lower(a.name) < Aquila::Foundation::to_lower(b.name);
 	});
 
 	for (Tile &tile : tiles) {
-		const std::string type = tile.is_directory ? "folder" : asset_type(tile.name);
+		const AssetType *asset = tile.is_directory ? nullptr : context().asset_types.find_for_path(tile.name);
+		const std::string type = tile.is_directory ? "folder" : (asset != nullptr ? asset->id : "file");
+		const std::string icon = tile.is_directory ? "folder" : (asset != nullptr ? asset->icon : "file");
 		Aquila::GFX::GfxTexture *thumbnail = tile.is_directory ? nullptr : context().thumbnails().get(tile.path);
 		tile.view = m_grid->add_child<ContentTile>(AssetPayload{ tile.path, type, tile.name }, tile.is_directory,
-												   thumbnail != nullptr ? thumbnail : context().icon(icon_for(type)),
+												   thumbnail != nullptr ? thumbnail : context().icon(icon),
 												   thumbnail != nullptr, m_prefs);
 		tile.view->set_class("content-tile-selected", tile.path == m_selected);
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
 		tile.view->on_context_menu.connect([this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
-		static_cast<ContentTile *>(tile.view)->on_click = [this, path = tile.path] { open_in_inspector(path); };
+		static_cast<ContentTile *>(tile.view)->on_click.connect([this, path = tile.path] { open_in_inspector(path); });
 		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path, view = tile.view](KeyCode key) {
 			if (key == KeyCode::F2) {
 				begin_rename(path);
@@ -443,9 +352,10 @@ void ContentBrowserWindow::build_grid() {
 }
 
 void ContentBrowserWindow::apply_filter() {
-	const std::string query = lower(m_filter->get_text());
+	const std::string query = Aquila::Foundation::to_lower(m_filter->get_text());
 	for (const Tile &tile : m_tiles) {
-		tile.view->set_hidden(!query.empty() && lower(tile.name).find(query) == std::string::npos);
+		tile.view->set_hidden(!query.empty() &&
+							  Aquila::Foundation::to_lower(tile.name).find(query) == std::string::npos);
 	}
 }
 
@@ -471,7 +381,8 @@ void ContentBrowserWindow::import_files() {
 	}
 	std::string last;
 	for (const std::string &file : files) {
-		const std::string target = unique_path(m_directory, std::filesystem::path(file).filename().string());
+		const std::string target =
+			VirtualFileSystem::get()->unique_path(m_directory, std::filesystem::path(file).filename().string());
 		std::error_code error;
 		std::filesystem::copy(file, context().to_native(target), std::filesystem::copy_options::recursive, error);
 		if (error) {
@@ -487,7 +398,7 @@ void ContentBrowserWindow::import_files() {
 }
 
 void ContentBrowserWindow::create(const ContentCreator &creator) {
-	const std::string path = unique_path(m_directory, creator.name);
+	const std::string path = VirtualFileSystem::get()->unique_path(m_directory, creator.name);
 	if (!creator.create(path)) {
 		AQUILA_LOG_WARNING("ContentBrowserWindow: could not create {}", path);
 		return;
@@ -570,15 +481,17 @@ void ContentBrowserWindow::press(const std::string &path) {
 			navigate(path);
 		}
 
-		if (double_click && tile.path == path &&
-			asset_type(std::filesystem::path(tile.path).filename().string()) == "script") {
-			Aquila::Platform::launch_detached("vscodium", { *VirtualFileSystem::get()->to_native_path(path) });
+		if (double_click && tile.path == path && !tile.is_directory) {
+			if (const AssetType *asset = context().asset_types.find_for_path(tile.path);
+				asset != nullptr && asset->open) {
+				asset->open(tile.path);
+			}
 		}
 	}
 }
 
 void ContentBrowserWindow::open_in_inspector(const std::string &path) {
-	if (asset_type(std::filesystem::path(path).filename().string()) == "material") {
+	if (const AssetType *asset = context().asset_types.find_for_path(path); asset != nullptr && asset->inspect) {
 		context().selection.select_asset(path);
 	}
 }

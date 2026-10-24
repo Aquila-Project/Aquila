@@ -2,16 +2,18 @@
 
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/JobSystem.h"
+#include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/Graphics/Material/MaterialAssets.h"
+#include "Aquila/Graphics/Texture/MipChain.h"
 #include "Aquila/Graphics/Texture/TextureLibrary.h"
 #include "Aquila/Graphics/Texture/TextureLoader.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Rendering/MaterialPreview.h"
 #include "Aquila/UI/Core/TextureCache.h"
+#include "Core/AssetTypes.h"
 #include "Aquila/UI/Widgets/AssetSlot.h"
-
-#include <initializer_list>
 
 namespace Editor {
 
@@ -22,72 +24,11 @@ namespace {
 constexpr Uint32 K_MATERIAL_SIZE = 128;
 constexpr Usize K_RENDERS_PER_FRAME = 2;
 constexpr F64 K_EDIT_DELAY = 0.3;
-constexpr Int64 K_MAX_IMAGE_BYTES = 64 * 1024 * 1024;
+constexpr Uint64 K_MAX_IMAGE_BYTES = 64 * 1024 * 1024;
 constexpr Uint32 K_IMAGE_SIZE = 256;
 
-std::string lowered(std::string_view path) {
-	std::string file(path);
-	std::ranges::transform(file, file.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-	return file;
-}
-
-bool is_image(std::string_view path) {
-	const std::string file = lowered(path);
-	return std::ranges::any_of(std::initializer_list<std::string_view>{ ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".svg" },
-							   [&file](std::string_view extension) { return file.ends_with(extension); });
-}
-
 bool is_vector(std::string_view path) {
-	return lowered(path).ends_with(".svg");
-}
-
-std::vector<Uint8> halve(const std::vector<Uint8> &source, Uint32 width, Uint32 height) {
-	const Uint32 next_width = std::max(1U, width / 2U);
-	const Uint32 next_height = std::max(1U, height / 2U);
-	std::vector<Uint8> target(static_cast<Usize>(next_width) * next_height * 4U);
-	for (Uint32 y = 0; y < next_height; ++y) {
-		for (Uint32 x = 0; x < next_width; ++x) {
-			std::array<F32, 3> premultiplied{};
-			F32 alpha = 0.F;
-			for (Uint32 dy = 0; dy < 2; ++dy) {
-				for (Uint32 dx = 0; dx < 2; ++dx) {
-					const Uint32 sx = std::min(width - 1, (x * 2U) + dx);
-					const Uint32 sy = std::min(height - 1, (y * 2U) + dy);
-					const Uint8 *texel = &source[((static_cast<Usize>(sy) * width) + sx) * 4U];
-					const F32 a = static_cast<F32>(texel[3]) / 255.F;
-					for (Usize c = 0; c < 3; ++c) {
-						premultiplied[c] += static_cast<F32>(texel[c]) * a;
-					}
-					alpha += a;
-				}
-			}
-			Uint8 *out = &target[((static_cast<Usize>(y) * next_width) + x) * 4U];
-			for (Usize c = 0; c < 3; ++c) {
-				out[c] = alpha > 0.F ? static_cast<Uint8>(std::lround(premultiplied[c] / alpha)) : 0U;
-			}
-			out[3] = static_cast<Uint8>(std::lround(alpha * 0.25F * 255.F));
-		}
-	}
-	return target;
-}
-
-std::vector<std::vector<Uint8>> thumbnail_mips(const Uint8 *pixels, Uint32 &width, Uint32 &height) {
-	std::vector<Uint8> level(pixels, pixels + (static_cast<Usize>(width) * height * 4U));
-	while (std::max(width, height) > K_IMAGE_SIZE) {
-		level = halve(level, width, height);
-		width = std::max(1U, width / 2U);
-		height = std::max(1U, height / 2U);
-	}
-	std::vector<std::vector<Uint8>> mips;
-	mips.push_back(std::move(level));
-	Uint32 w = width;
-	Uint32 h = height;
-	while (w > 1 || h > 1) {
-		mips.push_back(halve(mips.back(), w, h));
-		w = std::max(1U, w / 2U);
-		h = std::max(1U, h / 2U);
-	}
-	return mips;
+	return Aquila::Foundation::ends_with_ignore_case(path, ".svg");
 }
 
 bool uses_texture(const Aquila::Graphics::MaterialData &data, const std::string &texture_path) {
@@ -99,8 +40,9 @@ bool uses_texture(const Aquila::Graphics::MaterialData &data, const std::string 
 
 }
 
-AssetThumbnails::AssetThumbnails(Aquila::GFX::GfxContext &gfx, Aquila::UI::Core::TextureCache &textures)
-	: m_gfx(gfx), m_textures(textures),
+AssetThumbnails::AssetThumbnails(Aquila::GFX::GfxContext &gfx, Aquila::UI::Core::TextureCache &textures,
+								 const AssetTypes &types)
+	: m_gfx(gfx), m_textures(textures), m_types(types),
 	  m_preview(std::make_unique<Aquila::Rendering::MaterialPreview>(gfx, K_MATERIAL_SIZE)) {
 	m_material_connection =
 		Aquila::Graphics::MaterialAssets::get()->on_changed.connect([this](const std::string &path) {
@@ -121,7 +63,9 @@ AssetThumbnails::~AssetThumbnails() {
 }
 
 Aquila::GFX::GfxTexture *AssetThumbnails::get(const std::string &path) {
-	if (is_image(path)) {
+	const AssetType *type = m_types.find_for_path(path);
+	const AssetThumbnail kind = type != nullptr ? type->thumbnail : AssetThumbnail::None;
+	if (kind == AssetThumbnail::Image) {
 		if (is_vector(path)) {
 			Aquila::GFX::GfxTexture *texture = m_textures.load(path);
 			if (texture != nullptr) {
@@ -135,7 +79,7 @@ Aquila::GFX::GfxTexture *AssetThumbnails::get(const std::string &path) {
 		request_image(path);
 		return nullptr;
 	}
-	if (!path.ends_with(Aquila::Graphics::MATERIAL_EXTENSION)) {
+	if (kind != AssetThumbnail::Material) {
 		return nullptr;
 	}
 	auto [it, inserted] = m_materials.try_emplace(path);
@@ -178,9 +122,9 @@ void AssetThumbnails::request_image(const std::string &path) {
 			AQUILA_LOG_WARNING("AssetThumbnails: {}", error.what());
 		}
 		if (raw.is_valid()) {
-			image.width = raw.width;
-			image.height = raw.height;
-			image.mips = thumbnail_mips(raw.pixels.get(), image.width, image.height);
+			image.mips = Aquila::Graphics::Texture::build_mip_chain(raw.pixels.get(), raw.width, raw.height,
+																	Aquila::Graphics::Texture::MipFilter::AlphaWeighted,
+																	K_IMAGE_SIZE);
 		}
 		{
 			std::scoped_lock lock(inbox->mutex);
@@ -199,22 +143,16 @@ void AssetThumbnails::upload_images() {
 		done.swap(m_inbox->done);
 	}
 	for (DecodedImage &image : done) {
-		if (image.generation != m_generation || image.mips.empty()) {
+		if (image.generation != m_generation || image.mips.levels.empty()) {
 			continue;
 		}
-		Aquila::RHI::TextureDesc desc{};
-		desc.width = image.width;
-		desc.height = image.height;
-		desc.format = Aquila::RHI::TextureFormat::RGBA8;
-		desc.usage = Aquila::RHI::TextureUsage::Sampled | Aquila::RHI::TextureUsage::TransferDst;
-		desc.mip_levels = static_cast<Uint32>(image.mips.size());
-		desc.sampler = Aquila::RHI::SamplerDesc::ui_image(static_cast<F32>(image.mips.size()));
-		desc.debug_name = image.path + " (thumbnail)";
-		Ref<Aquila::GFX::GfxTexture> texture = m_gfx.create_texture(desc);
+		Ref<Aquila::GFX::GfxTexture> texture = Aquila::Graphics::Texture::upload_mip_chain(
+			m_gfx, image.mips, Aquila::RHI::TextureFormat::RGBA8,
+			Aquila::RHI::SamplerDesc::ui_image(static_cast<F32>(image.mips.levels.size())),
+			image.path + " (thumbnail)");
 		if (!texture) {
 			continue;
 		}
-		m_gfx.upload_texture_mips(*texture, image.mips);
 		m_images[image.path] = std::move(texture);
 		announce(image.path);
 	}

@@ -107,22 +107,7 @@ HierarchyTreeNode *HierarchyTreeView::add_entity_node(std::string label, Entity 
 }
 
 Aquila::GFX::GfxTexture *HierarchyTreeView::icon_for(Entity entity) const {
-	if (entity.has_component<CameraComponent>()) {
-		return m_icons.camera;
-	}
-	if (entity.has_component<SkyLightComponent>()) {
-		return m_icons.sky;
-	}
-	if (entity.has_component<FogComponent>()) {
-		return m_icons.fog;
-	}
-	if (entity.has_component<LightComponent>()) {
-		return m_icons.light;
-	}
-	if (entity.has_component<MeshComponent>()) {
-		return m_icons.mesh;
-	}
-	return m_icons.empty;
+	return m_icons.entity ? m_icons.entity(entity) : nullptr;
 }
 
 void HierarchyTreeView::set_entity_icons(const EntityIcons &icons) {

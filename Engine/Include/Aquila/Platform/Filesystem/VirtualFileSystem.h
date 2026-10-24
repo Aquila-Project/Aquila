@@ -54,6 +54,8 @@ class VirtualFileSystem : public Foundation::Singleton<VirtualFileSystem> {
 	bool delete_file_aq(const std::string &virtual_path);
 	bool delete_directory(const std::string &virtual_path, bool recursive = false);
 	bool write_text_file(const std::string &virtual_path, const std::string &content);
+	/// Otherwise "stem2.ext", "stem3.ext"... The extension starts at the first dot ("a2.d.luau").
+	std::string unique_path(const std::string &directory, std::string_view file_name);
 	/// Empty on failure, you can't tell it apart from an empty file.
 	std::string read_text_file(const std::string &virtual_path);
 	/// "/project/Content/a.png" to the file on disk. nullopt when no mount matches or the mount isn't a folder.

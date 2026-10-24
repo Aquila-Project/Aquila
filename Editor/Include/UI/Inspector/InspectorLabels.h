@@ -4,7 +4,7 @@
 
 namespace Editor {
 
-/// "move_speed" and "baseColorMap" to "Move Speed" and "Base Color Map", for rows named after code identifiers.
+/// "move_speed" becomes "Move Speed", "baseColorMap" "Base Color Map".
 [[nodiscard]] inline std::string label_of(std::string_view name) {
 	std::string label;
 	bool word_start = true;

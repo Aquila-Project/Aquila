@@ -6,6 +6,8 @@
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/UI/Core/Command.h"
 #include "Aquila/UI/Core/Shortcuts.h"
+#include "Core/AssetTypes.h"
+#include "Core/ComponentEditors.h"
 #include "Core/ContentCreators.h"
 #include "Core/EditorTools.h"
 #include "Core/ProjectManager.h"
@@ -124,6 +126,8 @@ class EditorContext {
 	Aquila::UI::Core::Commands commands;
 	Aquila::UI::Core::Shortcuts shortcuts{ commands };
 	std::vector<ContentCreator> content_creators;
+	ComponentEditors component_editors;
+	AssetTypes asset_types;
 	Signal<void()> on_render_output_changed;
 	/// Fires after the preferences (Config::get_preferences()) or the project settings changed, from the Settings
 	/// window. Windows that read either apply them again.

@@ -180,8 +180,13 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 void EditorModule::on_detach() {
 	save_settings_if_due(true);
 	AssetSlot::set_adapter("entity", {});
-	AssetSlot::set_adapter("texture", {});
-	AssetSlot::set_adapter("material", {});
+	if (m_context) {
+		for (const AssetType &type : m_context->asset_types.get_all()) {
+			if (type.thumbnail != AssetThumbnail::None) {
+				AssetSlot::set_adapter(type.id, {});
+			}
+		}
+	}
 	if (m_windows) {
 		m_windows->shutdown();
 	}
@@ -671,8 +676,11 @@ void EditorModule::setup_editor_ui() {
 		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
 	m_context->set_camera(m_editor_camera.get());
 	m_context->set_project(m_project);
+	add_builtin_component_editors(m_context->component_editors);
+	add_builtin_asset_types(m_context->asset_types);
 	if (!m_thumbnails) {
-		m_thumbnails = std::make_unique<AssetThumbnails>(m_engine->get_context(), *m_texture_cache);
+		m_thumbnails =
+			std::make_unique<AssetThumbnails>(m_engine->get_context(), *m_texture_cache, m_context->asset_types);
 	}
 	m_context->set_thumbnails(m_thumbnails.get());
 	register_entity_slots();
@@ -783,9 +791,11 @@ void EditorModule::register_entity_slots() {
 }
 
 void EditorModule::register_thumbnail_slots() {
-	for (const char *type : { "texture", "material" }) {
-		AssetSlot::set_adapter(type,
-							   { .thumbnail = [this](const std::string &path) { return m_thumbnails->get(path); } });
+	for (const AssetType &type : m_context->asset_types.get_all()) {
+		if (type.thumbnail != AssetThumbnail::None) {
+			AssetSlot::set_adapter(
+				type.id, { .thumbnail = [this](const std::string &path) { return m_thumbnails->get(path); } });
+		}
 	}
 }
 

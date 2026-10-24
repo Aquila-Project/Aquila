@@ -105,4 +105,15 @@ bool MaterialAssets::save(const Material &material) {
 	return saved;
 }
 
+Ref<Material> MaterialAssets::edit(GFX::GfxContext &ctx, const std::string &asset_path, const MaterialData &data,
+								   bool rebuild) {
+	if (rebuild) {
+		return update(ctx, asset_path, data);
+	}
+	Ref<Material> material = load(ctx, asset_path);
+	if (material) {
+		save(*material);
+	}
+	return material;
+}
 }

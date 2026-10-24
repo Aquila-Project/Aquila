@@ -5,6 +5,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Foundation/Timer.h"
+#include "Aquila/Graphics/Texture/MipChain.h"
 
 namespace Aquila::GFX {
 class GfxContext;
@@ -21,6 +22,8 @@ class TextureCache;
 
 namespace Editor {
 
+class AssetTypes;
+
 /// Thumbnails of content files: an image is a small copy of its picture, decoded and shrunk on the JobSystem (SVGs go
 /// through the UI TextureCache), a .aqmat is its material rendered on a sphere, two per frame in update(). get() is
 /// null until one is ready and on_ready fires then (asset slots refresh themselves). Edited materials render again a
@@ -28,7 +31,8 @@ namespace Editor {
 /// their image and every material thumbnail. Main thread only.
 class AssetThumbnails {
   public:
-	AssetThumbnails(Aquila::GFX::GfxContext &gfx, Aquila::UI::Core::TextureCache &textures);
+	/// `types` must outlive this.
+	AssetThumbnails(Aquila::GFX::GfxContext &gfx, Aquila::UI::Core::TextureCache &textures, const AssetTypes &types);
 	~AssetThumbnails();
 
 	AQUILA_NONCOPYABLE(AssetThumbnails)
@@ -53,9 +57,7 @@ class AssetThumbnails {
 	struct DecodedImage {
 		std::string path;
 		Uint64 generation = 0;
-		Uint32 width = 0;
-		Uint32 height = 0;
-		std::vector<std::vector<Uint8>> mips;
+		Aquila::Graphics::Texture::MipChain mips;
 	};
 
 	struct Inbox {
@@ -73,6 +75,7 @@ class AssetThumbnails {
 
 	Aquila::GFX::GfxContext &m_gfx;
 	Aquila::UI::Core::TextureCache &m_textures;
+	const AssetTypes &m_types;
 	Unique<Aquila::Rendering::MaterialPreview> m_preview;
 	std::unordered_map<std::string, Ref<Aquila::GFX::GfxTexture>> m_materials;
 	std::unordered_map<std::string, Ref<Aquila::GFX::GfxTexture>> m_images;

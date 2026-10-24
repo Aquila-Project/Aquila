@@ -185,6 +185,17 @@ bool VirtualFileSystem::delete_file_aq(const std::string &virtual_path) {
 	return mount->file_system->file_remove(relative_path);
 }
 
+std::string VirtualFileSystem::unique_path(const std::string &directory, std::string_view file_name) {
+	const Usize dot = file_name.find('.');
+	const std::string stem(file_name.substr(0, dot));
+	const std::string extension(dot == std::string_view::npos ? std::string_view{} : file_name.substr(dot));
+	std::string path = directory + "/" + std::string(file_name);
+	for (int i = 2; exists(path) || is_directory(path); ++i) {
+		path = directory + "/" + stem + std::to_string(i) + extension;
+	}
+	return path;
+}
+
 bool VirtualFileSystem::delete_directory(const std::string &virtual_path, bool recursive) {
 	std::string relative_path;
 	MountPoint *mount = find_mount_point(virtual_path, relative_path);

@@ -1,14 +1,8 @@
 #include "UI/EditorWindows/InspectorWindow.h"
 
-#include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Platform/Input.h"
-#include "Aquila/UI/Widgets/Image.h"
-#include "Aquila/UI/Widgets/Label.h"
-#include "Aquila/UI/Widgets/PropertyGrid.h"
-#include "Aquila/UI/Widgets/ScrollView.h"
-#include "Core/AssetThumbnails.h"
-#include "UI/Inspectors/MaterialEditorRows.h"
-#include "UI/Panels/InspectorPanel.h"
+#include "Aquila/UI/Widgets/InspectorView.h"
+#include "UI/Inspector/EntityInspector.h"
 
 namespace Editor {
 
@@ -23,27 +17,29 @@ void InspectorWindow::build(Aquila::UI::Core::View &content) {
 		content.add_child(std::move(layout));
 	}
 
-	m_panel = std::make_unique<InspectorPanel>(context().engine().get_context(), &context().textures());
-	m_panel->build(&content, overlay_root());
-	m_entity_root = content.find_by_id("inspector-root");
-	build_asset_view(content);
+	m_entities = std::make_unique<EntityInspector>(context());
+	if (Aquila::UI::Core::View *root = content.find_by_id("inspector-root")) {
+		m_view = std::make_unique<Aquila::UI::Core::InspectorView>(
+			*root, [this](std::string_view name) { return context().icon(name); }, &context().engine().get_context());
+		m_view->select_tab("Components");
+	}
 
 	EditorSelection &selection = context().selection;
-	m_panel->on_entity_renamed.connect([this](Entity entity) { context().selection.on_entity_modified(entity); });
-	m_panel->on_components_changed.connect([this](Entity entity) { context().selection.on_entity_modified(entity); });
-
-	listen(selection.on_changed, [this](Entity entity) { show(entity); });
+	listen(selection.on_changed, [this](Entity entity) { show_entity(entity); });
 	listen(selection.on_asset_selected, [this](const std::string &path) { show_asset(path); });
-	listen(context().thumbnails().on_ready, [this](const std::string &path) {
-		if (path == m_asset) {
-			show_preview(path);
+	listen(selection.on_scene_replaced, [this] {
+		if (m_view != nullptr && m_asset.empty()) {
+			m_view->clear();
 		}
 	});
-	listen(selection.on_scene_replaced, [this] { m_panel->clear(); });
-	listen(selection.on_entity_transformed, [this](Entity entity) { m_panel->refresh_values(entity); });
+	listen(selection.on_entity_transformed, [this](Entity entity) {
+		if (m_view != nullptr && m_asset.empty() && entity == context().selection.get()) {
+			m_view->refresh();
+		}
+	});
 	listen(selection.on_components_changed, [this](Entity entity) {
 		if (entity == context().selection.get()) {
-			show(entity);
+			show_entity(entity);
 		}
 	});
 
@@ -61,80 +57,44 @@ void InspectorWindow::build(Aquila::UI::Core::View &content) {
 	});
 
 	if (selection.has()) {
-		show(selection.get());
+		show_entity(selection.get());
+	} else if (!selection.get_asset().empty()) {
+		show_asset(selection.get_asset());
 	}
 }
 
-void InspectorWindow::build_asset_view(Aquila::UI::Core::View &content) {
-	auto *root = content.add_child<Aquila::UI::Core::View>();
-	root->add_class("asset-inspector-root");
-	auto *scroll = root->add_child<Aquila::UI::Core::ScrollView>();
-	scroll->add_class("asset-inspector-scroll");
-	auto *body = scroll->add_child<Aquila::UI::Core::View>();
-	body->add_class("asset-inspector");
-	m_asset_preview = body->add_child<Aquila::UI::Core::Image>();
-	m_asset_preview->add_class("asset-inspector-preview");
-	m_asset_preview->set_hidden(true);
-	m_asset_title = body->add_child<Aquila::UI::Core::Label>(std::string{});
-	m_asset_title->add_class("asset-inspector-title");
-	m_asset_path = body->add_child<Aquila::UI::Core::Label>(std::string{});
-	m_asset_path->add_class("asset-inspector-path");
-	auto *grid = body->add_child<Aquila::UI::Core::PropertyGrid>();
-	grid->set_split(true);
-	m_asset_rows = std::make_unique<MaterialEditorRows>(*grid, &context().engine().get_context());
-	m_asset_view = root;
-	m_asset_view->set_hidden(true);
-}
-
-void InspectorWindow::show_preview(const std::string &path) {
-	Aquila::GFX::GfxTexture *texture = context().thumbnails().get(path);
-	m_asset_preview->set_texture(texture);
-	m_asset_preview->set_hidden(texture == nullptr);
-}
-
-void InspectorWindow::show_asset(const std::string &path) {
-	if (!path.ends_with(Aquila::Graphics::MATERIAL_EXTENSION) || m_asset_rows == nullptr) {
-		return;
-	}
-	m_asset = path;
-	Aquila::GFX::GfxContext &gfx = context().engine().get_context();
-	Ref<Aquila::Graphics::Material> material = Aquila::Graphics::MaterialAssets::get()->load(gfx, path);
-	show_preview(path);
-	m_asset_title->set_text(std::filesystem::path(path).stem().string());
-	m_asset_path->set_text(path);
-	m_asset_rows->show(material, [this, path](const Aquila::Graphics::MaterialData &data, bool needs_rebuild) {
-		auto *assets = Aquila::Graphics::MaterialAssets::get();
-		Aquila::GFX::GfxContext &ctx = context().engine().get_context();
-		if (needs_rebuild) {
-			assets->update(ctx, path, data);
-			show_asset(path);
-		} else if (Ref<Aquila::Graphics::Material> current = assets->load(ctx, path)) {
-			assets->save(*current);
-		}
-	});
-	if (m_entity_root != nullptr) {
-		m_entity_root->set_hidden(true);
-	}
-	m_asset_view->set_hidden(false);
-}
-
-void InspectorWindow::show(Entity entity) {
-	if (m_asset_view != nullptr && entity.is_valid()) {
-		m_asset_view->set_hidden(true);
-		m_asset.clear();
-		if (m_entity_root != nullptr) {
-			m_entity_root->set_hidden(false);
-		}
-	}
-	if (entity.is_valid() && entity.exists()) {
-		m_panel->show_entity(entity);
-	} else {
-		m_panel->clear();
+void InspectorWindow::update(F32 delta_time) {
+	if (m_view != nullptr) {
+		m_view->update();
 	}
 }
 
 void InspectorWindow::open_add_search(Vec2 canvas_pos) {
-	m_panel->open_add_search(canvas_pos);
+	if (m_asset.empty()) {
+		m_entities->open_add_menu(canvas_pos, true);
+	}
 }
 
-} // namespace Editor
+void InspectorWindow::show_entity(Entity entity) {
+	if (m_view == nullptr) {
+		return;
+	}
+	if (entity.is_valid() && entity.exists()) {
+		m_asset.clear();
+		m_view->show(m_entities->inspect(entity));
+	} else if (m_asset.empty()) {
+		m_view->clear();
+	}
+}
+
+void InspectorWindow::show_asset(const std::string &path) {
+	const AssetType *type = context().asset_types.find_for_path(path);
+	if (m_view == nullptr || type == nullptr || !type->inspect) {
+		return;
+	}
+	if (Option<Aquila::UI::Core::Inspectable> inspectable = type->inspect(path, context())) {
+		m_asset = path;
+		m_view->show(std::move(*inspectable));
+	}
+}
+}

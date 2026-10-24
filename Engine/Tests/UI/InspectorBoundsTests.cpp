@@ -137,11 +137,11 @@ struct Inspector {
 		style_dropdowns(*section);
 
 		auto *add = page->add_child<Button>();
-		add->add_class("props-add-component");
+		add->add_class("props-action");
 		add->set_text("Add Component");
 
 		auto *path = page->add_child<Label>(instance.texture);
-		path->add_class("asset-inspector-path");
+		path->add_class("props-uuid");
 	}
 
 	static void style_dropdowns(View &view) {

@@ -21,12 +21,7 @@ namespace Editor {
 class HierarchyTreeNode;
 
 struct EntityIcons {
-	Aquila::GFX::GfxTexture *empty = nullptr;
-	Aquila::GFX::GfxTexture *mesh = nullptr;
-	Aquila::GFX::GfxTexture *light = nullptr;
-	Aquila::GFX::GfxTexture *camera = nullptr;
-	Aquila::GFX::GfxTexture *sky = nullptr;
-	Aquila::GFX::GfxTexture *fog = nullptr;
+	Delegate<Aquila::GFX::GfxTexture *(Aquila::SceneManagement::Entity)> entity;
 	Aquila::GFX::GfxTexture *eye = nullptr;
 	Aquila::GFX::GfxTexture *eye_off = nullptr;
 };

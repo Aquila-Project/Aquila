@@ -15,15 +15,8 @@ class PropertyGrid;
 
 namespace Editor {
 
-/// The rows of one material, shared by the Material section and the .aqmat inspector: Shader (Lit, Unlit, or a
-/// custom .slang dropped on the Shader File slot), Double Sided, Blend Mode (+ Alpha Cutoff when Masked), then every
-/// parameter the shader declares, built as a TypeInfo over the Material so ReflectedPropertyGrid edits it. Textures
-/// are "texture" asset slots, filled by dragging an image from the content browser. The emission strength is a nits
-/// slider with real-world references, Lit shaders with emission parameters get Emit Light right under it.
-///
-/// Parameter and cutoff edits go straight into the material and are reported with `needs_rebuild` false. Shader,
-/// Double Sided and Blend Mode need a new material, so they're reported with `needs_rebuild` true: the owner builds
-/// it and calls show() again with it (that's safe from inside the callback).
+/// Shader, Double Sided and Blend Mode report `needs_rebuild`: the owner makes a new material and calls show()
+/// again, which is safe from inside the callback. Other edits go straight into the material.
 class MaterialEditorRows {
   public:
 	using ChangedCallback = Delegate<void(const Aquila::Graphics::MaterialData &data, bool needs_rebuild)>;
