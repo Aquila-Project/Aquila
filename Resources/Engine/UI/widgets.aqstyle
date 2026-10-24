@@ -37,7 +37,7 @@ TabView {
     color: var(--text-bright);
 }
 
-.tab-active {
+.tab-button-active {
     background-color: var(--bg-base);
     color: var(--text-bright);
     border-color: var(--accent);
@@ -1215,13 +1215,13 @@ Vec4Field {
     color: var(--text);
 }
 
-.cp-mode-active {
+.cp-mode-btn-active {
     background-color: var(--accent-dark);
     color: var(--text-bright);
     border-color: var(--accent-muted);
 }
 
-.cp-mode-active:hover {
+.cp-mode-btn-active:hover {
     background-color: var(--accent-dark);
     color: var(--text-bright);
 }

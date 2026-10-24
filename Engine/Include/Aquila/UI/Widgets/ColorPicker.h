@@ -11,6 +11,8 @@
 
 namespace Aquila::UI::Core {
 
+class TabBar;
+
 /// A swatch that opens an RGB / HSV / hex picker. Needs the GfxContext for its gradient textures.
 class ColorPicker : public Control {
   public:
@@ -76,9 +78,7 @@ class ColorPicker : public Control {
 	PickerArea *m_hue_bar = nullptr;
 	PickerArea *m_alpha_bar = nullptr;
 
-	Button *m_rgb_btn = nullptr;
-	Button *m_hsv_btn = nullptr;
-	Button *m_hex_btn = nullptr;
+	TabBar *m_mode_tabs = nullptr;
 
 	ChannelRow m_ch[4];
 

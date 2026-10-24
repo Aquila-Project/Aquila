@@ -2,6 +2,7 @@
 #include "Aquila/Foundation/Color.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 
 namespace Aquila::UI::Core {
 
@@ -336,20 +337,7 @@ void ColorPicker::toggle_popup() {
 void ColorPicker::set_mode(Mode mode) {
 	m_mode = mode;
 
-	m_rgb_btn->remove_class("cp-mode-active");
-	m_hsv_btn->remove_class("cp-mode-active");
-	m_hex_btn->remove_class("cp-mode-active");
-	switch (mode) {
-	case Mode::RGB:
-		m_rgb_btn->add_class("cp-mode-active");
-		break;
-	case Mode::HSV:
-		m_hsv_btn->add_class("cp-mode-active");
-		break;
-	case Mode::HEX:
-		m_hex_btn->add_class("cp-mode-active");
-		break;
-	}
+	m_mode_tabs->set_active(static_cast<int>(mode));
 
 	static const char *rgb_lbls[4] = { "R", "G", "B", "A" };
 	static const char *hsv_lbls[4] = { "H", "S", "V", "A" };
@@ -486,23 +474,12 @@ void ColorPicker::init() {
 		m_alpha_bar = m_popup->add_child(std::move(alpha));
 	}
 
-	{
-		auto row = std::make_unique<View>();
-		row->add_class("cp-mode-row");
-		View *row_raw = m_popup->add_child(std::move(row));
-
-		auto make_btn = [&](const char *text) -> Button * {
-			auto btn = std::make_unique<Button>(text);
-			btn->add_class("cp-mode-btn");
-			return dynamic_cast<Button *>(row_raw->add_child(std::move(btn)));
-		};
-		m_rgb_btn = make_btn("RGB");
-		m_hsv_btn = make_btn("HSV");
-		m_hex_btn = make_btn("HEX");
-		m_rgb_btn->on_click.connect([this] { set_mode(Mode::RGB); });
-		m_hsv_btn->on_click.connect([this] { set_mode(Mode::HSV); });
-		m_hex_btn->on_click.connect([this] { set_mode(Mode::HEX); });
+	m_mode_tabs = m_popup->add_child<TabBar>("cp-mode-btn");
+	m_mode_tabs->add_class("cp-mode-row");
+	for (const char *mode : { "RGB", "HSV", "HEX" }) {
+		m_mode_tabs->add_tab(mode);
 	}
+	m_mode_tabs->on_selected.connect([this](int mode) { set_mode(static_cast<Mode>(mode)); });
 
 	const char *labels[4] = { "R", "G", "B", "A" };
 	for (int i = 0; i < 4; ++i) {
@@ -574,7 +551,7 @@ void ColorPicker::init() {
 		}
 	}
 
-	m_rgb_btn->add_class("cp-mode-active");
+	m_mode_tabs->set_active(static_cast<int>(Mode::RGB));
 	rebuild_channel_textures();
 	sync_all();
 }

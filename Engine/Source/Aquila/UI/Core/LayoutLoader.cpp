@@ -17,6 +17,7 @@
 #include "Aquila/UI/Widgets/Toggle.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
 #include "Aquila/UI/Widgets/Collapsible.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TabView.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/VecField.h"
@@ -559,6 +560,7 @@ void LayoutLoader::register_builtins() {
 	Register<DragInt>("DragInt");
 	Register<Toggle>("Toggle");
 	Register<ScrollView>("ScrollView");
+	Register<TabBar>("TabBar");
 	Register<TabView>("TabView");
 	Register<Dropdown>("Dropdown");
 	Register<Vec2Field>("Vec2Field");

@@ -1,9 +1,10 @@
 #pragma once
 
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Widgets/Button.h"
 
 namespace Aquila::UI::Core {
+
+class TabBar;
 
 class TabView : public View {
   public:
@@ -21,14 +22,9 @@ class TabView : public View {
   private:
 	void apply_active_tab();
 
-	struct Tab {
-		Button *button = nullptr;
-		View *panel = nullptr;
-	};
-
-	View *m_tab_bar = nullptr;
+	TabBar *m_tab_bar = nullptr;
 	View *m_panels = nullptr;
-	std::vector<Tab> m_tabs;
+	std::vector<View *> m_tab_panels;
 	int m_active_tab = -1;
 };
 

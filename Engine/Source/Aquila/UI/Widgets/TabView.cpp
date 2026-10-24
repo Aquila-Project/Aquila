@@ -1,44 +1,36 @@
 #include "Aquila/UI/Widgets/TabView.h"
 
+#include "Aquila/UI/Widgets/TabBar.h"
+
 namespace Aquila::UI::Core {
 
 TabView::TabView() {
-	auto bar = std::make_unique<View>();
-	bar->add_class("tab-bar");
-	m_tab_bar = add_child(std::move(bar));
+	m_tab_bar = add_child<TabBar>("tab-button");
+	m_tab_bar->add_class("tab-bar");
+	m_tab_bar->on_selected.connect([this](int index) { set_active_tab(index); });
 
-	auto panels = std::make_unique<View>();
-	panels->add_class("tab-panels");
-	m_panels = add_child(std::move(panels));
+	m_panels = add_child<View>();
+	m_panels->add_class("tab-panels");
 }
 
 View *TabView::add_tab(std::string title, GFX::GfxTexture *icon) {
-	const int idx = static_cast<int>(m_tabs.size());
+	m_tab_bar->add_tab(std::move(title), icon);
 
-	auto btn = std::make_unique<Button>();
-	btn->set_text(title);
-	if (icon != nullptr) {
-		btn->set_icon(icon);
-	}
-	btn->add_class("tab-button");
-	btn->on_click.connect([this, idx] { set_active_tab(idx); });
-	Button *btn_raw = dynamic_cast<Button *>(m_tab_bar->add_child(std::move(btn)));
-
-	auto panel = std::make_unique<View>();
+	auto *panel = m_panels->add_child<View>();
 	panel->add_class("tab-panel");
-	View *panel_raw = m_panels->add_child(std::move(panel));
-
-	m_tabs.push_back({ btn_raw, panel_raw });
+	m_tab_panels.push_back(panel);
 
 	if (m_active_tab < 0) {
 		set_active_tab(0);
+	} else {
+		apply_active_tab();
 	}
 
-	return panel_raw;
+	return panel;
 }
 
 void TabView::set_active_tab(int index) {
-	if (index < 0 || index >= static_cast<int>(m_tabs.size())) {
+	if (index < 0 || index >= static_cast<int>(m_tab_panels.size())) {
 		return;
 	}
 	m_active_tab = index;
@@ -47,17 +39,10 @@ void TabView::set_active_tab(int index) {
 }
 
 void TabView::apply_active_tab() {
-	for (int i = 0; i < static_cast<int>(m_tabs.size()); ++i) {
-		const bool active = (i == m_active_tab);
-
-		m_tabs[i].panel->set_hidden(!active);
-
-		if (active) {
-			m_tabs[i].button->add_class("tab-active");
-		} else {
-			m_tabs[i].button->remove_class("tab-active");
-		}
+	m_tab_bar->set_active(m_active_tab);
+	for (int i = 0; i < static_cast<int>(m_tab_panels.size()); ++i) {
+		m_tab_panels[static_cast<Usize>(i)]->set_hidden(i != m_active_tab);
 	}
 }
 
-} // namespace Aquila::UI::Core
+}
