@@ -838,16 +838,10 @@ void EditorModule::open_build_window() {
 		return;
 	}
 
-	constexpr Uint32 width = 720;
-	constexpr Uint32 height = 600;
 	m_build_window = std::make_unique<BuildWindow>(*m_context);
-	m_build_window->build(width, height, Config::get_preferences().ui.style_paths);
-
-	Aquila::Rendering::IRenderWindowHost &host = m_engine->get_window_host();
-	const Aquila::Rendering::RenderWindowId window = Aquila::Rendering::open_content_window(
-		host, *m_build_window, width, height, "Aquila - Build", [this] { m_build_window.reset(); });
-	host.set_window_min_size(window, { 480.F, 400.F });
-	m_build_window->on_request_close = [&host, window] { host.request_close(window); };
+	m_build_window->build(720, 600, Config::get_preferences().ui.style_paths);
+	m_build_window->open(m_engine->get_window_host(), "Aquila - Build", [this] { m_build_window.reset(); },
+						 { 480.F, 400.F });
 }
 
 void EditorModule::set_ui_scale(F32 scale) {

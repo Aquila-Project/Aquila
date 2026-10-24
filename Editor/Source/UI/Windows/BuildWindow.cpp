@@ -5,34 +5,31 @@
 #include "Aquila/Platform/Events/Event.h"
 #include "Aquila/Platform/Events/InputEvent.h"
 #include "Aquila/Platform/Events/KeyChord.h"
-#include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
+#include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/Process.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/Button.h"
-#include "Aquila/UI/Widgets/DragInt.h"
-#include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
-#include "Aquila/UI/Widgets/TextInput.h"
 #include "Core/EditorContext.h"
 #include "Core/FileDialog.h"
+#include "Core/ProjectSettingsFields.h"
 
 namespace Editor {
 
 using namespace Aquila::UI::Core;
 namespace Player = Aquila::Player;
+using Aquila::Platform::Filesystem::VirtualFileSystem;
+using Aquila::Reflection::TypeInfo;
 namespace Events = Aquila::Platform::Events;
 namespace fs = std::filesystem;
 
 namespace {
-
-constexpr int K_MIN_WINDOW_SIZE = 320;
-constexpr int K_MAX_WINDOW_SIZE = 7680;
-constexpr std::string_view K_DEFAULT_ICON = "default";
 
 constexpr Vec4 K_INFO_COLOR{ 0.62F, 0.62F, 0.62F, 1.F };
 constexpr Vec4 K_WARNING_COLOR{ 0.83F, 0.67F, 0.29F, 1.F };
@@ -55,23 +52,12 @@ std::string describe(const Player::BuildStep &step) {
 	return "unknown step";
 }
 
-template <typename T, typename... Args> T *add_field(View &form, std::string label, bool top, Args &&...args) {
-	auto *row = form.add_child<View>();
-	row->add_class("build-row");
-	row->set_class("build-row-top", top);
-	auto *name = row->add_child<Label>(std::move(label));
-	name->add_class("build-row-label");
-	auto *field = row->add_child<T>(std::forward<Args>(args)...);
-	field->add_class("build-field");
-	return field;
-}
-
 std::string template_dir() {
 	return std::string(Player::player_template_dir(Aquila::Platform::Filesystem::path_executable_dir()));
 }
 
-void add_browse_button(View &field, Aquila::GFX::GfxTexture *icon, std::string tooltip, Delegate<void()> on_click) {
-	View *row = field.get_parent();
+void add_browse_button(View *field, Aquila::GFX::GfxTexture *icon, std::string tooltip, Delegate<void()> on_click) {
+	View *row = field != nullptr ? field->get_parent() : nullptr;
 	if (row == nullptr) {
 		return;
 	}
@@ -82,36 +68,21 @@ void add_browse_button(View &field, Aquila::GFX::GfxTexture *icon, std::string t
 	button->set_tooltip(std::move(tooltip));
 	button->on_click.connect(std::move(on_click));
 }
-
-std::vector<fs::path> project_pngs(const fs::path &content) {
-	std::vector<fs::path> files;
-	std::error_code error;
-	for (fs::recursive_directory_iterator it(content, error), end; !error && it != end; it.increment(error)) {
-		std::string extension = it->path().extension().string();
-		std::ranges::transform(extension, extension.begin(), [](unsigned char c) { return std::tolower(c); });
-		if (it->is_regular_file(error) && extension == ".png") {
-			files.push_back(it->path());
-		}
-	}
-	std::ranges::sort(files);
-	return files;
-}
-
 }
 
 BuildWindow::BuildWindow(EditorContext &context) : m_context(context) {}
 
 BuildWindow::~BuildWindow() {
+	m_context.on_settings_changed.disconnect(m_settings_connection);
 	if (m_worker.joinable()) {
 		m_worker.join();
 	}
 }
 
 void BuildWindow::build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
-	m_canvas = std::make_unique<Canvas>(width, height);
-	Aquila::UI::StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	create_canvas(width, height, style_paths);
 
-	View *root = m_canvas->get_root();
+	View *root = get_canvas()->get_root();
 	if (auto layout = m_context.load_layout("build.aqlayout")) {
 		root = root->add_child(std::move(layout));
 	}
@@ -122,103 +93,96 @@ void BuildWindow::build(Uint32 width, Uint32 height, const std::vector<std::stri
 	m_status = root->find_by_id<Label>("build-status");
 	m_log_scroll = root->find_by_id<ScrollView>("build-log");
 	if (m_log_scroll != nullptr) {
-		m_log = dynamic_cast<SelectableTextView *>(m_log_scroll->add_child(std::make_unique<SelectableTextView>()));
+		m_log = m_log_scroll->add_child(std::make_unique<SelectableTextView>());
 		m_log->add_class("build-log-text");
 	}
 
-	if (auto *settings = root->find_by_id("build-settings")) {
-		build_settings(*settings);
-	}
+	m_form = root->find_by_id("build-settings");
+	build_settings();
+	m_settings_connection = m_context.on_settings_changed.connect([this] {
+		if (m_fields && m_context.project().settings != m_settings) {
+			m_settings = m_context.project().settings;
+			m_fields->refresh();
+		}
+	});
 	wire_buttons(*root);
 
-	refresh_template();
 	log(LineKind::Info,
 		std::format("Builds ship the scenes as they are saved in {}", m_context.project().native_directory));
 	log(LineKind::Info, "Preview lists the steps of a build without writing anything.");
 
-	m_canvas->reload_styles();
+	get_canvas()->reload_styles();
 }
 
-void BuildWindow::build_settings(View &content) {
+void BuildWindow::build_settings() {
+	if (m_form == nullptr) {
+		return;
+	}
+	m_rebuild_settings = false;
+	m_fields.reset();
+	m_form->clear_children();
+
 	const ProjectInfo &project = m_context.project();
+	m_settings = project.settings;
+	m_settings_type = std::make_unique<TypeInfo>("Build");
+	add_build_output_fields(*m_settings_type);
+	add_startup_scene_field(*m_settings_type, project);
+	add_icon_field(*m_settings_type, project);
+	add_window_size_fields(*m_settings_type);
 
-	auto *form = content.add_child<View>();
-	form->add_class("build-form");
+	auto *grid = m_form->add_child<PropertyGrid>(120.F);
+	grid->set_split(true);
+	m_fields = std::make_unique<ReflectedPropertyGrid>(*grid, *m_settings_type, nullptr);
+	m_fields->bind(&m_settings, [this] { m_context.set_project_settings(m_settings); });
 
-	m_output = add_field<TextInput>(*form, "Output", false, std::string("Folder the game is written to"));
-	m_output->add_class("split-TextInput");
-	const ProjectSettings &settings = project.settings;
-	m_output->set_text(settings.build_output.empty() ? Aquila::Platform::Filesystem::path_executable_dir() + "/Builds"
-													 : settings.build_output);
-	add_browse_button(*m_output, m_context.icon("folder-open"), "Pick the output folder", [this] {
-		if (Option<std::string> folder = FileDialog::pick_folder(m_output->get_text())) {
-			m_output->set_text(*folder);
-		}
-	});
+	add_browse_button(m_fields->get_widget("Output Folder"), m_context.icon("folder-open"), "Pick the output folder",
+					  [this] {
+						  const std::string current =
+							  m_settings.build_output.empty() ? default_build_output() : m_settings.build_output;
+						  if (Option<std::string> folder = FileDialog::pick_folder(current)) {
+							  m_settings.build_output = *folder;
+							  m_context.set_project_settings(m_settings);
+							  m_fields->refresh();
+						  }
+					  });
+	add_browse_button(m_fields->get_widget("Icon"), m_context.icon("folder-open"),
+					  "Pick a PNG anywhere on disk, files outside the project are copied into Content",
+					  [this] { pick_icon(); });
 
-	m_scene = add_field<Dropdown>(*form, "Startup scene", false);
-	m_scene->set_variant("props-dropdown");
-	m_scene->set_chevron(m_context.icon("chevron-down"));
-	m_scene->set_placeholder("No saved scenes");
-	for (const std::string &scene : project.scenes) {
-		m_scene->add_option(scene, scene);
-	}
-	if (std::ranges::find(project.scenes, settings.startup_scene) != project.scenes.end()) {
-		m_scene->set_value(settings.startup_scene);
-	} else if (!project.scenes.empty()) {
-		m_scene->set_value(project.scenes.front());
-	}
-
-	auto *size = add_field<View>(*form, "Window size", false);
-	size->add_class("build-size");
-	m_width = size->add_child<DragInt>();
-	auto *times = size->add_child<Label>(std::string("\u00d7"));
-	times->add_class("build-size-times");
-	m_height = size->add_child<DragInt>();
-	for (DragInt *field : { m_width, m_height }) {
-		field->add_class("split-DragInt");
-		field->add_class("build-size-field");
-		field->set_int_range(K_MIN_WINDOW_SIZE, K_MAX_WINDOW_SIZE);
-	}
-	m_width->set_int_value(static_cast<int>(settings.window_width));
-	m_height->set_int_value(static_cast<int>(settings.window_height));
-
-	m_icon = add_field<Dropdown>(*form, "Icon", false);
-	m_icon->set_variant("props-dropdown");
-	m_icon->set_chevron(m_context.icon("chevron-down"));
-	m_icon->set_icon(m_context.icon("image"));
-	m_icon->add_option(std::string(K_DEFAULT_ICON), "Aquila logo");
-	const fs::path content_dir = fs::path(project.native_directory) / Aquila::SharedConstants::PROJECT_CONTENT_FOLDER;
-	for (const fs::path &png : project_pngs(content_dir)) {
-		m_icon->add_option(png.string(), png.lexically_relative(content_dir).generic_string());
-	}
-	m_icon->set_value(std::string(K_DEFAULT_ICON));
-	if (!settings.icon.empty()) {
-		const fs::path icon = fs::path(project.native_directory) / settings.icon;
-		if (fs::is_regular_file(icon)) {
-			m_icon->add_option(icon.string(), settings.icon);
-			m_icon->set_value(icon.string());
-		}
-	}
-	m_icon->set_tooltip("PNGs in the project's Content folder. The window and taskbar use it.");
-	add_browse_button(*m_icon, m_context.icon("folder-open"), "Pick a PNG anywhere on disk", [this, content_dir] {
-		const std::array filters = { FileDialog::Filter{ .name = "PNG image", .extensions = "png" } };
-		const Option<std::string> png = FileDialog::open_file(filters, content_dir.string());
-		if (!png) {
-			return;
-		}
-		const fs::path relative = fs::path(*png).lexically_relative(content_dir);
-		const bool inside = !relative.empty() && *relative.begin() != "..";
-		m_icon->add_option(*png, inside ? relative.generic_string() : *png);
-		m_icon->set_value(*png);
-	});
-
-	auto *template_info = add_field<View>(*form, "Player template", true);
+	auto *template_info = grid->add_row<View>("Player Template");
 	template_info->add_class("build-template");
 	m_template_state = template_info->add_child<Label>(std::string());
 	m_template_state->add_class("build-template-state");
 	m_template_path = template_info->add_child<SelectableTextView>();
 	m_template_path->add_class("build-template-path");
+	refresh_template();
+}
+
+void BuildWindow::pick_icon() {
+	const ProjectInfo &project = m_context.project();
+	const std::string content(Aquila::SharedConstants::PROJECT_CONTENT_DIR);
+	const std::array filters = { FileDialog::Filter{ .name = "PNG image", .extensions = "png" } };
+	const Option<std::string> png = FileDialog::open_file(filters, m_context.to_native(content));
+	if (!png) {
+		return;
+	}
+	Option<std::string> inside = m_context.to_project_path(*png);
+	if (!inside) {
+		const std::string target = VirtualFileSystem::get()->unique_path(content, fs::path(*png).filename().string());
+		std::error_code error;
+		fs::copy_file(*png, m_context.to_native(target), error);
+		if (error) {
+			log(LineKind::Error, std::format("Couldn't copy {} into the project: {}", *png, error.message()));
+			return;
+		}
+		log(LineKind::Info, std::format("Copied the icon to {}", target));
+		inside = target;
+	}
+	const std::string mount = Aquila::SharedConstants::PROJECT_MOUNT + "/";
+	m_settings.icon = inside->starts_with(mount) ? inside->substr(mount.size()) : *inside;
+	m_context.set_project_settings(m_settings);
+	m_rebuild_settings = true;
+	Aquila::Foundation::FrameScheduler::get()->request_frame(get_canvas()->get_frame_target());
 }
 
 void BuildWindow::wire_buttons(View &root) {
@@ -240,15 +204,14 @@ void BuildWindow::wire_buttons(View &root) {
 	}
 
 	if (auto *close = root.find_by_id<Button>("build-close")) {
-		close->on_click.connect([this] {
-			if (on_request_close) {
-				on_request_close();
-			}
-		});
+		close->on_click.connect([this] { this->close(); });
 	}
 }
 
-void BuildWindow::update(F32 delta_time) {
+void BuildWindow::on_update(F32) {
+	if (m_rebuild_settings) {
+		build_settings();
+	}
 	std::vector<Message> inbox;
 	{
 		std::scoped_lock lock(m_mutex);
@@ -261,38 +224,14 @@ void BuildWindow::update(F32 delta_time) {
 			log(message.kind, std::move(message.text));
 		}
 	}
-
-	m_canvas->update(delta_time);
-	m_canvas->compute();
 }
 
-void BuildWindow::render(Aquila::Graphics::Renderer2D &batcher, Aquila::GFX::GfxCommandList &cmd) {
-	m_canvas->submit_to_quad_batcher(batcher, cmd);
-}
-
-void BuildWindow::set_frame_target(const void *target) {
-	m_canvas->set_frame_target(target);
-}
-
-Aquila::Platform::CursorType BuildWindow::get_cursor() const {
-	const View *hovered = m_canvas->get_hovered_view();
-	return hovered != nullptr ? hovered->get_cursor() : Aquila::Platform::CursorType::Arrow;
-}
-
-void BuildWindow::on_event(Events::Event &event) {
-	Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Events::WindowResizeEvent>([this](Events::WindowResizeEvent &e) {
-		if (e.get_width() > 0 && e.get_height() > 0) {
-			m_canvas->resize(e.get_width(), e.get_height());
-		}
+bool BuildWindow::intercept_event(Events::Event &event) {
+	if (!is_build_chord(event)) {
 		return false;
-	});
-
-	if (is_build_chord(event)) {
-		start_build(false);
-		return;
 	}
-	m_canvas->on_event(event);
+	start_build(false);
+	return true;
 }
 
 bool BuildWindow::is_build_chord(Events::Event &event) const {
@@ -309,48 +248,24 @@ bool BuildWindow::is_build_chord(Events::Event &event) const {
 	return false;
 }
 
-void BuildWindow::remember_choices() {
-	const ProjectInfo &project = m_context.project();
-	ProjectSettings settings = project.settings;
-	if (m_scene != nullptr) {
-		settings.startup_scene = m_scene->get_value();
-	}
-	if (m_output != nullptr) {
-		const std::string fallback = Aquila::Platform::Filesystem::path_executable_dir() + "/Builds";
-		settings.build_output = m_output->get_text() == fallback ? std::string() : m_output->get_text();
-	}
-	if (m_width != nullptr && m_height != nullptr) {
-		settings.window_width = static_cast<Uint32>(m_width->get_int_value());
-		settings.window_height = static_cast<Uint32>(m_height->get_int_value());
-	}
-	if (m_icon != nullptr) {
-		const std::string value = m_icon->get_value();
-		const fs::path relative = fs::path(value).lexically_relative(project.native_directory);
-		const bool inside = value != K_DEFAULT_ICON && !relative.empty() && *relative.begin() != "..";
-		if (value == K_DEFAULT_ICON) {
-			settings.icon.clear();
-		} else if (inside) {
-			settings.icon = relative.generic_string();
-		}
-	}
-	m_context.set_project_settings(std::move(settings));
-}
-
 Player::BuildRequest BuildWindow::make_request() const {
 	const ProjectInfo &project = m_context.project();
+	const ProjectSettings &settings = project.settings;
+	const bool first_scene = settings.startup_scene.empty() && !project.scenes.empty();
 	return {
 		.project_name = project.name,
 		.project_dir = project.native_directory,
-		.startup_scene = m_scene != nullptr ? m_scene->get_value() : std::string(),
+		.startup_scene = first_scene ? project.scenes.front() : settings.startup_scene,
 		.template_dir = template_dir(),
-		.output_dir = m_output != nullptr ? m_output->get_text() : std::string(),
-		.window_width = static_cast<Uint32>(m_width != nullptr ? m_width->get_int_value() : 0),
-		.window_height = static_cast<Uint32>(m_height != nullptr ? m_height->get_int_value() : 0),
-		.icon_path = m_icon != nullptr && m_icon->get_value() != K_DEFAULT_ICON ? m_icon->get_value() : std::string(),
-		.window_title = project.settings.window_title,
-		.maximized = project.settings.start_maximized,
-		.tone_mapper = project.settings.tone_mapper,
-		.shadows = project.settings.shadows,
+		.output_dir = settings.build_output.empty() ? default_build_output() : settings.build_output,
+		.window_width = settings.window_width,
+		.window_height = settings.window_height,
+		.icon_path =
+			settings.icon.empty() ? std::string() : (fs::path(project.native_directory) / settings.icon).string(),
+		.window_title = settings.window_title,
+		.maximized = settings.start_maximized,
+		.tone_mapper = settings.tone_mapper,
+		.shadows = settings.shadows,
 	};
 }
 
@@ -390,7 +305,6 @@ void BuildWindow::start_build(bool run_after) {
 	if (!planned) {
 		return;
 	}
-	remember_choices();
 	if (m_worker.joinable()) {
 		m_worker.join();
 	}

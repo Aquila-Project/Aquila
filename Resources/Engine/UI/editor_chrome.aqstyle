@@ -1360,55 +1360,6 @@
     width: 100%;
 }
 
-.build-form {
-    flex-direction: column;
-    width: 100%;
-    gap: 6px;
-}
-
-.build-row {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    min-height: 20px;
-    gap: 10px;
-}
-
-.build-row-top {
-    align-items: start;
-}
-
-.build-row-label {
-    width: 110px;
-    min-width: 110px;
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text-dim);
-    text-align: right;
-}
-
-.build-field {
-    width: grow;
-    min-width: 0px;
-}
-
-.build-size {
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-}
-
-.build-size-field {
-    width: grow;
-    min-width: 0px;
-}
-
-.build-size-times {
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text-dim);
-}
-
 .build-template {
     flex-direction: column;
     gap: 2px;
