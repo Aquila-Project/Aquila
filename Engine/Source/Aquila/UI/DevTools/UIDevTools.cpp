@@ -56,7 +56,7 @@ void UIDevTools::open_inspector_window() {
 		}
 	};
 
-	Aquila::Rendering::open_content_window(m_host, *m_inspector, width, height, "Aquila - UI Inspector", [this] {
+	m_inspector->open(m_host, "Aquila - UI Inspector", [this] {
 		stop_pick();
 		m_inspector.reset();
 	});
@@ -73,8 +73,7 @@ void UIDevTools::open_widget_gallery(GFX::GfxContext &ctx, Core::TextureCache *t
 	m_gallery = std::make_unique<WidgetGalleryWindow>();
 	m_gallery->build(ctx, texture_cache, width, height, m_style_paths);
 
-	Aquila::Rendering::open_content_window(m_host, *m_gallery, width, height, "Aquila - Widget Gallery",
-										   [this] { m_gallery.reset(); });
+	m_gallery->open(m_host, "Aquila - Widget Gallery", [this] { m_gallery.reset(); });
 }
 
 void UIDevTools::start_pick() {

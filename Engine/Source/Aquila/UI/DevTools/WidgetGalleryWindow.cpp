@@ -1,12 +1,9 @@
 #include "Aquila/UI/DevTools/WidgetGalleryWindow.h"
 
-#include "Aquila/Platform/Events/Event.h"
-#include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Style/StyleParser.h"
 
 #include "Aquila/UI/Widgets/AssetCard.h"
 #include "Aquila/UI/Widgets/AssetSlot.h"
@@ -50,10 +47,9 @@ View *WidgetGalleryWindow::add_group(View *host, const std::string &heading) {
 
 void WidgetGalleryWindow::build(GFX::GfxContext &ctx, TextureCache *texture_cache, Uint32 width, Uint32 height,
 								const std::vector<std::string> &style_paths) {
-	m_canvas = std::make_unique<Canvas>(width, height);
-	UI::StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	create_canvas(width, height, style_paths);
 
-	auto *root = m_canvas->get_root();
+	auto *root = get_canvas()->get_root();
 	root->set_id("gallery-root");
 	root->add_class("gallery-root");
 
@@ -148,32 +144,7 @@ void WidgetGalleryWindow::build(GFX::GfxContext &ctx, TextureCache *texture_cach
 		tip->show_at({ rect.position.x, rect.position.y + rect.size.y + 4.F }, "Hello from a Tooltip!");
 	});
 
-	m_canvas->reload_styles();
-}
-
-void WidgetGalleryWindow::update(F32 delta_time) {
-	m_canvas->update(delta_time);
-	m_canvas->compute();
-}
-
-void WidgetGalleryWindow::render(Graphics::Renderer2D &batcher, GFX::GfxCommandList &cmd) {
-	m_canvas->submit_to_quad_batcher(batcher, cmd);
-}
-
-void WidgetGalleryWindow::set_frame_target(const void *target) {
-	m_canvas->set_frame_target(target);
-}
-
-void WidgetGalleryWindow::on_event(Platform::Events::Event &event) {
-	Platform::Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Platform::Events::WindowResizeEvent>([this](Platform::Events::WindowResizeEvent &e) {
-		if (e.get_width() > 0 && e.get_height() > 0) {
-			m_canvas->resize(e.get_width(), e.get_height());
-		}
-		return false;
-	});
-
-	m_canvas->on_event(event);
+	get_canvas()->reload_styles();
 }
 
 } // namespace Aquila::UI::DevTools

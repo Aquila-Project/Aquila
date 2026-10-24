@@ -2,12 +2,9 @@
 
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
-#include "Aquila/Platform/Events/Event.h"
-#include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Style/ComputedStyle.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleProperties.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Label.h"
@@ -193,10 +190,9 @@ UIDebugWindow::~UIDebugWindow() = default;
 
 void UIDebugWindow::build(Canvas *target, Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
 	m_target = target;
-	m_canvas = std::make_unique<Canvas>(width, height);
-	UI::StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	create_canvas(width, height, style_paths);
 
-	auto *root = m_canvas->get_root();
+	auto *root = get_canvas()->get_root();
 	root->set_id("inspector-root");
 	root->add_class("inspector-root");
 
@@ -209,7 +205,7 @@ void UIDebugWindow::build(Canvas *target, Uint32 width, Uint32 height, const std
 	auto *footer = make_view(root, "inspector-breadcrumb-bar");
 	m_breadcrumb = make_label(footer, "", "inspector-breadcrumb");
 
-	m_canvas->reload_styles();
+	get_canvas()->reload_styles();
 	refresh();
 	populate(nullptr);
 }
@@ -352,31 +348,6 @@ void UIDebugWindow::set_swatch(View *swatch, Vec4 color) {
 	swatch->merge_style(props);
 }
 
-void UIDebugWindow::update(F32 delta_time) {
-	m_canvas->update(delta_time);
-	m_canvas->compute();
-}
-
-void UIDebugWindow::render(Graphics::Renderer2D &batcher, GFX::GfxCommandList &cmd) {
-	m_canvas->submit_to_quad_batcher(batcher, cmd);
-}
-
-void UIDebugWindow::set_frame_target(const void *target) {
-	m_canvas->set_frame_target(target);
-}
-
-void UIDebugWindow::on_event(Platform::Events::Event &event) {
-	Platform::Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Platform::Events::WindowResizeEvent>([this](Platform::Events::WindowResizeEvent &e) {
-		if (e.get_width() > 0 && e.get_height() > 0) {
-			m_canvas->resize(e.get_width(), e.get_height());
-		}
-		return false;
-	});
-
-	m_canvas->on_event(event);
-}
-
 TreeNode *UIDebugWindow::add_view_node(View *view, TreeNode *parent_node) {
 	TreeNode *node = (parent_node != nullptr) ? parent_node->add_child_node(full_label(view)) : m_tree->add_node(full_label(view));
 	m_node_to_view[node] = view;
@@ -439,7 +410,7 @@ void UIDebugWindow::select_view(View *view) {
 		}
 	}
 	m_tree->select_node(it->second);
-	m_canvas->scroll_into_view(it->second);
+	get_canvas()->scroll_into_view(it->second);
 }
 
 void UIDebugWindow::populate(View *view) {

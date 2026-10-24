@@ -53,7 +53,7 @@ class IRenderWindowHost {
 /// `content` must outlive the window.
 ///
 /// @code
-/// m_window = open_content_window(host, *m_settings, 640, 480, "Settings", [this] { m_settings_open = false; });
+/// m_window = open_content_window(host, *m_preview, 640, 480, "Preview", [this] { m_preview_open = false; });
 /// @endcode
 template <typename Content>
 RenderWindowId open_content_window(IRenderWindowHost &host, Content &content, Uint32 width, Uint32 height,

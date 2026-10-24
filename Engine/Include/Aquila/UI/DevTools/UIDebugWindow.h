@@ -2,16 +2,8 @@
 #define AQUILA_UI_DEVTOOLS_UI_DEBUG_WINDOW_H
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/UI/Core/CanvasWindow.h"
 
-namespace Aquila::Graphics {
-class Renderer2D;
-}
-namespace Aquila::GFX {
-class GfxCommandList;
-}
-namespace Aquila::Platform::Events {
-class Event;
-}
 namespace Aquila::UI::Core {
 class Canvas;
 class View;
@@ -23,17 +15,12 @@ class TreeNode;
 
 namespace Aquila::UI::DevTools {
 
-class UIDebugWindow {
+class UIDebugWindow final : public Aquila::UI::Core::CanvasWindow {
   public:
 	UIDebugWindow();
-	~UIDebugWindow();
+	~UIDebugWindow() override;
 
 	void build(Aquila::UI::Core::Canvas *target, Uint32 width, Uint32 height, const std::vector<std::string> &style_paths);
-
-	void update(F32 delta_time);
-	void render(Aquila::Graphics::Renderer2D &batcher, Aquila::GFX::GfxCommandList &cmd);
-	void on_event(Aquila::Platform::Events::Event &event);
-	void set_frame_target(const void *target);
 
 	void refresh();
 	void select_view(Aquila::UI::Core::View *view);
@@ -66,7 +53,6 @@ class UIDebugWindow {
 	void set_swatch(Aquila::UI::Core::View *swatch, Vec4 color);
 
 	Aquila::UI::Core::Canvas *m_target = nullptr;
-	Unique<Aquila::UI::Core::Canvas> m_canvas;
 	Aquila::UI::Core::View *m_ignored = nullptr;
 	Aquila::UI::Core::View *m_current = nullptr;
 

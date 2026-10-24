@@ -1,18 +1,12 @@
 #include "Aquila/UI/Core/FloatingPanelWindow.h"
 
-#include "Aquila/Platform/Events/Event.h"
-#include "Aquila/Platform/Events/InputEvent.h"
-#include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 
 namespace Aquila::UI::Core {
-
-namespace Events = Platform::Events;
 
 FloatingPanelWindow::FloatingPanelWindow() = default;
 FloatingPanelWindow::~FloatingPanelWindow() = default;
@@ -20,10 +14,9 @@ FloatingPanelWindow::~FloatingPanelWindow() = default;
 void FloatingPanelWindow::build(Unique<View> panel_subtree, const std::string &title, Uint32 width, Uint32 height,
 								const std::vector<std::string> &style_paths) {
 	m_title = title;
-	m_canvas = std::make_unique<Canvas>(width, height);
-	StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	Canvas &canvas = create_canvas(width, height, style_paths);
 
-	auto *root = m_canvas->get_root();
+	auto *root = canvas.get_root();
 	root->add_class("floating-panel-root");
 
 	m_body = root->add_child<View>();
@@ -31,33 +24,7 @@ void FloatingPanelWindow::build(Unique<View> panel_subtree, const std::string &t
 	m_dock_space = m_body->add_child<DockSpace>();
 	m_dock_space->get_root_node()->accept_panel(std::move(panel_subtree), title);
 
-	m_canvas->reload_styles();
-}
-
-void FloatingPanelWindow::update(F32 delta_time) {
-	m_canvas->update(delta_time);
-	m_canvas->compute();
-}
-
-void FloatingPanelWindow::render(Graphics::Renderer2D &batcher, GFX::GfxCommandList &cmd) {
-	m_canvas->submit_to_quad_batcher(batcher, cmd);
-}
-
-void FloatingPanelWindow::on_event(Events::Event &event) {
-	Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Events::WindowResizeEvent>([&](Events::WindowResizeEvent &e) {
-		if (e.get_width() > 0 && e.get_height() > 0) {
-			m_canvas->resize(e.get_width(), e.get_height());
-		}
-		return false;
-	});
-
-	m_canvas->on_event(event);
-}
-
-Platform::CursorType FloatingPanelWindow::get_cursor() const {
-	const View *hovered = m_canvas->get_hovered_view();
-	return hovered != nullptr ? hovered->get_cursor() : Platform::CursorType::Arrow;
+	canvas.reload_styles();
 }
 
 bool FloatingPanelWindow::has_content() const {
