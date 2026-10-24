@@ -366,12 +366,6 @@ Option<Player::BuildPlan> BuildWindow::plan(bool show_steps) {
 		set_status(StatusKind::Error, std::format("The plan has {} error(s)", plan.errors.size()));
 		return std::nullopt;
 	}
-	if (plan.steps.empty()) {
-		log(LineKind::Warning, "plan_build returned no steps and no errors.");
-		set_status(StatusKind::Error, "Nothing to build");
-		return std::nullopt;
-	}
-
 	if (show_steps) {
 		log(LineKind::Info, std::format("Output: {}", plan.layout.root));
 		for (Usize i = 0; i < plan.steps.size(); ++i) {
@@ -421,9 +415,6 @@ void BuildWindow::finish(const Player::BuildResult &result) {
 	}
 
 	if (!result.success) {
-		if (result.errors.empty()) {
-			log(LineKind::Warning, "run_build failed without saying why.");
-		}
 		set_status(StatusKind::Error, "Build failed");
 		return;
 	}
@@ -445,24 +436,13 @@ void BuildWindow::refresh_template() {
 		return;
 	}
 	const std::string directory = template_dir();
-	const bool stub = directory.empty();
-	const bool found = !stub && fs::exists(fs::path(directory) / AQUILA_PLAYER_EXECUTABLE_NAME);
-
-	if (stub) {
-		m_template_state->set_text("player_template_dir() is still a stub");
-	} else if (found) {
-		m_template_state->set_text("Found");
-	} else {
-		m_template_state->set_text("Missing: build the PlayerTemplate target");
-	}
+	const bool found = fs::exists(fs::path(directory) / AQUILA_PLAYER_EXECUTABLE_NAME);
+	m_template_state->set_text(found ? "Found" : "Missing: build the PlayerTemplate target");
 	m_template_state->set_class("build-template-found", found);
 	m_template_state->set_class("build-template-missing", !found);
 
 	m_template_path->clear();
-	m_template_path->set_class("hidden", stub);
-	if (!stub) {
-		m_template_path->add_line(directory);
-	}
+	m_template_path->add_line(directory);
 }
 
 void BuildWindow::set_busy(bool busy) {
