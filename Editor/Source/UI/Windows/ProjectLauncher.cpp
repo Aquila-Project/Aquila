@@ -1,19 +1,18 @@
 #include "UI/Windows/ProjectLauncher.h"
 
 #include "Aquila/Foundation/Macros.h"
-#include "Aquila/Platform/Events/Event.h"
-#include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/Platform/Input.h"
 #include "Aquila/Platform/Process.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/Button.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
 namespace Editor {
@@ -26,21 +25,6 @@ namespace {
 constexpr int K_CARDS_PER_ROW = 3;
 constexpr int K_THUMB_PALETTE = 6;
 constexpr const char *K_WIKI_URL = "https://github.com/Aquila-Project/Aquila/wiki";
-
-class ClickableView : public View {
-  public:
-	ClickableView() { set_input_leaf(true); }
-
-	Signal<void()> on_click;
-
-	void on_mouse_release(Platform::MouseButton btn, Vec2 pos) override {
-		const bool was_pressed = m_is_pressed;
-		View::on_mouse_release(btn, pos);
-		if (btn == Platform::MouseButton::Left && m_is_hovered && was_pressed) {
-			on_click();
-		}
-	}
-};
 
 std::string relative_time(Uint64 timestamp) {
 	if (timestamp == 0) {
@@ -91,9 +75,9 @@ View *add_view(View *parent, const char *css_class) {
 	return view;
 }
 
-ClickableView *add_card(View *row, const std::string &title, const std::string &meta, const std::string &letter,
-						const std::string &thumb_class) {
-	auto *card = row->add_child<ClickableView>();
+Clickable *add_card(View *row, const std::string &title, const std::string &meta, const std::string &letter,
+					const std::string &thumb_class) {
+	auto *card = row->add_child<Clickable>();
 	card->add_class("launcher-card");
 
 	auto *thumb = add_view(card, "launcher-thumb");
@@ -119,10 +103,9 @@ void ProjectLauncher::build(ProjectManager *project_manager, TextureCache *textu
 		m_logo = m_texture_cache->load("Engine/aquila-logo.png");
 	}
 
-	m_canvas = std::make_unique<Canvas>(width, height);
-	UI::StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	create_canvas(width, height, style_paths);
 
-	auto *root = m_canvas->get_root();
+	auto *root = get_canvas()->get_root();
 	root->set_id("launcher-root");
 	root->add_class("launcher-root");
 
@@ -156,7 +139,7 @@ void ProjectLauncher::build(ProjectManager *project_manager, TextureCache *textu
 	select_template(ProjectTemplate::Empty);
 	refresh_list();
 	show_page(Page::Recent);
-	m_canvas->reload_styles();
+	get_canvas()->reload_styles();
 }
 
 void ProjectLauncher::build_header(View *root) {
@@ -175,27 +158,17 @@ void ProjectLauncher::build_header(View *root) {
 }
 
 void ProjectLauncher::build_rail(View *main) {
-	auto *rail = add_view(main, "launcher-rail");
+	m_rail = main->add_child<TabBar>("launcher-nav");
+	m_rail->add_class("launcher-rail");
+	m_rail->on_selected.connect([this](int page) { show_page(static_cast<Page>(page)); });
 
-	struct NavItem {
-		Page page;
-		const char *text;
-		const char *icon;
-	};
-	const NavItem items[] = {
-		{ Page::Recent, "Recent projects", "Engine/UI/Icons/folder-open.svg" },
-		{ Page::New, "New project", "Engine/UI/Icons/plus.svg" },
-		{ Page::Learn, "Learn", "Engine/UI/Icons/book-open-text.svg" },
-	};
-	for (const NavItem &item : items) {
-		auto *button = rail->add_child<Button>(std::string(item.text));
-		button->add_class("launcher-nav");
-		if (m_texture_cache != nullptr) {
-			button->set_icon(m_texture_cache->load(item.icon));
-		}
-		const Page page = item.page;
-		button->on_click.connect([this, page] { show_page(page); });
-		m_nav_buttons[static_cast<int>(page)] = button;
+	const std::array<std::pair<const char *, const char *>, 3> pages = { {
+		{ "Recent projects", "Engine/UI/Icons/folder-open.svg" },
+		{ "New project", "Engine/UI/Icons/plus.svg" },
+		{ "Learn", "Engine/UI/Icons/book-open-text.svg" },
+	} };
+	for (const auto &[text, icon] : pages) {
+		m_rail->add_tab(text, m_texture_cache != nullptr ? m_texture_cache->load(icon) : nullptr);
 	}
 }
 
@@ -246,7 +219,7 @@ void ProjectLauncher::build_new_page(View *content) {
 	auto *templates = add_view(page, "launcher-template-row");
 	const ProjectTemplate options[] = { ProjectTemplate::Empty, ProjectTemplate::Sandbox };
 	for (const ProjectTemplate option : options) {
-		auto *card = templates->add_child<ClickableView>();
+		auto *card = templates->add_child<Clickable>();
 		card->add_class("launcher-template");
 		add_label(card, ProjectManager::template_name(option), "launcher-template-name");
 		add_label(card, ProjectManager::template_description(option), "launcher-template-desc");
@@ -279,7 +252,7 @@ void ProjectLauncher::build_learn_page(View *content) {
 	add_label(page, "Learn", "launcher-page-title");
 
 	add_label(page, "Documentation", "launcher-section");
-	auto *docs = page->add_child<ClickableView>();
+	auto *docs = page->add_child<Clickable>();
 	docs->add_class("launcher-link");
 	add_label(docs, "Aquila wiki", "launcher-tip-title");
 	add_label(docs, "Guides and reference for the engine and the editor.", "launcher-tip-text");
@@ -312,13 +285,10 @@ void ProjectLauncher::build_learn_page(View *content) {
 
 void ProjectLauncher::show_page(Page page) {
 	m_page = page;
+	m_rail->set_active(static_cast<int>(page));
 	for (int i = 0; i < 3; ++i) {
-		const bool active = i == static_cast<int>(page);
 		if (m_pages[i] != nullptr) {
-			m_pages[i]->set_class("hidden", !active);
-		}
-		if (m_nav_buttons[i] != nullptr) {
-			m_nav_buttons[i]->set_class("launcher-nav-active", active);
+			m_pages[i]->set_class("hidden", i != static_cast<int>(page));
 		}
 	}
 	if (page == Page::Recent) {
@@ -335,9 +305,7 @@ void ProjectLauncher::refresh_list() {
 		return;
 	}
 
-	while (!m_grid_host->get_children().empty()) {
-		m_grid_host->remove_child(m_grid_host->get_children().front().get());
-	}
+	m_grid_host->clear_children();
 
 	const std::vector<ProjectInfo> projects = m_project_manager->list();
 	const bool has_projects = !projects.empty();
@@ -481,31 +449,6 @@ void ProjectLauncher::create_project() {
 		m_error_label->set_text("Could not create the project. Check the log for details.");
 		m_error_label->set_class("hidden", false);
 	}
-}
-
-void ProjectLauncher::update(F32 delta_time) {
-	m_canvas->update(delta_time);
-	m_canvas->compute();
-}
-
-void ProjectLauncher::render(Graphics::Renderer2D &batcher, GFX::GfxCommandList &cmd) {
-	m_canvas->submit_to_quad_batcher(batcher, cmd);
-}
-
-void ProjectLauncher::set_frame_target(const void *target) {
-	m_canvas->set_frame_target(target);
-}
-
-void ProjectLauncher::on_event(Platform::Events::Event &event) {
-	Platform::Events::EventDispatcher dispatcher(event);
-	dispatcher.dispatch<Platform::Events::WindowResizeEvent>([this](Platform::Events::WindowResizeEvent &e) {
-		if (e.get_width() > 0 && e.get_height() > 0) {
-			m_canvas->resize(e.get_width(), e.get_height());
-		}
-		return false;
-	});
-
-	m_canvas->on_event(event);
 }
 
 } // namespace Editor

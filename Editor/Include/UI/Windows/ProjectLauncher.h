@@ -1,23 +1,17 @@
 #pragma once
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/UI/Core/CanvasWindow.h"
 #include "Core/ProjectManager.h"
 
-namespace Aquila::Graphics {
-class Renderer2D;
-}
 namespace Aquila::GFX {
-class GfxCommandList;
 class GfxTexture;
 } // namespace Aquila::GFX
-namespace Aquila::Platform::Events {
-class Event;
-}
 namespace Aquila::UI::Core {
 class Button;
-class Canvas;
 class Label;
 class PopupMenu;
+class TabBar;
 class TextInput;
 class TextureCache;
 class View;
@@ -25,18 +19,13 @@ class View;
 
 namespace Editor {
 
-class ProjectLauncher {
+class ProjectLauncher final : public Aquila::UI::Core::CanvasWindow {
   public:
 	ProjectLauncher();
-	~ProjectLauncher();
+	~ProjectLauncher() override;
 
 	void build(ProjectManager *project_manager, Aquila::UI::Core::TextureCache *texture_cache, Uint32 width,
 			   Uint32 height, const std::vector<std::string> &style_paths);
-
-	void update(F32 delta_time);
-	void render(Aquila::Graphics::Renderer2D &batcher, Aquila::GFX::GfxCommandList &cmd);
-	void on_event(Aquila::Platform::Events::Event &event);
-	void set_frame_target(const void *target);
 
 	Delegate<void(const ProjectInfo &)> on_project_ready;
 
@@ -60,13 +49,12 @@ class ProjectLauncher {
 	void end_action();
 	void confirm_action();
 
-	Unique<Aquila::UI::Core::Canvas> m_canvas;
 	ProjectManager *m_project_manager = nullptr;
 	Aquila::UI::Core::TextureCache *m_texture_cache = nullptr;
 	Aquila::GFX::GfxTexture *m_logo = nullptr;
 
 	Page m_page = Page::Recent;
-	Aquila::UI::Core::Button *m_nav_buttons[3] = {};
+	Aquila::UI::Core::TabBar *m_rail = nullptr;
 	Aquila::UI::Core::View *m_pages[3] = {};
 
 	Aquila::UI::Core::Label *m_recent_count = nullptr;

@@ -127,14 +127,12 @@ void EditorModule::open_project_launcher() {
 		Aquila::Foundation::FrameScheduler::get()->request_frame();
 	};
 
-	m_launcher_window = Aquila::Rendering::open_content_window(m_engine->get_window_host(), *m_project_launcher, 900,
-															   600, "Aquila - Projects", [this] {
-																   m_project_launcher.reset();
-																   m_launcher_window = nullptr;
-																   if (!m_editor_entered) {
-																	   m_engine->request_close();
-																   }
-															   });
+	m_project_launcher->open(m_engine->get_window_host(), "Aquila - Projects", [this] {
+		m_project_launcher.reset();
+		if (!m_editor_entered) {
+			m_engine->request_close();
+		}
+	});
 }
 
 void EditorModule::enter_editor(const ProjectInfo &project) {
@@ -152,8 +150,8 @@ void EditorModule::enter_editor(const ProjectInfo &project) {
 	m_editor_entered = true;
 	m_project = project;
 	m_project_manager->open(m_project);
-	if (m_launcher_window != nullptr) {
-		m_engine->get_window_host().request_close(m_launcher_window);
+	if (m_project_launcher) {
+		m_project_launcher->close();
 	}
 
 	m_engine->get_window().show();

@@ -143,7 +143,6 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<SettingsWindow> m_settings_window;
 	Unique<BuildWindow> m_build_window;
 	Unique<ProjectLauncher> m_project_launcher;
-	Aquila::Rendering::RenderWindowId m_launcher_window = nullptr;
 	bool m_editor_entered = false;
 	Option<ProjectInfo> m_pending_project;
 	std::string m_startup_project;
