@@ -527,7 +527,6 @@ bool EditorModule::write_scene(const std::string &path) {
 	const std::string mount = SharedConstants::PROJECT_MOUNT + "/";
 	if (path.starts_with(mount)) {
 		m_project_manager->add_scene(m_project, path.substr(mount.size()));
-		m_context->set_project(m_project);
 	}
 	AQUILA_LOG_INFO("EditorModule: scene saved at {}", path);
 	return true;
@@ -671,10 +670,9 @@ void EditorModule::setup_editor_ui() {
 									});
 
 	const std::string layout_dir = cfg.ui.layout_path.substr(0, cfg.ui.layout_path.find_last_of('/') + 1);
-	m_context =
-		std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir);
+	m_context = std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir,
+												m_project);
 	m_context->set_camera(m_editor_camera.get());
-	m_context->set_project(m_project);
 	add_builtin_component_editors(m_context->component_editors);
 	add_builtin_asset_types(m_context->asset_types);
 	if (!m_thumbnails) {
@@ -914,7 +912,6 @@ void EditorModule::write_project_settings(ProjectSettings settings) {
 	}
 	m_project.settings = std::move(settings);
 	if (m_context) {
-		m_context->set_project(m_project);
 		m_context->on_settings_changed();
 	}
 	m_project_save_due = Aquila::Foundation::now() + K_SETTINGS_SAVE_DELAY;

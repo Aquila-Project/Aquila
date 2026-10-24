@@ -44,9 +44,9 @@ bool EditorSelection::has() const {
 
 EditorContext::EditorContext(Aquila::Application::EngineContext &engine, Aquila::UI::Core::Canvas &canvas,
 							 Aquila::UI::Core::LayoutLoader &layouts, Aquila::UI::Core::TextureCache &textures,
-							 std::string layout_dir)
-	: m_engine(engine), m_canvas(canvas), m_layouts(layouts), m_textures(textures),
-	  m_layout_dir(std::move(layout_dir)) {}
+							 std::string layout_dir, const ProjectInfo &project)
+	: m_engine(engine), m_canvas(canvas), m_layouts(layouts), m_textures(textures), m_layout_dir(std::move(layout_dir)),
+	  m_project(project) {}
 
 Aquila::GFX::GfxTexture *EditorContext::icon(std::string_view name) const {
 	return m_textures.load("Engine/UI/Icons/" + std::string(name) + ".svg");

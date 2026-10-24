@@ -65,9 +65,10 @@ class EditorSelection {
 /// What every editor window can reach.
 class EditorContext {
   public:
+	/// `project` must outlive the context.
 	EditorContext(Aquila::Application::EngineContext &engine, Aquila::UI::Core::Canvas &canvas,
 				  Aquila::UI::Core::LayoutLoader &layouts, Aquila::UI::Core::TextureCache &textures,
-				  std::string layout_dir);
+				  std::string layout_dir, const ProjectInfo &project);
 
 	[[nodiscard]] Aquila::Application::EngineContext &engine() const { return m_engine; }
 	[[nodiscard]] Aquila::UI::Core::Canvas &canvas() const { return m_canvas; }
@@ -81,7 +82,6 @@ class EditorContext {
 	void set_overlay_root(Aquila::UI::Core::View *root) { m_overlay_root = root; }
 
 	[[nodiscard]] const ProjectInfo &project() const { return m_project; }
-	void set_project(ProjectInfo project) { m_project = std::move(project); }
 	/// Changes the open project's settings. EditorModule saves them and fires on_settings_changed.
 	void set_project_settings(ProjectSettings settings) {
 		if (m_project_settings_writer) {
@@ -145,7 +145,7 @@ class EditorContext {
 	Delegate<bool(std::string_view)> m_window_visible;
 	Option<Rect> m_game_view;
 	bool m_game_focused = false;
-	ProjectInfo m_project;
+	const ProjectInfo &m_project;
 	Delegate<void(ProjectSettings)> m_project_settings_writer;
 };
 
