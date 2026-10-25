@@ -102,3 +102,57 @@ TEST_SUITE("Components") {
 				  .log.find("doesn't take the attribute 'title'") != std::string::npos);
 	}
 }
+
+TEST_SUITE("Component props") {
+	TEST_CASE("props fill attribute values and text once") {
+		const Loaded loaded = load(R"(
+<Component name="Tip" props="tip"><View tooltip="Says $tip"><Label>$tip!</Label></View></Component>
+<View id="root"><Tip tip="hi"/><Tip/></View>)");
+		REQUIRE(loaded.root != nullptr);
+		CHECK_MESSAGE(loaded.log.empty(), loaded.log);
+		CHECK(loaded.root->get_children()[0]->get_tooltip() == "Says hi");
+		CHECK(loaded.root->get_children()[1]->get_tooltip() == "Says ");
+		const auto *label = dynamic_cast<const Label *>(loaded.root->get_children()[0]->get_children()[0].get());
+		REQUIRE(label != nullptr);
+		CHECK(label->get_text() == "hi!");
+	}
+
+	TEST_CASE("text between the tags is the prop text") {
+		const Loaded loaded =
+			load(R"(<Component name="Title" props="text"><Label>$text</Label></Component><Title>Scene</Title>)");
+		CHECK_MESSAGE(loaded.log.empty(), loaded.log);
+		const auto *label = dynamic_cast<const Label *>(loaded.root.get());
+		REQUIRE(label != nullptr);
+		CHECK(label->get_text() == "Scene");
+	}
+
+	TEST_CASE("a double dollar is a dollar") {
+		const Loaded loaded = load(R"(<Component name="Price"><Label>$$5</Label></Component><Price/>)");
+		const auto *label = dynamic_cast<const Label *>(loaded.root.get());
+		REQUIRE(label != nullptr);
+		CHECK(label->get_text() == "$5");
+	}
+
+	TEST_CASE("props pass down through nested components and slots") {
+		const Loaded loaded = load(R"(
+<Component name="Inner" props="label"><View><Label>$label</Label><Slot/></View></Component>
+<Component name="Outer" props="title"><Inner label="$title"><Label>in $title</Label></Inner></Component>
+<Outer title="Hi"/>)");
+		REQUIRE(loaded.root != nullptr);
+		CHECK_MESSAGE(loaded.log.empty(), loaded.log);
+		REQUIRE(loaded.root->get_children().size() == 2);
+		CHECK(dynamic_cast<const Label *>(loaded.root->get_children()[0].get())->get_text() == "Hi");
+		CHECK(dynamic_cast<const Label *>(loaded.root->get_children()[1].get())->get_text() == "in Hi");
+	}
+
+	TEST_CASE("an undeclared prop is reported") {
+		CHECK(load(R"(<Component name="U"><Label>$nope</Label></Component><U/>)")
+				  .log.find("'U' has no prop named 'nope'") != std::string::npos);
+	}
+
+	TEST_CASE("markup outside a component is never substituted") {
+		const Loaded loaded = load(R"(<Label>$5 and $name</Label>)");
+		CHECK_MESSAGE(loaded.log.empty(), loaded.log);
+		CHECK(dynamic_cast<const Label *>(loaded.root.get())->get_text() == "$5 and $name");
+	}
+}

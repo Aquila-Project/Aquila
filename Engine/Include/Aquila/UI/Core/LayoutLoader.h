@@ -79,7 +79,8 @@ class LayoutLoader : public IResourceResolver {
 	Unique<View> build_element(const Markup::MarkupNode &node, const BuildScope &scope);
 	Unique<View> build_component(const Markup::ComponentDefinition &definition, const Markup::MarkupNode &instance,
 								 const BuildScope &scope);
-	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font);
+	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font,
+						bool skip_text = false);
 };
 
 } // namespace Aquila::UI::Core

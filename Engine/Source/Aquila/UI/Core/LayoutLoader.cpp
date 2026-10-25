@@ -189,6 +189,55 @@ struct LayoutLoader::BuildScope {
 	const Markup::ComponentDefinition *definition = nullptr;
 	const Markup::MarkupNode *instance = nullptr;
 	const BuildScope *outer = nullptr;
+	std::map<std::string, std::string, std::less<>> props{};
+
+	[[nodiscard]] bool takes_prop(std::string_view name) const {
+		return definition != nullptr && std::ranges::find(definition->props, name) != definition->props.end();
+	}
+
+	[[nodiscard]] std::string substitute(std::string_view value, Markup::SourceLocation where) const {
+		if (definition == nullptr || value.find('$') == std::string_view::npos) {
+			return std::string(value);
+		}
+		std::string out;
+		Usize i = 0;
+		while (i < value.size()) {
+			if (value[i] != '$') {
+				out.push_back(value[i++]);
+				continue;
+			}
+			if (i + 1 < value.size() && value[i + 1] == '$') {
+				out.push_back('$');
+				i += 2;
+				continue;
+			}
+			Usize end = i + 1;
+			if (end < value.size() &&
+				(std::isalpha(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_')) {
+				while (end < value.size() &&
+					   (std::isalnum(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_' ||
+						value[end] == '-')) {
+					++end;
+				}
+			}
+			if (end == i + 1) {
+				out.push_back('$');
+				++i;
+				continue;
+			}
+			const std::string_view name = value.substr(i + 1, end - i - 1);
+			if (takes_prop(name)) {
+				if (const auto it = props.find(name); it != props.end()) {
+					out += it->second;
+				}
+			} else {
+				AQUILA_LOG_ERROR("LayoutLoader: {}: '{}' has no prop named '{}'", document->location(where),
+								 definition->name, name);
+			}
+			i = end;
+		}
+		return out;
+	}
 
 	[[nodiscard]] bool is_building(const Markup::ComponentDefinition &other) const {
 		for (const BuildScope *scope = this; scope != nullptr; scope = scope->outer) {
@@ -224,11 +273,12 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 							   document.location(node.where));
 		}
 		const Markup::MarkupAttribute *src = node.find("src");
-		if (src == nullptr || src->value.empty()) {
+		const std::string path = src != nullptr ? scope.substitute(src->value, src->value_where) : std::string();
+		if (path.empty()) {
 			AQUILA_LOG_ERROR("LayoutLoader: {}: <Include> is missing a 'src' attribute", document.location(node.where));
 			return nullptr;
 		}
-		return load_file(src->value);
+		return load_file(path);
 	}
 
 	if (node.tag == "Slot") {
@@ -239,7 +289,7 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 
 	Text::FontAtlas *font = resolve_font("default");
 	if (const Markup::MarkupAttribute *font_name = node.find("font")) {
-		font = resolve_font(font_name->value);
+		font = resolve_font(scope.substitute(font_name->value, font_name->value_where));
 	}
 
 	Unique<View> view = create_widget(node.tag, "", font);
@@ -254,15 +304,16 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 	UI::StyleProperties props;
 	for (const Markup::MarkupAttribute &attribute : node.attributes) {
 		if (attribute.name == "id") {
-			view->set_id(attribute.value);
+			view->set_id(scope.substitute(attribute.value, attribute.value_where));
 		} else if (attribute.name == "class") {
-			std::istringstream iss(attribute.value);
+			std::istringstream iss(scope.substitute(attribute.value, attribute.value_where));
 			std::string cls;
 			while (iss >> cls) {
 				view->add_class(cls);
 			}
 		} else if (attribute.name == "style") {
-			apply_inline_style(props, attribute.value, document, attribute.value_where);
+			apply_inline_style(props, scope.substitute(attribute.value, attribute.value_where), document,
+							   attribute.value_where);
 		}
 	}
 	view->merge_style(props);
@@ -273,14 +324,18 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 
 	for (const std::string_view name : { "tint", "src", "uv" }) {
 		const Markup::MarkupAttribute *attribute = node.find(name);
-		if (attribute != nullptr && !attribute->value.empty()) {
-			view->apply_xml_attribute(name, attribute->value, this);
+		if (attribute == nullptr) {
+			continue;
+		}
+		const std::string value = scope.substitute(attribute->value, attribute->value_where);
+		if (!value.empty()) {
+			view->apply_xml_attribute(name, value, this);
 		}
 	}
 
 	for (const Markup::MarkupAttribute &attribute : node.attributes) {
 		if (!is_built_in_attribute(attribute.name)) {
-			view->apply_xml_attribute(attribute.name, attribute.value, this);
+			view->apply_xml_attribute(attribute.name, scope.substitute(attribute.value, attribute.value_where), this);
 		}
 	}
 
@@ -302,14 +357,33 @@ Unique<View> LayoutLoader::build_component(const Markup::ComponentDefinition &de
 						 definition.name);
 		return nullptr;
 	}
-	if (!definition.has_slot && !instance.children.empty()) {
+	BuildScope inner{ .document = scope.document, .definition = &definition, .instance = &instance, .outer = &scope };
+	const bool text_is_prop = inner.takes_prop("text");
+	const bool has_children = std::ranges::any_of(instance.children, [text_is_prop](const Markup::MarkupNode &child) {
+		return !text_is_prop || !child.is_text();
+	});
+	if (!definition.has_slot && has_children) {
 		AQUILA_LOG_WARNING("LayoutLoader: {}: '{}' has no <Slot/>, its children are dropped", where, definition.name);
 	}
 
-	const BuildScope inner{ .document = scope.document,
-							.definition = &definition,
-							.instance = &instance,
-							.outer = &scope };
+	for (const Markup::MarkupAttribute &attribute : instance.attributes) {
+		if (inner.takes_prop(attribute.name)) {
+			inner.props[attribute.name] = scope.substitute(attribute.value, attribute.value_where);
+		} else if (attribute.name != "id" && attribute.name != "class" && attribute.name != "style") {
+			AQUILA_LOG_WARNING("LayoutLoader: {}: '{}' doesn't take the attribute '{}'",
+							   document.location(attribute.where), definition.name, attribute.name);
+		}
+	}
+	if (text_is_prop) {
+		std::string text;
+		for (const Markup::MarkupNode &child : instance.children) {
+			if (child.is_text()) {
+				text += (text.empty() ? "" : " ") + scope.substitute(child.text, child.where);
+			}
+		}
+		inner.props["text"] = std::move(text);
+	}
+
 	Unique<View> root = build_element(definition.root, inner);
 	if (!root) {
 		return nullptr;
@@ -318,18 +392,16 @@ Unique<View> LayoutLoader::build_component(const Markup::ComponentDefinition &de
 	UI::StyleProperties props;
 	for (const Markup::MarkupAttribute &attribute : instance.attributes) {
 		if (attribute.name == "id") {
-			root->set_id(attribute.value);
+			root->set_id(scope.substitute(attribute.value, attribute.value_where));
 		} else if (attribute.name == "class") {
-			std::istringstream iss(attribute.value);
+			std::istringstream iss(scope.substitute(attribute.value, attribute.value_where));
 			std::string cls;
 			while (iss >> cls) {
 				root->add_class(cls);
 			}
 		} else if (attribute.name == "style") {
-			apply_inline_style(props, attribute.value, document, attribute.value_where);
-		} else {
-			AQUILA_LOG_WARNING("LayoutLoader: {}: '{}' doesn't take the attribute '{}'",
-							   document.location(attribute.where), definition.name, attribute.name);
+			apply_inline_style(props, scope.substitute(attribute.value, attribute.value_where), document,
+							   attribute.value_where);
 		}
 	}
 	root->merge_style(props);
@@ -337,10 +409,13 @@ Unique<View> LayoutLoader::build_component(const Markup::ComponentDefinition &de
 }
 
 void LayoutLoader::build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope,
-								  Text::FontAtlas *font) {
+								  Text::FontAtlas *font, bool skip_text) {
 	for (const Markup::MarkupNode &child : node.children) {
 		if (child.is_text()) {
-			view.apply_xml_text_content(child.text);
+			if (skip_text) {
+				continue;
+			}
+			view.apply_xml_text_content(scope.substitute(child.text, child.where));
 			if (font != nullptr) {
 				view.set_font(font);
 			}
@@ -348,7 +423,7 @@ void LayoutLoader::build_children(View &view, const Markup::MarkupNode &node, co
 		}
 		if (child.tag == "Slot" && scope.definition != nullptr) {
 			if (scope.instance != nullptr && scope.outer != nullptr) {
-				build_children(view, *scope.instance, *scope.outer, font);
+				build_children(view, *scope.instance, *scope.outer, font, scope.takes_prop("text"));
 			}
 			continue;
 		}
