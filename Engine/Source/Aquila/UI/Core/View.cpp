@@ -1,5 +1,6 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/ComponentInstance.h"
 #include "Aquila/UI/Core/FontRegistry.h"
 #include "Aquila/UI/Rendering/DrawCmd.h"
 #include "Aquila/UI/Style/StyleParserHelper.h"
@@ -75,6 +76,21 @@ Option<Vec2> parse_vec2(std::string_view text) {
 } // namespace
 
 View::View() : m_stable_id(++s_NextStableId) {}
+
+View::~View() {
+	m_component_instance.reset();
+	m_alive.reset();
+	std::vector<Unique<View>> children = std::exchange(m_children, {});
+	children.clear();
+}
+
+void View::set_component_instance(Unique<ComponentInstance> instance) {
+	m_component_instance = std::move(instance);
+}
+
+Unique<ComponentInstance> View::take_component_instance() {
+	return std::move(m_component_instance);
+}
 
 static F32 apply_easing(F32 t, UI::TransitionEasing easing) {
 	switch (easing) {
