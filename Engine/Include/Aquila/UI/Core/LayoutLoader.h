@@ -7,6 +7,11 @@
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Text/FontAtlas.h"
 
+namespace Aquila::UI::Markup {
+struct MarkupDocument;
+struct MarkupNode;
+}
+
 namespace Aquila::UI::Core {
 
 /// Builds a View tree from .aqlayout markup. Problems are logged with file:line:col and never throw.
@@ -68,6 +73,9 @@ class LayoutLoader : public IResourceResolver {
 	}
 
 	void register_builtins();
+	Unique<View> build_element(const Markup::MarkupDocument &document, const Markup::MarkupNode &node);
+	void build_children(View &view, const Markup::MarkupDocument &document, const Markup::MarkupNode &node,
+						Text::FontAtlas *font);
 };
 
 } // namespace Aquila::UI::Core

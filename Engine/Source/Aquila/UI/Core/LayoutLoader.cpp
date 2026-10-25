@@ -1,5 +1,6 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Markup/MarkupParser.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
@@ -40,383 +41,34 @@ namespace Aquila::UI::Core {
 
 namespace {
 
-struct Parser {
-	std::string_view src;
-	std::string_view source_name;
-	size_t pos = 0;
-	LayoutLoader &loader;
+void apply_inline_style(UI::StyleProperties &props, std::string_view decls, const Markup::MarkupDocument &document,
+						Markup::SourceLocation where) {
+	while (!decls.empty()) {
+		const auto semi = decls.find(';');
+		const std::string_view decl =
+			Foundation::trim((semi != std::string_view::npos) ? decls.substr(0, semi) : decls);
+		decls = (semi != std::string_view::npos) ? decls.substr(semi + 1) : std::string_view{};
+		if (decl.empty()) {
+			continue;
+		}
 
-	[[nodiscard]] bool at_end() const { return pos >= src.size(); }
-	[[nodiscard]] char peek() const { return at_end() ? '\0' : src[pos]; }
-	[[nodiscard]] char peek2() const { return (pos + 1 < src.size()) ? src[pos + 1] : '\0'; }
-	[[nodiscard]] bool at(std::string_view text) const { return src.substr(pos).starts_with(text); }
-	[[nodiscard]] bool at_tag_end() const { return peek() == '>' || (peek() == '/' && peek2() == '>'); }
-
-	char advance() {
-		AQUILA_ASSERT(!at_end(), "LayoutLoader: unexpected end of input");
-		return src[pos++];
+		const auto colon = decl.find(':');
+		const std::string_view prop = colon == std::string_view::npos ? decl : Foundation::trim(decl.substr(0, colon));
+		const std::string_view val =
+			colon == std::string_view::npos ? std::string_view{} : Foundation::trim(decl.substr(colon + 1));
+		if (prop.empty() || val.empty()) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: style declaration '{}' needs 'property: value'",
+							 document.location(where), decl);
+			continue;
+		}
+		UI::StyleParser::apply_property(props, prop, val);
 	}
+}
 
-	[[nodiscard]] std::string location(size_t offset) const {
-		const std::string_view before = src.substr(0, std::min(offset, src.size()));
-		const auto line = std::ranges::count(before, '\n') + 1;
-		const size_t line_start = before.rfind('\n');
-		const size_t column = before.size() - (line_start == std::string_view::npos ? 0 : line_start + 1) + 1;
-		return std::string(source_name) + ":" + std::to_string(line) + ":" + std::to_string(column);
-	}
-
-	void skip_ws() {
-		while (!at_end() && (std::isspace(static_cast<unsigned char>(peek())) != 0)) {
-			advance();
-		}
-	}
-
-	void skip_past(char c) {
-		while (!at_end() && advance() != c) {
-		}
-	}
-
-	void skip_tag_junk() {
-		while (!at_end() && !at_tag_end()) {
-			advance();
-		}
-	}
-
-	bool match(char c) {
-		if (peek() == c) {
-			advance();
-			return true;
-		}
-		return false;
-	}
-
-	std::string read_name() {
-		size_t start = pos;
-		while (!at_end() &&
-			   ((std::isalnum(static_cast<unsigned char>(peek())) != 0) || peek() == '-' || peek() == '_' ||
-				peek() == ':')) {
-			advance();
-		}
-		return std::string(src.substr(start, pos - start));
-	}
-
-	std::string read_quoted() {
-		const size_t open = pos;
-		char q = advance();
-		size_t start = pos;
-		while (!at_end() && peek() != q) {
-			advance();
-		}
-		std::string val(src.substr(start, pos - start));
-		if (at_end()) {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: this quote is never closed", location(open));
-		} else {
-			advance();
-		}
-		return val;
-	}
-
-	std::string read_unquoted() {
-		size_t start = pos;
-		while (!at_end() && peek() != '>' && peek() != '/' && (std::isspace(static_cast<unsigned char>(peek())) == 0)) {
-			advance();
-		}
-		std::string value(src.substr(start, pos - start));
-		if (peek() == '/' && peek2() != '>') {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: the unquoted value '{}' stops at '/', put it in quotes",
-							 location(start), value);
-			skip_tag_junk();
-		}
-		return value;
-	}
-
-	std::string read_text_content() {
-		size_t start = pos;
-		while (!at_end() && peek() != '<') {
-			advance();
-		}
-		std::string_view raw = src.substr(start, pos - start);
-		while (!raw.empty() && (std::isspace(static_cast<unsigned char>(raw.front())) != 0)) {
-			raw.remove_prefix(1);
-		}
-		while (!raw.empty() && (std::isspace(static_cast<unsigned char>(raw.back())) != 0)) {
-			raw.remove_suffix(1);
-		}
-		return std::string(raw);
-	}
-
-	void skip_markup() {
-		const size_t start = pos;
-		if (at("<!--")) {
-			const size_t close = src.find("-->", pos + 4);
-			if (close == std::string_view::npos) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: this comment is never closed with '-->'", location(start));
-				pos = src.size();
-				return;
-			}
-			pos = close + 3;
-			return;
-		}
-		AQUILA_LOG_ERROR("LayoutLoader: {}: only <!-- --> comments are supported here", location(start));
-		skip_past('>');
-	}
-
-	void parse_closing_tag(std::string_view open_name) {
-		const size_t start = pos;
-		pos += 2;
-		skip_ws();
-		const std::string name = read_name();
-		skip_ws();
-		if (!match('>')) {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: expected '>' to end </{}>", location(pos), name);
-			skip_past('>');
-		}
-		if (name != open_name) {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: </{}> closes <{}>", location(start), name, open_name);
-		}
-	}
-
-	bool parse_children(View *parent, std::string_view tag_name, size_t tag_start, Text::FontAtlas *font) {
-		bool had_content = false;
-		while (true) {
-			skip_ws();
-			if (at_end()) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: <{}> is never closed", location(tag_start), tag_name);
-				return had_content;
-			}
-			if (peek() == '<' && peek2() == '/') {
-				parse_closing_tag(tag_name);
-				return had_content;
-			}
-			if (peek() == '<' && peek2() == '!') {
-				skip_markup();
-				continue;
-			}
-
-			had_content = true;
-			if (peek() == '<') {
-				auto child = parse_element();
-				if (child && parent != nullptr) {
-					parent->add_child(std::move(child));
-				}
-				continue;
-			}
-
-			std::string text = read_text_content();
-			if (parent != nullptr) {
-				parent->apply_xml_text_content(text);
-				if (font != nullptr) {
-					parent->set_font(font);
-				}
-			}
-		}
-	}
-
-	void apply_inline_style(UI::StyleProperties &props, std::string_view decls, size_t at_offset) {
-		while (!decls.empty()) {
-			const auto semi = decls.find(';');
-			const std::string_view decl = Foundation::trim((semi != std::string_view::npos) ? decls.substr(0, semi) : decls);
-			decls = (semi != std::string_view::npos) ? decls.substr(semi + 1) : std::string_view{};
-			if (decl.empty()) {
-				continue;
-			}
-
-			const auto colon = decl.find(':');
-			const std::string_view prop = colon == std::string_view::npos ? decl : Foundation::trim(decl.substr(0, colon));
-			const std::string_view val =
-				colon == std::string_view::npos ? std::string_view{} : Foundation::trim(decl.substr(colon + 1));
-			if (prop.empty() || val.empty()) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: style declaration '{}' needs 'property: value'",
-								 location(at_offset), decl);
-				continue;
-			}
-			UI::StyleParser::apply_property(props, prop, val);
-		}
-	}
-
-	Unique<View> parse_element() {
-		const size_t tag_start = pos;
-		advance();
-		skip_ws();
-
-		std::string tag_name = read_name();
-		if (tag_name.empty()) {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: expected a widget name after '<'", location(tag_start));
-			skip_past('>');
-			return nullptr;
-		}
-
-		std::string id;
-		std::vector<std::string> classes;
-		UI::StyleProperties props;
-		Text::FontAtlas *font = loader.resolve_font("default");
-
-		std::string image_src;
-		std::string image_uv;
-		std::string image_tint;
-		std::vector<std::pair<std::string, std::string>> generic_attrs;
-		std::vector<std::string> seen;
-
-		skip_ws();
-		while (!at_end() && !at_tag_end()) {
-			const size_t attr_start = pos;
-			std::string attr_name = read_name();
-			if (attr_name.empty()) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: expected an attribute name, '>' or '/>' in <{}>",
-								 location(attr_start), tag_name);
-				advance();
-				skip_tag_junk();
-				break;
-			}
-			if (std::ranges::find(seen, attr_name) != seen.end()) {
-				AQUILA_LOG_WARNING("LayoutLoader: {}: attribute '{}' is given twice", location(attr_start), attr_name);
-			}
-			seen.push_back(attr_name);
-
-			skip_ws();
-			std::string attr_value;
-			size_t value_start = pos;
-			if (match('=')) {
-				skip_ws();
-				value_start = pos;
-				attr_value = (peek() == '"' || peek() == '\'') ? read_quoted() : read_unquoted();
-			}
-			skip_ws();
-
-			if (attr_name == "id") {
-				id = attr_value;
-			} else if (attr_name == "class") {
-				std::istringstream iss(attr_value);
-				std::string cls;
-				while (iss >> cls) {
-					classes.push_back(cls);
-				}
-			} else if (attr_name == "font") {
-				font = loader.resolve_font(attr_value);
-			} else if (attr_name == "style") {
-				apply_inline_style(props, attr_value, value_start);
-			} else if (attr_name == "src") {
-				image_src = attr_value;
-			} else if (attr_name == "uv") {
-				image_uv = attr_value;
-			} else if (attr_name == "tint") {
-				image_tint = attr_value;
-			} else {
-				generic_attrs.emplace_back(std::move(attr_name), std::move(attr_value));
-			}
-		}
-
-		const bool self_closing = match('/');
-		if (!match('>')) {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: <{}> is never finished with '>' or '/>'", location(tag_start),
-							 tag_name);
-		}
-
-		if (tag_name == "Include") {
-			if (!self_closing && parse_children(nullptr, tag_name, tag_start, nullptr)) {
-				AQUILA_LOG_WARNING("LayoutLoader: {}: the children of <Include> are ignored", location(tag_start));
-			}
-			if (image_src.empty()) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: <Include> is missing a 'src' attribute", location(tag_start));
-				return nullptr;
-			}
-			return loader.load_file(image_src);
-		}
-
-		Unique<View> view = loader.create_widget(tag_name, "", font);
-		if (!view) {
-			AQUILA_LOG_ERROR("LayoutLoader: {}: unknown widget type '{}'", location(tag_start), tag_name);
-			if (!self_closing) {
-				parse_children(nullptr, tag_name, tag_start, nullptr);
-			}
-			return nullptr;
-		}
-
-		if (!id.empty()) {
-			view->set_id(id);
-		}
-		for (auto &cls : classes) {
-			view->add_class(cls);
-		}
-		view->merge_style(props);
-
-		if (font != nullptr) {
-			view->set_font(font);
-		}
-
-		IResourceResolver *loader_ctx = &loader;
-		if (!image_tint.empty()) {
-			view->apply_xml_attribute("tint", image_tint, loader_ctx);
-		}
-		if (!image_src.empty()) {
-			view->apply_xml_attribute("src", image_src, loader_ctx);
-		}
-		if (!image_uv.empty()) {
-			view->apply_xml_attribute("uv", image_uv, loader_ctx);
-		}
-
-		for (const auto &attr : generic_attrs) {
-			view->apply_xml_attribute(attr.first, attr.second, loader_ctx);
-		}
-
-		if (!self_closing) {
-			parse_children(view.get(), tag_name, tag_start, font);
-		}
-
-		view->on_xml_loaded();
-		return view;
-	}
-
-	void skip_prolog() {
-		if (at("\xEF\xBB\xBF")) {
-			pos += 3;
-		}
-	}
-
-	Unique<View> parse() {
-		skip_prolog();
-		Unique<View> root;
-		while (true) {
-			skip_ws();
-			if (at_end()) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: no root element", source_name);
-				return nullptr;
-			}
-			if (peek() == '<' && peek2() == '!') {
-				skip_markup();
-				continue;
-			}
-			if (peek() == '<' && peek2() == '?') {
-				skip_past('>');
-				continue;
-			}
-			if (peek() == '<' && peek2() != '/') {
-				root = parse_element();
-				break;
-			}
-			AQUILA_LOG_ERROR("LayoutLoader: {}: unexpected content before the root element", location(pos));
-			if (peek() == '<') {
-				skip_past('>');
-			} else {
-				read_text_content();
-			}
-		}
-
-		while (true) {
-			skip_ws();
-			if (at_end()) {
-				break;
-			}
-			if (peek() == '<' && peek2() == '!') {
-				skip_markup();
-				continue;
-			}
-			AQUILA_LOG_WARNING("LayoutLoader: {}: content after the root element is ignored", location(pos));
-			break;
-		}
-		return root;
-	}
-};
+bool is_built_in_attribute(std::string_view name) {
+	return name == "id" || name == "class" || name == "font" || name == "style" || name == "src" || name == "uv" ||
+		name == "tint";
+}
 
 } // namespace
 
@@ -533,9 +185,91 @@ Unique<View> LayoutLoader::load_file(const std::string &path) {
 }
 
 Unique<View> LayoutLoader::load_string(std::string_view xml) {
-	const std::string_view source = m_include_stack.empty() ? std::string_view("<string>") : m_include_stack.back();
-	Parser p{ .src = xml, .source_name = source, .pos = 0, .loader = *this };
-	return p.parse();
+	std::string source = m_include_stack.empty() ? std::string("<string>") : m_include_stack.back();
+	const Markup::MarkupDocument document = Markup::parse_markup(xml, std::move(source));
+	if (!document.root) {
+		return nullptr;
+	}
+	return build_element(document, *document.root);
+}
+
+Unique<View> LayoutLoader::build_element(const Markup::MarkupDocument &document, const Markup::MarkupNode &node) {
+	if (node.tag == "Include") {
+		if (!node.children.empty()) {
+			AQUILA_LOG_WARNING("LayoutLoader: {}: the children of <Include> are ignored",
+							   document.location(node.where));
+		}
+		const Markup::MarkupAttribute *src = node.find("src");
+		if (src == nullptr || src->value.empty()) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Include> is missing a 'src' attribute", document.location(node.where));
+			return nullptr;
+		}
+		return load_file(src->value);
+	}
+
+	Text::FontAtlas *font = resolve_font("default");
+	if (const Markup::MarkupAttribute *font_name = node.find("font")) {
+		font = resolve_font(font_name->value);
+	}
+
+	Unique<View> view = create_widget(node.tag, "", font);
+	if (!view) {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: unknown widget type '{}'", document.location(node.where), node.tag);
+		return nullptr;
+	}
+
+	UI::StyleProperties props;
+	for (const Markup::MarkupAttribute &attribute : node.attributes) {
+		if (attribute.name == "id") {
+			view->set_id(attribute.value);
+		} else if (attribute.name == "class") {
+			std::istringstream iss(attribute.value);
+			std::string cls;
+			while (iss >> cls) {
+				view->add_class(cls);
+			}
+		} else if (attribute.name == "style") {
+			apply_inline_style(props, attribute.value, document, attribute.value_where);
+		}
+	}
+	view->merge_style(props);
+
+	if (font != nullptr) {
+		view->set_font(font);
+	}
+
+	for (const std::string_view name : { "tint", "src", "uv" }) {
+		const Markup::MarkupAttribute *attribute = node.find(name);
+		if (attribute != nullptr && !attribute->value.empty()) {
+			view->apply_xml_attribute(name, attribute->value, this);
+		}
+	}
+
+	for (const Markup::MarkupAttribute &attribute : node.attributes) {
+		if (!is_built_in_attribute(attribute.name)) {
+			view->apply_xml_attribute(attribute.name, attribute.value, this);
+		}
+	}
+
+	build_children(*view, document, node, font);
+	view->on_xml_loaded();
+	return view;
+}
+
+void LayoutLoader::build_children(View &view, const Markup::MarkupDocument &document, const Markup::MarkupNode &node,
+								  Text::FontAtlas *font) {
+	for (const Markup::MarkupNode &child : node.children) {
+		if (child.is_text()) {
+			view.apply_xml_text_content(child.text);
+			if (font != nullptr) {
+				view.set_font(font);
+			}
+			continue;
+		}
+		if (Unique<View> built = build_element(document, child)) {
+			view.add_child(std::move(built));
+		}
+	}
 }
 
 void LayoutLoader::register_builtins() {
