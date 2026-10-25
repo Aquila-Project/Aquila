@@ -8,6 +8,7 @@
 #include "Aquila/UI/Text/FontAtlas.h"
 
 namespace Aquila::UI::Markup {
+struct ComponentDefinition;
 struct MarkupDocument;
 struct MarkupNode;
 }
@@ -73,9 +74,12 @@ class LayoutLoader : public IResourceResolver {
 	}
 
 	void register_builtins();
-	Unique<View> build_element(const Markup::MarkupDocument &document, const Markup::MarkupNode &node);
-	void build_children(View &view, const Markup::MarkupDocument &document, const Markup::MarkupNode &node,
-						Text::FontAtlas *font);
+	struct BuildScope;
+
+	Unique<View> build_element(const Markup::MarkupNode &node, const BuildScope &scope);
+	Unique<View> build_component(const Markup::ComponentDefinition &definition, const Markup::MarkupNode &instance,
+								 const BuildScope &scope);
+	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font);
 };
 
 } // namespace Aquila::UI::Core

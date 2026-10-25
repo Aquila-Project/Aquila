@@ -246,12 +246,75 @@ struct Parser {
 		}
 	}
 
+	void add_definition(MarkupNode node) {
+		const std::string where = document.location(node.where);
+		const MarkupAttribute *name = node.find("name");
+		if (name == nullptr || name->value.empty()) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: a <Component> needs a 'name'", where);
+			return;
+		}
+
+		ComponentDefinition definition;
+		definition.name = name->value;
+		definition.where = node.where;
+		if (const MarkupAttribute *behaviour = node.find("behaviour")) {
+			definition.behaviour = behaviour->value;
+		}
+		if (const MarkupAttribute *props = node.find("props")) {
+			std::istringstream stream(props->value);
+			std::string prop;
+			while (stream >> prop) {
+				definition.props.push_back(prop);
+			}
+		}
+
+		std::vector<MarkupNode *> elements;
+		for (MarkupNode &child : node.children) {
+			if (!child.is_text()) {
+				elements.push_back(&child);
+			}
+		}
+		if (elements.size() != 1) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> needs exactly one root element", where,
+							 definition.name);
+			return;
+		}
+		definition.root = std::move(*elements.front());
+
+		const Usize slots = count_slots(definition.root);
+		if (slots > 1) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> can only have one <Slot/>", where, definition.name);
+			return;
+		}
+		definition.has_slot = slots == 1;
+
+		if (document.find_component(definition.name) != nullptr) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: a second <Component> named '{}'", where, definition.name);
+			return;
+		}
+		document.components.push_back(std::move(definition));
+	}
+
+	static Usize count_slots(const MarkupNode &node) {
+		if (node.tag == "Slot") {
+			return 1;
+		}
+		Usize count = 0;
+		for (const MarkupNode &child : node.children) {
+			count += count_slots(child);
+		}
+		return count;
+	}
+
 	void parse() {
 		skip_prolog();
+		bool saw_component = false;
 		while (true) {
 			skip_ws();
 			if (at_end()) {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: no root element", document.source_name);
+				if (!saw_component) {
+					AQUILA_LOG_ERROR("LayoutLoader: {}: no root element", document.source_name);
+				}
 				return;
 			}
 			if (peek() == '<' && peek2() == '!') {
@@ -263,7 +326,13 @@ struct Parser {
 				continue;
 			}
 			if (peek() == '<' && peek2() != '/') {
-				document.root = parse_element();
+				Option<MarkupNode> element = parse_element();
+				if (element && element->tag == "Component") {
+					saw_component = true;
+					add_definition(std::move(*element));
+					continue;
+				}
+				document.root = std::move(element);
 				break;
 			}
 			AQUILA_LOG_ERROR("LayoutLoader: {}: unexpected content before the root element", location(pos));
@@ -298,6 +367,11 @@ const MarkupAttribute *MarkupNode::find(std::string_view name) const {
 		}
 	}
 	return nullptr;
+}
+
+const ComponentDefinition *MarkupDocument::find_component(std::string_view name) const {
+	const auto it = std::ranges::find(components, name, &ComponentDefinition::name);
+	return it != components.end() ? &*it : nullptr;
 }
 
 std::string MarkupDocument::location(SourceLocation where) const {

@@ -184,16 +184,40 @@ Unique<View> LayoutLoader::load_file(const std::string &path) {
 	return result;
 }
 
+struct LayoutLoader::BuildScope {
+	const Markup::MarkupDocument *document = nullptr;
+	const Markup::ComponentDefinition *definition = nullptr;
+	const Markup::MarkupNode *instance = nullptr;
+	const BuildScope *outer = nullptr;
+
+	[[nodiscard]] bool is_building(const Markup::ComponentDefinition &other) const {
+		for (const BuildScope *scope = this; scope != nullptr; scope = scope->outer) {
+			if (scope->definition == &other) {
+				return true;
+			}
+		}
+		return false;
+	}
+};
+
 Unique<View> LayoutLoader::load_string(std::string_view xml) {
 	std::string source = m_include_stack.empty() ? std::string("<string>") : m_include_stack.back();
 	const Markup::MarkupDocument document = Markup::parse_markup(xml, std::move(source));
+	for (const Markup::ComponentDefinition &definition : document.components) {
+		if (m_factories.contains(definition.name)) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> has the name of a widget",
+							 document.location(definition.where), definition.name);
+		}
+	}
 	if (!document.root) {
 		return nullptr;
 	}
-	return build_element(document, *document.root);
+	const BuildScope scope{ .document = &document };
+	return build_element(*document.root, scope);
 }
 
-Unique<View> LayoutLoader::build_element(const Markup::MarkupDocument &document, const Markup::MarkupNode &node) {
+Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const BuildScope &scope) {
+	const Markup::MarkupDocument &document = *scope.document;
 	if (node.tag == "Include") {
 		if (!node.children.empty()) {
 			AQUILA_LOG_WARNING("LayoutLoader: {}: the children of <Include> are ignored",
@@ -207,6 +231,12 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupDocument &document,
 		return load_file(src->value);
 	}
 
+	if (node.tag == "Slot") {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: <Slot/> only works inside a <Component>, as one of its elements",
+						 document.location(node.where));
+		return nullptr;
+	}
+
 	Text::FontAtlas *font = resolve_font("default");
 	if (const Markup::MarkupAttribute *font_name = node.find("font")) {
 		font = resolve_font(font_name->value);
@@ -214,6 +244,9 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupDocument &document,
 
 	Unique<View> view = create_widget(node.tag, "", font);
 	if (!view) {
+		if (const Markup::ComponentDefinition *definition = document.find_component(node.tag)) {
+			return build_component(*definition, node, scope);
+		}
 		AQUILA_LOG_ERROR("LayoutLoader: {}: unknown widget type '{}'", document.location(node.where), node.tag);
 		return nullptr;
 	}
@@ -251,12 +284,59 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupDocument &document,
 		}
 	}
 
-	build_children(*view, document, node, font);
+	build_children(*view, node, scope, font);
 	view->on_xml_loaded();
 	return view;
 }
 
-void LayoutLoader::build_children(View &view, const Markup::MarkupDocument &document, const Markup::MarkupNode &node,
+Unique<View> LayoutLoader::build_component(const Markup::ComponentDefinition &definition,
+										   const Markup::MarkupNode &instance, const BuildScope &scope) {
+	const Markup::MarkupDocument &document = *scope.document;
+	const std::string where = document.location(instance.where);
+	if (scope.is_building(definition)) {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: '{}' uses itself", where, definition.name);
+		return nullptr;
+	}
+	if (definition.root.tag == "Slot") {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: '{}' is only a <Slot/>, a component needs an element around it", where,
+						 definition.name);
+		return nullptr;
+	}
+	if (!definition.has_slot && !instance.children.empty()) {
+		AQUILA_LOG_WARNING("LayoutLoader: {}: '{}' has no <Slot/>, its children are dropped", where, definition.name);
+	}
+
+	const BuildScope inner{ .document = scope.document,
+							.definition = &definition,
+							.instance = &instance,
+							.outer = &scope };
+	Unique<View> root = build_element(definition.root, inner);
+	if (!root) {
+		return nullptr;
+	}
+
+	UI::StyleProperties props;
+	for (const Markup::MarkupAttribute &attribute : instance.attributes) {
+		if (attribute.name == "id") {
+			root->set_id(attribute.value);
+		} else if (attribute.name == "class") {
+			std::istringstream iss(attribute.value);
+			std::string cls;
+			while (iss >> cls) {
+				root->add_class(cls);
+			}
+		} else if (attribute.name == "style") {
+			apply_inline_style(props, attribute.value, document, attribute.value_where);
+		} else {
+			AQUILA_LOG_WARNING("LayoutLoader: {}: '{}' doesn't take the attribute '{}'",
+							   document.location(attribute.where), definition.name, attribute.name);
+		}
+	}
+	root->merge_style(props);
+	return root;
+}
+
+void LayoutLoader::build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope,
 								  Text::FontAtlas *font) {
 	for (const Markup::MarkupNode &child : node.children) {
 		if (child.is_text()) {
@@ -266,7 +346,13 @@ void LayoutLoader::build_children(View &view, const Markup::MarkupDocument &docu
 			}
 			continue;
 		}
-		if (Unique<View> built = build_element(document, child)) {
+		if (child.tag == "Slot" && scope.definition != nullptr) {
+			if (scope.instance != nullptr && scope.outer != nullptr) {
+				build_children(view, *scope.instance, *scope.outer, font);
+			}
+			continue;
+		}
+		if (Unique<View> built = build_element(child, scope)) {
 			view.add_child(std::move(built));
 		}
 	}

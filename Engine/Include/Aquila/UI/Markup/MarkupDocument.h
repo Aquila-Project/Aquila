@@ -29,9 +29,21 @@ struct MarkupNode {
 	[[nodiscard]] const MarkupAttribute *find(std::string_view name) const;
 };
 
+struct ComponentDefinition {
+	std::string name;
+	std::string behaviour;
+	std::vector<std::string> props;
+	MarkupNode root;
+	bool has_slot = false;
+	SourceLocation where;
+};
+
 struct MarkupDocument {
 	std::string source_name;
+	std::vector<ComponentDefinition> components;
 	Option<MarkupNode> root;
+
+	[[nodiscard]] const ComponentDefinition *find_component(std::string_view name) const;
 
 	[[nodiscard]] std::string location(SourceLocation where) const;
 };
