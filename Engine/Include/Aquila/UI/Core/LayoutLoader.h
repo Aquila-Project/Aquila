@@ -76,8 +76,28 @@ class LayoutLoader : public IResourceResolver {
 	void register_builtins();
 	struct BuildScope;
 
+	struct CachedDocument {
+		Ref<const Markup::MarkupDocument> document;
+		Uint64 write_time = 0;
+		Int64 size = -1;
+	};
+
+	struct FoundComponent {
+		const Markup::ComponentDefinition *definition = nullptr;
+		const Markup::MarkupDocument *document = nullptr;
+		Ref<const Markup::MarkupDocument> owner;
+	};
+
+	std::unordered_map<std::string, CachedDocument> m_documents;
+	std::vector<std::string> m_checking;
+
+	[[nodiscard]] Ref<const Markup::MarkupDocument> load_document(const std::string &path);
+	void check_document(const Markup::MarkupDocument &document);
+	[[nodiscard]] std::string directory_of(const Markup::MarkupDocument &document) const;
+	[[nodiscard]] FoundComponent find_visible(const BuildScope &scope, std::string_view name);
+
 	Unique<View> build_element(const Markup::MarkupNode &node, const BuildScope &scope);
-	Unique<View> build_component(const Markup::ComponentDefinition &definition, const Markup::MarkupNode &instance,
+	Unique<View> build_component(const FoundComponent &found, const Markup::MarkupNode &instance,
 								 const BuildScope &scope);
 	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font,
 						bool skip_text = false);

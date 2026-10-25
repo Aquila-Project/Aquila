@@ -306,13 +306,26 @@ struct Parser {
 		return count;
 	}
 
+	void add_import(const MarkupNode &node) {
+		const std::string where = document.location(node.where);
+		if (!node.children.empty()) {
+			AQUILA_LOG_WARNING("LayoutLoader: {}: the children of <Import> are ignored", where);
+		}
+		const MarkupAttribute *src = node.find("src");
+		if (src == nullptr || src->value.empty()) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Import> is missing a 'src' attribute", where);
+			return;
+		}
+		document.imports.push_back({ .src = src->value, .where = node.where });
+	}
+
 	void parse() {
 		skip_prolog();
-		bool saw_component = false;
+		bool saw_definition = false;
 		while (true) {
 			skip_ws();
 			if (at_end()) {
-				if (!saw_component) {
+				if (!saw_definition) {
 					AQUILA_LOG_ERROR("LayoutLoader: {}: no root element", document.source_name);
 				}
 				return;
@@ -328,8 +341,13 @@ struct Parser {
 			if (peek() == '<' && peek2() != '/') {
 				Option<MarkupNode> element = parse_element();
 				if (element && element->tag == "Component") {
-					saw_component = true;
+					saw_definition = true;
 					add_definition(std::move(*element));
+					continue;
+				}
+				if (element && element->tag == "Import") {
+					saw_definition = true;
+					add_import(*element);
 					continue;
 				}
 				document.root = std::move(element);

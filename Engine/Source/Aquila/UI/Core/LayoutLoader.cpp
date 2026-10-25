@@ -1,6 +1,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Markup/MarkupParser.h"
+#include "Aquila/UI/Markup/MarkupPath.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
@@ -71,6 +72,72 @@ bool is_built_in_attribute(std::string_view name) {
 }
 
 } // namespace
+
+struct LayoutLoader::BuildScope {
+	const Markup::MarkupDocument *document = nullptr;
+	const Markup::ComponentDefinition *definition = nullptr;
+	const Markup::MarkupNode *instance = nullptr;
+	const BuildScope *outer = nullptr;
+	std::map<std::string, std::string, std::less<>> props{};
+	Ref<const Markup::MarkupDocument> owner{};
+
+	[[nodiscard]] bool takes_prop(std::string_view name) const {
+		return definition != nullptr && std::ranges::find(definition->props, name) != definition->props.end();
+	}
+
+	[[nodiscard]] std::string substitute(std::string_view value, Markup::SourceLocation where) const {
+		if (definition == nullptr || value.find('$') == std::string_view::npos) {
+			return std::string(value);
+		}
+		std::string out;
+		Usize i = 0;
+		while (i < value.size()) {
+			if (value[i] != '$') {
+				out.push_back(value[i++]);
+				continue;
+			}
+			if (i + 1 < value.size() && value[i + 1] == '$') {
+				out.push_back('$');
+				i += 2;
+				continue;
+			}
+			Usize end = i + 1;
+			if (end < value.size() &&
+				(std::isalpha(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_')) {
+				while (end < value.size() &&
+					   (std::isalnum(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_' ||
+						value[end] == '-')) {
+					++end;
+				}
+			}
+			if (end == i + 1) {
+				out.push_back('$');
+				++i;
+				continue;
+			}
+			const std::string_view name = value.substr(i + 1, end - i - 1);
+			if (takes_prop(name)) {
+				if (const auto it = props.find(name); it != props.end()) {
+					out += it->second;
+				}
+			} else {
+				AQUILA_LOG_ERROR("LayoutLoader: {}: '{}' has no prop named '{}'", document->location(where),
+								 definition->name, name);
+			}
+			i = end;
+		}
+		return out;
+	}
+
+	[[nodiscard]] bool is_building(const Markup::ComponentDefinition &other) const {
+		for (const BuildScope *scope = this; scope != nullptr; scope = scope->outer) {
+			if (scope->definition == &other) {
+				return true;
+			}
+		}
+		return false;
+	}
+};
 
 LayoutLoader::LayoutLoader() {
 	register_builtins();
@@ -166,98 +233,111 @@ Unique<View> LayoutLoader::load_file(const std::string &path) {
 		return nullptr;
 	}
 
-	const std::string src = Platform::Filesystem::VirtualFileSystem::get()->read_text_file(resolved);
-	if (src.empty()) {
-		AQUILA_LOG_ERROR("LayoutLoader: cannot open '{}'", resolved);
+	const Ref<const Markup::MarkupDocument> document = load_document(resolved);
+	if (!document || !document->root) {
 		return nullptr;
 	}
 
 	const std::string prev_dir = m_current_dir;
-	const auto slash = resolved.find_last_of('/');
-	m_current_dir = (slash != std::string::npos) ? resolved.substr(0, slash) : std::string();
+	m_current_dir = Markup::markup_directory(resolved);
 	m_include_stack.push_back(resolved);
 
-	Unique<View> result = load_string(src);
+	const BuildScope scope{ .document = document.get(), .owner = document };
+	Unique<View> result = build_element(*document->root, scope);
 
 	m_include_stack.pop_back();
 	m_current_dir = prev_dir;
 	return result;
 }
 
-struct LayoutLoader::BuildScope {
-	const Markup::MarkupDocument *document = nullptr;
-	const Markup::ComponentDefinition *definition = nullptr;
-	const Markup::MarkupNode *instance = nullptr;
-	const BuildScope *outer = nullptr;
-	std::map<std::string, std::string, std::less<>> props{};
-
-	[[nodiscard]] bool takes_prop(std::string_view name) const {
-		return definition != nullptr && std::ranges::find(definition->props, name) != definition->props.end();
+Ref<const Markup::MarkupDocument> LayoutLoader::load_document(const std::string &path) {
+	auto *vfs = Platform::Filesystem::VirtualFileSystem::get();
+	const Uint64 write_time = vfs->get_last_write_time(path);
+	const Int64 size = vfs->get_file_size(path);
+	if (const auto it = m_documents.find(path);
+		it != m_documents.end() && it->second.write_time == write_time && it->second.size == size) {
+		return it->second.document;
 	}
 
-	[[nodiscard]] std::string substitute(std::string_view value, Markup::SourceLocation where) const {
-		if (definition == nullptr || value.find('$') == std::string_view::npos) {
-			return std::string(value);
-		}
-		std::string out;
-		Usize i = 0;
-		while (i < value.size()) {
-			if (value[i] != '$') {
-				out.push_back(value[i++]);
-				continue;
-			}
-			if (i + 1 < value.size() && value[i + 1] == '$') {
-				out.push_back('$');
-				i += 2;
-				continue;
-			}
-			Usize end = i + 1;
-			if (end < value.size() &&
-				(std::isalpha(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_')) {
-				while (end < value.size() &&
-					   (std::isalnum(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_' ||
-						value[end] == '-')) {
-					++end;
-				}
-			}
-			if (end == i + 1) {
-				out.push_back('$');
-				++i;
-				continue;
-			}
-			const std::string_view name = value.substr(i + 1, end - i - 1);
-			if (takes_prop(name)) {
-				if (const auto it = props.find(name); it != props.end()) {
-					out += it->second;
-				}
-			} else {
-				AQUILA_LOG_ERROR("LayoutLoader: {}: '{}' has no prop named '{}'", document->location(where),
-								 definition->name, name);
-			}
-			i = end;
-		}
-		return out;
+	const std::string src = vfs->read_text_file(path);
+	if (src.empty()) {
+		AQUILA_LOG_ERROR("LayoutLoader: cannot open '{}'", path);
+		m_documents.erase(path);
+		return nullptr;
 	}
 
-	[[nodiscard]] bool is_building(const Markup::ComponentDefinition &other) const {
-		for (const BuildScope *scope = this; scope != nullptr; scope = scope->outer) {
-			if (scope->definition == &other) {
-				return true;
-			}
-		}
-		return false;
-	}
-};
+	auto document = std::make_shared<const Markup::MarkupDocument>(Markup::parse_markup(src, path));
+	m_documents[path] = { .document = document, .write_time = write_time, .size = size };
+	check_document(*document);
+	return document;
+}
 
-Unique<View> LayoutLoader::load_string(std::string_view xml) {
-	std::string source = m_include_stack.empty() ? std::string("<string>") : m_include_stack.back();
-	const Markup::MarkupDocument document = Markup::parse_markup(xml, std::move(source));
+void LayoutLoader::check_document(const Markup::MarkupDocument &document) {
+	std::map<std::string, std::string, std::less<>> defined_in;
 	for (const Markup::ComponentDefinition &definition : document.components) {
 		if (m_factories.contains(definition.name)) {
 			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> has the name of a widget",
 							 document.location(definition.where), definition.name);
 		}
+		defined_in.emplace(definition.name, document.source_name);
 	}
+
+	const std::string directory = directory_of(document);
+	m_checking.push_back(document.source_name);
+	for (const Markup::MarkupImport &import : document.imports) {
+		const std::string path = Markup::resolve_markup_path(directory, import.src, ".aqlayout");
+		const std::string where = document.location(import.where);
+		if (std::ranges::find(m_checking, path) != m_checking.end()) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: import cycle at '{}'", where, path);
+			continue;
+		}
+		if (!Platform::Filesystem::VirtualFileSystem::get()->exists(path)) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: cannot open '{}'", where, path);
+			continue;
+		}
+		const Ref<const Markup::MarkupDocument> imported = load_document(path);
+		if (!imported) {
+			continue;
+		}
+		for (const Markup::ComponentDefinition &definition : imported->components) {
+			const auto [it, inserted] = defined_in.emplace(definition.name, path);
+			if (!inserted) {
+				AQUILA_LOG_ERROR("LayoutLoader: {}: '{}' is defined in both {} and {}", where, definition.name,
+								 it->second, path);
+			}
+		}
+	}
+	m_checking.pop_back();
+}
+
+std::string LayoutLoader::directory_of(const Markup::MarkupDocument &document) const {
+	return document.source_name.starts_with('/') ? Markup::markup_directory(document.source_name) : m_current_dir;
+}
+
+LayoutLoader::FoundComponent LayoutLoader::find_visible(const BuildScope &scope, std::string_view name) {
+	if (const Markup::ComponentDefinition *own = scope.document->find_component(name)) {
+		return { .definition = own, .document = scope.document, .owner = scope.owner };
+	}
+	const std::string directory = directory_of(*scope.document);
+	for (const Markup::MarkupImport &import : scope.document->imports) {
+		const std::string path = Markup::resolve_markup_path(directory, import.src, ".aqlayout");
+		if (!Platform::Filesystem::VirtualFileSystem::get()->exists(path)) {
+			continue;
+		}
+		const Ref<const Markup::MarkupDocument> imported = load_document(path);
+		if (imported == nullptr) {
+			continue;
+		}
+		if (const Markup::ComponentDefinition *definition = imported->find_component(name)) {
+			return { .definition = definition, .document = imported.get(), .owner = imported };
+		}
+	}
+	return {};
+}
+
+Unique<View> LayoutLoader::load_string(std::string_view xml) {
+	const Markup::MarkupDocument document = Markup::parse_markup(xml, "<string>");
+	check_document(document);
 	if (!document.root) {
 		return nullptr;
 	}
@@ -278,7 +358,11 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 			AQUILA_LOG_ERROR("LayoutLoader: {}: <Include> is missing a 'src' attribute", document.location(node.where));
 			return nullptr;
 		}
-		return load_file(path);
+		if (path.starts_with('/')) {
+			return load_file(path);
+		}
+		const std::string directory = directory_of(document);
+		return load_file(directory.empty() ? path : directory + "/" + path);
 	}
 
 	if (node.tag == "Slot") {
@@ -294,8 +378,8 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 
 	Unique<View> view = create_widget(node.tag, "", font);
 	if (!view) {
-		if (const Markup::ComponentDefinition *definition = document.find_component(node.tag)) {
-			return build_component(*definition, node, scope);
+		if (const FoundComponent found = find_visible(scope, node.tag); found.definition != nullptr) {
+			return build_component(found, node, scope);
 		}
 		AQUILA_LOG_ERROR("LayoutLoader: {}: unknown widget type '{}'", document.location(node.where), node.tag);
 		return nullptr;
@@ -344,8 +428,9 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 	return view;
 }
 
-Unique<View> LayoutLoader::build_component(const Markup::ComponentDefinition &definition,
-										   const Markup::MarkupNode &instance, const BuildScope &scope) {
+Unique<View> LayoutLoader::build_component(const FoundComponent &found, const Markup::MarkupNode &instance,
+										   const BuildScope &scope) {
+	const Markup::ComponentDefinition &definition = *found.definition;
 	const Markup::MarkupDocument &document = *scope.document;
 	const std::string where = document.location(instance.where);
 	if (scope.is_building(definition)) {
@@ -357,7 +442,11 @@ Unique<View> LayoutLoader::build_component(const Markup::ComponentDefinition &de
 						 definition.name);
 		return nullptr;
 	}
-	BuildScope inner{ .document = scope.document, .definition = &definition, .instance = &instance, .outer = &scope };
+	BuildScope inner{ .document = found.document,
+					  .definition = &definition,
+					  .instance = &instance,
+					  .outer = &scope,
+					  .owner = found.owner };
 	const bool text_is_prop = inner.takes_prop("text");
 	const bool has_children = std::ranges::any_of(instance.children, [text_is_prop](const Markup::MarkupNode &child) {
 		return !text_is_prop || !child.is_text();

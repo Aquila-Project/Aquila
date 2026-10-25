@@ -38,8 +38,14 @@ struct ComponentDefinition {
 	SourceLocation where;
 };
 
+struct MarkupImport {
+	std::string src;
+	SourceLocation where;
+};
+
 struct MarkupDocument {
 	std::string source_name;
+	std::vector<MarkupImport> imports;
 	std::vector<ComponentDefinition> components;
 	Option<MarkupNode> root;
 
