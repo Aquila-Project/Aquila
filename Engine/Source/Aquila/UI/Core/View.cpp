@@ -301,6 +301,14 @@ void View::queue_redraw() {
 	}
 }
 
+void View::set_scroll_offset(F32 offset) {
+	if (offset == m_scroll_target) {
+		return;
+	}
+	m_scroll_target = offset;
+	invalidate_layout();
+}
+
 void View::invalidate_layout() {
 	if (m_canvas != nullptr) {
 		m_canvas->notify_layout_dirty(this);

@@ -214,6 +214,16 @@ static Clay_ElementId make_element_id(View *node) {
 	return Clay_ElementId{ .id = id != 0 ? id : 1u };
 }
 
+static F32 place_scroll(View &node, Clay_ElementId id, F32 view_height) {
+	const Clay_ScrollContainerData data = Clay_GetScrollContainerData(id);
+	const F32 content_height = data.found ? data.contentDimensions.height : view_height;
+	const F32 max_offset = Math::max(content_height - view_height, 0.F);
+	const F32 offset = Math::clamp(node.get_scroll_target(), 0.F, max_offset);
+	node.set_scroll_layout(offset, content_height);
+	node.on_scroll_layout();
+	return offset;
+}
+
 LayoutEngine::LayoutEngine(Uint32 width, Uint32 height) : m_width(width), m_height(height) {
 	const Uint32 mem_size = Clay_MinMemorySize();
 	m_clay_memory.resize(mem_size);
@@ -237,17 +247,17 @@ void LayoutEngine::set_dimensions(Uint32 width, Uint32 height) {
 	Clay_SetLayoutDimensions({ static_cast<F32>(width), static_cast<F32>(height) });
 }
 
-void LayoutEngine::run_layout(View *root, Vec2 mouse_pos, bool mouse_down, Vec2 scroll_delta, float delta_time) {
+void LayoutEngine::run_layout(View *root, float delta_time) {
 	Clay_SetCurrentContext(static_cast<Clay_Context *>(m_clay_ctx));
 	Clay_SetLayoutDimensions({ static_cast<F32>(m_width), static_cast<F32>(m_height) });
-	Clay_SetPointerState({ mouse_pos.x, mouse_pos.y }, mouse_down);
-	Clay_UpdateScrollContainers(false, { scroll_delta.x, scroll_delta.y }, delta_time);
+	Clay_UpdateScrollContainers(false, {}, delta_time);
 	m_size_changed = false;
 	m_resized_nodes.clear();
 	constexpr int K_MAX_WRAP_PASSES = 3;
 	for (int pass = 0; pass < K_MAX_WRAP_PASSES; ++pass) {
 		m_wrap_lines.clear();
 		m_intrinsic_sizes.clear();
+		m_scroll_views.clear();
 		Clay_BeginLayout();
 		layout_pass(root);
 		Clay_EndLayout(pass == 0 ? delta_time : 0.F);
@@ -363,60 +373,27 @@ void LayoutEngine::scroll_into_view(View *target) {
 		return;
 	}
 
-	Clay_SetCurrentContext(static_cast<Clay_Context *>(m_clay_ctx));
-	Clay_ElementId id = {};
-	id.id = container->get_clay_id();
-	Clay_ScrollContainerData data = Clay_GetScrollContainerData(id);
-	if (!data.found || data.scrollPosition == nullptr) {
-		return;
-	}
-
 	const Rect container_rect = container->get_absolute_rect();
 	const Rect target_rect = target->get_absolute_rect();
-	const float rel = target_rect.position.y - container_rect.position.y;
-	const float view_h = container_rect.size.y;
-	const float node_h = target_rect.size.y;
+	const F32 rel = target_rect.position.y - container_rect.position.y;
+	const F32 view_h = container_rect.size.y;
+	const F32 node_h = target_rect.size.y;
 
-	float sy = data.scrollPosition->y;
+	F32 offset = container->get_scroll_offset();
 	if (rel < 0.F) {
-		sy -= rel;
+		offset += rel;
 	} else if (rel + node_h > view_h) {
-		sy -= (rel + node_h - view_h);
+		offset += rel + node_h - view_h;
 	}
-
-	const float max_scroll = data.contentDimensions.height - view_h;
-	if (max_scroll <= 0.F) {
-		sy = 0.F;
-	} else if (sy < -max_scroll) {
-		sy = -max_scroll;
-	} else if (sy > 0.F) {
-		sy = 0.F;
-	}
-	data.scrollPosition->y = sy;
+	const F32 max_offset = Math::max(container->get_scroll_content_height() - view_h, 0.F);
+	container->set_scroll_offset(Math::clamp(offset, 0.F, max_offset));
 }
 
-void LayoutEngine::set_scroll_offset(View *target, float offset_y) {
-	if (target == nullptr) {
-		return;
+void LayoutEngine::commit_scroll_offsets() {
+	for (View *view : m_scroll_views) {
+		view->commit_scroll();
 	}
-
-	Clay_SetCurrentContext(static_cast<Clay_Context *>(m_clay_ctx));
-	Clay_ElementId id = {};
-	id.id = target->get_clay_id();
-	Clay_ScrollContainerData data = Clay_GetScrollContainerData(id);
-	if (!data.found || data.scrollPosition == nullptr) {
-		return;
-	}
-
-	const float view_h = target->get_absolute_rect().size.y;
-	const float max_scroll = data.contentDimensions.height - view_h;
-	float clamped = offset_y;
-	if (max_scroll <= 0.F || clamped < 0.F) {
-		clamped = 0.F;
-	} else if (clamped > max_scroll) {
-		clamped = max_scroll;
-	}
-	data.scrollPosition->y = -clamped;
+	m_scroll_views.clear();
 }
 
 void LayoutEngine::layout_pass(View *node) {
@@ -550,7 +527,7 @@ void LayoutEngine::layout_pass(View *node) {
 				 { .layout = layout,
 				   .aspectRatio = aspect_cfg,
 				   .floating = float_cfg,
-				   .clip = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
+				   .clip = { .horizontal = false, .vertical = true } }) {
 				emit_content();
 			}
 			break;
@@ -613,7 +590,7 @@ void LayoutEngine::layout_pass(View *node) {
 				 { .layout = layout,
 				   .aspectRatio = aspect_cfg,
 				   .floating = float_cfg,
-				   .clip = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
+				   .clip = { .horizontal = false, .vertical = true } }) {
 				emit_content();
 			}
 			break;
@@ -641,7 +618,7 @@ void LayoutEngine::layout_pass(View *node) {
 			 {
 				 .layout = layout,
 				 .aspectRatio = aspect_cfg,
-				 .clip = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() },
+				 .clip = { .horizontal = false, .vertical = true },
 			 }) {
 			emit_content();
 		}
@@ -693,6 +670,7 @@ void LayoutEngine::update_rects(View *node, Vec2 parent_clay_pos, Vec2 accumulat
 		}
 	}
 	const Vec2 subtree_offset = accumulated_offset + node->get_layout_anim_offset() + relative_offset;
+	F32 scroll = 0.F;
 	if (data.found) {
 		const Clay_BoundingBox &bb = data.boundingBox;
 		clay_pos = { bb.x, bb.y };
@@ -714,10 +692,15 @@ void LayoutEngine::update_rects(View *node, Vec2 parent_clay_pos, Vec2 accumulat
 			node->mark_subtree_bounds_dirty();
 			node->queue_redraw();
 		}
+		if (cs.overflow == Overflow::Scroll) {
+			scroll = place_scroll(*node, clay_id, bb.height);
+			m_scroll_views.push_back(node);
+		}
 	}
 
+	const Vec2 scrolled_offset = subtree_offset - Vec2(0.F, scroll);
 	for (const auto &child : node->get_children()) {
-		update_rects(child.get(), clay_pos, subtree_offset);
+		update_rects(child.get(), clay_pos, is_in_flow(child.get()) ? scrolled_offset : subtree_offset);
 	}
 }
 

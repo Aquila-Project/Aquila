@@ -11,13 +11,15 @@ class LayoutEngine {
 
 	void set_dimensions(Uint32 width, Uint32 height);
 
-	void run_layout(View *root, Vec2 mouse_pos, bool mouse_down, Vec2 scroll_delta, float delta_time);
+	void run_layout(View *root, float delta_time);
 
 	// Adjusts the scroll offset of target's nearest scrolling ancestor so target is visible.
 	// Must be called after RunLayout so rects and Clay scroll state are current.
 	void scroll_into_view(View *target);
 
-	void set_scroll_offset(View *target, float offset_y);
+	/// Makes the offsets the last layout clamped stick. Call it once after the last layout of a frame, not between
+	/// passes, or a pass that sees the content shorter than it ends up eats the offset.
+	void commit_scroll_offsets();
 
 	[[nodiscard]] bool did_layout_resize() const { return m_size_changed; }
 
@@ -38,6 +40,7 @@ class LayoutEngine {
 	Uint32 m_height;
 	bool m_size_changed = false;
 	std::vector<View *> m_resized_nodes;
+	std::vector<View *> m_scroll_views;
 	std::unordered_map<const View *, std::vector<Uint32>> m_wrap_lines;
 	std::unordered_map<const View *, Vec2> m_intrinsic_sizes;
 };

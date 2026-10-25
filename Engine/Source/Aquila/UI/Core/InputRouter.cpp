@@ -92,9 +92,6 @@ void InputRouter::on_event(Platform::Events::Event &e) {
 	});
 
 	dispatcher.dispatch<MouseButtonPressedEvent>([this](MouseButtonPressedEvent &e) {
-		if (e.get_mouse_button() == MouseButton::Left) {
-			m_mouse_down = true;
-		}
 		m_drag_source_candidate = nullptr;
 		m_canvas.dismiss_popups_outside(m_hovered_view);
 		if (!m_hovered_view) {
@@ -111,10 +108,6 @@ void InputRouter::on_event(Platform::Events::Event &e) {
 	});
 
 	dispatcher.dispatch<MouseButtonReleasedEvent>([this](MouseButtonReleasedEvent &e) {
-		if (e.get_mouse_button() == MouseButton::Left) {
-			m_mouse_down = false;
-		}
-
 		if (m_drag_state.is_dragging) {
 			if (m_hovered_view) {
 				View *drop_candidate = m_hovered_view->get_first_parent_that_accepts_drop();
@@ -146,19 +139,11 @@ void InputRouter::on_event(Platform::Events::Event &e) {
 
 	dispatcher.dispatch<MouseScrolledEvent>([this](MouseScrolledEvent &e) {
 		const Vec2 delta(e.get_x_offset(), e.get_y_offset());
-
-		bool consumed = false;
 		for (View *view = m_hovered_view; view != nullptr; view = view->get_parent()) {
 			if (view->on_scroll(delta)) {
-				consumed = true;
 				break;
 			}
 		}
-
-		if (!consumed) {
-			m_scroll_delta += delta;
-		}
-		m_canvas.request_layout();
 		return m_hovered_view != nullptr && !m_hovered_view->get_pass_through_scroll();
 	});
 

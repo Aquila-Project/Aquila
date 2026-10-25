@@ -1,6 +1,6 @@
 #include "Aquila/UI/Widgets/ScrollView.h"
 
-#include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/UI/Style/StyleProperties.h"
 
 namespace Aquila::UI::Core {
@@ -16,17 +16,28 @@ class ScrollThumb : public View {
 	void on_mouse_press(Platform::MouseButton btn, Vec2 pos) override {
 		View::on_mouse_press(btn, pos);
 		if (btn == Platform::MouseButton::Left) {
+			m_dragging = true;
 			m_owner->begin_thumb_drag(pos.y);
+		}
+	}
+
+	void on_mouse_release(Platform::MouseButton btn, Vec2 pos) override {
+		View::on_mouse_release(btn, pos);
+		if (btn == Platform::MouseButton::Left) {
+			m_dragging = false;
 		}
 	}
 
 	void on_mouse_move(Vec2 pos) override {
 		View::on_mouse_move(pos);
-		m_owner->drag_thumb(pos.y);
+		if (m_dragging) {
+			m_owner->drag_thumb(pos.y);
+		}
 	}
 
   private:
 	ScrollView *m_owner;
+	bool m_dragging = false;
 };
 
 constexpr float K_MIN_THUMB_HEIGHT = 24.F;
@@ -48,6 +59,9 @@ ScrollView::ScrollView() {
 	cfg.parent_point = FloatingAttachPoint::RightTop;
 	cfg.z_index = 20;
 	track->set_floating(cfg);
+	StyleProperties track_style;
+	track_style.height = StyleLength::percent(100.F);
+	track->set_style(track_style);
 	track->set_hidden(true);
 	m_track = View::add_child(std::move(track));
 
@@ -69,29 +83,16 @@ void ScrollView::remove_oldest_content() {
 
 void ScrollView::scroll_to_bottom() {
 	constexpr float K_END_OF_CONTENT = 1.0e9F;
-	if (Canvas *canvas = get_canvas()) {
-		canvas->set_scroll_offset(this, K_END_OF_CONTENT);
-	}
+	set_scroll_offset(K_END_OF_CONTENT);
 }
 
 bool ScrollView::is_at_bottom() const {
 	const ScrollMetrics m = measure();
-	return m.max_offset <= 0.F || m.offset >= m.max_offset - 1.F;
+	return m.max_offset <= 0.F || Math::min(get_scroll_target(), m.max_offset) >= m.max_offset - 1.F;
 }
 
-void ScrollView::on_style_resolved() {
-	View::on_style_resolved();
-	if (!m_tick_registered) {
-		if (Canvas *canvas = get_canvas()) {
-			canvas->register_tick(this);
-			m_tick_registered = true;
-		}
-	}
-}
-
-bool ScrollView::on_update(F32) {
+void ScrollView::on_scroll_layout() {
 	update_scrollbar();
-	return false;
 }
 
 bool ScrollView::on_scroll(Vec2 delta) {
@@ -101,47 +102,25 @@ bool ScrollView::on_scroll(Vec2 delta) {
 	}
 
 	constexpr float K_WHEEL_SPEED = 40.F;
-	const float new_offset = m.offset - delta.y * K_WHEEL_SPEED;
-	if (Canvas *canvas = get_canvas()) {
-		canvas->set_scroll_offset(this, new_offset);
-	}
+	const float from = Math::clamp(get_scroll_target(), 0.F, m.max_offset);
+	set_scroll_offset(Math::clamp(from - delta.y * K_WHEEL_SPEED, 0.F, m.max_offset));
 	return true;
 }
 
 ScrollView::ScrollMetrics ScrollView::measure() const {
 	ScrollMetrics m{};
-	m.viewport_h = get_absolute_rect().size.y;
-	m.content_h = m_inner->get_absolute_rect().size.y;
-	m.max_offset = m.content_h - m.viewport_h;
-	if (m.max_offset < 0.F) {
-		m.max_offset = 0.F;
-	}
-
-	float raw_offset = get_absolute_position().y - m_inner->get_absolute_position().y;
-	if (raw_offset < 0.F) {
-		raw_offset = 0.F;
-	} else if (raw_offset > m.max_offset) {
-		raw_offset = m.max_offset;
-	}
-	m.offset = raw_offset;
+	m.viewport_h = get_layout_rect().size.y;
+	m.content_h = get_scroll_content_height();
+	m.max_offset = Math::max(m.content_h - m.viewport_h, 0.F);
+	m.offset = get_scroll_offset();
 
 	const float ratio = (m.content_h > 0.F) ? (m.viewport_h / m.content_h) : 1.F;
-	m.thumb_h = m.viewport_h * ratio;
-	if (m.thumb_h < K_MIN_THUMB_HEIGHT) {
-		m.thumb_h = K_MIN_THUMB_HEIGHT;
-	}
-	if (m.thumb_h > m.viewport_h) {
-		m.thumb_h = m.viewport_h;
-	}
+	m.thumb_h = Math::min(Math::max(m.viewport_h * ratio, K_MIN_THUMB_HEIGHT), m.viewport_h);
 	m.thumb_travel = m.viewport_h - m.thumb_h;
 	return m;
 }
 
 void ScrollView::update_scrollbar() {
-	if (m_track == nullptr || m_thumb == nullptr || m_inner == nullptr) {
-		return;
-	}
-
 	const ScrollMetrics m = measure();
 	const bool visible = m.max_offset > 0.5F && m.viewport_h > 0.F;
 	if (visible != m_last_visible) {
@@ -152,12 +131,6 @@ void ScrollView::update_scrollbar() {
 		return;
 	}
 
-	if (m.viewport_h != m_last_track_h) {
-		StyleProperties sp;
-		sp.height = StyleLength::pixel(m.viewport_h);
-		m_track->merge_style(sp);
-		m_last_track_h = m.viewport_h;
-	}
 	if (m.thumb_h != m_last_thumb_h) {
 		StyleProperties sp;
 		sp.height = StyleLength::pixel(m.thumb_h);
@@ -166,17 +139,12 @@ void ScrollView::update_scrollbar() {
 	}
 
 	const float thumb_y = (m.max_offset > 0.F) ? (m.offset / m.max_offset) * m.thumb_travel : 0.F;
-	if (thumb_y != m_last_thumb_y) {
-		m_thumb->set_layout_anim_offset({ 0.F, thumb_y });
-		m_thumb->invalidate_layout();
-		m_last_thumb_y = thumb_y;
-	}
+	m_thumb->set_layout_anim_offset({ 0.F, thumb_y });
 }
 
 void ScrollView::begin_thumb_drag(float mouse_y) {
-	const ScrollMetrics m = measure();
 	m_drag_start_mouse_y = mouse_y;
-	m_drag_start_offset = m.offset;
+	m_drag_start_offset = get_scroll_offset();
 }
 
 void ScrollView::drag_thumb(float mouse_y) {
@@ -186,10 +154,7 @@ void ScrollView::drag_thumb(float mouse_y) {
 	}
 
 	const float delta = mouse_y - m_drag_start_mouse_y;
-	const float new_offset = m_drag_start_offset + delta * (m.max_offset / m.thumb_travel);
-	if (Canvas *canvas = get_canvas()) {
-		canvas->set_scroll_offset(this, new_offset);
-	}
+	set_scroll_offset(Math::clamp(m_drag_start_offset + delta * (m.max_offset / m.thumb_travel), 0.F, m.max_offset));
 }
 
 } // namespace Aquila::UI::Core

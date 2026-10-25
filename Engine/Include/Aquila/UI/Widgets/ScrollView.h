@@ -19,8 +19,7 @@ class ScrollView : public View {
 	void scroll_to_bottom();
 	[[nodiscard]] bool is_at_bottom() const;
 
-	void on_style_resolved() override;
-	bool on_update(F32 delta_time) override;
+	void on_scroll_layout() override;
 	bool on_scroll(Vec2 delta) override;
 
 	void begin_thumb_drag(float mouse_y);
@@ -43,14 +42,11 @@ class ScrollView : public View {
 	View *m_track = nullptr;
 	View *m_thumb = nullptr;
 
-	bool m_tick_registered = false;
 	float m_drag_start_mouse_y = 0.F;
 	float m_drag_start_offset = 0.F;
 
-	bool m_last_visible = true;
-	float m_last_track_h = -1.F;
+	bool m_last_visible = false;
 	float m_last_thumb_h = -1.F;
-	float m_last_thumb_y = -1.F;
 };
 
 } // namespace Aquila::UI::Core

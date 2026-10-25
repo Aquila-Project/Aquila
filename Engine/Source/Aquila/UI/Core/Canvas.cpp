@@ -214,8 +214,7 @@ void Canvas::compute() {
 		constexpr int K_MAX_CONTAINER_RESOLVE_PASSES = 3;
 		const bool has_container_rules = m_style_engine.get_style_sheet().has_container_blocks();
 
-		m_layout_engine.run_layout(m_root.get(), m_input_router.mouse_pos(), m_input_router.mouse_down(),
-								   m_input_router.take_scroll_delta(), m_delta_time);
+		m_layout_engine.run_layout(m_root.get(), m_delta_time);
 		m_layout_dirty = false;
 
 		for (int pass = 0;
@@ -232,26 +231,18 @@ void Canvas::compute() {
 			}
 			m_layout_dirty = false;
 			animation_pass(0.F);
-			m_layout_engine.run_layout(m_root.get(), m_input_router.mouse_pos(), m_input_router.mouse_down(), {}, 0.F);
+			m_layout_engine.run_layout(m_root.get(), 0.F);
 		}
 
-		m_draw_compositor.recull(m_root.get());
+		finish_layout();
 	}
 
 	if (m_scroll_target != nullptr) {
 		m_layout_engine.scroll_into_view(m_scroll_target);
 		m_scroll_target = nullptr;
-		m_layout_engine.run_layout(m_root.get(), m_input_router.mouse_pos(), m_input_router.mouse_down(), {},
-								   m_delta_time);
-		m_draw_compositor.recull(m_root.get());
-	}
-
-	if (m_scroll_offset_target != nullptr) {
-		m_layout_engine.set_scroll_offset(m_scroll_offset_target, m_scroll_offset_y);
-		m_scroll_offset_target = nullptr;
-		m_layout_engine.run_layout(m_root.get(), m_input_router.mouse_pos(), m_input_router.mouse_down(), {},
-								   m_delta_time);
-		m_draw_compositor.recull(m_root.get());
+		m_layout_engine.run_layout(m_root.get(), m_delta_time);
+		m_layout_dirty = false;
+		finish_layout();
 	}
 
 	if (m_draw_compositor.rebuild_dirty(m_root.get())) {
@@ -262,6 +253,21 @@ void Canvas::compute() {
 	if (m_style_engine.has_pending()) {
 		Aquila::Foundation::FrameScheduler::get()->request_frame(m_frame_target);
 	}
+}
+
+void Canvas::finish_layout() {
+	constexpr int K_MAX_SETTLE_PASSES = 2;
+	for (int pass = 0; (m_layout_dirty || m_style_engine.has_pending()) && pass < K_MAX_SETTLE_PASSES; ++pass) {
+		style_pass();
+		if (!m_layout_dirty) {
+			break;
+		}
+		m_layout_dirty = false;
+		animation_pass(0.F);
+		m_layout_engine.run_layout(m_root.get(), 0.F);
+	}
+	m_layout_engine.commit_scroll_offsets();
+	m_draw_compositor.recull(m_root.get());
 }
 
 void Canvas::mark_node_draw_dirty(View *node) {
@@ -286,13 +292,6 @@ void Canvas::on_event(Platform::Events::Event &e) {
 
 View *Canvas::hit_test(Vec2 pos) {
 	return m_draw_compositor.hit_test(pos);
-}
-
-void Canvas::set_scroll_offset(View *target, F32 offset_y) {
-	m_scroll_offset_target = target;
-	m_scroll_offset_y = offset_y;
-	m_layout_dirty = true;
-	mark_dirty();
 }
 
 void Canvas::scroll_into_view(View *target) {

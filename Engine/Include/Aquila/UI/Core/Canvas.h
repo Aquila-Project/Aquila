@@ -42,7 +42,6 @@ class Canvas {
 	[[nodiscard]] View *get_focused_view() const { return m_input_router.focused_view(); }
 	[[nodiscard]] View *get_hovered_view() const { return m_input_router.hovered_view(); }
 	void scroll_into_view(View *target);
-	void set_scroll_offset(View *target, F32 offset_y);
 	Uint32 get_width() const { return m_width; }
 	Uint32 get_height() const { return m_height; }
 	void notify_style_dirty(View *view);
@@ -80,6 +79,8 @@ class Canvas {
 
   private:
 	void mark_node_draw_dirty(View *node);
+	/// Lays out again while views changed styles during layout (ScrollView's thumb), then commits scroll offsets.
+	void finish_layout();
 	void dismiss_popups_outside(View *hit);
 	void register_internal_observers();
 
@@ -91,8 +92,6 @@ class Canvas {
 	std::vector<View *> m_ticking;
 	std::vector<Delegate<void(View *)>> m_removal_observers;
 	ViewRef m_scroll_target;
-	ViewRef m_scroll_offset_target;
-	F32 m_scroll_offset_y = 0.F;
 
 	Unique<View> m_root;
 	StyleEngine m_style_engine;

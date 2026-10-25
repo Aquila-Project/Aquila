@@ -145,6 +145,23 @@ class View {
 	void set_layout_anim_offset(Vec2 offset) { m_layout_anim_offset = offset; }
 	[[nodiscard]] Vec2 get_layout_anim_offset() const { return m_layout_anim_offset; }
 
+	/// Scrolls an overflow: scroll view, in pixels down from the top of its content. Lands on the next layout, which
+	/// clamps it to the content. A view that isn't laid out (display: none) keeps its offset until it is again.
+	void set_scroll_offset(F32 offset);
+	/// Where the last layout put the content, clamped.
+	[[nodiscard]] F32 get_scroll_offset() const { return m_scroll_offset; }
+	/// What set_scroll_offset() asked for, not clamped yet. Equals get_scroll_offset() once a layout has run.
+	[[nodiscard]] F32 get_scroll_target() const { return m_scroll_target; }
+	/// Height of an overflow: scroll view's content as of the last layout, padding included.
+	[[nodiscard]] F32 get_scroll_content_height() const { return m_scroll_content_height; }
+	/// LayoutEngine only. Every layout pass sets it, commit_scroll() runs after the last pass of a frame, so a pass
+	/// that briefly sees shorter content doesn't eat the offset.
+	void set_scroll_layout(F32 offset, F32 content_height) {
+		m_scroll_offset = offset;
+		m_scroll_content_height = content_height;
+	}
+	void commit_scroll() { m_scroll_target = m_scroll_offset; }
+
 	/// Hit testing stops here, the view takes the input for its whole subtree.
 	void set_input_leaf(bool v) { m_is_input_leaf = v; }
 	/// Clicks go through it to whatever is below.
@@ -222,6 +239,11 @@ class View {
 
 	virtual void on_style_resolved();
 
+	/// The layout placed this overflow: scroll view and set its scroll offset and content height, its children
+	/// don't have their rects yet. set_layout_anim_offset() on a descendant lands in this same layout, style
+	/// changes get another layout pass in the same frame.
+	virtual void on_scroll_layout() {}
+
 	/// Called every frame while the view is registered with Canvas::register_tick().
 	/// Return true to ask for another frame.
 	virtual bool on_update(F32 delta_time) {
@@ -295,6 +317,9 @@ class View {
 	Vec2 m_absolute_position;
 	Vec2 m_layout_home{};
 	Vec2 m_layout_anim_offset{};
+	F32 m_scroll_target = 0.F;
+	F32 m_scroll_offset = 0.F;
+	F32 m_scroll_content_height = 0.F;
 	bool m_visible = true;
 	bool m_enabled = true;
 	bool m_is_input_leaf = false;
