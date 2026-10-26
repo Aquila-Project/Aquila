@@ -8,7 +8,12 @@ namespace Aquila::UI::Core {
 Behaviour::Behaviour() = default;
 
 Behaviour::~Behaviour() {
-	for (auto it = m_cleanups.rbegin(); it != m_cleanups.rend(); ++it) {
+	run_cleanups();
+}
+
+void Behaviour::run_cleanups() {
+	std::vector<Delegate<void()>> cleanups = std::exchange(m_cleanups, {});
+	for (auto it = cleanups.rbegin(); it != cleanups.rend(); ++it) {
 		if (*it) {
 			(*it)();
 		}

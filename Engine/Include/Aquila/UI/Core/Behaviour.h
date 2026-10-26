@@ -73,6 +73,7 @@ class Behaviour {
 	}
 
 	void add_cleanup(Delegate<void()> cleanup);
+	void run_cleanups();
 
   private:
 	friend class LayoutLoader;
