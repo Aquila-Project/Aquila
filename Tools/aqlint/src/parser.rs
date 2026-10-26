@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, path::Path};
 
 use crate::{
     lexer::{LexError, Lexer, Span, Token, TokenKind},
@@ -17,6 +17,8 @@ pub enum ParseErrorKind {
     ExpectedLeftParen,
     ExpectedRightParen,
     UnclosedBlock,
+    ImportAfterRules,
+    ImportMissing,
 }
 
 impl fmt::Display for ParseErrorKind {
@@ -36,6 +38,10 @@ impl fmt::Display for ParseErrorKind {
                 f.write_str("expected `)` to close the condition")
             }
             ParseErrorKind::UnclosedBlock => f.write_str("this `{` is never closed"),
+            ParseErrorKind::ImportAfterRules => {
+                f.write_str("`@import` must come before the rules, the loader skips it")
+            }
+            ParseErrorKind::ImportMissing => f.write_str("the imported file doesn't exist"),
         }
     }
 }
@@ -85,14 +91,101 @@ pub enum Item {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyleImport {
+    pub path: Span,
+    pub target: String,
+    pub statement: Span,
+    pub before_rules: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stylesheet {
     pub items: Vec<Item>,
+    pub imports: Vec<StyleImport>,
 }
 
 pub fn parse(src: &str) -> (Stylesheet, Vec<ParseError>) {
-    let mut parser = Parser::new(src);
-    let stylesheet = parser.parse_stylesheet();
-    (stylesheet, parser.errors)
+    let (rules, imports) = take_imports(src);
+    let mut parser = Parser::new(&rules);
+    let mut stylesheet = parser.parse_stylesheet();
+    let mut errors = parser.errors;
+    errors.extend(
+        imports
+            .iter()
+            .filter(|import| !import.before_rules)
+            .map(|import| ParseError {
+                kind: ParseErrorKind::ImportAfterRules,
+                span: import.statement,
+            }),
+    );
+    errors.sort_by_key(|error| error.span.start);
+    stylesheet.imports = imports;
+    (stylesheet, errors)
+}
+
+pub fn check_files(path: &Path, sheet: &Stylesheet) -> Vec<ParseError> {
+    let dir = path.parent().unwrap_or(Path::new("."));
+    sheet
+        .imports
+        .iter()
+        .filter(|import| import.before_rules && !import.target.is_empty() && !import.target.starts_with('/'))
+        .filter_map(|import| {
+            let mut file = dir.join(&import.target);
+            if file.extension().is_none() {
+                file.set_extension("aqstyle");
+            }
+            (!file.exists()).then_some(ParseError {
+                kind: ParseErrorKind::ImportMissing,
+                span: import.path,
+            })
+        })
+        .collect()
+}
+
+fn take_imports(src: &str) -> (String, Vec<StyleImport>) {
+    const IMPORT: &str = "@import";
+    let bytes = src.as_bytes();
+    let mut rules = bytes.to_vec();
+    let mut imports = Vec::new();
+    let mut seen_rule = false;
+    let mut pos = 0;
+    while pos < bytes.len() {
+        if bytes[pos..].starts_with(b"/*") {
+            pos = src[pos + 2..].find("*/").map_or(bytes.len(), |end| pos + 2 + end + 2);
+            continue;
+        }
+        if !bytes[pos..].starts_with(IMPORT.as_bytes()) {
+            seen_rule = seen_rule || !bytes[pos].is_ascii_whitespace();
+            pos += 1;
+            continue;
+        }
+        let end = src[pos..].find(';').map_or(bytes.len(), |offset| pos + offset + 1);
+        let inner_end = if bytes.get(end.wrapping_sub(1)) == Some(&b';') { end - 1 } else { end };
+        let raw = &src[pos + IMPORT.len()..inner_end];
+        let mut path_start = pos + IMPORT.len() + (raw.len() - raw.trim_start().len());
+        let mut path_end = path_start + raw.trim().len();
+        let quoted = &bytes[path_start..path_end];
+        if quoted.len() >= 2 && matches!(quoted[0], b'"' | b'\'') && quoted[quoted.len() - 1] == quoted[0] {
+            path_start += 1;
+            path_end -= 1;
+        }
+        imports.push(StyleImport {
+            path: Span {
+                start: path_start,
+                end: path_end,
+            },
+            target: src[path_start..path_end].to_string(),
+            statement: Span { start: pos, end },
+            before_rules: !seen_rule,
+        });
+        for byte in &mut rules[pos..end] {
+            if *byte != b'\n' {
+                *byte = b' ';
+            }
+        }
+        pos = end;
+    }
+    (String::from_utf8(rules).unwrap_or_else(|_| src.to_string()), imports)
 }
 
 pub fn parse_inline(src: &str) -> (Vec<Declaration>, Vec<ParseError>) {
@@ -234,7 +327,10 @@ impl Parser {
                 items.push(item);
             }
         }
-        Stylesheet { items }
+        Stylesheet {
+            items,
+            imports: Vec::new(),
+        }
     }
 
     fn parse_at_rule(&mut self) -> Option<AtRule> {
@@ -665,6 +761,34 @@ mod tests {
             let (_, errors) = parse(src);
             assert!(!errors.is_empty(), "{src:?}");
         }
+    }
+
+    #[test]
+    fn imports_come_first() {
+        let src = "/* tokens */\n@import \"tokens.aqstyle\";\n.a { gap: 1px; }";
+        let (sheet, errors) = parse(src);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(sheet.items.len(), 1);
+        assert_eq!(
+            sheet.imports.iter().map(|i| text(src, i.path)).collect::<Vec<_>>(),
+            ["tokens.aqstyle"]
+        );
+        let late = ".a { gap: 1px; }\n@import \"tokens.aqstyle\";";
+        let (sheet, errors) = parse(late);
+        assert_eq!(kinds(&errors), [ParseErrorKind::ImportAfterRules]);
+        assert_eq!(sheet.items.len(), 1);
+    }
+
+    #[test]
+    fn imported_styles_must_exist() {
+        let dir = std::env::temp_dir().join(format!("aqlint-style-imports-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("tokens.aqstyle"), ":root { --a: 1px; }").unwrap();
+        let src = "@import \"tokens.aqstyle\";\n@import \"nowhere.aqstyle\";\n.a { gap: 1px; }";
+        let path = dir.join("a.aqstyle");
+        let (sheet, _) = parse(src);
+        assert_eq!(kinds(&check_files(&path, &sheet)), [ParseErrorKind::ImportMissing]);
     }
 
     #[test]

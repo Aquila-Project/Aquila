@@ -154,32 +154,38 @@ struct Diagnostic {
     note: Option<(String, Span)>,
 }
 
-fn diagnostics(kind: FileKind, src: &str) -> Vec<Diagnostic> {
+fn diagnostics(path: &Path, kind: FileKind, src: &str) -> Vec<Diagnostic> {
     let mut diagnostics: Vec<Diagnostic> = match kind {
-        FileKind::Style => parser::parse(src)
-            .1
-            .into_iter()
-            .map(|e| Diagnostic {
-                span: e.span,
-                message: e.kind.to_string(),
-                note: None,
-            })
-            .collect(),
-        FileKind::Layout => layout::parse(src)
-            .1
-            .into_iter()
-            .map(|e| Diagnostic {
-                span: e.span,
-                message: e.kind.to_string(),
-                note: match e.kind {
-                    layout::LayoutErrorKind::MismatchedClosingTag { open } => Some((
-                        format!("`<{}>` is opened here", &src[open.start..open.end]),
-                        open,
-                    )),
-                    _ => None,
-                },
-            })
-            .collect(),
+        FileKind::Style => {
+            let (sheet, mut errors) = parser::parse(src);
+            errors.extend(parser::check_files(path, &sheet));
+            errors
+                .into_iter()
+                .map(|e| Diagnostic {
+                    span: e.span,
+                    message: e.kind.to_string(),
+                    note: None,
+                })
+                .collect()
+        }
+        FileKind::Layout => {
+            let (layout, mut errors) = layout::parse(src);
+            errors.extend(layout::check_files(path, &layout, src));
+            errors
+                .into_iter()
+                .map(|e| Diagnostic {
+                    span: e.span,
+                    message: e.kind.to_string(),
+                    note: match e.kind {
+                        layout::LayoutErrorKind::MismatchedClosingTag { open } => Some((
+                            format!("`<{}>` is opened here", &src[open.start..open.end]),
+                            open,
+                        )),
+                        _ => None,
+                    },
+                })
+                .collect()
+        }
     };
     diagnostics.sort_by_key(|d| d.span.start);
     diagnostics
@@ -232,7 +238,7 @@ fn check_file(file: &SourceFile) -> Result<usize, InputError> {
         print_tokens(file, &src);
     }
 
-    let diagnostics = diagnostics(file.kind, &src);
+    let diagnostics = diagnostics(&file.path, file.kind, &src);
     for diagnostic in &diagnostics {
         report(&file.path, &src, diagnostic);
     }
