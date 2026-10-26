@@ -56,6 +56,10 @@ Unique<Aquila::UI::Core::View> EditorContext::load_layout(std::string_view file_
 	return m_layouts.load_file(m_layout_dir + std::string(file_name));
 }
 
+std::string EditorContext::window_layout(std::string_view name) const {
+	return m_layout_dir + "Windows/" + std::string(name) + ".aqlayout";
+}
+
 Entity EditorContext::create_entity(Entity parent) {
 	auto &entities = *m_engine.get_scene().get_entity_manager();
 	Entity entity = entities.create_entity("New Entity");

@@ -19,6 +19,7 @@ class IRenderWindowHost;
 
 namespace Aquila::UI::Core {
 class Canvas;
+class LayoutLoader;
 class TextureCache;
 }
 
@@ -32,7 +33,7 @@ class WidgetGalleryWindow;
 struct UIDevToolsDesc {
 	Core::Canvas &target;
 	Aquila::Rendering::IRenderWindowHost &host;
-	std::vector<std::string> style_paths;
+	Core::LayoutLoader &layouts;
 };
 
 /// The UI inspector, the element picker and the widget gallery for one canvas.
@@ -58,7 +59,7 @@ class UIDevTools {
 
 	Core::Canvas &m_target;
 	Aquila::Rendering::IRenderWindowHost &m_host;
-	std::vector<std::string> m_style_paths;
+	Core::LayoutLoader &m_layouts;
 
 	Unique<UIDebugPanel> m_panel;
 	Unique<UIDebugWindow> m_inspector;

@@ -72,7 +72,7 @@ class Canvas {
 	bool is_draw_list_dirty() const { return m_draw_list_dirty; }
 	void clear_draw_list_dirty() { m_draw_list_dirty = false; }
 
-	void set_layout_loader(LayoutLoader *loader) { m_layout_loader = loader; }
+	void set_layout_loader(LayoutLoader *loader);
 	[[nodiscard]] LayoutLoader *get_layout_loader() const { return m_layout_loader; }
 
 	/// Frames this canvas asks for only redraw that window (a FrameScheduler target).

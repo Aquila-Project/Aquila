@@ -2,6 +2,7 @@
 
 #include "Aquila/Application/EngineContext.h"
 #include "Aquila/Application/IModule.h"
+#include "Aquila/Foundation/Registration.h"
 #include "Aquila/Foundation/Timer.h"
 #include "Aquila/Rendering/CameraController.h"
 #include "Aquila/Rendering/IRenderWindowHost.h"
@@ -84,7 +85,6 @@ class EditorModule final : public Aquila::Application::IModule {
 	/// "entity" AssetSlots (script entity fields) take hierarchy drags, store the UUID and show the entity's name.
 	void register_entity_slots();
 	void register_thumbnail_slots();
-	void load_styles();
 	void reload_styles();
 	void wire_main_menu(Aquila::UI::Core::View *layout_root);
 	void open_settings_window();
@@ -124,6 +124,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<StatusBar> m_status_bar;
 	Aquila::UI::Core::PopupMenu *m_main_menu = nullptr;
 	Unique<Aquila::UI::Core::UIHost> m_ui_host;
+	Aquila::Foundation::Registration m_layout_service;
 	Unique<ProjectManager> m_project_manager;
 	Unique<Aquila::UI::Core::TextureCache> m_texture_cache;
 	Unique<AssetThumbnails> m_thumbnails;
@@ -167,8 +168,6 @@ class EditorModule final : public Aquila::Application::IModule {
 
 	Aquila::SceneManagement::Entity m_outlined_entity;
 	Option<Aquila::SceneManagement::Entity> m_pending_pick;
-
-	Aquila::UI::Core::LayoutLoader m_layout_loader;
 };
 
 } // namespace Editor

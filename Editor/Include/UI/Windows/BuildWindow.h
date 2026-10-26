@@ -33,7 +33,7 @@ class BuildWindow final : public Aquila::UI::Core::CanvasWindow {
 	explicit BuildWindow(EditorContext &context);
 	~BuildWindow() override;
 
-	void build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths);
+	void build(Uint32 width, Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
 
 	/// With `run_after` the game starts once the build succeeds.
 	void start_build(bool run_after);

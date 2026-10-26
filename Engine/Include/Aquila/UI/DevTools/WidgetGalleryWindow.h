@@ -22,7 +22,7 @@ class WidgetGalleryWindow final : public Aquila::UI::Core::CanvasWindow {
 	~WidgetGalleryWindow() override;
 
 	void build(Aquila::GFX::GfxContext &ctx, Aquila::UI::Core::TextureCache *texture_cache, Uint32 width, Uint32 height,
-			   const std::vector<std::string> &style_paths);
+			   Aquila::UI::Core::LayoutLoader &loader);
 
   private:
 	Aquila::UI::Core::View *add_group(Aquila::UI::Core::View *host, const std::string &heading);

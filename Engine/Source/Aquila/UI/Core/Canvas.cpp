@@ -324,6 +324,12 @@ void Canvas::update(F32 delta_time) {
 	}
 }
 
+void Canvas::set_layout_loader(LayoutLoader *loader) {
+	m_layout_loader = loader;
+	m_style_revision = 0;
+	reload_style_set();
+}
+
 void Canvas::reload_style_set() {
 	if (m_layout_loader == nullptr) {
 		return;

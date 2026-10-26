@@ -317,8 +317,8 @@ void SettingsWindow::add_project_pages() {
 	build.reset = [this] { m_project.build_output.clear(); };
 }
 
-void SettingsWindow::build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
-	create_canvas(width, height, style_paths);
+void SettingsWindow::build(Uint32 width, Uint32 height, LayoutLoader &loader) {
+	create_canvas(width, height, loader);
 
 	m_project = m_context.project().settings;
 	m_font_families = FontManager::available_families();

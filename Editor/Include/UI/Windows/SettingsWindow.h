@@ -23,7 +23,7 @@ class SettingsWindow final : public Aquila::UI::Core::CanvasWindow {
 	explicit SettingsWindow(EditorContext &context);
 	~SettingsWindow() override;
 
-	void build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths);
+	void build(Uint32 width, Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
 
 	Delegate<void()> on_preferences_changed;
 

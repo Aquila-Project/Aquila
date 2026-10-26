@@ -25,7 +25,7 @@ class ProjectLauncher final : public Aquila::UI::Core::CanvasWindow {
 	~ProjectLauncher() override;
 
 	void build(ProjectManager *project_manager, Aquila::UI::Core::TextureCache *texture_cache, Uint32 width,
-			   Uint32 height, const std::vector<std::string> &style_paths);
+			   Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
 
 	Delegate<void(const ProjectInfo &)> on_project_ready;
 

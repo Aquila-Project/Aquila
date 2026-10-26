@@ -79,8 +79,8 @@ BuildWindow::~BuildWindow() {
 	}
 }
 
-void BuildWindow::build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
-	create_canvas(width, height, style_paths);
+void BuildWindow::build(Uint32 width, Uint32 height, LayoutLoader &loader) {
+	create_canvas(width, height, loader);
 
 	View *root = get_canvas()->get_root();
 	if (auto layout = m_context.load_layout("build.aqlayout")) {

@@ -97,14 +97,14 @@ ProjectLauncher::ProjectLauncher() = default;
 ProjectLauncher::~ProjectLauncher() = default;
 
 void ProjectLauncher::build(ProjectManager *project_manager, TextureCache *texture_cache, Uint32 width, Uint32 height,
-							const std::vector<std::string> &style_paths) {
+							LayoutLoader &loader) {
 	m_project_manager = project_manager;
 	m_texture_cache = texture_cache;
 	if (m_texture_cache != nullptr) {
 		m_logo = m_texture_cache->load("Engine/aquila-logo.png");
 	}
 
-	create_canvas(width, height, style_paths);
+	create_canvas(width, height, loader);
 
 	auto *root = get_canvas()->get_root();
 	root->set_id("launcher-root");

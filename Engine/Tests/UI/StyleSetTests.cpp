@@ -1,6 +1,7 @@
 #include <doctest.h>
 
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/CanvasWindow.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Style/StyleParser.h"
@@ -11,6 +12,14 @@
 
 using namespace Aquila::UI;
 using namespace Aquila::UI::Core;
+
+namespace {
+
+struct TestCanvasWindow : CanvasWindow {
+	Canvas &make(LayoutLoader &loader) { return create_canvas(100, 100, loader); }
+};
+
+}
 
 TEST_SUITE("Style set") {
 	TEST_CASE("the order is base, components, windows, whatever loaded first") {
@@ -104,5 +113,18 @@ TEST_SUITE("Style set") {
 		loader.styles().touch();
 		canvas.update(0.F);
 		CHECK(canvas.get_style_sheet().get_rule_count() == 4);
+	}
+
+	TEST_CASE("a canvas window's canvas shows the loader's styles") {
+		CanvasSingletonsScope singletons;
+		MarkupFiles files;
+		files.write("/markup-tests/base.aqstyle", ".a { width: 1px; } .b { width: 1px; }");
+		LayoutLoader loader;
+		loader.styles().set_base({ "/markup-tests/base.aqstyle" });
+		TestCanvasWindow window;
+		Canvas &canvas = window.make(loader);
+		canvas.update(0.F);
+		CHECK(canvas.get_layout_loader() == &loader);
+		CHECK(canvas.get_style_sheet().get_rule_count() == 2);
 	}
 }
