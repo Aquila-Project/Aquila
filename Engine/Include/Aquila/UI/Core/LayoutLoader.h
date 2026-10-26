@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/UI/Core/BehaviourRegistry.h"
+#include "Aquila/UI/Style/StyleSet.h"
 #include "Aquila/UI/Core/Shortcuts.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Core/IResourceResolver.h"
@@ -51,6 +52,7 @@ class LayoutLoader : public IResourceResolver {
 	Unique<View> load_string(std::string_view xml);
 
 	[[nodiscard]] BehaviourRegistry &behaviours() { return m_behaviours; }
+	[[nodiscard]] StyleSet &styles() { return m_styles; }
 
 	View *build_file(const std::string &path, View &parent, Unique<Behaviour> behaviour = nullptr);
 	View *create(const std::string &file, std::string_view component, View &parent);
@@ -98,6 +100,7 @@ class LayoutLoader : public IResourceResolver {
 
 	std::unordered_map<std::string, CachedDocument> m_documents;
 	BehaviourRegistry m_behaviours;
+	StyleSet m_styles;
 	std::vector<std::string> m_checking;
 
 	[[nodiscard]] Ref<const Markup::MarkupDocument> load_document(const std::string &path);

@@ -1,5 +1,7 @@
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/Foundation/FrameScheduler.h"
+#include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/DragGhost.h"
 #include "Aquila/UI/Widgets/Tooltip.h"
 
@@ -303,6 +305,7 @@ void Canvas::scroll_into_view(View *target) {
 void Canvas::update(F32 delta_time) {
 	const bool outer_pass = std::exchange(m_in_frame_pass, true);
 	m_delta_time = delta_time;
+	reload_style_set();
 	update_tooltip();
 	bool needs_frame = false;
 	if (!m_ticking.empty()) {
@@ -319,6 +322,19 @@ void Canvas::update(F32 delta_time) {
 	if (needs_frame || !m_active_anims.empty()) {
 		Aquila::Foundation::FrameScheduler::get()->request_frame(m_frame_target);
 	}
+}
+
+void Canvas::reload_style_set() {
+	if (m_layout_loader == nullptr) {
+		return;
+	}
+	const StyleSet &styles = m_layout_loader->styles();
+	if (styles.get_revision() == m_style_revision) {
+		return;
+	}
+	m_style_revision = styles.get_revision();
+	StyleParser::load_files(styles.get_paths(), get_style_sheet());
+	reload_styles();
 }
 
 void Canvas::update_tooltip() {

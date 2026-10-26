@@ -353,6 +353,11 @@ Ref<const Markup::MarkupDocument> LayoutLoader::load_document(const std::string 
 
 	auto document = std::make_shared<const Markup::MarkupDocument>(Markup::parse_markup(src, path));
 	m_documents[path] = { .document = document, .write_time = write_time, .size = size };
+	std::vector<std::string> imports;
+	for (const Markup::MarkupImport &import : document->imports) {
+		imports.push_back(Markup::resolve_markup_path(Markup::markup_directory(path), import.src, ".aqlayout"));
+	}
+	m_styles.note_layout(path, document->root.has_value(), std::move(imports));
 	check_document(*document);
 	return document;
 }
