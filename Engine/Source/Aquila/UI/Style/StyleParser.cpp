@@ -289,6 +289,9 @@ namespace {
 struct StyleImport {
 	std::string path;
 	bool before_rules = false;
+	bool terminated = true;
+	Usize line = 1;
+	Usize column = 1;
 };
 
 std::vector<StyleImport> take_imports(std::string &text) {
@@ -306,27 +309,35 @@ std::vector<StyleImport> take_imports(std::string &text) {
 		if (at == std::string::npos) {
 			break;
 		}
-		Usize end = text.find(';', at);
-		if (end == std::string::npos) {
-			end = text.size();
-		}
+		const Usize semicolon = text.find(';', at);
+		const Usize newline = text.find('\n', at);
+		const bool terminated = semicolon != std::string::npos && (newline == std::string::npos || semicolon < newline);
+		const Usize end = terminated ? semicolon : std::min(newline, text.size());
 		std::string_view target =
 			ParserHelper::trim(std::string_view(text).substr(at + K_IMPORT.size(), end - at - K_IMPORT.size()));
 		if (target.size() >= 2 && (target.front() == '"' || target.front() == '\'') &&
 			target.back() == target.front()) {
 			target = target.substr(1, target.size() - 2);
 		}
-		imports.push_back({ .path = std::string(target), .before_rules = !seen_rule });
-		pos = std::min(end + 1, text.size());
+		const Usize line_start = at == 0 ? std::string::npos : text.rfind('\n', at - 1);
+		imports.push_back(
+			{ .path = std::string(target),
+			  .before_rules = !seen_rule,
+			  .terminated = terminated,
+			  .line = 1 +
+				  static_cast<Usize>(std::count(text.begin(), text.begin() + static_cast<std::ptrdiff_t>(at), '\n')),
+			  .column = line_start == std::string::npos ? at + 1 : at - line_start });
+		pos = terminated ? end + 1 : end;
 	}
 	text = std::move(rest);
 	return imports;
 }
 
 bool load_with_imports(const std::string &path, StyleSheet &sheet, std::vector<std::string> &loaded,
-					   std::vector<std::string> &loading) {
+					   std::vector<std::string> &loading, std::string_view imported_at = {}) {
+	const std::string where = imported_at.empty() ? std::string() : std::string(imported_at) + ": ";
 	if (std::ranges::find(loading, path) != loading.end()) {
-		AQUILA_LOG_ERROR("StyleParser: import cycle at '{}'", path);
+		AQUILA_LOG_ERROR("StyleParser: {}import cycle at '{}'", where, path);
 		return false;
 	}
 	if (std::ranges::find(loaded, path) != loaded.end()) {
@@ -334,7 +345,7 @@ bool load_with_imports(const std::string &path, StyleSheet &sheet, std::vector<s
 	}
 	const std::string src = Platform::Filesystem::VirtualFileSystem::get()->read_text_file(path);
 	if (src.empty()) {
-		AQUILA_LOG_ERROR("StyleParser: cannot open '{}'", path);
+		AQUILA_LOG_ERROR("StyleParser: {}cannot open '{}'", where, path);
 		return false;
 	}
 
@@ -343,20 +354,23 @@ bool load_with_imports(const std::string &path, StyleSheet &sheet, std::vector<s
 	bool all_ok = true;
 	loading.push_back(path);
 	for (const StyleImport &import : imports) {
+		const std::string at = std::format("{}:{}:{}", path, import.line, import.column);
+		if (!import.terminated) {
+			AQUILA_LOG_WARNING("StyleParser: {}: @import \"{}\" is missing its ';'", at, import.path);
+		}
 		if (!import.before_rules) {
-			AQUILA_LOG_WARNING("StyleParser: {}: @import must come before the rules, \"{}\" is skipped", path,
+			AQUILA_LOG_WARNING("StyleParser: {}: @import must come before the rules, \"{}\" is skipped", at,
 							   import.path);
 			continue;
 		}
 		const std::string imported =
 			Markup::resolve_markup_path(Markup::markup_directory(path), import.path, ".aqstyle");
-		all_ok = load_with_imports(imported, sheet, loaded, loading) && all_ok;
+		all_ok = load_with_imports(imported, sheet, loaded, loading, at) && all_ok;
 	}
 	loading.pop_back();
 	loaded.push_back(path);
 	return StyleParser::LoadString(text, sheet, false) && all_ok;
 }
-
 }
 
 bool StyleParser::load_files(std::span<const std::string> paths, StyleSheet &sheet) {

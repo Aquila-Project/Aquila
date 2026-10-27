@@ -90,6 +90,36 @@ TEST_SUITE("Style set") {
 		CHECK(log.find("only works in files") != std::string::npos);
 	}
 
+	TEST_CASE("@import problems name the importing file, line and column") {
+		MarkupFiles files;
+		files.write("/markup-tests/tokens.aqstyle", ":root { --w: 5px; }");
+		files.write("/markup-tests/m.aqstyle", "\n  @import \"gone.aqstyle\";\n.m { width: 1px; }");
+		files.write("/markup-tests/x.aqstyle", "@import \"y.aqstyle\";\n.x { width: 1px; }");
+		files.write("/markup-tests/y.aqstyle", "\n@import \"x.aqstyle\";\n.y { width: 1px; }");
+		files.write("/markup-tests/late.aqstyle", ".z { width: 1px; }\n@import \"tokens.aqstyle\";");
+		files.write("/markup-tests/n.aqstyle", "@import \"tokens.aqstyle\"\n.n { width: var(--w); }");
+		StyleSheet sheet;
+		LogCapture capture;
+		StyleParser::load_files(std::vector<std::string>{ "/markup-tests/m.aqstyle" }, sheet);
+		StyleParser::load_files(std::vector<std::string>{ "/markup-tests/x.aqstyle" }, sheet);
+		StyleParser::load_files(std::vector<std::string>{ "/markup-tests/late.aqstyle" }, sheet);
+		const std::string log = capture.stream.str();
+		CHECK_MESSAGE(log.find("/markup-tests/m.aqstyle:2:3") != std::string::npos, log);
+		CHECK_MESSAGE(log.find("/markup-tests/y.aqstyle:2:1") != std::string::npos, log);
+		CHECK_MESSAGE(log.find("/markup-tests/late.aqstyle:2:1") != std::string::npos, log);
+
+		StyleSheet only_n;
+		LogCapture missing_semicolon;
+		StyleParser::load_files(std::vector<std::string>{ "/markup-tests/n.aqstyle" }, only_n);
+		const std::string n_log = missing_semicolon.stream.str();
+		CHECK_MESSAGE(n_log.find("/markup-tests/n.aqstyle:1:1") != std::string::npos, n_log);
+		CHECK_MESSAGE(n_log.find("missing its ';'") != std::string::npos, n_log);
+		StyleSheet tokens_only;
+		StyleParser::load_files(std::vector<std::string>{ "/markup-tests/tokens.aqstyle" }, tokens_only);
+		CHECK(only_n.get_rule_count() == tokens_only.get_rule_count() + 1);
+		CHECK(only_n.get_variable("--w") != nullptr);
+	}
+
 	TEST_CASE("a canvas reloads once per change") {
 		CanvasSingletonsScope singletons;
 		MarkupFiles files;
