@@ -18,19 +18,11 @@ endif ()
 
 file(GLOB_RECURSE AQUILA_UI_MARKUP CONFIGURE_DEPENDS
     "${AQUILA_RESOURCES_PATH}/*.aqlayout" "${AQUILA_RESOURCES_PATH}/*.aqstyle"
-    "${AQUILA_ASSET_PATH}/*.aqlayout" "${AQUILA_ASSET_PATH}/*.aqstyle"
 )
 if (NOT AQUILA_UI_MARKUP)
     message(STATUS "UI lint: OFF (no .aqlayout or .aqstyle files)")
     return()
 endif ()
-
-set(AQLINT_ROOTS "")
-foreach (_root "${AQUILA_RESOURCES_PATH}" "${AQUILA_ASSET_PATH}")
-    if (IS_DIRECTORY "${_root}")
-        list(APPEND AQLINT_ROOTS "${_root}")
-    endif ()
-endforeach ()
 
 set(AQLINT_BINARY_DIR "${CMAKE_BINARY_DIR}/aqlint")
 set(AQLINT_EXECUTABLE "${AQLINT_BINARY_DIR}/release/aqlint${CMAKE_EXECUTABLE_SUFFIX}")
@@ -50,7 +42,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT "${AQLINT_STAMP}"
-    COMMAND "${AQLINT_EXECUTABLE}" ${AQLINT_ROOTS}
+    COMMAND "${AQLINT_EXECUTABLE}" "${AQUILA_RESOURCES_PATH}"
     COMMAND "${CMAKE_COMMAND}" -E touch "${AQLINT_STAMP}"
     DEPENDS "${AQLINT_EXECUTABLE}" ${AQUILA_UI_MARKUP}
     COMMENT "[AQUILA] Linting UI layouts and styles"
