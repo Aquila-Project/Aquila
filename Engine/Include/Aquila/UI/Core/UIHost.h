@@ -6,6 +6,7 @@
 #include "Aquila/Platform/Cursor.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/CanvasManager.h"
+#include "Aquila/UI/Core/LayoutLoader.h"
 
 namespace Aquila::Platform::Events {
 class Event;
@@ -23,6 +24,7 @@ struct UIHostDesc {
 	Uint32 height = 0;
 	std::function<std::string()> clipboard_get{};
 	std::function<void(const std::string &)> clipboard_set{};
+	std::vector<std::string> base_styles{};
 };
 
 /// Boots the UI for an app: the canvas layers, the overlay rendering system and the clipboard.
@@ -40,6 +42,10 @@ class UIHost {
 
 	[[nodiscard]] Canvas &get_canvas(UILayer layer) { return CanvasManager::get()->get_layer(layer); }
 	[[nodiscard]] Platform::CursorType get_active_cursor() const { return CanvasManager::get()->get_active_cursor(); }
+	[[nodiscard]] LayoutLoader &get_layout_loader() { return m_layouts; }
+
+  private:
+	LayoutLoader m_layouts;
 };
 
 }

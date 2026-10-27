@@ -31,7 +31,7 @@ enum class LogLevel { Trace, Debug, Info, Warning, Error, Critical };
 
 class ConsolePanel : public IEditorPanel {
   public:
-	explicit ConsolePanel(Aquila::UI::Core::TextureCache *texture_cache);
+	ConsolePanel();
 	~ConsolePanel();
 
 	void build(Aquila::UI::Core::View *panel, Aquila::UI::Core::View *overlay_root) override;
@@ -64,10 +64,6 @@ class ConsolePanel : public IEditorPanel {
 	static std::string_view level_tag(LogLevel level);
 	static constexpr int K_MAX_MESSAGES = 500;
 
-	Aquila::UI::Core::TextureCache *m_texture_cache = nullptr;
-	Aquila::GFX::GfxTexture *m_info_icon = nullptr;
-	Aquila::GFX::GfxTexture *m_alert_icon = nullptr;
-	Aquila::GFX::GfxTexture *m_error_icon = nullptr;
 
 	LogCaptureBuf m_capture_buf;
 	std::ostream m_capture_stream{ &m_capture_buf };

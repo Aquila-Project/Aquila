@@ -116,6 +116,7 @@ class EditorContext {
 	[[nodiscard]] Aquila::GFX::GfxTexture *icon(std::string_view name) const;
 	/// A file from the editor's layout folder, by name.
 	[[nodiscard]] Unique<Aquila::UI::Core::View> load_layout(std::string_view file_name) const;
+	[[nodiscard]] std::string window_layout(std::string_view name) const;
 
 	/// Selects it too.
 	Aquila::SceneManagement::Entity create_entity(Aquila::SceneManagement::Entity parent = {});

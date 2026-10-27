@@ -26,7 +26,7 @@ class GameWindow final : public EditorWindow {
 	explicit GameWindow(EditorContext &context);
 	~GameWindow() override;
 
-	void build(Aquila::UI::Core::View &content) override;
+	void define_behaviour() override;
 	void update(F32 delta_time) override;
 
 	/// The game plays (or is paused) and a Game window is on screen.

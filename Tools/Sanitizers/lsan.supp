@@ -15,6 +15,7 @@ leak:libgdk-3.so
 leak:libglib-2.0.so
 leak:libgobject-2.0.so
 leak:TestGpu::TestGpu
+leak:test_vfs
 leak:scene_dir
 leak:write_script
 leak:LLVMFuzzerInitialize

@@ -14,6 +14,7 @@ class FontAtlas;
 namespace Aquila::UI::Core {
 
 class Canvas;
+class ComponentInstance;
 class IResourceResolver;
 
 enum class ViewKind : Uint8 {
@@ -115,6 +116,12 @@ class View {
 	void set_hidden(bool hidden);
 
 	void set_id(std::string id) { m_id = std::move(id); }
+	void set_id_scope(Uint64 scope) { m_id_scope = scope; }
+	[[nodiscard]] Uint64 get_id_scope() const { return m_id_scope; }
+
+	void set_component_instance(Unique<ComponentInstance> instance);
+	[[nodiscard]] ComponentInstance *get_component_instance() const { return m_component_instance.get(); }
+	Unique<ComponentInstance> take_component_instance();
 	void set_style(StyleProperties props) { m_style = std::move(props); }
 
 	// Optional hover tooltip. Empty (the default) means this view has no tooltip.
@@ -286,7 +293,7 @@ class View {
 	void invalidate_layout();
 
 	void update_animation(F32 delta_time);
-	virtual ~View() = default;
+	virtual ~View();
 
   protected:
 	bool m_is_hovered = false;
@@ -309,6 +316,8 @@ class View {
 	bool m_display_style_initialized = false;
 
 	std::string m_id;
+	Uint64 m_id_scope = 0;
+	Unique<ComponentInstance> m_component_instance;
 	std::string m_tooltip;
 	std::vector<std::string> m_classes;
 	StyleProperties m_style;

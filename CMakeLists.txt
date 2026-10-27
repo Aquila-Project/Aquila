@@ -291,7 +291,6 @@ else ()
 endif ()
 
 set(AQUILA_ROOT_DIR ${CMAKE_SOURCE_DIR})
-set(AQUILA_ASSET_PATH "${CMAKE_SOURCE_DIR}/Assets" CACHE PATH "Asset directory path")
 set(AQUILA_RESOURCES_PATH "${CMAKE_SOURCE_DIR}/Resources" CACHE PATH "Resources directory path")
 set(AQUILA_ENGINE_IMMUTABLE_SHADER_PATH "${AQUILA_ROOT_DIR}/Engine/Shaders/")
 
@@ -352,13 +351,6 @@ if (NOT AQUILA_SHIPPING)
         install(TARGETS AquilaRuntime
                 RUNTIME DESTINATION bin
                 LIBRARY DESTINATION lib
-        )
-    endif ()
-
-    if (EXISTS ${AQUILA_ASSET_PATH})
-        install(DIRECTORY ${AQUILA_ASSET_PATH}
-                DESTINATION share/aquila/assets
-                PATTERN "*.tmp" EXCLUDE
         )
     endif ()
 endif ()

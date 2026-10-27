@@ -63,19 +63,12 @@ if (NOT AQUILA_SHIPPING)
         )
     endif()
 
-    foreach (_aquila_content IN ITEMS Assets Resources)
-        if (_aquila_content STREQUAL "Assets")
-            set(_aquila_content_source ${AQUILA_ASSET_PATH})
-        else ()
-            set(_aquila_content_source ${AQUILA_RESOURCES_PATH})
-        endif ()
-        if (EXISTS ${_aquila_content_source})
-            add_custom_command(TARGET AquilaEditor POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${_aquila_content_source} $<TARGET_FILE_DIR:AquilaEditor>/${_aquila_content}
-                COMMENT "Copying ${_aquila_content}"
-                VERBATIM
-            )
-        endif ()
-    endforeach ()
+    if (EXISTS ${AQUILA_RESOURCES_PATH})
+        add_custom_command(TARGET AquilaEditor POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${AQUILA_RESOURCES_PATH} $<TARGET_FILE_DIR:AquilaEditor>/Resources
+            COMMENT "Copying Resources"
+            VERBATIM
+        )
+    endif ()
 endif ()

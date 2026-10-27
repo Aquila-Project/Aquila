@@ -19,6 +19,7 @@ using namespace Aquila::UI::Rendering;
 
 class Tooltip;
 class DragGhost;
+class LayoutLoader;
 
 /// One UI tree with its own style sheet, layout, input and draw list.
 /// Every frame the owner calls update(), then compute(), then submit_to_quad_batcher().
@@ -71,6 +72,9 @@ class Canvas {
 	bool is_draw_list_dirty() const { return m_draw_list_dirty; }
 	void clear_draw_list_dirty() { m_draw_list_dirty = false; }
 
+	void set_layout_loader(LayoutLoader *loader);
+	[[nodiscard]] LayoutLoader *get_layout_loader() const { return m_layout_loader; }
+
 	/// Frames this canvas asks for only redraw that window (a FrameScheduler target).
 	void set_frame_target(const void *target) { m_frame_target = target; }
 	[[nodiscard]] const void *get_frame_target() const { return m_frame_target; }
@@ -109,11 +113,14 @@ class Canvas {
 	bool m_dirty = true;
 	bool m_in_frame_pass = false;
 	const void *m_frame_target = nullptr;
+	LayoutLoader *m_layout_loader = nullptr;
+	Uint64 m_style_revision = 0;
 	bool m_draw_list_dirty = true; // true when draw list was rebuilt this frame
 
 	void mark_dirty();
 	void request_layout(); // mark layout dirty + request a frame (used by input/scroll)
 	void style_pass();
+	void reload_style_set();
 	void animation_pass(F32 dt);
 	void update_tooltip();
 

@@ -4,7 +4,7 @@
 #include "Aquila/Platform/Events/WindowEvent.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/View.h"
-#include "Aquila/UI/Style/StyleParser.h"
+#include "Aquila/UI/Core/LayoutLoader.h"
 
 namespace Aquila::UI::Core {
 
@@ -36,9 +36,9 @@ void CanvasWindow::close() {
 	}
 }
 
-Canvas &CanvasWindow::create_canvas(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
+Canvas &CanvasWindow::create_canvas(Uint32 width, Uint32 height, LayoutLoader &loader) {
 	m_canvas = std::make_unique<Canvas>(width, height);
-	StyleParser::load_files(style_paths, m_canvas->get_style_sheet());
+	m_canvas->set_layout_loader(&loader);
 	return *m_canvas;
 }
 

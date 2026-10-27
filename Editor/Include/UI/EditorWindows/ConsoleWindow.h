@@ -11,7 +11,7 @@ class ConsoleWindow final : public EditorWindow {
 	explicit ConsoleWindow(EditorContext &context);
 	~ConsoleWindow() override;
 
-	void build(Aquila::UI::Core::View &content) override;
+	void define_behaviour() override;
 	void update(F32 delta_time) override;
 	void clear();
 

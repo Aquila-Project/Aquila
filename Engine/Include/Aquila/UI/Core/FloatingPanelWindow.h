@@ -13,8 +13,7 @@ class FloatingPanelWindow final : public CanvasWindow {
 	FloatingPanelWindow();
 	~FloatingPanelWindow() override;
 
-	void build(Unique<View> panel_subtree, const std::string &title, Uint32 width, Uint32 height,
-			   const std::vector<std::string> &style_paths);
+	void build(Unique<View> panel_subtree, const std::string &title, Uint32 width, Uint32 height, LayoutLoader &loader);
 
 	[[nodiscard]] bool has_content() const;
 	Unique<View> detach_content();

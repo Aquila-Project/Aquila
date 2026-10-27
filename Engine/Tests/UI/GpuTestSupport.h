@@ -10,6 +10,7 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Core/FontRegistry.h"
 #include "Aquila/UI/Text/FontAtlas.h"
+#include "VfsTestSupport.h"
 
 struct TestGpu {
 	GLFWwindow *window = nullptr;
@@ -25,10 +26,7 @@ struct TestGpu {
 		ctx = Aquila::GFX::GfxContext::create(*window);
 		REQUIRE(ctx != nullptr);
 
-		Aquila::Platform::Filesystem::VirtualFileSystem::init();
-		Aquila::Platform::Filesystem::VirtualFileSystem::get()->mount(
-			"/resources",
-			std::make_shared<Aquila::Platform::Filesystem::NativeFileSystem>(std::string(AQUILA_SOURCE_DIR) + "/Resources"));
+		test_vfs();
 
 		font = Aquila::UI::Text::FontAtlas::create_from_file(*ctx, "/resources/Engine/Fonts/Outfit/Outfit-Regular.ttf");
 		REQUIRE(font != nullptr);

@@ -3,6 +3,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Math/Rect.h"
 #include "Aquila/Platform/Input.h"
+#include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockPanel.h"
@@ -31,10 +32,7 @@ void EditorWindow::release() {
 		return;
 	}
 	m_released = true;
-	for (auto &disconnect : m_disconnects) {
-		disconnect();
-	}
-	m_disconnects.clear();
+	run_cleanups();
 	for (auto &overlay : m_overlays) {
 		if (View *view = overlay.get(); view != nullptr && view->get_parent() != nullptr) {
 			view->get_parent()->remove_child(view);
@@ -172,6 +170,7 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 
 	Unique<EditorWindow> window = type->create(m_context);
 	window->m_type_id = type_id;
+	window->set_overlay_root(m_context.overlay_root());
 
 	View *overlay = m_context.overlay_root();
 	std::vector<View *> before;
@@ -181,7 +180,16 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 		}
 	}
 
-	window->build(*panel);
+	EditorWindow *built = window.get();
+	if (built->get_layout_path().empty()) {
+		built->build(*panel);
+	} else {
+		const std::string path = built->get_layout_path();
+		if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
+			AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
+			return panel;
+		}
+	}
 
 	if (overlay != nullptr) {
 		std::vector<View *> created;
@@ -191,13 +199,15 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 			}
 		}
 		for (View *view : created) {
-			window->m_overlays.emplace_back(panel->add_child(overlay->detach_child(view)));
+			built->m_overlays.emplace_back(panel->add_child(overlay->detach_child(view)));
 		}
 	}
 
-	window->m_on_destroyed = [this](EditorWindow *destroyed) { forget(destroyed); };
-	m_live.push_back({ window.get(), panel.get() });
-	panel->set_content_owner(std::move(window));
+	built->m_on_destroyed = [this](EditorWindow *destroyed) { forget(destroyed); };
+	m_live.push_back({ built, panel.get() });
+	if (window) {
+		panel->set_content_owner(std::move(window));
+	}
 	return panel;
 }
 

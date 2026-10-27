@@ -1,11 +1,19 @@
 #pragma once
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/UI/Core/BehaviourRegistry.h"
+#include "Aquila/UI/Style/StyleSet.h"
 #include "Aquila/UI/Core/Shortcuts.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Core/IResourceResolver.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Text/FontAtlas.h"
+
+namespace Aquila::UI::Markup {
+struct ComponentDefinition;
+struct MarkupDocument;
+struct MarkupNode;
+}
 
 namespace Aquila::UI::Core {
 
@@ -43,6 +51,12 @@ class LayoutLoader : public IResourceResolver {
 	Unique<View> load_file(const std::string &path);
 	Unique<View> load_string(std::string_view xml);
 
+	[[nodiscard]] BehaviourRegistry &behaviours() { return m_behaviours; }
+	[[nodiscard]] StyleSet &styles() { return m_styles; }
+
+	View *build_file(const std::string &path, View &parent, Unique<Behaviour> behaviour = nullptr);
+	View *create(const std::string &file, std::string_view component, View &parent);
+
 	[[nodiscard]] Text::FontAtlas *resolve_font(const std::string &name) const;
 	[[nodiscard]] Unique<View> create_widget(const std::string &type, std::string_view text,
 											 Text::FontAtlas *font) const;
@@ -67,7 +81,44 @@ class LayoutLoader : public IResourceResolver {
 		};
 	}
 
+	friend class Behaviour;
+
 	void register_builtins();
+	struct BuildScope;
+
+	struct CachedDocument {
+		Ref<const Markup::MarkupDocument> document;
+		Uint64 write_time = 0;
+		Int64 size = -1;
+	};
+
+	struct FoundComponent {
+		const Markup::ComponentDefinition *definition = nullptr;
+		const Markup::MarkupDocument *document = nullptr;
+		Ref<const Markup::MarkupDocument> owner;
+	};
+
+	std::unordered_map<std::string, CachedDocument> m_documents;
+	BehaviourRegistry m_behaviours;
+	StyleSet m_styles;
+	std::vector<std::string> m_checking;
+
+	[[nodiscard]] Ref<const Markup::MarkupDocument> load_document(const std::string &path);
+	void check_document(const Markup::MarkupDocument &document);
+	[[nodiscard]] std::string directory_of(const Markup::MarkupDocument &document) const;
+	[[nodiscard]] FoundComponent find_visible(const BuildScope &scope, std::string_view name);
+
+	Unique<View> load_root(const std::string &path, Uint64 scope_id, Ref<const Markup::MarkupDocument> *document);
+	View *create_from(const ComponentInstance &instance, std::string_view component, View &parent);
+	View *place_instance(const FoundComponent &found, const BuildScope &scope, std::string_view component,
+						 View &parent);
+	void attach_behaviour(View &root, Unique<ComponentInstance> instance, Unique<Behaviour> behaviour);
+
+	Unique<View> build_element(const Markup::MarkupNode &node, const BuildScope &scope);
+	Unique<View> build_component(const FoundComponent &found, const Markup::MarkupNode &instance,
+								 const BuildScope &scope);
+	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font,
+						bool skip_text = false);
 };
 
 } // namespace Aquila::UI::Core

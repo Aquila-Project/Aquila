@@ -16,26 +16,22 @@ namespace Editor {
 using namespace Aquila;
 using Application::PlayState;
 
-GameWindow::GameWindow(EditorContext &context) : EditorWindow(context) {}
+GameWindow::GameWindow(EditorContext &context) : EditorWindow(context, context.window_layout("game")) {}
 
 GameWindow::~GameWindow() {
 	context().set_game_view(std::nullopt);
 	set_live(false);
 }
 
-void GameWindow::build(UI::Core::View &content) {
-	if (auto layout = load_layout("game.aqlayout")) {
-		content.add_child(std::move(layout));
-	}
-	m_image = content.find_by_id<UI::Core::Image>("game-image");
-	m_stage = content.find_by_id("game-stage");
-	m_idle = content.find_by_id("game-idle");
-	m_no_camera = content.find_by_id("game-no-camera");
-	m_camera_name = content.find_by_id<UI::Core::Label>("game-camera");
-	m_pause_button = content.find_by_id<UI::Core::Button>("game-pause");
+void GameWindow::define_behaviour() {
+	m_image = get<UI::Core::Image>("game-image");
+	m_stage = get("game-stage");
+	m_idle = get("game-idle");
+	m_no_camera = get("game-no-camera");
+	m_camera_name = get<UI::Core::Label>("game-camera");
+	m_pause_button = get<UI::Core::Button>("game-pause");
 	if (m_image == nullptr || m_stage == nullptr || m_idle == nullptr || m_no_camera == nullptr ||
 		m_camera_name == nullptr || m_pause_button == nullptr) {
-		AQUILA_LOG_ERROR("GameWindow: game.aqlayout is missing one of its ids");
 		m_image = nullptr;
 		return;
 	}

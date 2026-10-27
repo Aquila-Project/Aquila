@@ -20,7 +20,7 @@ class UIDebugWindow final : public Aquila::UI::Core::CanvasWindow {
 	UIDebugWindow();
 	~UIDebugWindow() override;
 
-	void build(Aquila::UI::Core::Canvas *target, Uint32 width, Uint32 height, const std::vector<std::string> &style_paths);
+	void build(Aquila::UI::Core::Canvas *target, Uint32 width, Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
 
 	void refresh();
 	void select_view(Aquila::UI::Core::View *view);

@@ -26,7 +26,7 @@ std::string pick_label(Core::View *view) {
 }
 
 UIDevTools::UIDevTools(const UIDevToolsDesc &desc)
-	: m_target(desc.target), m_host(desc.host), m_style_paths(desc.style_paths) {}
+	: m_target(desc.target), m_host(desc.host), m_layouts(desc.layouts) {}
 
 UIDevTools::~UIDevTools() = default;
 
@@ -46,7 +46,7 @@ void UIDevTools::open_inspector_window() {
 	constexpr Uint32 height = 600;
 
 	m_inspector = std::make_unique<UIDebugWindow>();
-	m_inspector->build(&m_target, width, height, m_style_paths);
+	m_inspector->build(&m_target, width, height, m_layouts);
 
 	m_inspector->on_pick_requested = [this] { start_pick(); };
 	m_inspector->set_ignored_view(m_picker);
@@ -71,7 +71,7 @@ void UIDevTools::open_widget_gallery(GFX::GfxContext &ctx, Core::TextureCache *t
 	constexpr Uint32 height = 720;
 
 	m_gallery = std::make_unique<WidgetGalleryWindow>();
-	m_gallery->build(ctx, texture_cache, width, height, m_style_paths);
+	m_gallery->build(ctx, texture_cache, width, height, m_layouts);
 
 	m_gallery->open(m_host, "Aquila - Widget Gallery", [this] { m_gallery.reset(); });
 }

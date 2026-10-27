@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{ffi::OsStr, fmt, fs, path::Path};
 
 use crate::{
     lexer::Span,
@@ -27,6 +27,17 @@ pub enum LayoutErrorKind {
     IncludeWithoutSrc,
     IncludeNotSelfClosing,
     EntityNotDecoded,
+    ImportWithoutSrc,
+    ImportNotSelfClosing,
+    ImportMissing,
+    ComponentWithoutName,
+    ComponentRootCount,
+    SecondSlot,
+    DuplicateComponent,
+    SlotOutsideComponent,
+    UndeclaredProp,
+    ComponentDefinedTwice,
+    MissingWindowStyle,
 }
 
 impl fmt::Display for LayoutErrorKind {
@@ -76,6 +87,33 @@ impl fmt::Display for LayoutErrorKind {
             LayoutErrorKind::EntityNotDecoded => {
                 f.write_str("entities aren't decoded, this shows up literally")
             }
+            LayoutErrorKind::ImportWithoutSrc => f.write_str("`<Import>` needs a `src`"),
+            LayoutErrorKind::ImportNotSelfClosing => f.write_str(
+                "`<Import>` must be self-closing (`<Import src=\"...\"/>`), its children are ignored",
+            ),
+            LayoutErrorKind::ImportMissing => f.write_str("the imported file doesn't exist"),
+            LayoutErrorKind::ComponentWithoutName => f.write_str("`<Component>` needs a `name`"),
+            LayoutErrorKind::ComponentRootCount => {
+                f.write_str("a component needs exactly one root element, the loader drops it")
+            }
+            LayoutErrorKind::SecondSlot => {
+                f.write_str("a component can only have one `<Slot/>`, the loader drops it")
+            }
+            LayoutErrorKind::DuplicateComponent => {
+                f.write_str("a component with this name is already defined in this file")
+            }
+            LayoutErrorKind::SlotOutsideComponent => {
+                f.write_str("`<Slot/>` only works inside a `<Component>`")
+            }
+            LayoutErrorKind::UndeclaredProp => f.write_str(
+                "this prop isn't in the component's `props`, it becomes empty (`$$` writes a `$`)",
+            ),
+            LayoutErrorKind::ComponentDefinedTwice => f.write_str(
+                "this import brings a component whose name this file already sees",
+            ),
+            LayoutErrorKind::MissingWindowStyle => {
+                f.write_str("a window needs its .aqstyle next to its .aqlayout")
+            }
         }
     }
 }
@@ -97,6 +135,7 @@ pub struct Element {
     pub name: Span,
     pub attributes: Vec<Attribute>,
     pub children: Vec<Node>,
+    pub self_closing: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,6 +147,8 @@ pub enum Node {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Layout {
     pub root: Option<Element>,
+    pub imports: Vec<Element>,
+    pub components: Vec<Element>,
 }
 
 pub fn parse(src: &str) -> (Layout, Vec<LayoutError>) {
@@ -117,8 +158,86 @@ pub fn parse(src: &str) -> (Layout, Vec<LayoutError>) {
         errors: Vec::new(),
         eof_reported: false,
     };
-    let root = parser.parse_document();
-    (Layout { root }, parser.errors)
+    let layout = parser.parse_document();
+    (layout, parser.errors)
+}
+
+pub fn check_files(path: &Path, layout: &Layout, src: &str) -> Vec<LayoutError> {
+    let text = |span: Span| &src[span.start..span.end];
+    let mut errors = Vec::new();
+    let mut seen: Vec<String> = layout
+        .components
+        .iter()
+        .filter_map(|component| attribute_value(component, "name", src))
+        .map(str::to_string)
+        .collect();
+
+    let dir = path.parent().unwrap_or(Path::new("."));
+    for import in &layout.imports {
+        let Some(value) = attribute_span(import, "src", src) else {
+            continue;
+        };
+        let target = text(value);
+        if target.is_empty() || target.starts_with('/') {
+            continue;
+        }
+        let mut file = dir.join(target);
+        if file.extension().is_none() {
+            file.set_extension("aqlayout");
+        }
+        let Ok(imported_src) = fs::read_to_string(&file) else {
+            errors.push(LayoutError {
+                kind: LayoutErrorKind::ImportMissing,
+                span: value,
+            });
+            continue;
+        };
+        let (imported, _) = parse(&imported_src);
+        for component in &imported.components {
+            if let Some(name) = attribute_value(component, "name", &imported_src) {
+                if seen.iter().any(|existing| existing == name) {
+                    errors.push(LayoutError {
+                        kind: LayoutErrorKind::ComponentDefinedTwice,
+                        span: value,
+                    });
+                } else {
+                    seen.push(name.to_string());
+                }
+            }
+        }
+    }
+
+    let in_windows = path.parent().and_then(Path::file_name) == Some(OsStr::new("Windows"));
+    if in_windows && !path.with_extension("aqstyle").exists() {
+        errors.push(LayoutError {
+            kind: LayoutErrorKind::MissingWindowStyle,
+            span: Span { start: 0, end: 0 },
+        });
+    }
+    errors
+}
+
+fn attribute_span(element: &Element, name: &str, src: &str) -> Option<Span> {
+    element
+        .attributes
+        .iter()
+        .rev()
+        .find(|attribute| &src[attribute.name.start..attribute.name.end] == name)
+        .and_then(|attribute| attribute.value)
+}
+
+fn attribute_value<'a>(element: &Element, name: &str, src: &'a str) -> Option<&'a str> {
+    let value = attribute_span(element, name, src)?;
+    let text = &src[value.start..value.end];
+    (!text.is_empty()).then_some(text)
+}
+
+fn is_prop_start(byte: u8) -> bool {
+    byte.is_ascii_alphabetic() || byte == b'_'
+}
+
+fn is_prop_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')
 }
 
 fn is_name_byte(byte: u8) -> bool {
@@ -240,9 +359,13 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn parse_document(&mut self) -> Option<Element> {
-        let mut root = None;
-        let mut saw_element = false;
+    fn parse_document(&mut self) -> Layout {
+        let mut layout = Layout {
+            root: None,
+            imports: Vec::new(),
+            components: Vec::new(),
+        };
+        let mut saw_root = false;
 
         loop {
             self.skip_whitespace();
@@ -250,15 +373,24 @@ impl<'src> Parser<'src> {
                 (None, _) => break,
                 (Some(b'<'), Some(b'!')) => self.skip_markup(),
                 (Some(b'<'), Some(b'?')) => self.skip_past_tag(),
-                _ if saw_element => {
+                _ if saw_root => {
                     self.error(LayoutErrorKind::ContentAfterRoot, self.here());
                     break;
                 }
                 (Some(b'<'), Some(b'/')) => self.parse_closing_tag(None),
-                (Some(b'<'), _) => {
-                    saw_element = true;
-                    root = self.parse_element();
-                }
+                (Some(b'<'), _) => match self.parse_element() {
+                    Some(element) if self.text(element.name) == "Import" => {
+                        self.check_import(&element);
+                        layout.imports.push(element);
+                    }
+                    Some(element) if self.text(element.name) == "Component" => {
+                        layout.components.push(element);
+                    }
+                    element => {
+                        saw_root = true;
+                        layout.root = element;
+                    }
+                },
                 _ => {
                     let text = self.parse_text();
                     self.error(LayoutErrorKind::TextOutsideRoot, text);
@@ -266,10 +398,123 @@ impl<'src> Parser<'src> {
             }
         }
 
-        if !saw_element {
+        if !saw_root && layout.imports.is_empty() && layout.components.is_empty() {
             self.error(LayoutErrorKind::MissingRoot, Span { start: 0, end: 0 });
         }
-        root
+        self.check_components(&layout.components);
+        if let Some(root) = &layout.root {
+            self.check_no_slots(root);
+        }
+        layout
+    }
+
+    fn check_import(&mut self, import: &Element) {
+        if attribute_value(import, "src", self.src).is_none() {
+            self.error(LayoutErrorKind::ImportWithoutSrc, import.name);
+        }
+        if !import.self_closing {
+            self.error(LayoutErrorKind::ImportNotSelfClosing, import.name);
+        }
+    }
+
+    fn check_components(&mut self, components: &[Element]) {
+        let mut names: Vec<&str> = Vec::new();
+        for component in components {
+            match attribute_value(component, "name", self.src) {
+                None => self.error(LayoutErrorKind::ComponentWithoutName, component.name),
+                Some(name) if names.contains(&name) => {
+                    let span = attribute_span(component, "name", self.src).unwrap_or(component.name);
+                    self.error(LayoutErrorKind::DuplicateComponent, span);
+                }
+                Some(name) => names.push(name),
+            }
+
+            let roots = component
+                .children
+                .iter()
+                .filter(|child| matches!(child, Node::Element(_)))
+                .count();
+            if roots != 1 {
+                self.error(LayoutErrorKind::ComponentRootCount, component.name);
+            }
+
+            let mut slots = Vec::new();
+            for child in &component.children {
+                self.collect_slots(child, &mut slots);
+            }
+            if let Some(&second) = slots.get(1) {
+                self.error(LayoutErrorKind::SecondSlot, second);
+            }
+
+            let props: Vec<&str> = attribute_value(component, "props", self.src)
+                .map(|value| value.split_whitespace().collect())
+                .unwrap_or_default();
+            for child in &component.children {
+                self.check_props(child, &props);
+            }
+        }
+    }
+
+    fn collect_slots(&self, node: &Node, slots: &mut Vec<Span>) {
+        if let Node::Element(element) = node {
+            if self.text(element.name) == "Slot" {
+                slots.push(element.name);
+                return;
+            }
+            for child in &element.children {
+                self.collect_slots(child, slots);
+            }
+        }
+    }
+
+    fn check_no_slots(&mut self, element: &Element) {
+        let mut slots = Vec::new();
+        self.collect_slots(&Node::Element(element.clone()), &mut slots);
+        for slot in slots {
+            self.error(LayoutErrorKind::SlotOutsideComponent, slot);
+        }
+    }
+
+    fn check_props(&mut self, node: &Node, props: &[&str]) {
+        match node {
+            Node::Text(span) => self.check_dollars(*span, props),
+            Node::Element(element) => {
+                for attribute in &element.attributes {
+                    if let Some(value) = attribute.value {
+                        self.check_dollars(value, props);
+                    }
+                }
+                for child in &element.children {
+                    self.check_props(child, props);
+                }
+            }
+        }
+    }
+
+    fn check_dollars(&mut self, span: Span, props: &[&str]) {
+        let bytes = self.src.as_bytes();
+        let mut pos = span.start;
+        while pos < span.end {
+            if bytes[pos] != b'$' {
+                pos += 1;
+                continue;
+            }
+            if pos + 1 < span.end && bytes[pos + 1] == b'$' {
+                pos += 2;
+                continue;
+            }
+            if pos + 1 >= span.end || !is_prop_start(bytes[pos + 1]) {
+                pos += 1;
+                continue;
+            }
+            let end = (pos + 1..span.end)
+                .find(|&i| !is_prop_byte(bytes[i]))
+                .unwrap_or(span.end);
+            if !props.contains(&&self.src[pos + 1..end]) {
+                self.error(LayoutErrorKind::UndeclaredProp, Span { start: pos, end });
+            }
+            pos = end;
+        }
     }
 
     fn parse_element(&mut self) -> Option<Element> {
@@ -288,6 +533,7 @@ impl<'src> Parser<'src> {
             name,
             attributes: Vec::new(),
             children: Vec::new(),
+            self_closing: false,
         };
 
         let self_closing = loop {
@@ -309,6 +555,7 @@ impl<'src> Parser<'src> {
                 }
                 (Some(b'/'), Some(b'>')) => {
                     self.pos += 2;
+                    element.self_closing = true;
                     break true;
                 }
                 (Some(byte), _) if is_name_byte(byte) => {
@@ -701,6 +948,122 @@ mod tests {
             errors.iter().map(|e| text(src, e.span)).collect::<Vec<_>>(),
             ["&lt;", "&amp;"]
         );
+    }
+
+    #[test]
+    fn imports_and_components_come_before_the_root() {
+        assert_eq!(
+            errors_of(r#"<Import src="card"/><Component name="A"><View/></Component><View><A/></View>"#),
+            []
+        );
+        assert_eq!(errors_of(r#"<Component name="A"><View/></Component>"#), []);
+        assert_eq!(
+            errors_of(r#"<View/><Component name="A"><View/></Component>"#),
+            [LayoutErrorKind::ContentAfterRoot]
+        );
+    }
+
+    #[test]
+    fn import_rules() {
+        assert_eq!(
+            errors_of("<Import/><View/>"),
+            [LayoutErrorKind::ImportWithoutSrc]
+        );
+        assert_eq!(
+            errors_of(r#"<Import src="a"></Import><View/>"#),
+            [LayoutErrorKind::ImportNotSelfClosing]
+        );
+    }
+
+    #[test]
+    fn component_rules() {
+        assert_eq!(
+            errors_of("<Component><View/></Component>"),
+            [LayoutErrorKind::ComponentWithoutName]
+        );
+        assert_eq!(
+            errors_of(r#"<Component name="A"><View/><View/></Component>"#),
+            [LayoutErrorKind::ComponentRootCount]
+        );
+        assert_eq!(
+            errors_of(r#"<Component name="A"></Component>"#),
+            [LayoutErrorKind::ComponentRootCount]
+        );
+        assert_eq!(
+            errors_of(r#"<Component name="A"><View><Slot/><Slot/></View></Component>"#),
+            [LayoutErrorKind::SecondSlot]
+        );
+        assert_eq!(
+            errors_of(r#"<Component name="A"><View/></Component><Component name="A"><View/></Component>"#),
+            [LayoutErrorKind::DuplicateComponent]
+        );
+    }
+
+    #[test]
+    fn slots_only_inside_components() {
+        assert_eq!(
+            errors_of("<View><Slot/></View>"),
+            [LayoutErrorKind::SlotOutsideComponent]
+        );
+        assert_eq!(
+            errors_of(r#"<Component name="A"><View><Slot/></View></Component>"#),
+            []
+        );
+    }
+
+    #[test]
+    fn props_must_be_declared() {
+        let src = r#"<Component name="A" props="title"><View tooltip="$title $$5 $5"><Label>$nope</Label></View></Component>"#;
+        let (_, errors) = parse(src);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::UndeclaredProp]);
+        assert_eq!(text(src, errors[0].span), "$nope");
+        assert_eq!(errors_of(r#"<View tooltip="$anything"/>"#), []);
+    }
+
+    fn scratch_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("aqlint-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("Windows")).unwrap();
+        std::fs::create_dir_all(dir.join("Components")).unwrap();
+        dir
+    }
+
+    fn file_errors_of(path: &std::path::Path) -> Vec<LayoutErrorKind> {
+        let src = std::fs::read_to_string(path).unwrap();
+        let (layout, _) = parse(&src);
+        kinds(&check_files(path, &layout, &src))
+    }
+
+    #[test]
+    fn imports_must_exist() {
+        let dir = scratch_dir("imports");
+        std::fs::write(dir.join("Components/card.aqlayout"), r#"<Component name="Card"><View/></Component>"#).unwrap();
+        let ok = dir.join("Windows/ok.aqlayout");
+        std::fs::write(&ok, r#"<Import src="../Components/card"/><View/>"#).unwrap();
+        std::fs::write(dir.join("Windows/ok.aqstyle"), "").unwrap();
+        assert_eq!(file_errors_of(&ok), []);
+        let missing = dir.join("Components/missing.aqlayout");
+        std::fs::write(&missing, r#"<Import src="nowhere"/><Component name="M"><View/></Component>"#).unwrap();
+        assert_eq!(file_errors_of(&missing), [LayoutErrorKind::ImportMissing]);
+    }
+
+    #[test]
+    fn a_name_from_an_import_is_not_defined_again() {
+        let dir = scratch_dir("twice");
+        std::fs::write(dir.join("Components/card.aqlayout"), r#"<Component name="Card"><View/></Component>"#).unwrap();
+        let twice = dir.join("Components/twice.aqlayout");
+        std::fs::write(&twice, r#"<Import src="card"/><Component name="Card"><View/></Component>"#).unwrap();
+        assert_eq!(file_errors_of(&twice), [LayoutErrorKind::ComponentDefinedTwice]);
+    }
+
+    #[test]
+    fn a_window_needs_its_style() {
+        let dir = scratch_dir("windows");
+        let window = dir.join("Windows/w.aqlayout");
+        std::fs::write(&window, "<View/>").unwrap();
+        assert_eq!(file_errors_of(&window), [LayoutErrorKind::MissingWindowStyle]);
+        std::fs::write(dir.join("Windows/w.aqstyle"), "").unwrap();
+        assert_eq!(file_errors_of(&window), []);
     }
 
     #[test]

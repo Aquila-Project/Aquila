@@ -55,12 +55,27 @@ template <typename... Args> class Signal<void(Args...)> {
 
 	[[nodiscard]] bool has_connections() const { return !m_slots.empty(); }
 
+	[[nodiscard]] WeakRef<void> lifetime() const {
+		if (!m_lifetime.token) {
+			m_lifetime.token = std::make_shared<bool>(true);
+		}
+		return m_lifetime.token;
+	}
+
   private:
 	struct Entry {
 		Uint64 id;
 		Slot slot;
 	};
 
+	struct Lifetime {
+		Lifetime() = default;
+		Lifetime(const Lifetime &) {}
+		Lifetime &operator=(const Lifetime &) { return *this; }
+		Ref<bool> token;
+	};
+
 	std::vector<Entry> m_slots;
 	Uint64 m_next_id = 0;
+	mutable Lifetime m_lifetime;
 };

@@ -188,9 +188,9 @@ View *make_view(View *parent, const char *cls) {
 UIDebugWindow::UIDebugWindow() = default;
 UIDebugWindow::~UIDebugWindow() = default;
 
-void UIDebugWindow::build(Canvas *target, Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
+void UIDebugWindow::build(Canvas *target, Uint32 width, Uint32 height, LayoutLoader &loader) {
 	m_target = target;
-	create_canvas(width, height, style_paths);
+	create_canvas(width, height, loader);
 
 	auto *root = get_canvas()->get_root();
 	root->set_id("inspector-root");

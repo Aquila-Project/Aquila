@@ -46,8 +46,8 @@ View *WidgetGalleryWindow::add_group(View *host, const std::string &heading) {
 }
 
 void WidgetGalleryWindow::build(GFX::GfxContext &ctx, TextureCache *texture_cache, Uint32 width, Uint32 height,
-								const std::vector<std::string> &style_paths) {
-	create_canvas(width, height, style_paths);
+								LayoutLoader &loader) {
+	create_canvas(width, height, loader);
 
 	auto *root = get_canvas()->get_root();
 	root->set_id("gallery-root");

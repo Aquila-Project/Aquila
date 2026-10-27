@@ -1,7 +1,6 @@
 #include "Aquila/UI/Core/DockWindowManager.h"
 
 #include "Aquila/UI/Core/Canvas.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/DockTypes.h"
@@ -18,8 +17,8 @@ bool contains_local(Vec2 local, Vec2 size) {
 }
 }
 
-DockWindowManager::DockWindowManager(Aquila::Rendering::IRenderWindowHost &host, std::vector<std::string> style_paths)
-	: m_host(host), m_style_paths(std::move(style_paths)) {}
+DockWindowManager::DockWindowManager(Aquila::Rendering::IRenderWindowHost &host, LayoutLoader &loader)
+	: m_host(host), m_loader(loader) {}
 
 DockWindowManager::~DockWindowManager() = default;
 
@@ -39,9 +38,7 @@ Canvas *DockWindowManager::find_canvas(Aquila::Rendering::RenderWindowId window)
 
 void DockWindowManager::reload_styles() {
 	for (const auto &entry : m_floating_panels) {
-		Canvas *canvas = entry.panel->get_canvas();
-		StyleParser::load_files(m_style_paths, canvas->get_style_sheet());
-		canvas->reload_styles();
+		entry.panel->get_canvas()->reload_styles();
 	}
 }
 
@@ -137,7 +134,7 @@ void DockWindowManager::handle_tear_off(Aquila::Rendering::RenderWindowId source
 
 void DockWindowManager::spawn_floating_panel(Unique<View> panel_subtree, std::string title, Vec2 screen_pos) {
 	auto floating = std::make_unique<FloatingPanelWindow>();
-	floating->build(std::move(panel_subtree), title, K_FLOATING_WIDTH, K_FLOATING_HEIGHT, m_style_paths);
+	floating->build(std::move(panel_subtree), title, K_FLOATING_WIDTH, K_FLOATING_HEIGHT, m_loader);
 	FloatingPanelWindow *panel = floating.get();
 
 	Aquila::Rendering::RenderWindowCallbacks callbacks;

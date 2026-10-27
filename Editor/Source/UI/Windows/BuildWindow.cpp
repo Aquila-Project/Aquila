@@ -70,7 +70,8 @@ void add_browse_button(View *field, Aquila::GFX::GfxTexture *icon, std::string t
 }
 }
 
-BuildWindow::BuildWindow(EditorContext &context) : m_context(context) {}
+BuildWindow::BuildWindow(EditorContext &context)
+	: WindowBehaviour(context.window_layout("build")), m_context(context) {}
 
 BuildWindow::~BuildWindow() {
 	m_context.on_settings_changed.disconnect(m_settings_connection);
@@ -79,25 +80,15 @@ BuildWindow::~BuildWindow() {
 	}
 }
 
-void BuildWindow::build(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths) {
-	create_canvas(width, height, style_paths);
-
-	View *root = get_canvas()->get_root();
-	if (auto layout = m_context.load_layout("build.aqlayout")) {
-		root = root->add_child(std::move(layout));
-	}
-
-	if (auto *project = root->find_by_id<Label>("build-project")) {
+void BuildWindow::define_behaviour() {
+	if (auto *project = get<Label>("build-project")) {
 		project->set_text(m_context.project().name);
 	}
-	m_status = root->find_by_id<Label>("build-status");
-	m_log_scroll = root->find_by_id<ScrollView>("build-log");
-	if (m_log_scroll != nullptr) {
-		m_log = m_log_scroll->add_child(std::make_unique<SelectableTextView>());
-		m_log->add_class("build-log-text");
-	}
+	m_status = get<Label>("build-status");
+	m_log_scroll = get<ScrollView>("build-log");
+	m_log = get<SelectableTextView>("build-log-text");
 
-	m_form = root->find_by_id("build-settings");
+	m_form = get("build-settings");
 	build_settings();
 	m_settings_connection = m_context.on_settings_changed.connect([this] {
 		if (m_fields && m_context.project().settings != m_settings) {
@@ -105,13 +96,11 @@ void BuildWindow::build(Uint32 width, Uint32 height, const std::vector<std::stri
 			m_fields->refresh();
 		}
 	});
-	wire_buttons(*root);
+	wire_buttons(root());
 
 	log(LineKind::Info,
 		std::format("Builds ship the scenes as they are saved in {}", m_context.project().native_directory));
 	log(LineKind::Info, "Preview lists the steps of a build without writing anything.");
-
-	get_canvas()->reload_styles();
 }
 
 void BuildWindow::build_settings() {
@@ -182,7 +171,7 @@ void BuildWindow::pick_icon() {
 	m_settings.icon = inside->starts_with(mount) ? inside->substr(mount.size()) : *inside;
 	m_context.set_project_settings(m_settings);
 	m_rebuild_settings = true;
-	Aquila::Foundation::FrameScheduler::get()->request_frame(get_canvas()->get_frame_target());
+	Aquila::Foundation::FrameScheduler::get()->request_frame(root().get_canvas()->get_frame_target());
 }
 
 void BuildWindow::wire_buttons(View &root) {
@@ -208,7 +197,7 @@ void BuildWindow::wire_buttons(View &root) {
 	}
 }
 
-void BuildWindow::on_update(F32) {
+void BuildWindow::update(F32) {
 	if (m_rebuild_settings) {
 		build_settings();
 	}

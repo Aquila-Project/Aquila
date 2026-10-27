@@ -43,7 +43,6 @@
 #include "Aquila/UI/Core/FontRegistry.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/UIHost.h"
-#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/ColorPicker.h"
@@ -78,6 +77,9 @@ EditorModule::~EditorModule() = default;
 void EditorModule::on_attach(EngineContext &engine) {
 	m_engine = &engine;
 
+	Config::get_preferences().load_from_file();
+	m_applied_preferences = Config::get_preferences();
+
 	Window &main_window = m_engine->get_window();
 	m_ui_host = std::make_unique<UIHost>(UIHostDesc{
 		.overlay_renderer = m_engine->get_overlay_renderer(),
@@ -85,10 +87,9 @@ void EditorModule::on_attach(EngineContext &engine) {
 		.height = main_window.get_height(),
 		.clipboard_get = [&main_window] { return main_window.get_clipboard_text(); },
 		.clipboard_set = [&main_window](const std::string &text) { main_window.set_clipboard_text(text); },
+		.base_styles = Config::get_preferences().ui.style_paths,
 	});
-
-	Config::get_preferences().load_from_file();
-	m_applied_preferences = Config::get_preferences();
+	m_layout_service = m_engine->get_services().provide<LayoutLoader>(m_ui_host->get_layout_loader());
 	FontRegistry::set_ui_scale(Config::get_preferences().ui_scale);
 	if (Aquila::Graphics::Shader::ShaderHotReload::is_alive()) {
 		Aquila::Graphics::Shader::ShaderHotReload::get()->enable(Config::get_preferences().advanced.shader_hot_reload);
@@ -99,6 +100,13 @@ void EditorModule::on_attach(EngineContext &engine) {
 	m_project_manager = std::make_unique<ProjectManager>();
 	m_texture_cache =
 		std::make_unique<TextureCache>(m_engine->get_context(), Config::get_preferences().ui.resources_path);
+
+	LayoutLoader &layouts = m_ui_host->get_layout_loader();
+	layouts.register_font("regular", FontManager::get().get_font("regular"));
+	layouts.register_texture_cache(m_texture_cache.get());
+	layouts.register_widget("ColorPicker", [this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+		return std::make_unique<ColorPicker>(m_engine->get_context());
+	});
 
 	if (!m_startup_project.empty()) {
 		const std::string directory = std::string(ProjectManager::K_ROOT) + "/" +
@@ -122,8 +130,7 @@ void EditorModule::on_attach(EngineContext &engine) {
 
 void EditorModule::open_project_launcher() {
 	m_project_launcher = std::make_unique<ProjectLauncher>();
-	m_project_launcher->build(m_project_manager.get(), m_texture_cache.get(), 900, 600,
-							  Config::get_preferences().ui.style_paths);
+	m_project_launcher->build(m_project_manager.get(), m_texture_cache.get(), 900, 600, m_ui_host->get_layout_loader());
 	m_project_launcher->on_project_ready = [this](const ProjectInfo &project) {
 		m_pending_project = project;
 		Aquila::Foundation::FrameScheduler::get()->request_frame();
@@ -197,6 +204,7 @@ void EditorModule::on_detach() {
 	m_project_launcher.reset();
 	m_devtools.reset();
 
+	m_layout_service.reset();
 	m_ui_host.reset();
 	m_workspaces.reset();
 	m_windows.reset();
@@ -654,19 +662,11 @@ void EditorModule::register_workspaces() {
 void EditorModule::setup_editor_ui() {
 	auto &editor_canvas = m_ui_host->get_canvas(UILayer::Editor);
 	const auto &cfg = Config::get_preferences();
-
-	load_styles();
-
-	m_layout_loader.register_font("regular", FontManager::get().get_font("regular"));
-	m_layout_loader.register_texture_cache(m_texture_cache.get());
-	m_layout_loader.register_widget("ColorPicker",
-									[this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
-										return std::make_unique<ColorPicker>(m_engine->get_context());
-									});
+	LayoutLoader &layouts = m_ui_host->get_layout_loader();
 
 	const std::string layout_dir = cfg.ui.layout_path.substr(0, cfg.ui.layout_path.find_last_of('/') + 1);
-	m_context = std::make_unique<EditorContext>(*m_engine, editor_canvas, m_layout_loader, *m_texture_cache, layout_dir,
-												m_project);
+	m_context =
+		std::make_unique<EditorContext>(*m_engine, editor_canvas, layouts, *m_texture_cache, layout_dir, m_project);
 	m_context->set_camera(m_editor_camera.get());
 	add_builtin_component_editors(m_context->component_editors);
 	add_builtin_asset_types(m_context->asset_types);
@@ -679,7 +679,7 @@ void EditorModule::setup_editor_ui() {
 	register_thumbnail_slots();
 	register_content_creators();
 
-	auto root = m_layout_loader.load_file(cfg.ui.layout_path);
+	auto root = layouts.load_file(cfg.ui.layout_path);
 	if (!root) {
 		AQUILA_LOG_ERROR("EditorModule: failed to load editor layout from {}", cfg.ui.layout_path);
 		return;
@@ -704,7 +704,7 @@ void EditorModule::setup_editor_ui() {
 	bind_default_shortcuts(m_context->shortcuts);
 	apply_user_shortcuts(m_context->shortcuts, cfg.shortcuts);
 
-	m_layout_loader.set_command_source(&m_context->commands, &m_context->shortcuts);
+	layouts.set_command_source(&m_context->commands, &m_context->shortcuts);
 
 	m_pending_window_types.clear();
 	m_windows->attach(*m_dock_space);
@@ -713,7 +713,7 @@ void EditorModule::setup_editor_ui() {
 	m_context->set_window_visibility(
 		[this](std::string_view type_id) { return m_windows && m_windows->is_visible(type_id); });
 
-	m_dock_manager = std::make_unique<DockWindowManager>(m_engine->get_window_host(), cfg.ui.style_paths);
+	m_dock_manager = std::make_unique<DockWindowManager>(m_engine->get_window_host(), layouts);
 	m_dock_manager->set_main_dock_space(m_dock_space);
 
 	m_context->selection.on_changed.connect([this](Entity entity) { set_outlined_entity(entity); });
@@ -751,7 +751,7 @@ void EditorModule::setup_editor_ui() {
 	m_devtools = std::make_unique<Aquila::UI::DevTools::UIDevTools>(Aquila::UI::DevTools::UIDevToolsDesc{
 		.target = editor_canvas,
 		.host = m_engine->get_window_host(),
-		.style_paths = cfg.ui.style_paths,
+		.layouts = layouts,
 	});
 	m_devtools->attach(layout_root);
 
@@ -791,16 +791,8 @@ void EditorModule::register_thumbnail_slots() {
 	}
 }
 
-void EditorModule::load_styles() {
-	const auto &style_paths = Config::get_preferences().ui.style_paths;
-	for (Uint8 layer = 0; layer < static_cast<Uint8>(UILayer::Count); ++layer) {
-		auto &canvas = m_ui_host->get_canvas(static_cast<UILayer>(layer));
-		Aquila::UI::StyleParser::load_files(style_paths, canvas.get_style_sheet());
-	}
-	reload_styles();
-}
-
 void EditorModule::reload_styles() {
+	m_ui_host->get_layout_loader().styles().touch();
 	for (Uint8 layer = 0; layer < static_cast<Uint8>(UILayer::Count); ++layer) {
 		m_ui_host->get_canvas(static_cast<UILayer>(layer)).reload_styles();
 	}
@@ -815,7 +807,7 @@ void EditorModule::open_settings_window() {
 	}
 
 	m_settings_window = std::make_unique<SettingsWindow>(*m_context);
-	m_settings_window->build(860, 640, Config::get_preferences().ui.style_paths);
+	m_settings_window->build(860, 640, m_ui_host->get_layout_loader());
 	m_settings_window->on_preferences_changed = [this] { preferences_edited(); };
 	m_settings_window->open(m_engine->get_window_host(), "Aquila - Settings",
 							[this] {
@@ -830,10 +822,14 @@ void EditorModule::open_build_window() {
 		return;
 	}
 
-	m_build_window = std::make_unique<BuildWindow>(*m_context);
-	m_build_window->build(720, 600, Config::get_preferences().ui.style_paths);
+	m_build_window = std::make_unique<BehaviourWindow>(m_ui_host->get_layout_loader(),
+													   std::make_unique<BuildWindow>(*m_context), 720, 600);
 	m_build_window->open(m_engine->get_window_host(), "Aquila - Build", [this] { m_build_window.reset(); },
 						 { 480.F, 400.F });
+}
+
+BuildWindow *EditorModule::build_window() const {
+	return m_build_window ? m_build_window->get_behaviour<BuildWindow>() : nullptr;
 }
 
 void EditorModule::set_ui_scale(F32 scale) {
@@ -977,16 +973,18 @@ void EditorModule::register_editor_commands() {
 		.run =
 			[this] {
 				open_build_window();
-				m_build_window->start_build(false);
+				if (BuildWindow *build = build_window()) {
+					build->start_build(false);
+				}
 			},
-		.enabled = [this] { return !m_build_window || !m_build_window->is_busy(); },
+		.enabled = [this] { return build_window() == nullptr || !build_window()->is_busy(); },
 	});
 	commands.add({
 		.id = "editor.reload_layout",
 		.title = "Reload layout",
 		.run =
 			[this] {
-				m_layout_loader.load_file(Config::get_preferences().ui.layout_path);
+				m_ui_host->get_layout_loader().load_file(Config::get_preferences().ui.layout_path);
 				AQUILA_LOG_INFO("Editor layout reloaded");
 			},
 	});
@@ -995,7 +993,7 @@ void EditorModule::register_editor_commands() {
 		.title = "Reload styles",
 		.run =
 			[this] {
-				load_styles();
+				reload_styles();
 				AQUILA_LOG_INFO("Stylesheet reloaded");
 			},
 	});

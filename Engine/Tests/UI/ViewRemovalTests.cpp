@@ -35,6 +35,46 @@ TEST_SUITE("View removal") {
 		CHECK(canvas == nullptr);
 	}
 
+	TEST_CASE("a removed view may remove a sibling while it dies") {
+		struct RemovesSibling final : View {
+			View *owner = nullptr;
+			View *sibling = nullptr;
+			~RemovesSibling() override { owner->remove_child(sibling); }
+		};
+		View parent;
+		auto *dying = parent.add_child<RemovesSibling>();
+		auto *kept = parent.add_child<View>();
+		dying->owner = &parent;
+		dying->sibling = parent.add_child<View>();
+
+		parent.remove_child(dying);
+
+		REQUIRE(parent.get_children().size() == 1);
+		CHECK(parent.get_children().front().get() == kept);
+	}
+
+	TEST_CASE("a replaced view may remove a sibling while it dies") {
+		struct RemovesSibling final : View {
+			View *owner = nullptr;
+			View *sibling = nullptr;
+			~RemovesSibling() override { owner->remove_child(sibling); }
+		};
+		View parent;
+		View *sibling = parent.add_child<View>();
+		auto *dying = parent.add_child<RemovesSibling>();
+		dying->owner = &parent;
+		dying->sibling = sibling;
+
+		auto incoming = std::make_unique<View>();
+		View *incoming_raw = incoming.get();
+		View *placed = parent.replace_child(dying, std::move(incoming));
+
+		CHECK(placed == incoming_raw);
+		REQUIRE(parent.get_children().size() == 1);
+		CHECK(parent.get_children().front().get() == incoming_raw);
+		CHECK(incoming_raw->get_parent() == &parent);
+	}
+
 	TEST_CASE("remove_child schedules a relayout and a frame") {
 		CanvasSingletonsScope singletons;
 		Canvas canvas(200, 200);

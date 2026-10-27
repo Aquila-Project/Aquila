@@ -1,6 +1,7 @@
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+#include "Aquila/UI/Markup/MarkupPath.h"
 
 namespace Aquila::UI {
 
@@ -283,20 +284,103 @@ bool StyleParser::load_file(const std::string &path, StyleSheet &sheet) {
 	return load_files(std::span(&path, 1), sheet);
 }
 
+namespace {
+
+struct StyleImport {
+	std::string path;
+	bool before_rules = false;
+	bool terminated = true;
+	Usize line = 1;
+	Usize column = 1;
+};
+
+std::vector<StyleImport> take_imports(std::string &text) {
+	constexpr std::string_view K_IMPORT = "@import";
+	std::vector<StyleImport> imports;
+	std::string rest;
+	bool seen_rule = false;
+	Usize pos = 0;
+	while (true) {
+		const Usize at = text.find(K_IMPORT, pos);
+		const std::string_view between =
+			std::string_view(text).substr(pos, at == std::string::npos ? std::string::npos : at - pos);
+		seen_rule = seen_rule || !ParserHelper::trim(between).empty();
+		rest.append(between);
+		if (at == std::string::npos) {
+			break;
+		}
+		const Usize semicolon = text.find(';', at);
+		const Usize newline = text.find('\n', at);
+		const bool terminated = semicolon != std::string::npos && (newline == std::string::npos || semicolon < newline);
+		const Usize end = terminated ? semicolon : std::min(newline, text.size());
+		std::string_view target =
+			ParserHelper::trim(std::string_view(text).substr(at + K_IMPORT.size(), end - at - K_IMPORT.size()));
+		if (target.size() >= 2 && (target.front() == '"' || target.front() == '\'') &&
+			target.back() == target.front()) {
+			target = target.substr(1, target.size() - 2);
+		}
+		const Usize line_start = at == 0 ? std::string::npos : text.rfind('\n', at - 1);
+		imports.push_back(
+			{ .path = std::string(target),
+			  .before_rules = !seen_rule,
+			  .terminated = terminated,
+			  .line = 1 +
+				  static_cast<Usize>(std::count(text.begin(), text.begin() + static_cast<std::ptrdiff_t>(at), '\n')),
+			  .column = line_start == std::string::npos ? at + 1 : at - line_start });
+		pos = terminated ? end + 1 : end;
+	}
+	text = std::move(rest);
+	return imports;
+}
+
+bool load_with_imports(const std::string &path, StyleSheet &sheet, std::vector<std::string> &loaded,
+					   std::vector<std::string> &loading, std::string_view imported_at = {}) {
+	const std::string where = imported_at.empty() ? std::string() : std::string(imported_at) + ": ";
+	if (std::ranges::find(loading, path) != loading.end()) {
+		AQUILA_LOG_ERROR("StyleParser: {}import cycle at '{}'", where, path);
+		return false;
+	}
+	if (std::ranges::find(loaded, path) != loaded.end()) {
+		return true;
+	}
+	const std::string src = Platform::Filesystem::VirtualFileSystem::get()->read_text_file(path);
+	if (src.empty()) {
+		AQUILA_LOG_ERROR("StyleParser: {}cannot open '{}'", where, path);
+		return false;
+	}
+
+	std::string text = ParserHelper::strip_comments(src);
+	const std::vector<StyleImport> imports = take_imports(text);
+	bool all_ok = true;
+	loading.push_back(path);
+	for (const StyleImport &import : imports) {
+		const std::string at = std::format("{}:{}:{}", path, import.line, import.column);
+		if (!import.terminated) {
+			AQUILA_LOG_WARNING("StyleParser: {}: @import \"{}\" is missing its ';'", at, import.path);
+		}
+		if (!import.before_rules) {
+			AQUILA_LOG_WARNING("StyleParser: {}: @import must come before the rules, \"{}\" is skipped", at,
+							   import.path);
+			continue;
+		}
+		const std::string imported =
+			Markup::resolve_markup_path(Markup::markup_directory(path), import.path, ".aqstyle");
+		all_ok = load_with_imports(imported, sheet, loaded, loading, at) && all_ok;
+	}
+	loading.pop_back();
+	loaded.push_back(path);
+	return StyleParser::LoadString(text, sheet, false) && all_ok;
+}
+}
+
 bool StyleParser::load_files(std::span<const std::string> paths, StyleSheet &sheet) {
 	sheet.clear();
 
 	bool all_ok = true;
+	std::vector<std::string> loaded;
+	std::vector<std::string> loading;
 	for (const std::string &path : paths) {
-		const std::string src = Platform::Filesystem::VirtualFileSystem::get()->read_text_file(path);
-		if (src.empty()) {
-			AQUILA_LOG_ERROR("StyleParser: cannot open '{}'", path);
-			all_ok = false;
-			continue;
-		}
-		if (!LoadString(src, sheet, false)) {
-			all_ok = false;
-		}
+		all_ok = load_with_imports(path, sheet, loaded, loading) && all_ok;
 	}
 	return all_ok;
 }
@@ -307,6 +391,9 @@ bool StyleParser::LoadString(std::string_view css, StyleSheet &sheet, bool clear
 	}
 
 	std::string src = ParserHelper::strip_comments(css);
+	for (const StyleImport &import : take_imports(src)) {
+		AQUILA_LOG_WARNING("StyleParser: @import \"{}\" only works in files, it's skipped", import.path);
+	}
 
 	auto vars = extract_variables(src);
 	for (const auto &[name, value] : vars) {

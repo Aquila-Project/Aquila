@@ -10,13 +10,14 @@ namespace Aquila::UI::Core {
 
 class Canvas;
 class DockSpace;
+class LayoutLoader;
 class View;
 
 /// Tear-off: dragging a tab out of a dock space opens it in its own OS window,
 /// and dragging that window over a dock space docks it back.
 class DockWindowManager {
   public:
-	DockWindowManager(Aquila::Rendering::IRenderWindowHost &host, std::vector<std::string> style_paths);
+	DockWindowManager(Aquila::Rendering::IRenderWindowHost &host, LayoutLoader &loader);
 	~DockWindowManager();
 
 	AQUILA_NONCOPYABLE(DockWindowManager);
@@ -44,7 +45,7 @@ class DockWindowManager {
 	void dock_back_to_center(Unique<View> content, const std::string &title);
 
 	Aquila::Rendering::IRenderWindowHost &m_host;
-	std::vector<std::string> m_style_paths;
+	LayoutLoader &m_loader;
 	DockSpace *m_main_dock_space = nullptr;
 	std::vector<FloatingEntry> m_floating_panels;
 };

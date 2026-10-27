@@ -3,7 +3,6 @@
 #include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Foundation/Log.h"
 #include "Aquila/UI/Style/StyleProperties.h"
-#include "Aquila/GFX/GfxTexture.h"
 
 namespace Editor {
 
@@ -34,7 +33,7 @@ std::streamsize LogCaptureBuf::xsputn(const char *s, std::streamsize n) {
 	return n;
 }
 
-ConsolePanel::ConsolePanel(UI::Core::TextureCache *texture_cache) : m_texture_cache(texture_cache) {
+ConsolePanel::ConsolePanel() {
 	m_capture_buf.set_callback([this](std::string line) {
 		{
 			const std::scoped_lock lock(m_pending_mutex);
@@ -51,55 +50,21 @@ ConsolePanel::~ConsolePanel() {
 }
 
 void ConsolePanel::build(UI::Core::View *panel, UI::Core::View * /*overlayRoot*/) {
-	if (m_texture_cache != nullptr) {
-		m_info_icon = m_texture_cache->load("Engine/UI/Icons/info.svg");
-		m_alert_icon = m_texture_cache->load("Engine/UI/Icons/triangle-alert.svg");
-		m_error_icon = m_texture_cache->load("Engine/UI/Icons/circle-x.svg");
-	}
-
 	m_scroll_view = panel->find_by_id<UI::Core::ScrollView>("console-scroll");
-	if (m_scroll_view != nullptr) {
-		m_view = m_scroll_view->add_child(std::make_unique<UI::Core::SelectableTextView>());
-	}
+	m_view = panel->find_by_id<UI::Core::SelectableTextView>("console-log");
 
-	UI::Core::View *toolbar_ptr = panel->find_by_id("console-toolbar");
-	if (toolbar_ptr == nullptr) {
-		return;
-	}
-
-	auto make_filter_btn = [&](Vec4 icon_tint, FilterGroup group, UI::Core::View *&btn_out,
-							   UI::Core::Label *&count_out) {
-		auto btn = std::make_unique<UI::Core::Clickable>();
-		btn->add_class("console-filter-btn");
-		btn_out = btn.get();
-
-		GfxTexture *icon_tex = nullptr;
-		switch (group) {
-		case FilterGroup::Info:
-			icon_tex = m_info_icon;
-			break;
-		case FilterGroup::Warning:
-			icon_tex = m_alert_icon;
-			break;
-		case FilterGroup::Error:
-			icon_tex = m_error_icon;
-			break;
+	auto wire_filter = [&](std::string_view name, FilterGroup group, UI::Core::View *&button_out,
+						   UI::Core::Label *&count_out) {
+		auto *button = panel->find_by_id<UI::Core::Clickable>("console-filter-" + std::string(name));
+		count_out = panel->find_by_id<UI::Core::Label>("console-count-" + std::string(name));
+		button_out = button;
+		if (button != nullptr) {
+			button->on_click.connect([this, group]() { toggle_filter(group); });
 		}
-		auto icon = std::make_unique<UI::Core::Image>(icon_tex, icon_tint);
-		icon->add_class("console-filter-icon");
-		btn->add_child(std::move(icon));
-
-		auto count = std::make_unique<UI::Core::Label>("0");
-		count->add_class("console-filter-count");
-		count_out = btn->add_child(std::move(count));
-
-		btn->on_click.connect([this, group]() { toggle_filter(group); });
-		toolbar_ptr->add_child(std::move(btn));
 	};
-
-	make_filter_btn({ 0.42F, 0.69F, 0.86F, 1.F }, FilterGroup::Info, m_info_filter_btn, m_info_count_label);
-	make_filter_btn({ 0.83F, 0.67F, 0.29F, 1.F }, FilterGroup::Warning, m_warning_filter_btn, m_warning_count_label);
-	make_filter_btn({ 0.83F, 0.42F, 0.42F, 1.F }, FilterGroup::Error, m_error_filter_btn, m_error_count_label);
+	wire_filter("info", FilterGroup::Info, m_info_filter_btn, m_info_count_label);
+	wire_filter("warning", FilterGroup::Warning, m_warning_filter_btn, m_warning_count_label);
+	wire_filter("error", FilterGroup::Error, m_error_filter_btn, m_error_count_label);
 }
 
 void ConsolePanel::flush_pending() {

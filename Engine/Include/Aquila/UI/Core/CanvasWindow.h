@@ -9,6 +9,7 @@
 namespace Aquila::UI::Core {
 
 class Canvas;
+class LayoutLoader;
 
 class CanvasWindow {
   public:
@@ -33,7 +34,7 @@ class CanvasWindow {
 
   protected:
 	/// Call it first when building.
-	Canvas &create_canvas(Uint32 width, Uint32 height, const std::vector<std::string> &style_paths);
+	Canvas &create_canvas(Uint32 width, Uint32 height, LayoutLoader &loader);
 
 	/// Before the canvas updates.
 	virtual void on_update(F32 delta_time) {}
