@@ -367,6 +367,7 @@ void View::remove_child(View *child) {
 	auto iterator = std::ranges::find_if(m_children, [child](const Unique<View> &view) { return view.get() == child; });
 	if (iterator != m_children.end()) {
 		notify_removed(child);
+		Unique<View> removed = std::move(*iterator);
 		m_children.erase(iterator);
 		mark_subtree_bounds_dirty();
 		invalidate_layout();
@@ -399,7 +400,7 @@ View *View::replace_child(View *old, Unique<View> new_child) {
 		return nullptr;
 	}
 	notify_removed(old);
-	*it = std::move(new_child);
+	Unique<View> replaced = std::exchange(*it, std::move(new_child));
 	View *raw = it->get();
 	raw->m_parent = this;
 	raw->set_canvas(m_canvas);
