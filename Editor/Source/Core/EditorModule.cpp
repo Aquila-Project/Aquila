@@ -822,10 +822,14 @@ void EditorModule::open_build_window() {
 		return;
 	}
 
-	m_build_window = std::make_unique<BuildWindow>(*m_context);
-	m_build_window->build(720, 600, m_ui_host->get_layout_loader());
+	m_build_window = std::make_unique<BehaviourWindow>(m_ui_host->get_layout_loader(),
+													   std::make_unique<BuildWindow>(*m_context), 720, 600);
 	m_build_window->open(m_engine->get_window_host(), "Aquila - Build", [this] { m_build_window.reset(); },
 						 { 480.F, 400.F });
+}
+
+BuildWindow *EditorModule::build_window() const {
+	return m_build_window ? m_build_window->get_behaviour<BuildWindow>() : nullptr;
 }
 
 void EditorModule::set_ui_scale(F32 scale) {
@@ -969,9 +973,11 @@ void EditorModule::register_editor_commands() {
 		.run =
 			[this] {
 				open_build_window();
-				m_build_window->start_build(false);
+				if (BuildWindow *build = build_window()) {
+					build->start_build(false);
+				}
 			},
-		.enabled = [this] { return !m_build_window || !m_build_window->is_busy(); },
+		.enabled = [this] { return build_window() == nullptr || !build_window()->is_busy(); },
 	});
 	commands.add({
 		.id = "editor.reload_layout",

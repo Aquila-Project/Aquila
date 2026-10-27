@@ -6,7 +6,7 @@
 #include "Aquila/Foundation/Signal.h"
 #include "Aquila/Player/BuildPlan.h"
 #include "Aquila/Player/BuildRunner.h"
-#include "Aquila/UI/Core/CanvasWindow.h"
+#include "Aquila/UI/Core/WindowBehaviour.h"
 #include "Core/ProjectSettings.h"
 
 namespace Aquila::Platform::Events {
@@ -28,12 +28,14 @@ class EditorContext;
 
 /// UI around plan_build() and run_build(). Builds run on a worker thread, progress is queued under
 /// a mutex and shown in on_update().
-class BuildWindow final : public Aquila::UI::Core::CanvasWindow {
+class BuildWindow final : public Aquila::UI::Core::WindowBehaviour {
   public:
 	explicit BuildWindow(EditorContext &context);
 	~BuildWindow() override;
 
-	void build(Uint32 width, Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
+	void define_behaviour() override;
+	void update(F32 delta_time) override;
+	bool intercept_event(Aquila::Platform::Events::Event &event) override;
 
 	/// With `run_after` the game starts once the build succeeds.
 	void start_build(bool run_after);
@@ -50,8 +52,6 @@ class BuildWindow final : public Aquila::UI::Core::CanvasWindow {
 		Aquila::Player::BuildResult result{};
 	};
 
-	void on_update(F32 delta_time) override;
-	bool intercept_event(Aquila::Platform::Events::Event &event) override;
 	void build_settings();
 	void pick_icon();
 	void wire_buttons(Aquila::UI::Core::View &root);

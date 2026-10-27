@@ -11,7 +11,9 @@
             <Label id="build-status" class="build-status">Ready</Label>
         </View>
         <View class="build-log-frame">
-            <ScrollView id="build-log" class="build-log"/>
+            <ScrollView id="build-log" class="build-log">
+                <SelectableTextView id="build-log-text" class="build-log-text"/>
+            </ScrollView>
         </View>
     </View>
     <View class="build-footer">

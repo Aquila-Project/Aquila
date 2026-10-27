@@ -88,4 +88,17 @@ TEST_SUITE("Shipped UI resources") {
 		}
 		CHECK(dynamic_cast<Core::SelectableTextView *>(root->find_by_id("console-log")) != nullptr);
 	}
+
+	TEST_CASE("the build layout holds its settings, log and buttons") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const auto root = loader.load_file("/resources/Engine/UI/Windows/build.aqlayout");
+		REQUIRE(root != nullptr);
+		for (const char *id : { "build-settings", "build-status", "build-log", "build-close", "build-preview",
+								"build-and-run", "build-start" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		CHECK(dynamic_cast<Core::SelectableTextView *>(root->find_by_id("build-log-text")) != nullptr);
+	}
 }

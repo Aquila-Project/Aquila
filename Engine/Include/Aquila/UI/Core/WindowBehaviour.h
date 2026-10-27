@@ -21,9 +21,13 @@ class WindowBehaviour : public Behaviour {
 	[[nodiscard]] View *overlay_root() const { return m_overlay_root; }
 	void set_overlay_root(View *root) { m_overlay_root = root; }
 
+	void close();
+	void set_close_handler(Delegate<void()> handler) { m_close = std::move(handler); }
+
   private:
 	std::string m_layout_path;
 	View *m_overlay_root = nullptr;
+	Delegate<void()> m_close;
 };
 
 }

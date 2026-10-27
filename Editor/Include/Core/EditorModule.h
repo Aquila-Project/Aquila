@@ -8,6 +8,7 @@
 #include "Aquila/Rendering/IRenderWindowHost.h"
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/Scene/SceneStatistics.h"
+#include "Aquila/UI/Core/BehaviourWindow.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/UIHost.h"
@@ -86,6 +87,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	void register_entity_slots();
 	void register_thumbnail_slots();
 	void reload_styles();
+	[[nodiscard]] BuildWindow *build_window() const;
 	void wire_main_menu(Aquila::UI::Core::View *layout_root);
 	void open_settings_window();
 	void open_build_window();
@@ -141,7 +143,7 @@ class EditorModule final : public Aquila::Application::IModule {
 
 	Unique<Aquila::UI::DevTools::UIDevTools> m_devtools;
 	Unique<SettingsWindow> m_settings_window;
-	Unique<BuildWindow> m_build_window;
+	Unique<Aquila::UI::Core::BehaviourWindow> m_build_window;
 	Unique<ProjectLauncher> m_project_launcher;
 	bool m_editor_entered = false;
 	Option<ProjectInfo> m_pending_project;
