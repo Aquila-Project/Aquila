@@ -154,6 +154,10 @@ fn take_imports(src: &str) -> (String, Vec<StyleImport>) {
             pos = src[pos + 2..].find("*/").map_or(bytes.len(), |end| pos + 2 + end + 2);
             continue;
         }
+        if bytes[pos..].starts_with(b"//") {
+            pos = src[pos..].find('\n').map_or(bytes.len(), |end| pos + end);
+            continue;
+        }
         if !bytes[pos..].starts_with(IMPORT.as_bytes()) {
             seen_rule = seen_rule || !bytes[pos].is_ascii_whitespace();
             pos += 1;
@@ -777,6 +781,20 @@ mod tests {
         let (sheet, errors) = parse(late);
         assert_eq!(kinds(&errors), [ParseErrorKind::ImportAfterRules]);
         assert_eq!(sheet.items.len(), 1);
+    }
+
+    #[test]
+    fn line_comments_hide_imports() {
+        let src = "// header\n@import \"tokens.aqstyle\";\n.a { gap: 1px; }";
+        let (sheet, errors) = parse(src);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(
+            sheet.imports.iter().map(|i| text(src, i.path)).collect::<Vec<_>>(),
+            ["tokens.aqstyle"]
+        );
+        let (sheet, errors) = parse("// @import \"gone.aqstyle\";\n.a { gap: 1px; }");
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(sheet.imports.is_empty());
     }
 
     #[test]
