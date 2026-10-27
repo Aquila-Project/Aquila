@@ -45,6 +45,13 @@ namespace Aquila::UI::Core {
 
 namespace {
 
+std::string resolve_layout_path(const std::string &current_dir, const std::string &path) {
+	if (path.starts_with('/')) {
+		return Markup::resolve_markup_path({}, path, {});
+	}
+	return path.empty() || current_dir.empty() ? path : Markup::resolve_markup_path(current_dir, path, {});
+}
+
 void apply_inline_style(UI::StyleProperties &props, std::string_view decls, const Markup::MarkupDocument &document,
 						Markup::SourceLocation where) {
 	while (!decls.empty()) {
@@ -237,10 +244,7 @@ Unique<View> LayoutLoader::load_file(const std::string &path) {
 
 Unique<View> LayoutLoader::load_root(const std::string &path, Uint64 scope_id,
 									 Ref<const Markup::MarkupDocument> *document_out) {
-	std::string resolved = path;
-	if (!path.empty() && path.front() != '/' && !m_current_dir.empty()) {
-		resolved = m_current_dir + "/" + path;
-	}
+	const std::string resolved = resolve_layout_path(m_current_dir, path);
 
 	if (std::ranges::find(m_include_stack, resolved) != m_include_stack.end()) {
 		AQUILA_LOG_ERROR("LayoutLoader: include cycle detected at '{}'", resolved);
@@ -287,7 +291,7 @@ View *LayoutLoader::build_file(const std::string &path, View &parent, Unique<Beh
 }
 
 View *LayoutLoader::create(const std::string &file, std::string_view component, View &parent) {
-	const std::string resolved = file.starts_with('/') || m_current_dir.empty() ? file : m_current_dir + "/" + file;
+	const std::string resolved = resolve_layout_path(m_current_dir, file);
 	const Ref<const Markup::MarkupDocument> document = load_document(resolved);
 	if (!document) {
 		return nullptr;

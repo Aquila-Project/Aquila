@@ -71,4 +71,25 @@ TEST_SUITE("Imports") {
 		files.write("/markup-tests/w.aqlayout", R"(<View id="changed"/>)");
 		CHECK(loader.load_file("/markup-tests/w.aqlayout")->get_id() == "changed");
 	}
+
+	TEST_CASE("a file including itself through ./ is reported as a cycle") {
+		MarkupFiles files;
+		files.write("/markup-tests/a.aqlayout", R"(<View id="a"><Include src="./a.aqlayout"/></View>)");
+		LogCapture capture;
+		LayoutLoader loader;
+		const Unique<View> root = loader.load_file("/markup-tests/a.aqlayout");
+		REQUIRE(root != nullptr);
+		CHECK(root->get_children().empty());
+		CHECK(capture.stream.str().find("include cycle") != std::string::npos);
+	}
+
+	TEST_CASE("one file reached by two spellings is one style set entry") {
+		MarkupFiles files;
+		files.write("/markup-tests/w.aqlayout", R"(<View/>)");
+		files.write("/markup-tests/w.aqstyle", ".w { gap: 1px; }");
+		LayoutLoader loader;
+		CHECK(loader.load_file("/markup-tests/w.aqlayout") != nullptr);
+		CHECK(loader.load_file("/markup-tests/./x/../w.aqlayout") != nullptr);
+		CHECK(loader.styles().get_paths() == std::vector<std::string>{ "/markup-tests/w.aqstyle" });
+	}
 }
