@@ -69,7 +69,11 @@ class Behaviour {
   protected:
 	template <typename... Args, typename Slot> void listen(Signal<void(Args...)> &signal, Slot slot) {
 		auto connection = signal.connect(std::move(slot));
-		add_cleanup([&signal, connection] { signal.disconnect(connection); });
+		add_cleanup([&signal, connection, alive = signal.lifetime()] {
+			if (!alive.expired()) {
+				signal.disconnect(connection);
+			}
+		});
 	}
 
 	void add_cleanup(Delegate<void()> cleanup);

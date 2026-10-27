@@ -7,6 +7,7 @@
 #include "Aquila/UI/Core/ComponentInstance.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/View.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "VfsTestSupport.h"
 
@@ -81,6 +82,14 @@ struct Listener : Behaviour {
 	}
 };
 
+struct RootClickListener : Behaviour {
+	int clicks = 0;
+	void define_behaviour() override {
+		if (auto *clickable = dynamic_cast<Clickable *>(&root())) {
+			listen(clickable->on_click, [this] { ++clicks; });
+		}
+	}
+};
 }
 
 TEST_SUITE("Behaviours") {
@@ -241,5 +250,21 @@ TEST_SUITE("Behaviours") {
 		View parent;
 		CHECK(loader.create("/markup-tests/card.aqlayout", "Card", parent) != nullptr);
 		CHECK(parent.get_children().size() == 1);
+	}
+
+	TEST_CASE("a behaviour listening to its widget root goes away with it") {
+		LayoutLoader loader;
+		const Registration registration = loader.behaviours().add<RootClickListener>("RootClickListener");
+		Loaded loaded = load_with(loader, R"(
+<Component name="Tile" behaviour="RootClickListener"><Clickable/></Component>
+<View><Tile id="tile"/></View>)");
+		REQUIRE(loaded.root != nullptr);
+		CHECK_MESSAGE(loaded.log.empty(), loaded.log);
+		View *tile = loaded.root->get_children().front().get();
+		auto *listener = behaviour_of<RootClickListener>(tile);
+		REQUIRE(listener != nullptr);
+		dynamic_cast<Clickable &>(*tile).on_click();
+		CHECK(listener->clicks == 1);
+		loaded.root.reset();
 	}
 }
