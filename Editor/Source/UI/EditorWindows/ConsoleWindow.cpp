@@ -4,17 +4,13 @@
 
 namespace Editor {
 
-ConsoleWindow::ConsoleWindow(EditorContext &context) : EditorWindow(context) {}
+ConsoleWindow::ConsoleWindow(EditorContext &context) : EditorWindow(context, context.window_layout("console")) {}
 
 ConsoleWindow::~ConsoleWindow() = default;
 
-void ConsoleWindow::build(Aquila::UI::Core::View &content) {
-	if (auto layout = load_layout("console.aqlayout")) {
-		content.add_child(std::move(layout));
-	}
-
-	m_panel = std::make_unique<ConsolePanel>(&context().textures());
-	m_panel->build(&content, overlay_root());
+void ConsoleWindow::define_behaviour() {
+	m_panel = std::make_unique<ConsolePanel>();
+	m_panel->build(&root(), overlay_root());
 }
 
 void ConsoleWindow::update(F32) {

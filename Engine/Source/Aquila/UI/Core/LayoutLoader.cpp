@@ -6,6 +6,7 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/IconLabel.h"
 #include "Aquila/UI/Widgets/Label.h"
@@ -19,6 +20,7 @@
 #include "Aquila/UI/Widgets/DragInt.h"
 #include "Aquila/UI/Widgets/Toggle.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
+#include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Widgets/Collapsible.h"
 #include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TabView.h"
@@ -652,6 +654,8 @@ void LayoutLoader::register_builtins() {
 
 	Register<View>("View");
 	Register<Button>("Button");
+	Register<Clickable>("Clickable");
+	Register<SelectableTextView>("SelectableTextView");
 	Register<Image>("Image");
 	Register<IconLabel>("IconLabel");
 	Register<Checkbox>("Checkbox");

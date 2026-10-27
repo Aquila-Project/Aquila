@@ -2,6 +2,7 @@
 
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/View.h"
+#include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
 #include "VfsTestSupport.h"
@@ -73,5 +74,18 @@ TEST_SUITE("Shipped UI resources") {
 							  file.string());
 			}
 		}
+	}
+
+	TEST_CASE("the console layout holds its filters and its log") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const auto root = loader.load_file("/resources/Engine/UI/Windows/console.aqlayout");
+		REQUIRE(root != nullptr);
+		for (const char *id : { "console-filter-info", "console-filter-warning", "console-filter-error",
+								"console-count-info", "console-count-warning", "console-count-error" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		CHECK(dynamic_cast<Core::SelectableTextView *>(root->find_by_id("console-log")) != nullptr);
 	}
 }

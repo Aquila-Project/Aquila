@@ -1,7 +1,0 @@
-<View id="console-root">
-    <View id="console-toolbar">
-        <Button class="console-clear-btn" on-click="console.clear">Clear</Button>
-        <View class="console-toolbar-sep"/>
-    </View>
-    <ScrollView id="console-scroll"/>
-</View>

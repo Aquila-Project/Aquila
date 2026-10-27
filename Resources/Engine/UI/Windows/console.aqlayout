@@ -1,0 +1,21 @@
+<View id="console-root">
+    <View id="console-toolbar">
+        <Button class="console-clear-btn" on-click="console.clear">Clear</Button>
+        <View class="console-toolbar-sep"/>
+        <Clickable id="console-filter-info" class="console-filter-btn">
+            <Image class="console-filter-icon" src="Engine/UI/Icons/info.svg" tint="rgb(0.42, 0.69, 0.86)"/>
+            <Label id="console-count-info" class="console-filter-count">0</Label>
+        </Clickable>
+        <Clickable id="console-filter-warning" class="console-filter-btn">
+            <Image class="console-filter-icon" src="Engine/UI/Icons/triangle-alert.svg" tint="rgb(0.83, 0.67, 0.29)"/>
+            <Label id="console-count-warning" class="console-filter-count">0</Label>
+        </Clickable>
+        <Clickable id="console-filter-error" class="console-filter-btn">
+            <Image class="console-filter-icon" src="Engine/UI/Icons/circle-x.svg" tint="rgb(0.83, 0.42, 0.42)"/>
+            <Label id="console-count-error" class="console-filter-count">0</Label>
+        </Clickable>
+    </View>
+    <ScrollView id="console-scroll">
+        <SelectableTextView id="console-log"/>
+    </ScrollView>
+</View>
