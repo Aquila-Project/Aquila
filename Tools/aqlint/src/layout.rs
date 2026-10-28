@@ -33,6 +33,7 @@ pub enum LayoutErrorKind {
     ComponentWithoutName,
     ComponentRootCount,
     SecondSlot,
+    SlotAttribute,
     DuplicateComponent,
     SlotOutsideComponent,
     UndeclaredProp,
@@ -98,6 +99,9 @@ impl fmt::Display for LayoutErrorKind {
             }
             LayoutErrorKind::SecondSlot => {
                 f.write_str("a component can only have one `<Slot/>`, the loader drops it")
+            }
+            LayoutErrorKind::SlotAttribute => {
+                f.write_str("`<Slot/>` only takes `class`, the loader ignores this attribute")
             }
             LayoutErrorKind::DuplicateComponent => {
                 f.write_str("a component with this name is already defined in this file")
@@ -445,6 +449,9 @@ impl<'src> Parser<'src> {
             if let Some(&second) = slots.get(1) {
                 self.error(LayoutErrorKind::SecondSlot, second);
             }
+            for child in &component.children {
+                self.check_slot_attributes(child);
+            }
 
             let props: Vec<&str> = attribute_value(component, "props", self.src)
                 .map(|value| value.split_whitespace().collect())
@@ -463,6 +470,21 @@ impl<'src> Parser<'src> {
             }
             for child in &element.children {
                 self.collect_slots(child, slots);
+            }
+        }
+    }
+
+    fn check_slot_attributes(&mut self, node: &Node) {
+        if let Node::Element(element) = node {
+            if self.text(element.name) == "Slot" {
+                for attribute in &element.attributes {
+                    if self.text(attribute.name) != "class" {
+                        self.error(LayoutErrorKind::SlotAttribute, attribute.name);
+                    }
+                }
+            }
+            for child in &element.children {
+                self.check_slot_attributes(child);
             }
         }
     }
@@ -1009,6 +1031,22 @@ mod tests {
             errors_of(r#"<Component name="A"><View><Slot/></View></Component>"#),
             []
         );
+    }
+
+    #[test]
+    fn slot_takes_a_class() {
+        assert_eq!(
+            errors_of(r#"<Component name="A"><View><Slot class="value"/></View></Component>"#),
+            []
+        );
+    }
+
+    #[test]
+    fn slot_rejects_other_attributes() {
+        let src = r#"<Component name="A"><View><Slot id="v" class="w"/></View></Component>"#;
+        let (_, errors) = parse(src);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::SlotAttribute]);
+        assert_eq!(&src[errors[0].span.start..errors[0].span.end], "id");
     }
 
     #[test]

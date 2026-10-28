@@ -33,11 +33,16 @@ std::string_view Behaviour::attribute(std::string_view name) const {
 	return it != m_instance->m_attributes.end() ? std::string_view(it->second) : std::string_view();
 }
 
-View *Behaviour::create(std::string_view component, View &parent) {
+View *Behaviour::create(std::string_view component, View &parent, ComponentArgs args) {
+	Unique<View> created = create_detached(component, std::move(args));
+	return created ? parent.add_child(std::move(created)) : nullptr;
+}
+
+Unique<View> Behaviour::create_detached(std::string_view component, ComponentArgs args) {
 	if (m_instance == nullptr || m_instance->m_loader == nullptr) {
 		return nullptr;
 	}
-	return m_instance->m_loader->create_from(*m_instance, component, parent);
+	return m_instance->m_loader->create_detached_from(*m_instance, component, std::move(args));
 }
 
 void Behaviour::add_cleanup(Delegate<void()> cleanup) {

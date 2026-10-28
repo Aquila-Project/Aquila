@@ -1,9 +1,18 @@
 #include <doctest.h>
 
 #include "Aquila/Foundation/Log.h"
+#include "Aquila/Foundation/Registration.h"
+#include "Aquila/UI/Core/Behaviour.h"
+#include "Aquila/UI/Core/BehaviourRegistry.h"
+#include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/ComponentArgs.h"
+#include "Aquila/UI/Core/ComponentInstance.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "CanvasTestSupport.h"
+#include "VfsTestSupport.h"
 
 using namespace Aquila::UI::Core;
 using Aquila::Foundation::Logger;
@@ -154,5 +163,236 @@ TEST_SUITE("Component props") {
 		const Loaded loaded = load(R"(<Label>$5 and $name</Label>)");
 		CHECK_MESSAGE(loaded.log.empty(), loaded.log);
 		CHECK(dynamic_cast<const Label *>(loaded.root.get())->get_text() == "$5 and $name");
+	}
+}
+
+namespace {
+
+constexpr const char *K_FILE = "/markup-tests/rows.aqlayout";
+
+struct Card : Behaviour {
+	bool defined = false;
+	View *found = nullptr;
+	void define_behaviour() override {
+		defined = true;
+		found = get("x");
+	}
+};
+
+struct OtherBehaviour : Behaviour {};
+
+struct Maker : Behaviour {
+	View *made = nullptr;
+	Unique<View> detached;
+	void define_behaviour() override {
+		made = create("Row", root(), { .attributes = { { "label", "made" } } });
+		detached = create_detached("Row", { .attributes = { { "label", "detached" } } });
+	}
+};
+
+std::vector<std::string> texts(const View &view) {
+	std::vector<std::string> out;
+	for (const auto &child : view.get_children()) {
+		if (const auto *label = dynamic_cast<const Label *>(child.get())) {
+			out.push_back(label->get_text());
+		}
+	}
+	return out;
+}
+
+bool has_class(const View &view, std::string_view name) {
+	return std::ranges::find(view.get_classes(), name) != view.get_classes().end();
+}
+
+constexpr const char *K_ROW =
+	R"(<Component name="Row" props="label"><View class="row"><Label class="row-label">$label</Label></View></Component>)";
+
+}
+
+TEST_SUITE("Components from code") {
+	TEST_CASE("code gives a component its props and extra classes") {
+		MarkupFiles files;
+		files.write(K_FILE, K_ROW);
+		LogCapture capture;
+		LayoutLoader loader;
+		View parent;
+		View *row =
+			loader.create(K_FILE, "Row", parent, { .attributes = { { "label", "Speed" }, { "class", "extra" } } });
+		REQUIRE(row != nullptr);
+		CHECK_MESSAGE(capture.stream.str().empty(), capture.stream.str());
+		CHECK(row->get_classes() == std::vector<std::string>{ "row", "extra" });
+		CHECK(texts(*row) == std::vector<std::string>{ "Speed" });
+	}
+
+	TEST_CASE("prop values from code show as written") {
+		MarkupFiles files;
+		files.write(K_FILE, K_ROW);
+		LogCapture capture;
+		LayoutLoader loader;
+		View parent;
+		const std::string written = "Cost $x $$ & <b> \"q\"";
+		View *row = loader.create(K_FILE, "Row", parent, { .attributes = { { "label", written } } });
+		REQUIRE(row != nullptr);
+		CHECK_MESSAGE(capture.stream.str().empty(), capture.stream.str());
+		CHECK(texts(*row) == std::vector<std::string>{ written });
+	}
+
+	TEST_CASE("a text attribute from code reaches a text prop") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<Component name="T" props="text"><View><Label>$text</Label></View></Component>)");
+		LayoutLoader loader;
+		View parent;
+		View *made = loader.create(K_FILE, "T", parent, { .attributes = { { "text", "hello" } } });
+		REQUIRE(made != nullptr);
+		CHECK(texts(*made) == std::vector<std::string>{ "hello" });
+	}
+
+	TEST_CASE("code-created children go into the slot in order") {
+		MarkupFiles files;
+		files.write(K_FILE,
+					R"(<Component name="Box"><View><Label>head</Label><Slot/><Label>tail</Label></View></Component>)");
+		LayoutLoader loader;
+		View parent;
+		ComponentArgs args;
+		args.children.push_back(std::make_unique<Label>("a"));
+		args.children.push_back(std::make_unique<Label>("b"));
+		View *box = loader.create(K_FILE, "Box", parent, std::move(args));
+		REQUIRE(box != nullptr);
+		CHECK(texts(*box) == std::vector<std::string>{ "head", "a", "b", "tail" });
+	}
+
+	TEST_CASE("slot classes go on every child placed there") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<Component name="Field"><View><Slot class="value wide"/></View></Component>
+<View><Field><View id="m"/></Field></View>)");
+		LogCapture capture;
+		LayoutLoader loader;
+		const Unique<View> root = loader.load_file(K_FILE);
+		REQUIRE(root != nullptr);
+		CHECK_MESSAGE(capture.stream.str().empty(), capture.stream.str());
+		const View &markup_child = *root->get_children().front()->get_children().front();
+		CHECK(markup_child.get_id() == "m");
+		CHECK(has_class(markup_child, "value"));
+		CHECK(has_class(markup_child, "wide"));
+
+		View parent;
+		ComponentArgs args;
+		auto child = std::make_unique<View>();
+		View *code_child = child.get();
+		args.children.push_back(std::move(child));
+		REQUIRE(loader.create(K_FILE, "Field", parent, std::move(args)) != nullptr);
+		CHECK(has_class(*code_child, "value"));
+		CHECK(has_class(*code_child, "wide"));
+	}
+
+	TEST_CASE("a slot takes only a class") {
+		LogCapture capture;
+		LayoutLoader loader;
+		const Unique<View> root =
+			loader.load_string(R"(<Component name="F"><View><Slot id="s"/></View></Component><F/>)");
+		REQUIRE(root != nullptr);
+		CHECK_MESSAGE(capture.stream.str().find("<Slot/> only takes 'class', 'id' is ignored") != std::string::npos,
+					  capture.stream.str());
+	}
+
+	TEST_CASE("a typed create returns the behaviour, or null and adds nothing") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<Component name="Card" behaviour="Card"><View><Slot/></View></Component>)");
+		LayoutLoader loader;
+		const Aquila::Foundation::Registration card = loader.behaviours().add<Card>("Card");
+		View parent;
+		LogCapture capture;
+		CHECK(loader.create<Card>(K_FILE, "Card", parent) != nullptr);
+		CHECK(loader.create<OtherBehaviour>(K_FILE, "Card", parent) == nullptr);
+		CHECK(parent.get_children().size() == 1);
+	}
+
+	TEST_CASE("an instance's behaviour doesn't find children code gave it") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<Component name="Card" behaviour="Card"><View><Slot/></View></Component>)");
+		LayoutLoader loader;
+		const Aquila::Foundation::Registration registration = loader.behaviours().add<Card>("Card");
+		View parent;
+		ComponentArgs args;
+		auto child = std::make_unique<View>();
+		child->set_id("x");
+		args.children.push_back(std::move(child));
+		LogCapture capture;
+		Card *card = loader.create<Card>(K_FILE, "Card", parent, std::move(args));
+		REQUIRE(card != nullptr);
+		CHECK(card->defined);
+		CHECK(card->found == nullptr);
+		CHECK(card->root().get_children().size() == 1);
+	}
+
+	TEST_CASE("children for a component without a slot are reported and dropped") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<Component name="Plain"><View/></Component>)");
+		LayoutLoader loader;
+		View parent;
+		ComponentArgs args;
+		args.children.push_back(std::make_unique<View>());
+		LogCapture capture;
+		View *plain = loader.create(K_FILE, "Plain", parent, std::move(args));
+		REQUIRE(plain != nullptr);
+		CHECK(plain->get_children().empty());
+		CHECK_MESSAGE(capture.stream.str().find("has no <Slot/>") != std::string::npos, capture.stream.str());
+	}
+
+	TEST_CASE("a detached instance is owned by the caller and its behaviour has run") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<Component name="Card" behaviour="Card"><View/></Component>)");
+		LayoutLoader loader;
+		const Aquila::Foundation::Registration registration = loader.behaviours().add<Card>("Card");
+		LogCapture capture;
+		const Unique<View> detached = loader.create_detached(K_FILE, "Card");
+		REQUIRE(detached != nullptr);
+		CHECK(detached->get_parent() == nullptr);
+		REQUIRE(detached->get_component_instance() != nullptr);
+		const auto *card = dynamic_cast<const Card *>(detached->get_component_instance()->get_behaviour());
+		REQUIRE(card != nullptr);
+		CHECK(card->defined);
+		CHECK(loader.create_detached(K_FILE, "Nope") == nullptr);
+	}
+
+	TEST_CASE("a behaviour creates its file's components with props") {
+		MarkupFiles files;
+		files.write(K_FILE, std::string(K_ROW) + R"(<Component name="Maker" behaviour="Maker"><View/></Component>)");
+		LayoutLoader loader;
+		const Aquila::Foundation::Registration registration = loader.behaviours().add<Maker>("Maker");
+		View parent;
+		auto *maker = loader.create<Maker>(K_FILE, "Maker", parent);
+		REQUIRE(maker != nullptr);
+		REQUIRE(maker->made != nullptr);
+		CHECK(texts(*maker->made) == std::vector<std::string>{ "made" });
+		REQUIRE(maker->detached != nullptr);
+		CHECK(maker->detached->get_parent() == nullptr);
+		CHECK(texts(*maker->detached) == std::vector<std::string>{ "detached" });
+	}
+
+	TEST_CASE("a relative file resolves against the UI folder, not the last file read") {
+		MarkupFiles files;
+		files.write(K_FILE, R"(<View/>)");
+		LayoutLoader loader;
+		REQUIRE(loader.load_file(K_FILE) != nullptr);
+		View parent;
+		LogCapture capture;
+		CHECK(loader.create("Components/no_such_file", "X", parent) == nullptr);
+		CHECK_MESSAGE(capture.stream.str().find("'/resources/Engine/UI/Components/no_such_file.aqlayout'") !=
+						  std::string::npos,
+					  capture.stream.str());
+		CHECK(engine_component_file("property_grid") == "/resources/Engine/UI/Components/property_grid.aqlayout");
+	}
+
+	TEST_CASE("find_layout_loader needs a canvas with a loader") {
+		CanvasSingletonsScope singletons;
+		LayoutLoader loader;
+		const View bare;
+		CHECK(find_layout_loader(bare) == nullptr);
+		auto canvas = std::make_unique<Canvas>(100, 100);
+		View *inside = canvas->get_root()->add_child<View>();
+		CHECK(find_layout_loader(*inside) == nullptr);
+		canvas->set_layout_loader(&loader);
+		CHECK(find_layout_loader(*inside) == &loader);
 	}
 }
