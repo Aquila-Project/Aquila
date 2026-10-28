@@ -50,7 +50,7 @@ void MeshContent::build_above(Aquila::UI::Core::PropertyGrid &grid) {
 	m_primitive->on_changed.set(
 		[this](const std::string &generator) { set_source(MeshSource::procedural(generator)); });
 
-	m_params_grid = grid.add_child<Aquila::UI::Core::PropertyGrid>(grid.get_label_width());
+	m_params_grid = grid.add_grid();
 	m_params_grid->set_split(grid.is_split());
 	m_params_grid->set_hidden(true);
 }

@@ -7,8 +7,8 @@
 namespace Aquila::UI::Core {
 
 struct ComponentArgs {
-	std::vector<std::pair<std::string, std::string>> attributes;
-	std::vector<Unique<View>> children;
+	std::vector<std::pair<std::string, std::string>> attributes{};
+	std::vector<Unique<View>> children{};
 };
 
 }

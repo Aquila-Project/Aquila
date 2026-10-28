@@ -236,6 +236,24 @@ fn attribute_value<'a>(element: &Element, name: &str, src: &'a str) -> Option<&'
     (!text.is_empty()).then_some(text)
 }
 
+fn has_prop_reference(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let mut pos = 0;
+    while pos + 1 < bytes.len() {
+        if bytes[pos] == b'$' {
+            if bytes[pos + 1] == b'$' {
+                pos += 2;
+                continue;
+            }
+            if is_prop_start(bytes[pos + 1]) {
+                return true;
+            }
+        }
+        pos += 1;
+    }
+    false
+}
+
 fn is_prop_start(byte: u8) -> bool {
     byte.is_ascii_alphabetic() || byte == b'_'
 }
@@ -746,6 +764,9 @@ impl<'src> Parser<'src> {
     }
 
     fn check_inline_style(&mut self, value: Span) {
+        if has_prop_reference(self.text(value)) {
+            return;
+        }
         let (_, errors) = parser::parse_inline(self.text(value));
         for error in errors {
             self.error(
@@ -1031,6 +1052,15 @@ mod tests {
             errors_of(r#"<Component name="A"><View><Slot/></View></Component>"#),
             []
         );
+    }
+
+    #[test]
+    fn styles_with_props_are_checked_once_built() {
+        assert_eq!(
+            errors_of(r#"<Component name="A" props="w"><View style="width: $w"/></Component>"#),
+            []
+        );
+        assert!(!errors_of(r#"<Component name="A"><View style="width: $$5 nope"/></Component>"#).is_empty());
     }
 
     #[test]

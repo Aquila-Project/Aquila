@@ -1,6 +1,7 @@
 #include <doctest.h>
 
 #include "CanvasTestSupport.h"
+#include "LoaderTestSupport.h"
 #include "GpuTestSupport.h"
 
 #include "Aquila/Foundation/Reflection/TypeInfo.h"
@@ -90,14 +91,15 @@ std::string read_file(const std::string &path) {
 }
 
 struct Fixture {
-	Unique<View> root;
+	LoaderCanvas canvas;
+	View *root = nullptr;
 	Unique<InspectorView> view;
 
 	Fixture() {
-		LayoutLoader loader;
-		root =
-			loader.load_string(read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout"));
-		REQUIRE(root != nullptr);
+		Unique<View> loaded = canvas.loader.load_string(
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout"));
+		REQUIRE(loaded != nullptr);
+		root = canvas.host().add_child(std::move(loaded));
 		view = std::make_unique<InspectorView>(*root, InspectorView::IconResolver{}, nullptr);
 	}
 };
@@ -397,15 +399,14 @@ TEST_SUITE("InspectorView") {
 		};
 		Light light;
 		test_gpu();
-		CanvasSingletonsScope singletons;
-		auto canvas = std::make_unique<Canvas>(320, 480);
+		LoaderCanvas fixture(320, 480);
+		Unique<Canvas> &canvas = fixture.canvas;
 		auto *owner = canvas->get_root()->add_child<Owner>();
 		Aquila::UI::StyleProperties style;
 		style.font_family = "regular";
 		owner->merge_style(style);
-		LayoutLoader loader;
-		View *layout = owner->add_child(
-			loader.load_string(read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout")));
+		View *layout = owner->add_child(fixture.loader.load_string(
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout")));
 		REQUIRE(layout != nullptr);
 		owner->inspector = std::make_unique<InspectorView>(*layout, InspectorView::IconResolver{}, nullptr);
 		owner->inspector->show(one_tab(light_section(light, "light")));

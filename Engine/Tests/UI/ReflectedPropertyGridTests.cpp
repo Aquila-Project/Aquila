@@ -1,5 +1,7 @@
 #include <doctest.h>
 
+#include "LoaderTestSupport.h"
+
 #include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/DragFloat.h"
@@ -16,6 +18,11 @@ using namespace Aquila::UI::Core;
 using namespace Aquila::Reflection;
 
 namespace {
+
+struct CanvasGrid {
+	LoaderCanvas fixture;
+	PropertyGrid &grid = *fixture.host().add_child<PropertyGrid>();
+};
 
 enum class Shape { Box, Ball };
 
@@ -69,7 +76,8 @@ template <typename W> W &widget(ReflectedPropertyGrid &grid, const char *name) {
 TEST_SUITE("ReflectedPropertyGrid") {
 	TEST_CASE("each property kind gets its matching widget") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 
 		CHECK(dynamic_cast<DragFloat *>(reflected.get_widget("Size")) != nullptr);
@@ -84,7 +92,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("bind pulls the instance's values into the widgets") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		reflected.bind(&thing);
@@ -100,7 +109,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("binding does not write back to the instance") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		thing.shape = Shape::Ball;
@@ -111,7 +121,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("user edits are written through the property and reported") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		int edits = 0;
@@ -135,7 +146,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("visibility follows the instance, including after an edit") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		reflected.bind(&thing);
@@ -149,7 +161,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("rebinding to another instance switches what is edited") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing first;
 		Thing second;
@@ -166,7 +179,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("edits are ignored once detached") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		reflected.bind(&thing);
@@ -178,7 +192,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("split mode uses checkboxes, stacked vectors and sliders") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		grid.set_split(true);
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 
@@ -191,7 +206,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("split check rows still hide with their property") {
 		const TypeInfo type = make_type();
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		grid.set_split(true);
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
@@ -205,7 +221,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 	TEST_CASE("read-only strings are shown as labels") {
 		TypeInfo type("Thing");
 		TypeBuilder<Thing>(type).read_only("Id", [](const Thing &t) { return t.label + "#1"; });
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		reflected.bind(&thing);
@@ -216,7 +233,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 	TEST_CASE("strings with an asset type are slots that take matching drops") {
 		TypeInfo type("Thing");
 		TypeBuilder<Thing>(type).property("Script", &Thing::label, { .asset_type = "script" });
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		thing.label = "/scripts/old.luau";
@@ -276,7 +294,8 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 		TypeInfo type("Thing");
 		TypeBuilder<Thing>(type).property("Target", &Thing::label, { .asset_type = "thing" });
-		PropertyGrid grid;
+		CanvasGrid in_canvas;
+		PropertyGrid &grid = in_canvas.grid;
 		ReflectedPropertyGrid reflected(grid, type, nullptr);
 		Thing thing;
 		thing.label = "7";

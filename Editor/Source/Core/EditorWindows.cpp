@@ -62,6 +62,8 @@ void EditorWindows::attach(DockSpace &dock_space) {
 		auto menu = std::make_unique<UI::Core::PopupMenu>();
 		menu->set_submenu_icon(m_context.icon("chevron-right"));
 		m_menu = overlay->add_child(std::move(menu));
+		m_staging = overlay->add_child<View>();
+		m_staging->set_hidden(true);
 	}
 
 	dock_space.set_closable_tabs(true, m_context.icon("x"));
@@ -164,9 +166,19 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 		instance_id = type_id + "#" + std::to_string(number);
 	}
 
-	auto panel = std::make_unique<DockPanel>(type->title);
+	auto created_panel = std::make_unique<DockPanel>(type->title);
+	DockPanel *panel = created_panel.get();
 	panel->set_id(instance_id);
 	panel->set_tab_icon(m_context.icon(type->icon));
+	if (m_staging != nullptr) {
+		m_staging->add_child(std::move(created_panel));
+	}
+	const auto unstage = [this, panel, &created_panel] {
+		if (m_staging != nullptr) {
+			created_panel.reset(static_cast<DockPanel *>(m_staging->detach_child(panel).release()));
+		}
+		return std::move(created_panel);
+	};
 
 	Unique<EditorWindow> window = type->create(m_context);
 	window->m_type_id = type_id;
@@ -187,7 +199,7 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 		const std::string path = built->get_layout_path();
 		if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
 			AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
-			return panel;
+			return unstage();
 		}
 	}
 
@@ -204,11 +216,11 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 	}
 
 	built->m_on_destroyed = [this](EditorWindow *destroyed) { forget(destroyed); };
-	m_live.push_back({ built, panel.get() });
+	m_live.push_back({ built, panel });
 	if (window) {
 		panel->set_content_owner(std::move(window));
 	}
-	return panel;
+	return unstage();
 }
 
 DockNode *EditorWindows::default_target() const {

@@ -1,0 +1,83 @@
+#include <doctest.h>
+
+#include "Aquila/UI/Widgets/Checkbox.h"
+#include "Aquila/UI/Widgets/DragInt.h"
+#include "Aquila/UI/Widgets/Dropdown.h"
+#include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/TextInput.h"
+#include "GpuTestSupport.h"
+#include "InspectorFixture.h"
+#include "LoaderTestSupport.h"
+#include "StyleSnapshot.h"
+
+using namespace Aquila::UI;
+using namespace Aquila::UI::Core;
+
+namespace {
+
+View &snapshot_box(const LoaderCanvas &fixture, F32 width, F32 height) {
+	test_gpu();
+	View *box = fixture.host().add_child<View>();
+	StyleProperties style;
+	style.width = StyleLength::pixel(width);
+	style.height = StyleLength::pixel(height);
+	style.flex_direction = FlexDirection::Column;
+	style.overflow = Overflow::Hidden;
+	style.font_family = "regular";
+	box->merge_style(style);
+	return *box;
+}
+
+}
+
+TEST_SUITE("Style snapshots") {
+	TEST_CASE("style snapshot inspector" * doctest::skip()) {
+		for (const F32 width : { 260.F, 420.F }) {
+			LoaderCanvas fixture(1200, 900);
+			View &box = snapshot_box(fixture, width, 880.F);
+			InspectorFixture::EverythingInspector inspector;
+			inspector.build(fixture.loader, box, "Light");
+			fixture.settle_fully();
+			write_style_snapshot("inspector-" + std::to_string(static_cast<int>(width)), box);
+		}
+	}
+
+	TEST_CASE("style snapshot plain grid" * doctest::skip()) {
+		for (const F32 width : { 260.F, 420.F }) {
+			LoaderCanvas fixture(1200, 900);
+			View &box = snapshot_box(fixture, width, 880.F);
+			auto *grid = box.add_child<PropertyGrid>();
+			InspectorFixture::Everything instance;
+			ReflectedPropertyGrid reflected(*grid, InspectorFixture::everything_type(), nullptr);
+			reflected.bind(&instance);
+			fixture.settle_fully();
+			write_style_snapshot("plain-grid-" + std::to_string(static_cast<int>(width)), box);
+		}
+	}
+
+	TEST_CASE("style snapshot console" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		View &box = snapshot_box(fixture, 640.F, 400.F);
+		REQUIRE(fixture.loader.build_file("/resources/Engine/UI/Windows/console.aqlayout", box) != nullptr);
+		fixture.settle_fully();
+		write_style_snapshot("console", box);
+	}
+
+	TEST_CASE("style snapshot build" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		View &box = snapshot_box(fixture, 720.F, 600.F);
+		View *window = fixture.loader.build_file("/resources/Engine/UI/Windows/build.aqlayout", box);
+		REQUIRE(window != nullptr);
+		View *settings = window->find_by_id("build-settings");
+		REQUIRE(settings != nullptr);
+		auto *grid = settings->add_child<PropertyGrid>(120.F);
+		grid->add_row<TextInput>("Game Name");
+		grid->add_row<Dropdown>("Startup Scene");
+		grid->add_row<DragInt>("Width");
+		grid->add_check_row<Checkbox>("Fullscreen", false);
+		grid->add_separator();
+		grid->add_stacked_row<TextInput>("Output Folder");
+		fixture.settle_fully();
+		write_style_snapshot("build", box);
+	}
+}
