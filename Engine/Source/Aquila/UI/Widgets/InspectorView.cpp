@@ -252,10 +252,17 @@ void InspectorView::build_section(LayoutLoader &loader, View &parent, InspectorS
 				});
 			button->set_enabled(!action.enabled || action.enabled());
 		}
-		if (const auto it = m_collapsed.find(section.id); it != m_collapsed.end()) {
-			collapsible->set_expanded(!it->second);
+		std::pair<std::string, std::string> key{ m_inspectable->id, section.id };
+		if (m_collapsed.contains(key)) {
+			collapsible->set_expanded(false);
 		}
-		collapsible->on_toggled.connect([this, id = section.id](bool expanded) { m_collapsed[id] = !expanded; });
+		collapsible->on_toggled.connect([this, key = std::move(key)](bool expanded) {
+			if (expanded) {
+				m_collapsed.erase(key);
+			} else {
+				m_collapsed.insert(key);
+			}
+		});
 		root = collapsible;
 	}
 	if (root == nullptr) {

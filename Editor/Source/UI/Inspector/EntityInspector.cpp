@@ -66,6 +66,7 @@ Inspectable EntityInspector::inspect(Entity entity) {
 		m_context.selection.on_entity_modified(target);
 	};
 	const std::string uuid = entity.get_uuid().to_string();
+	inspectable.id = uuid;
 	inspectable.subtitle = uuid.substr(0, 8);
 	inspectable.subtitle_tooltip = uuid;
 

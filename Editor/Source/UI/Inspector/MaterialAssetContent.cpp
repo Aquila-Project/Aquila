@@ -53,6 +53,7 @@ Option<Aquila::UI::Core::Inspectable> inspect_material_asset(const std::string &
 	material.content = std::make_unique<MaterialAssetContent>(path, context);
 
 	Aquila::UI::Core::Inspectable inspectable;
+	inspectable.id = path;
 	inspectable.icon = "eclipse";
 	inspectable.title = std::filesystem::path(path).stem().string();
 	inspectable.subtitle = path;

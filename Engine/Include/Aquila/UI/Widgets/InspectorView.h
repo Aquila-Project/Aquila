@@ -99,7 +99,7 @@ class InspectorView {
 	std::vector<ShownSection> m_sections;
 	std::string m_preferred_tab;
 	std::string m_shown_tab;
-	std::unordered_map<std::string, bool> m_collapsed;
+	std::set<std::pair<std::string, std::string>> m_collapsed;
 	std::vector<Retired> m_retired;
 };
 

@@ -393,6 +393,26 @@ TEST_SUITE("InspectorView") {
 		CHECK(other->is_expanded());
 	}
 
+	TEST_CASE("a folded section stays folded only on the inspectable it was folded on") {
+		Light light;
+		Fixture f;
+		const auto shown = [&f, &light](std::string id) {
+			Inspectable inspectable = one_tab(light_section(light, "light"));
+			inspectable.id = std::move(id);
+			f.view->show(std::move(inspectable));
+			auto *section = dynamic_cast<Collapsible *>(f.view->find_section("light"));
+			REQUIRE(section != nullptr);
+			return section;
+		};
+
+		Collapsible *cube = shown("cube");
+		cube->set_expanded(false);
+		cube->on_toggled(false);
+
+		CHECK(shown("sphere")->is_expanded());
+		CHECK_FALSE(shown("cube")->is_expanded());
+	}
+
 	TEST_CASE("the canvas can go away while something is shown") {
 		struct Owner final : View {
 			Unique<InspectorView> inspector;
