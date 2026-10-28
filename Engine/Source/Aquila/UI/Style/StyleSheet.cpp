@@ -123,6 +123,17 @@ ComputedStyle StyleSheet::resolve(const Core::View &view, const ComputedStyle *p
 	return result;
 }
 
+Option<Vec4> StyleSheet::find_class_color(std::string_view class_name) const {
+	Option<Vec4> color;
+	for (const StyleRule &rule : m_rules) {
+		if (rule.selector_type == StyleRule::SelectorType::Class && rule.pseudo_class.empty() &&
+			rule.selector == class_name && rule.properties.color) {
+			color = rule.properties.color;
+		}
+	}
+	return color;
+}
+
 bool StyleSheet::matches(const StyleRule &rule, const Core::View &view) const {
 	bool selector_match = false;
 	switch (rule.selector_type) {

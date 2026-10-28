@@ -31,11 +31,6 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr Vec4 K_INFO_COLOR{ 0.62F, 0.62F, 0.62F, 1.F };
-constexpr Vec4 K_WARNING_COLOR{ 0.83F, 0.67F, 0.29F, 1.F };
-constexpr Vec4 K_ERROR_COLOR{ 0.87F, 0.45F, 0.45F, 1.F };
-constexpr Vec4 K_SUCCESS_COLOR{ 0.29F, 0.72F, 0.44F, 1.F };
-
 std::string describe(const Player::BuildStep &step) {
 	switch (step.kind) {
 	case Player::BuildStepKind::MakeDirectory:
@@ -377,8 +372,9 @@ void BuildWindow::log(LineKind kind, std::string text) {
 	if (m_log == nullptr) {
 		return;
 	}
-	constexpr std::array<Vec4, 5> colors{ K_INFO_COLOR, Vec4(0.F), K_WARNING_COLOR, K_ERROR_COLOR, K_SUCCESS_COLOR };
-	m_log->add_line(std::move(text), colors[static_cast<Usize>(kind)]);
+	constexpr std::array<std::string_view, 5> classes{ "build-log-info", "", "build-log-warning", "build-log-error",
+													   "build-log-success" };
+	m_log->add_line(std::move(text), std::string(classes[static_cast<Usize>(kind)]));
 	if (m_log_scroll != nullptr) {
 		m_log_scroll->scroll_to_bottom();
 	}

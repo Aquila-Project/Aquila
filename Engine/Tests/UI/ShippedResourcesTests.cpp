@@ -76,6 +76,38 @@ TEST_SUITE("Shipped UI resources") {
 		}
 	}
 
+	TEST_CASE("log classes keep their colors") {
+		test_vfs();
+		Aquila::UI::StyleSheet sheet;
+		const std::vector<std::string> paths{
+			"/resources/Engine/UI/tokens.aqstyle",
+			"/resources/Engine/UI/widgets.aqstyle",
+			"/resources/Engine/UI/dock.aqstyle",
+			"/resources/Engine/UI/editor_chrome.aqstyle",
+			"/resources/Engine/UI/launcher.aqstyle",
+			"/resources/Engine/UI/devtools.aqstyle",
+			"/resources/Engine/UI/Windows/console.aqstyle",
+			"/resources/Engine/UI/Windows/build.aqstyle",
+		};
+		REQUIRE(Aquila::UI::StyleParser::load_files(paths, sheet));
+		const std::vector<std::pair<std::string, Vec4>> expected{
+			{ "console-tag-info", { 0.35F, 0.87F, 0.35F, 1.F } },
+			{ "console-tag-debug", { 0.F, 0.8F, 0.8F, 1.F } },
+			{ "console-tag-trace", { 0.55F, 0.55F, 0.55F, 1.F } },
+			{ "console-tag-warning", { 0.83F, 0.67F, 0.29F, 1.F } },
+			{ "console-tag-error", { 0.87F, 0.45F, 0.45F, 1.F } },
+			{ "console-tag-critical", { 1.F, 0.32F, 0.32F, 1.F } },
+			{ "build-log-info", { 0.62F, 0.62F, 0.62F, 1.F } },
+			{ "build-log-warning", { 0.83F, 0.67F, 0.29F, 1.F } },
+			{ "build-log-error", { 0.87F, 0.45F, 0.45F, 1.F } },
+			{ "build-log-success", { 0.29F, 0.72F, 0.44F, 1.F } },
+		};
+		for (const auto &[name, color] : expected) {
+			CAPTURE(name);
+			CHECK(sheet.find_class_color(name) == color);
+		}
+	}
+
 	TEST_CASE("the console layout holds its filters and its log") {
 		test_vfs();
 		LogCapture capture;

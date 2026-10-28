@@ -13,9 +13,8 @@ class SelectableTextView : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "SelectableTextView"; }
 
-	/// A zero color means the style color. The tag colors `tag_length` bytes from `tag_begin`, like a [WARN] prefix.
-	void add_line(std::string text, Vec4 color = Vec4(0.F), Int32 tag_begin = 0, Int32 tag_length = 0,
-				  Vec4 tag_color = Vec4(0.F));
+	void add_line(std::string text, std::string line_class = {}, Int32 tag_begin = 0, Int32 tag_length = 0,
+				  std::string tag_class = {});
 	void clear();
 	void remove_front(Int32 count);
 
@@ -47,11 +46,11 @@ class SelectableTextView : public View {
 	[[nodiscard]] Rect visible_rect() const;
 
 	std::vector<std::string> m_lines;
-	std::vector<Vec4> m_colors;
+	std::vector<std::string> m_line_classes;
 	struct Tag {
 		Int32 begin = 0;
 		Int32 length = 0;
-		Vec4 color = Vec4(0.F);
+		std::string style_class;
 	};
 	std::vector<Tag> m_tags;
 	Text::TextSelection m_selection;

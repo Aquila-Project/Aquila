@@ -60,7 +60,7 @@ class ConsolePanel : public IEditorPanel {
 	static LogLevel parse_level(const std::string &line);
 	static FilterGroup level_to_group(LogLevel level);
 	[[nodiscard]] int &count_for(LogLevel level);
-	static Vec4 level_tag_color(LogLevel level);
+	static std::string level_tag_class(LogLevel level);
 	static std::string_view level_tag(LogLevel level);
 	static constexpr int K_MAX_MESSAGES = 500;
 

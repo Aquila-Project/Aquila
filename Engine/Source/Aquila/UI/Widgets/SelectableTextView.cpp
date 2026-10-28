@@ -4,6 +4,7 @@
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Foundation/Text/Utf8.h"
 #include "Aquila/Platform/Events/InputEvent.h"
+#include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/Clipboard.h"
 #include "Aquila/UI/Rendering/DrawList.h"
 #include "Aquila/UI/Text/FontAtlas.h"
@@ -14,16 +15,17 @@ SelectableTextView::SelectableTextView() {
 	add_class("selectable-text-view");
 }
 
-void SelectableTextView::add_line(std::string text, Vec4 color, Int32 tag_begin, Int32 tag_length, Vec4 tag_color) {
+void SelectableTextView::add_line(std::string text, std::string line_class, Int32 tag_begin, Int32 tag_length,
+								  std::string tag_class) {
 	m_lines.push_back(std::move(text));
-	m_colors.push_back(color);
-	m_tags.push_back({ tag_begin, tag_length, tag_color });
+	m_line_classes.push_back(std::move(line_class));
+	m_tags.push_back({ .begin = tag_begin, .length = tag_length, .style_class = std::move(tag_class) });
 	invalidate_layout();
 }
 
 void SelectableTextView::clear() {
 	m_lines.clear();
-	m_colors.clear();
+	m_line_classes.clear();
 	m_tags.clear();
 	m_rows.clear();
 	m_wrapped_lines = 0;
@@ -37,7 +39,7 @@ void SelectableTextView::remove_front(Int32 count) {
 		return;
 	}
 	m_lines.erase(m_lines.begin(), m_lines.begin() + count);
-	m_colors.erase(m_colors.begin(), m_colors.begin() + count);
+	m_line_classes.erase(m_line_classes.begin(), m_line_classes.begin() + count);
 	m_tags.erase(m_tags.begin(), m_tags.begin() + count);
 	std::erase_if(m_rows, [count](const Row &row) { return row.line < count; });
 	for (Row &row : m_rows) {
@@ -234,6 +236,19 @@ void SelectableTextView::on_draw_self(Rendering::DrawList &draw_list) {
 	const F32 height = line_height();
 	const F32 size = get_display_style().font_size;
 	const Vec4 default_color = get_display_style().color;
+	std::vector<std::pair<std::string_view, Vec4>> class_colors;
+	auto color_of = [&](std::string_view style_class) {
+		if (style_class.empty() || get_canvas() == nullptr) {
+			return default_color;
+		}
+		const auto known = std::ranges::find(class_colors, style_class, &std::pair<std::string_view, Vec4>::first);
+		if (known != class_colors.end()) {
+			return known->second;
+		}
+		const Vec4 color = get_canvas()->get_style_sheet().find_class_color(style_class).value_or(default_color);
+		class_colors.emplace_back(style_class, color);
+		return color;
+	};
 	const Vec4 selection_color = get_display_style().effective_selection_color();
 
 	const Int32 row_count = static_cast<Int32>(all.size());
@@ -281,7 +296,7 @@ void SelectableTextView::on_draw_self(Rendering::DrawList &draw_list) {
 								UI::TextAlign::Left, 3, false);
 		};
 
-		const Vec4 color = m_colors[line].a > 0.F ? m_colors[line] : default_color;
+		const Vec4 color = color_of(m_line_classes[line]);
 		const Tag &tag = m_tags[line];
 		const Int32 tag_end = tag.begin + tag.length;
 		if (tag.length <= 0 || tag_end > length) {
@@ -292,7 +307,7 @@ void SelectableTextView::on_draw_self(Rendering::DrawList &draw_list) {
 		const Int32 tag_from = std::clamp(tag.begin, row.begin, row.end);
 		const Int32 tag_to = std::clamp(tag_end, row.begin, row.end);
 		draw_segment(row.begin, tag_from, color);
-		draw_segment(tag_from, tag_to, tag.color);
+		draw_segment(tag_from, tag_to, color_of(tag.style_class));
 		draw_segment(tag_to, row.end, color);
 	}
 }
