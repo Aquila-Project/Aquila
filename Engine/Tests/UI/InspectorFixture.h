@@ -3,9 +3,11 @@
 
 #include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Collapsible.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
+#include "Aquila/UI/Widgets/InspectorPage.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
@@ -91,19 +93,19 @@ struct EverythingInspector {
 		REQUIRE(layout != nullptr);
 		View *root = box.add_child(std::move(layout));
 
+		const std::string components = engine_component_file("inspector");
 		for (int i = 0; i < 3; ++i) {
-			root->find_by_id("props-tabs")->add_child<Button>()->add_class("props-tab");
+			REQUIRE(loader.create(components, "InspectorTabButton", *root->find_by_id("props-tabs")) != nullptr);
 		}
 		root->find_by_id("inspector-empty")->set_hidden(true);
 		root->find_by_id<TextInput>("inspector-name")->set_text(instance.name);
 		root->find_by_id<Label>("inspector-uuid")->set_text("550e8400-e29b-41d4-a716-446655440000");
 
-		auto *page = root->find_by_id("inspector-pages")->add_child<View>();
-		page->add_class("props-page");
-		auto *sections = page->add_child<View>();
-		sections->add_class("props-sections");
-		auto *section = sections->add_child<Collapsible>(section_title);
-		section->set_variant("props-panel");
+		auto *page = loader.create<InspectorPage>(components, "InspectorPage", *root->find_by_id("inspector-pages"));
+		REQUIRE(page != nullptr);
+		auto *section = dynamic_cast<Collapsible *>(loader.create(components, "InspectorPanel", page->get_sections(),
+																  { .attributes = { { "title", section_title } } }));
+		REQUIRE(section != nullptr);
 		section->add_header_action(nullptr, "Remove", [] {});
 		auto *grid = section->add_child<PropertyGrid>();
 		grid->set_split(true);
@@ -111,11 +113,11 @@ struct EverythingInspector {
 		reflected->bind(&instance);
 		style_dropdowns(*section);
 
-		auto *add = page->add_child<Button>();
-		add->add_class("props-action");
+		auto *add = dynamic_cast<Button *>(loader.create(components, "InspectorAction", page->root()));
+		REQUIRE(add != nullptr);
 		add->set_text("Add Component");
 
-		auto *path = page->add_child<Label>(instance.texture);
+		auto *path = page->root().add_child<Label>(instance.texture);
 		path->add_class("props-uuid");
 	}
 

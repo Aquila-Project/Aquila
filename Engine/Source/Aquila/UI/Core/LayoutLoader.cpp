@@ -11,6 +11,7 @@
 #include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/IconLabel.h"
+#include "Aquila/UI/Widgets/InspectorPage.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/Slider.h"
 #include "Aquila/UI/Widgets/Popup.h"
@@ -764,6 +765,8 @@ void LayoutLoader::register_builtins() {
 	Register<DockNode>("DockNode");
 	Register<DockPanel>("DockPanel");
 	Register<OverlayToolbar>("OverlayToolbar");
+
+	m_builtin_behaviours.push_back(m_behaviours.add<InspectorPage>("InspectorPage"));
 }
 
 LayoutLoader *find_layout_loader(const View &view) {

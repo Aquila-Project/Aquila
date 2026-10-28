@@ -116,6 +116,7 @@ class LayoutLoader : public IResourceResolver {
 
 	std::unordered_map<std::string, CachedDocument> m_documents;
 	BehaviourRegistry m_behaviours;
+	std::vector<Foundation::Registration> m_builtin_behaviours;
 	StyleSet m_styles;
 	std::vector<std::string> m_checking;
 

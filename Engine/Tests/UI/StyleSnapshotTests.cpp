@@ -3,6 +3,7 @@
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/DragInt.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
+#include "Aquila/UI/Widgets/InspectorView.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "GpuTestSupport.h"
@@ -39,6 +40,46 @@ TEST_SUITE("Style snapshots") {
 			inspector.build(fixture.loader, box, "Light");
 			fixture.settle_fully();
 			write_style_snapshot("inspector-" + std::to_string(static_cast<int>(width)), box);
+		}
+	}
+
+	TEST_CASE("style snapshot inspector view" * doctest::skip()) {
+		using InspectorFixture::Everything;
+		for (const F32 width : { 260.F, 420.F }) {
+			LoaderCanvas fixture(1200, 1400);
+			View &box = snapshot_box(fixture, width, 1380.F);
+			View *root = fixture.loader.build_file("/resources/Engine/UI/inspector.aqlayout", box);
+			REQUIRE(root != nullptr);
+			Everything titled;
+			Everything bare;
+			const auto section = [](std::string id, std::string title, Everything &instance) {
+				InspectorSection result;
+				result.id = std::move(id);
+				result.title = std::move(title);
+				result.type = &InspectorFixture::everything_type();
+				result.instance = [&instance]() -> void * { return &instance; };
+				return result;
+			};
+			Inspectable inspectable;
+			inspectable.title = "Cube";
+			inspectable.subtitle = "550e8400-e29b-41d4-a716-446655440000";
+			inspectable.tabs.resize(3);
+			inspectable.tabs[0].title = "Object";
+			inspectable.tabs[0].sections.push_back(section("light", "Light", titled));
+			inspectable.tabs[0].sections.back().header_actions.push_back({ .text = "Remove", .run = [] {} });
+			inspectable.tabs[0].sections.push_back(section("bare", "", bare));
+			inspectable.tabs[0].actions.push_back({ .text = "Add Component", .run = [] {} });
+			inspectable.tabs[0].actions.push_back(
+				{ .text = "Disabled", .run = [] {}, .enabled = [] { return false; } });
+			inspectable.tabs[1].title = "Components";
+			inspectable.tabs[1].always_visible = true;
+			inspectable.tabs[2].title = "Rendering";
+			inspectable.tabs[2].sections.push_back(section("shadows", "Shadows", titled));
+
+			InspectorView view(*root, InspectorView::IconResolver{}, nullptr);
+			view.show(std::move(inspectable));
+			fixture.settle_fully();
+			write_style_snapshot("inspector-view-" + std::to_string(static_cast<int>(width)), box);
 		}
 	}
 

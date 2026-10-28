@@ -1,0 +1,21 @@
+<Component name="InspectorTabButton">
+    <Button class="props-tab"/>
+</Component>
+
+<Component name="InspectorPage" behaviour="InspectorPage">
+    <View class="props-page">
+        <View id="sections" class="props-sections"/>
+    </View>
+</Component>
+
+<Component name="InspectorBareSection">
+    <View class="props-section-bare"/>
+</Component>
+
+<Component name="InspectorPanel" props="title">
+    <Collapsible variant="props-panel">$title</Collapsible>
+</Component>
+
+<Component name="InspectorAction">
+    <Button class="props-action"/>
+</Component>

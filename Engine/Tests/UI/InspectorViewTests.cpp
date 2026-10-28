@@ -6,6 +6,7 @@
 
 #include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/ComponentInstance.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Collapsible.h"
@@ -416,6 +417,55 @@ TEST_SUITE("InspectorView") {
 
 		canvas.reset();
 		CHECK(canvas == nullptr);
+	}
+
+	TEST_CASE("showing again reads no file and keeps the style set's revision") {
+		Light light;
+		Fixture f;
+		View *pages = f.root->find_by_id("inspector-pages");
+		REQUIRE(pages != nullptr);
+		f.view->show(one_tab(light_section(light, "light")));
+		REQUIRE(pages->get_children().size() == 1);
+		const ComponentInstance *first = pages->get_children().front()->get_component_instance();
+		REQUIRE(first != nullptr);
+		CHECK(first->get_name() == "InspectorPage");
+		const Uint64 revision = f.canvas.loader.styles().get_revision();
+
+		f.view->show(one_tab(light_section(light, "light")));
+		REQUIRE(pages->get_children().size() == 1);
+		const ComponentInstance *again = pages->get_children().front()->get_component_instance();
+		REQUIRE(again != nullptr);
+		CHECK(again != first);
+		CHECK(again->get_document() == first->get_document());
+		CHECK(f.canvas.loader.styles().get_revision() == revision);
+	}
+
+	TEST_CASE("a view outside a canvas reports it and builds nothing") {
+		Light light;
+		CanvasSingletonsScope singletons;
+		test_vfs();
+		LayoutLoader loader;
+		Unique<View> root =
+			loader.load_string(read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout"));
+		REQUIRE(root != nullptr);
+		InspectorView view(*root, InspectorView::IconResolver{}, nullptr);
+
+		LogCapture capture;
+		view.show(one_tab(light_section(light, "light")));
+		const std::string log = capture.stream.str();
+		const std::string expected = "InspectorView: 'Thing' needs a canvas with a layout loader";
+		const Usize at = log.find(expected);
+		CHECK_MESSAGE(at != std::string::npos, log);
+		CHECK_MESSAGE(log.find(expected, at + 1) == std::string::npos, log);
+		CHECK(view.is_showing());
+		CHECK(view.find_section("light") == nullptr);
+		CHECK(root->find_by_id("props-tabs")->get_children().empty());
+		CHECK(root->find_by_id("inspector-pages")->get_children().empty());
+
+		view.refresh();
+		view.update();
+		view.clear();
+		CHECK_FALSE(view.is_showing());
 	}
 
 	TEST_CASE("clear goes back to the empty state") {

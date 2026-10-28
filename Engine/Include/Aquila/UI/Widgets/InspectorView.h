@@ -15,6 +15,7 @@ namespace Aquila::UI::Core {
 class Button;
 class Image;
 class Label;
+class LayoutLoader;
 class ReflectedPropertyGrid;
 class ScrollView;
 class TextInput;
@@ -70,9 +71,9 @@ class InspectorView {
 	[[nodiscard]] bool has_layout() const;
 	void retire();
 	void build_header();
-	void build_tab(InspectorTab &tab);
-	void build_section(View &parent, InspectorSection &section, Usize tab);
-	void build_actions(View &parent, const std::vector<InspectorAction> &actions);
+	void build_tab(LayoutLoader &loader, InspectorTab &tab);
+	void build_section(LayoutLoader &loader, View &parent, InspectorSection &section, Usize tab);
+	void build_actions(LayoutLoader &loader, View &parent, const std::vector<InspectorAction> &actions);
 	void bind(ShownSection &shown);
 	[[nodiscard]] bool is_usable(Usize tab) const;
 	void refresh_tabs();
