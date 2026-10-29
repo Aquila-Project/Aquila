@@ -129,4 +129,42 @@ TEST_SUITE("OverlayToolbar") {
 		CHECK(bar.position.y + bar.size.y <= area.position.y + area.size.y + 0.5F);
 		CHECK(bar.position.y >= area.position.y - 0.5F);
 	}
+
+	TEST_CASE("a toolbar wider than its area is cut at the area's clip, like the area's other children") {
+		CanvasSingletonsScope singletons;
+		Canvas canvas{ 800, 600 };
+		auto *area = canvas.get_root()->add_child<View>();
+		StyleProperties area_style;
+		area_style.width = StyleLength::pixel(60.F);
+		area_style.height = StyleLength::pixel(200.F);
+		area_style.overflow = Overflow::Hidden;
+		area->merge_style(area_style);
+		auto *toolbar = area->add_child<OverlayToolbar>();
+		toolbar->dock(OverlayEdge::Top, 0.F);
+		for (int i = 0; i < 4; ++i) {
+			auto *button = toolbar->add_child<Button>();
+			StyleProperties button_style;
+			button_style.width = StyleLength::pixel(24.F);
+			button_style.height = StyleLength::pixel(24.F);
+			button->merge_style(button_style);
+		}
+		for (int i = 0; i < 3; ++i) {
+			canvas.update(0.016F);
+			canvas.compute();
+		}
+
+		const Rect bar = toolbar->get_absolute_rect();
+		REQUIRE(bar.position.x + bar.size.x > 80.F);
+		const auto in_toolbar = [toolbar](const View *hit) {
+			for (const View *view = hit; view != nullptr; view = view->get_parent()) {
+				if (view == toolbar) {
+					return true;
+				}
+			}
+			return false;
+		};
+		const F32 middle = bar.position.y + (bar.size.y * 0.5F);
+		CHECK(in_toolbar(canvas.hit_test({ 40.F, middle })));
+		CHECK_FALSE(in_toolbar(canvas.hit_test({ 75.F, middle })));
+	}
 }

@@ -55,6 +55,7 @@ struct FloatingConfig {
 	FloatingAttachTo attach_to = FloatingAttachTo::Parent;
 	FloatingAttachPoint element_point = FloatingAttachPoint::LeftTop;
 	FloatingAttachPoint parent_point = FloatingAttachPoint::LeftBottom;
+	bool clip_to_parent = false;
 	bool operator==(const FloatingConfig &) const = default;
 };
 

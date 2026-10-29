@@ -77,6 +77,19 @@ static void gather_floating_roots(View *node, std::vector<View *> &roots) {
 	}
 }
 
+static Rect parent_clip(const View &node, const Rect &canvas_bounds) {
+	Rect clip = canvas_bounds;
+	for (const View *parent = node.get_parent(); parent != nullptr; parent = parent->get_parent()) {
+		if (parent->get_display_style().overflow != Overflow::Visible) {
+			clip = clip.intersect(parent->get_absolute_rect());
+		}
+		if (parent->has_floating() && !parent->get_floating().clip_to_parent) {
+			break;
+		}
+	}
+	return clip;
+}
+
 void DrawCompositor::set_canvas_size(Uint32 width, Uint32 height) {
 	m_width = width;
 	m_height = height;
@@ -90,16 +103,18 @@ void DrawCompositor::rebuild_lists(View *root) {
 	m_canvas_items.clear();
 	m_canvas_layers.clear();
 	m_float_roots.clear();
-	{
-		const Rect canvas_bounds = { .position = { 0.F, 0.F },
-									 .size = { static_cast<F32>(m_width), static_cast<F32>(m_height) } };
-		cull(root, 0, &canvas_bounds, 1.F);
-	}
+	m_float_clips.clear();
+	const Rect canvas_bounds = { .position = { 0.F, 0.F },
+								 .size = { static_cast<F32>(m_width), static_cast<F32>(m_height) } };
+	cull(root, 0, &canvas_bounds, 1.F);
 	gather_floating_roots(root, m_float_roots);
 	std::ranges::stable_sort(m_float_roots.begin(), m_float_roots.end(),
 							 [](View *a, View *b) { return a->get_floating().z_index < b->get_floating().z_index; });
 	for (View *float_root : m_float_roots) {
-		collect_layer_subtree(float_root, nullptr);
+		const Option<Rect> &clip = m_float_clips.emplace_back(
+			float_root->get_floating().clip_to_parent ? Option<Rect>(parent_clip(*float_root, canvas_bounds))
+													  : std::nullopt);
+		collect_layer_subtree(float_root, clip ? &*clip : nullptr);
 	}
 	m_compose_needed = true;
 }
@@ -111,8 +126,17 @@ void DrawCompositor::compose_draw_list() {
 			m_draw_list.append_cmd(cmd);
 		}
 	}
-	for (View *float_root : m_float_roots) {
-		emit_floating_layer(float_root, nullptr, ancestor_opacity(float_root));
+	for (Usize i = 0; i < m_float_roots.size(); ++i) {
+		const Option<Rect> &clip = m_float_clips[i];
+		if (clip) {
+			ClipPushCmd clip_push;
+			clip_push.rect = *clip;
+			m_draw_list.append_cmd(clip_push);
+		}
+		emit_floating_layer(m_float_roots[i], clip ? &*clip : nullptr, ancestor_opacity(m_float_roots[i]));
+		if (clip) {
+			m_draw_list.append_cmd(ClipPopCmd{});
+		}
 	}
 }
 
