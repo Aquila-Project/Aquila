@@ -1,6 +1,11 @@
 #include <doctest.h>
 
+#include "Aquila/UI/Core/Behaviour.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
+#include "Aquila/UI/Widgets/DockNode.h"
+#include "Aquila/UI/Widgets/DockPanel.h"
+#include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/DragInt.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
@@ -94,6 +99,28 @@ TEST_SUITE("Style snapshots") {
 			fixture.settle_fully();
 			write_style_snapshot("plain-grid-" + std::to_string(static_cast<int>(width)), box);
 		}
+	}
+
+	TEST_CASE("style snapshot dock" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		View &box = snapshot_box(fixture, 640.F, 400.F);
+		auto *space = box.add_child<DockSpace>();
+		StyleProperties fill;
+		fill.width = StyleLength::grow();
+		fill.height = StyleLength::grow();
+		space->merge_style(fill);
+		const Aquila::Foundation::Registration registration =
+			fixture.loader.behaviours().add("DockTabActions", [] { return std::make_unique<Behaviour>(); });
+		space->set_tab_bar_decorator([&fixture](DockNode *, View *actions) {
+			REQUIRE(fixture.loader.create(engine_component_file("dock_tab_actions"), "DockTabActions", *actions) !=
+					nullptr);
+		});
+		DockNode *root = space->get_root_node();
+		REQUIRE(root != nullptr);
+		root->add_panel("first");
+		root->add_panel("second");
+		fixture.settle_fully();
+		write_style_snapshot("dock", box);
 	}
 
 	TEST_CASE("style snapshot console" * doctest::skip()) {

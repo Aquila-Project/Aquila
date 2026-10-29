@@ -1,0 +1,6 @@
+<Component name="DockTabActions" behaviour="DockTabActions">
+    <View class="dock-tab-action-group">
+        <Button id="change" class="dock-tab-action" tooltip="Change editor" src="Engine/UI/Icons/grid-3x3.svg"/>
+        <Button id="add" class="dock-tab-action" tooltip="Add editor tab" src="Engine/UI/Icons/plus.svg"/>
+    </View>
+</Component>

@@ -1,7 +1,10 @@
 #include <doctest.h>
 
+#include "Aquila/UI/Core/Behaviour.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Core/View.h"
+#include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
@@ -132,5 +135,26 @@ TEST_SUITE("Shipped UI resources") {
 			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
 		}
 		CHECK(dynamic_cast<Core::SelectableTextView *>(root->find_by_id("build-log-text")) != nullptr);
+	}
+
+	TEST_CASE("the dock tab actions build their change and add buttons") {
+		struct Probe final : Core::Behaviour {
+			Core::Button *change = nullptr;
+			Core::Button *add = nullptr;
+			void define_behaviour() override {
+				change = get<Core::Button>("change");
+				add = get<Core::Button>("add");
+			}
+		};
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const Aquila::Foundation::Registration registration = loader.behaviours().add<Probe>("DockTabActions");
+		Core::View parent;
+		auto *probe = loader.create<Probe>(Core::engine_component_file("dock_tab_actions"), "DockTabActions", parent);
+		REQUIRE(probe != nullptr);
+		CHECK(probe->change != nullptr);
+		CHECK(probe->add != nullptr);
+		CHECK(std::filesystem::exists(K_UI_DIR / "Components/dock_tab_actions.aqstyle"));
 	}
 }

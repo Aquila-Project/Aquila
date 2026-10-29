@@ -48,24 +48,6 @@
     padding: 0px 4px;
 }
 
-.dock-tab-action {
-    width: 22px;
-    height: 22px;
-    padding: 0px;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    border-width: 0px;
-    border-radius: 3px;
-    opacity: 0.6;
-    transition: 60ms linear;
-}
-
-.dock-tab-action:hover {
-    background-color: var(--bg-hover);
-    opacity: 1;
-}
-
 .dock-tab-wrapper {
     flex-direction: row;
     height: 100%;

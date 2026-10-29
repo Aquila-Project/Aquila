@@ -4,11 +4,13 @@
 #include "Aquila/Foundation/Math/Rect.h"
 #include "Aquila/Platform/Input.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "UI/Components/DockTabActions.h"
 
 #include <charconv>
 
@@ -66,6 +68,7 @@ void EditorWindows::attach(DockSpace &dock_space) {
 		m_staging->set_hidden(true);
 	}
 
+	m_tab_actions_behaviour = m_context.layouts().behaviours().add<DockTabActions>("DockTabActions");
 	dock_space.set_closable_tabs(true, m_context.icon("x"));
 	dock_space.set_panel_factory([this](const std::string &panel_id) { return create_panel(panel_id); });
 	dock_space.set_tab_bar_decorator([this](DockNode *node, View *actions) { decorate(node, actions); });
@@ -337,18 +340,16 @@ UI::Core::DockLayoutDesc EditorWindows::capture() const {
 }
 
 void EditorWindows::decorate(DockNode *node, View *actions) {
-	auto add_action = [&](const char *icon, const char *tooltip, bool replace) {
-		auto *button = actions->add_child<UI::Core::Button>();
-		button->add_class("dock-tab-action");
-		button->set_icon(m_context.icon(icon));
-		button->set_tooltip(tooltip);
-		button->on_click.connect([this, node, button, replace] {
-			const Rect rect = button->get_absolute_rect();
-			open_type_menu({ rect.position.x, rect.position.y + rect.size.y + 2.F }, replace, node);
-		});
-	};
-	add_action("grid-3x3", "Change editor", true);
-	add_action("plus", "Add editor tab", false);
+	auto *buttons = m_context.layouts().create<DockTabActions>(UI::Core::engine_component_file("dock_tab_actions"),
+															   "DockTabActions", *actions);
+	if (buttons == nullptr) {
+		return;
+	}
+	constexpr F32 K_MENU_GAP = 2.F;
+	buttons->on_change_editor.connect(
+		[this, node](Vec2 corner) { open_type_menu({ corner.x, corner.y + K_MENU_GAP }, true, node); });
+	buttons->on_add_tab.connect(
+		[this, node](Vec2 corner) { open_type_menu({ corner.x, corner.y + K_MENU_GAP }, false, node); });
 }
 
 void EditorWindows::open_type_menu(Vec2 position, bool replace, DockNode *node) {
