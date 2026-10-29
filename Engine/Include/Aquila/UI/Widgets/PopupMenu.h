@@ -35,6 +35,8 @@ class PopupMenu : public FloatingOverlay {
 	void open_below(Vec2 anchor_pos, float anchor_height);
 	void dismiss();
 
+	void on_floating_layout() override;
+
   private:
 	struct Item {
 		std::string text;

@@ -692,6 +692,9 @@ void LayoutEngine::update_rects(View *node, Vec2 parent_clay_pos, Vec2 accumulat
 			node->mark_subtree_bounds_dirty();
 			node->queue_redraw();
 		}
+		if (node->has_floating()) {
+			node->on_floating_layout();
+		}
 		if (cs.overflow == Overflow::Scroll) {
 			scroll = place_scroll(*node, clay_id, bb.height);
 			m_scroll_views.push_back(node);

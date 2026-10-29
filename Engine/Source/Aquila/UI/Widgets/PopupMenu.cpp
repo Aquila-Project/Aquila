@@ -1,4 +1,5 @@
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Widgets/Separator.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
@@ -177,6 +178,31 @@ void PopupMenu::open_at(Vec2 canvas_pos) {
 
 void PopupMenu::open_below(Vec2 anchor_pos, float anchor_height) {
 	open_at({ anchor_pos.x, anchor_pos.y + anchor_height });
+}
+
+void PopupMenu::on_floating_layout() {
+	const Canvas *canvas = get_canvas();
+	if (canvas == nullptr) {
+		return;
+	}
+	const Vec2 bounds(static_cast<F32>(canvas->get_width()), static_cast<F32>(canvas->get_height()));
+	const Vec2 size = get_layout_rect().size;
+	const Vec2 placed = get_absolute_position();
+	Vec2 fitted = placed;
+	if (m_parent_menu != nullptr && placed.x + size.x > bounds.x) {
+		fitted.x = m_parent_menu->get_absolute_position().x - size.x;
+	}
+	fitted.x = std::clamp(fitted.x, 0.F, std::max(0.F, bounds.x - size.x));
+	fitted.y = std::clamp(fitted.y, 0.F, std::max(0.F, bounds.y - size.y));
+
+	constexpr F32 K_TOLERANCE = 0.01F;
+	if (std::abs(fitted.x - placed.x) < K_TOLERANCE && std::abs(fitted.y - placed.y) < K_TOLERANCE) {
+		return;
+	}
+	FloatingConfig floating = get_floating();
+	floating.offset += fitted - placed;
+	set_floating(floating);
+	invalidate_layout();
 }
 
 } // namespace Aquila::UI::Core

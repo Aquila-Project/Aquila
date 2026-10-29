@@ -251,6 +251,8 @@ class View {
 	/// changes get another layout pass in the same frame.
 	virtual void on_scroll_layout() {}
 
+	virtual void on_floating_layout() {}
+
 	/// Called every frame while the view is registered with Canvas::register_tick().
 	/// Return true to ask for another frame.
 	virtual bool on_update(F32 delta_time) {
