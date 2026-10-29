@@ -200,16 +200,6 @@ static Clay_LayoutConfig to_clay_layout(const ComputedStyle &cs, F32 vw_px, F32 
 }
 
 static Clay_ElementId make_element_id(View *node) {
-	const std::string &view_id = node->get_id();
-	if (!view_id.empty()) {
-		const Clay_String s{
-			.isStaticallyAllocated = false,
-			.length = static_cast<Int32>(view_id.size()),
-			.chars = view_id.c_str(),
-		};
-		return CLAY_SID(s);
-	}
-
 	const Uint32 id = node->get_stable_id();
 	return Clay_ElementId{ .id = id != 0 ? id : 1u };
 }

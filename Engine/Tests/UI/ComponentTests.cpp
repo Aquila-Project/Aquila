@@ -110,6 +110,26 @@ TEST_SUITE("Components") {
 		CHECK(load(R"(<Component name="Q"><View/></Component><Q title="x"/>)")
 				  .log.find("doesn't take the attribute 'title'") != std::string::npos);
 	}
+
+	TEST_CASE("instances that repeat an id each lay out in their own place") {
+		CanvasSingletonsScope singletons;
+		Canvas canvas(400, 200);
+		Loaded loaded = load(R"(
+<Component name="Box"><View style="width: 100px; height: 50px"><View id="dot" style="width: 10px; height: 10px"/></View></Component>
+<View style="flex-direction: row"><Box/><Box/></View>)");
+		REQUIRE(loaded.root != nullptr);
+		View *layout = canvas.get_root()->add_child(std::move(loaded.root));
+		for (int i = 0; i < 2; ++i) {
+			canvas.update(0.016F);
+			canvas.compute();
+		}
+
+		REQUIRE(layout->get_children().size() == 2);
+		const View &first = *layout->get_children()[0]->get_children()[0];
+		const View &second = *layout->get_children()[1]->get_children()[0];
+		CHECK(first.get_absolute_position().x == doctest::Approx(0.F));
+		CHECK(second.get_absolute_position().x == doctest::Approx(100.F));
+	}
 }
 
 TEST_SUITE("Component props") {
