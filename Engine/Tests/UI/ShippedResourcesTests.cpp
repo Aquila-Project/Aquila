@@ -5,6 +5,7 @@
 #include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Button.h"
+#include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
@@ -156,5 +157,21 @@ TEST_SUITE("Shipped UI resources") {
 		CHECK(probe->change != nullptr);
 		CHECK(probe->add != nullptr);
 		CHECK(std::filesystem::exists(K_UI_DIR / "Components/dock_tab_actions.aqstyle"));
+	}
+
+	TEST_CASE("the inspector layout holds what InspectorView needs and its preview") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const std::string file = "/resources/Engine/UI/Windows/inspector.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "inspector-root");
+		for (const char *id : { "props-tabs", "props-head", "props-head-icon", "inspector-name", "inspector-uuid",
+								"inspector-empty", "inspector-scroll", "inspector-pages" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		Core::View parent;
+		CHECK(dynamic_cast<Core::Image *>(loader.create(file, "InspectorPreview", parent)) != nullptr);
 	}
 }

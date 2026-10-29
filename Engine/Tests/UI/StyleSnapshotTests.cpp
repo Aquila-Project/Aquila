@@ -53,7 +53,7 @@ TEST_SUITE("Style snapshots") {
 		for (const F32 width : { 260.F, 420.F }) {
 			LoaderCanvas fixture(1200, 1400);
 			View &box = snapshot_box(fixture, width, 1380.F);
-			View *root = fixture.loader.build_file("/resources/Engine/UI/inspector.aqlayout", box);
+			View *root = fixture.loader.build_file("/resources/Engine/UI/Windows/inspector.aqlayout", box);
 			REQUIRE(root != nullptr);
 			Everything titled;
 			Everything bare;
@@ -83,6 +83,19 @@ TEST_SUITE("Style snapshots") {
 
 			InspectorView view(*root, InspectorView::IconResolver{}, nullptr);
 			view.show(std::move(inspectable));
+			View *section_root = view.find_section("light");
+			REQUIRE(section_root != nullptr);
+			PropertyGrid *section_grid = nullptr;
+			for (const auto &child : section_root->get_children()) {
+				for (const auto &inner : child->get_children()) {
+					if (auto *grid = dynamic_cast<PropertyGrid *>(inner.get())) {
+						section_grid = grid;
+					}
+				}
+			}
+			REQUIRE(section_grid != nullptr);
+			REQUIRE(fixture.loader.create("/resources/Engine/UI/Windows/inspector.aqlayout", "InspectorPreview",
+										  *section_grid) != nullptr);
 			fixture.settle_fully();
 			write_style_snapshot("inspector-view-" + std::to_string(static_cast<int>(width)), box);
 		}

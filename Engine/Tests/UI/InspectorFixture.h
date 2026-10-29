@@ -89,7 +89,7 @@ struct EverythingInspector {
 	void build(Aquila::UI::Core::LayoutLoader &loader, Aquila::UI::Core::View &box,
 			   const std::string &section_title = "Directional Light With A Long Component Name") {
 		using namespace Aquila::UI::Core;
-		Unique<View> layout = loader.load_file("/resources/Engine/UI/inspector.aqlayout");
+		Unique<View> layout = loader.load_file("/resources/Engine/UI/Windows/inspector.aqlayout");
 		REQUIRE(layout != nullptr);
 		View *root = box.add_child(std::move(layout));
 

@@ -1,3 +1,7 @@
+<Component name="InspectorPreview">
+    <Image class="asset-inspector-preview"/>
+</Component>
+
 <View id="inspector-root" class="props-root">
     <View class="props-frame">
         <View id="props-tabs" class="props-tabs"/>

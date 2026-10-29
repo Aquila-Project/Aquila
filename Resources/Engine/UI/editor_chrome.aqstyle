@@ -310,91 +310,6 @@
     flex-grow: 1;
 }
 
-.props-root {
-    flex-direction: column;
-    width: 100%;
-    height: grow;
-    overflow: clip;
-}
-
-.props-frame {
-    flex-direction: row;
-    width: 100%;
-    height: 100%;
-}
-
-.props-tabs {
-    flex-direction: column;
-    align-items: end;
-    width: 30px;
-    height: grow;
-    gap: 2px;
-    padding: 6px 0px;
-    background-color: var(--bg-base);
-}
-
-.props-tab-separator {
-    width: 16px;
-    height: 1px;
-    background-color: var(--border-dim);
-}
-
-.props-main {
-    flex-direction: column;
-    width: grow;
-    height: grow;
-    min-width: 0px;
-}
-
-.props-head {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    min-height: 30px;
-    gap: 6px;
-    padding: 0px 8px 0px 10px;
-}
-
-.props-head-icon {
-    width: 14px;
-    height: 14px;
-}
-
-.props-name {
-    width: grow;
-    height: 22px;
-    padding: 0px 4px;
-    font-family: medium;
-    font-size: 13px;
-    color: var(--text-bright);
-    background-color: transparent;
-    border-width: 0px;
-}
-
-.props-name:hover {
-    background-color: var(--input-bg);
-}
-
-.props-uuid {
-    font-family: mono;
-    font-size: 11px;
-    color: var(--text-muted);
-}
-
-.props-empty {
-    flex-direction: column;
-    width: 100%;
-    height: grow;
-    justify-content: center;
-    align-items: center;
-    padding: 24px;
-}
-
-.props-pages {
-    flex-direction: column;
-    width: 100%;
-}
-
 .props-dropdown {
     min-height: 20px;
     min-width: 0px;
@@ -416,15 +331,6 @@
 .props-dropdown-header:hover {
     background-color: var(--bg-muted);
     border-color: var(--border-lit);
-}
-
-.inspector-empty-text {
-    font-family: regular;
-    font-size: 14px;
-    color: var(--text-dim);
-    max-width: 240px;
-    text-align: center;
-    white-space: normal;
 }
 
 .settings-root {
@@ -1020,13 +926,6 @@
 .viewport-canvas-layer {
     font-family: mono;
     font-size: 12px;
-}
-
-.asset-inspector-preview {
-    width: 96px;
-    height: 96px;
-    color: #ffffff;
-    border-radius: 4px;
 }
 
 .play-tint {

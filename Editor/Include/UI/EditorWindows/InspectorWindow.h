@@ -16,7 +16,7 @@ class InspectorWindow final : public EditorWindow {
 	explicit InspectorWindow(EditorContext &context);
 	~InspectorWindow() override;
 
-	void build(Aquila::UI::Core::View &content) override;
+	void define_behaviour() override;
 	void update(F32 delta_time) override;
 	void open_add_search(Vec2 canvas_pos);
 

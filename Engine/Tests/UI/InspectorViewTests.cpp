@@ -98,7 +98,7 @@ struct Fixture {
 
 	Fixture() {
 		Unique<View> loaded = canvas.loader.load_string(
-			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout"));
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/Windows/inspector.aqlayout"));
 		REQUIRE(loaded != nullptr);
 		root = canvas.host().add_child(std::move(loaded));
 		view = std::make_unique<InspectorView>(*root, InspectorView::IconResolver{}, nullptr);
@@ -427,7 +427,7 @@ TEST_SUITE("InspectorView") {
 		style.font_family = "regular";
 		owner->merge_style(style);
 		View *layout = owner->add_child(fixture.loader.load_string(
-			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout")));
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/Windows/inspector.aqlayout")));
 		REQUIRE(layout != nullptr);
 		owner->inspector = std::make_unique<InspectorView>(*layout, InspectorView::IconResolver{}, nullptr);
 		owner->inspector->show(one_tab(light_section(light, "light")));
@@ -465,8 +465,8 @@ TEST_SUITE("InspectorView") {
 		CanvasSingletonsScope singletons;
 		test_vfs();
 		LayoutLoader loader;
-		Unique<View> root =
-			loader.load_string(read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout"));
+		Unique<View> root = loader.load_string(
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/Windows/inspector.aqlayout"));
 		REQUIRE(root != nullptr);
 		InspectorView view(*root, InspectorView::IconResolver{}, nullptr);
 

@@ -8,21 +8,15 @@ namespace Editor {
 
 using Aquila::SceneManagement::Entity;
 
-InspectorWindow::InspectorWindow(EditorContext &context) : EditorWindow(context) {}
+InspectorWindow::InspectorWindow(EditorContext &context) : EditorWindow(context, context.window_layout("inspector")) {}
 
 InspectorWindow::~InspectorWindow() = default;
 
-void InspectorWindow::build(Aquila::UI::Core::View &content) {
-	if (auto layout = load_layout("inspector.aqlayout")) {
-		content.add_child(std::move(layout));
-	}
-
+void InspectorWindow::define_behaviour() {
 	m_entities = std::make_unique<EntityInspector>(context());
-	if (Aquila::UI::Core::View *root = content.find_by_id("inspector-root")) {
-		m_view = std::make_unique<Aquila::UI::Core::InspectorView>(
-			*root, [this](std::string_view name) { return context().icon(name); }, &context().engine().get_context());
-		m_view->select_tab("Components");
-	}
+	m_view = std::make_unique<Aquila::UI::Core::InspectorView>(
+		root(), [this](std::string_view name) { return context().icon(name); }, &context().engine().get_context());
+	m_view->select_tab("Components");
 
 	EditorSelection &selection = context().selection;
 	listen(selection.on_changed, [this](Entity entity) { show_entity(entity); });
