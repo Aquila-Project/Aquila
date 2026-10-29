@@ -160,6 +160,31 @@ static bool is_row(FlexDirection direction) {
 	return direction == FlexDirection::Row || direction == FlexDirection::RowReverse;
 }
 
+static F32 pixel_value(const StyleLength &length) {
+	return length.unit == LengthUnit::Pixel ? length.value : 0.F;
+}
+
+static F32 wrap_extent(const View &child, bool row) {
+	const ComputedStyle &style = child.get_display_style();
+	const StyleLength &main_len = row ? style.width : style.height;
+	const StyleLength &main_min = row ? style.min_width : style.min_height;
+	if (main_len.unit == LengthUnit::Pixel) {
+		return main_len.value;
+	}
+	if (main_len.unit == LengthUnit::Grow || style.flex_grow > 0.F) {
+		return pixel_value(main_min);
+	}
+	return row ? child.get_layout_rect().size.x : child.get_layout_rect().size.y;
+}
+
+static Clay_ClipElementConfig clip_config(const ComputedStyle &cs) {
+	const bool wraps = cs.wrap == FlexWrap::Wrap;
+	const bool row = is_row(cs.flex_direction);
+	return { .horizontal = cs.overflow == Overflow::Clip || (wraps && row),
+			 .vertical = cs.overflow == Overflow::Scroll || cs.overflow == Overflow::Clip || (wraps && !row),
+			 .childOffset = {} };
+}
+
 static bool is_reverse(FlexDirection direction) {
 	return direction == FlexDirection::RowReverse || direction == FlexDirection::ColumnReverse;
 }
@@ -294,10 +319,9 @@ std::vector<Uint32> LayoutEngine::compute_wrap_lines(View *node) const {
 		return {};
 	}
 
-	auto pixels = [](const StyleLength &l) { return l.unit == LengthUnit::Pixel ? l.value : 0.F; };
 	const Vec2 size = node->get_layout_rect().size;
-	const F32 available = row ? size.x - pixels(cs.padding.left) - pixels(cs.padding.right)
-							  : size.y - pixels(cs.padding.top) - pixels(cs.padding.bottom);
+	const F32 available = row ? size.x - pixel_value(cs.padding.left) - pixel_value(cs.padding.right)
+							  : size.y - pixel_value(cs.padding.top) - pixel_value(cs.padding.bottom);
 	if (available <= 0.F) {
 		return { static_cast<Uint32>(children.size()) };
 	}
@@ -306,15 +330,7 @@ std::vector<Uint32> LayoutEngine::compute_wrap_lines(View *node) const {
 	Uint32 count = 0;
 	F32 used = 0.F;
 	for (View *child : children) {
-		const ComputedStyle &child_style = child->get_display_style();
-		const StyleLength &main_len = row ? child_style.width : child_style.height;
-		const StyleLength &main_min = row ? child_style.min_width : child_style.min_height;
-		F32 extent = row ? child->get_layout_rect().size.x : child->get_layout_rect().size.y;
-		if (main_len.unit == LengthUnit::Pixel) {
-			extent = main_len.value;
-		} else if (main_len.unit == LengthUnit::Grow || child_style.flex_grow > 0.F) {
-			extent = pixels(main_min);
-		}
+		const F32 extent = wrap_extent(*child, row);
 		const F32 needed = count == 0 ? extent : used + cs.gap + extent;
 		if (count > 0 && needed > available) {
 			lines.push_back(count);
@@ -492,7 +508,25 @@ void LayoutEngine::layout_pass(View *node) {
 		}
 	}
 
+	if (cs.wrap == FlexWrap::Wrap && !is_text) {
+		const bool row = is_row(cs.flex_direction);
+		Clay_SizingAxis &main = row ? layout.sizing.width : layout.sizing.height;
+		if (main.type == CLAY__SIZING_TYPE_FIT || main.type == CLAY__SIZING_TYPE_GROW) {
+			F32 widest = 0.F;
+			for (const View *child : flow_children(node)) {
+				widest = Math::max(widest, wrap_extent(*child, row));
+			}
+			const F32 padding = row ? pixel_value(cs.padding.left) + pixel_value(cs.padding.right)
+									: pixel_value(cs.padding.top) + pixel_value(cs.padding.bottom);
+			main.size.minMax.min = Math::max(main.size.minMax.min, widest + padding);
+			if (main.size.minMax.max > 0.F) {
+				main.size.minMax.min = Math::min(main.size.minMax.min, main.size.minMax.max);
+			}
+		}
+	}
+
 	const Clay_AspectRatioElementConfig aspect_cfg = { cs.aspect_ratio };
+	const Clay_ClipElementConfig clip = clip_config(cs);
 
 	if (!node->has_floating() && cs.position == Position::Absolute) {
 		const Vec2 parent_size = parent != nullptr ? parent->get_layout_rect().size
@@ -511,30 +545,8 @@ void LayoutEngine::layout_pass(View *node) {
 			.pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_CAPTURE,
 			.attachTo = CLAY_ATTACH_TO_PARENT,
 		};
-		switch (cs.overflow) {
-		case Overflow::Scroll:
-			CLAY(clay_id,
-				 { .layout = layout,
-				   .aspectRatio = aspect_cfg,
-				   .floating = float_cfg,
-				   .clip = { .horizontal = false, .vertical = true } }) {
-				emit_content();
-			}
-			break;
-		case Overflow::Clip:
-			CLAY(clay_id,
-				 { .layout = layout,
-				   .aspectRatio = aspect_cfg,
-				   .floating = float_cfg,
-				   .clip = { .horizontal = true, .vertical = true } }) {
-				emit_content();
-			}
-			break;
-		default:
-			CLAY(clay_id, { .layout = layout, .aspectRatio = aspect_cfg, .floating = float_cfg }) {
-				emit_content();
-			}
-			break;
+		CLAY(clay_id, { .layout = layout, .aspectRatio = aspect_cfg, .floating = float_cfg, .clip = clip }) {
+			emit_content();
 		}
 		return;
 	}
@@ -574,62 +586,14 @@ void LayoutEngine::layout_pass(View *node) {
 			.attachTo = fc.attach_to == FloatingAttachTo::Root ? CLAY_ATTACH_TO_ROOT : CLAY_ATTACH_TO_PARENT,
 		};
 
-		switch (cs.overflow) {
-		case Overflow::Scroll:
-			CLAY(clay_id,
-				 { .layout = layout,
-				   .aspectRatio = aspect_cfg,
-				   .floating = float_cfg,
-				   .clip = { .horizontal = false, .vertical = true } }) {
-				emit_content();
-			}
-			break;
-		case Overflow::Clip:
-			CLAY(clay_id,
-				 { .layout = layout,
-				   .aspectRatio = aspect_cfg,
-				   .floating = float_cfg,
-				   .clip = { .horizontal = true, .vertical = true } }) {
-				emit_content();
-			}
-			break;
-		default:
-			CLAY(clay_id, { .layout = layout, .aspectRatio = aspect_cfg, .floating = float_cfg }) {
-				emit_content();
-			}
-			break;
+		CLAY(clay_id, { .layout = layout, .aspectRatio = aspect_cfg, .floating = float_cfg, .clip = clip }) {
+			emit_content();
 		}
 		return;
 	}
 
-	switch (cs.overflow) {
-	case Overflow::Scroll:
-		CLAY(clay_id,
-			 {
-				 .layout = layout,
-				 .aspectRatio = aspect_cfg,
-				 .clip = { .horizontal = false, .vertical = true },
-			 }) {
-			emit_content();
-		}
-		break;
-
-	case Overflow::Clip:
-		CLAY(clay_id,
-			 {
-				 .layout = layout,
-				 .aspectRatio = aspect_cfg,
-				 .clip = { .horizontal = true, .vertical = true },
-			 }) {
-			emit_content();
-		}
-		break;
-
-	default:
-		CLAY(clay_id, { .layout = layout, .aspectRatio = aspect_cfg }) {
-			emit_content();
-		}
-		break;
+	CLAY(clay_id, { .layout = layout, .aspectRatio = aspect_cfg, .clip = clip }) {
+		emit_content();
 	}
 }
 
