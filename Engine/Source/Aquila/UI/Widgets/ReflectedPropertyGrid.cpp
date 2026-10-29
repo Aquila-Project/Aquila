@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 
+#include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/ColorPicker.h"
@@ -29,6 +30,10 @@ DragFloat::Config drag_config(const Reflection::PropertyHints &hints) {
 
 ReflectedPropertyGrid::ReflectedPropertyGrid(PropertyGrid &grid, const Reflection::TypeInfo &type,
 											 GFX::GfxContext *ctx) {
+	if (find_layout_loader(grid) == nullptr) {
+		AQUILA_LOG_ERROR("ReflectedPropertyGrid: '{}' needs a canvas with a layout loader", type.get_name());
+		return;
+	}
 	m_rows.reserve(type.get_properties().size());
 	for (const Property &property : type.get_properties()) {
 		add_row(grid, property, ctx);
@@ -97,6 +102,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	switch (property.kind) {
 	case PropertyKind::Bool: {
 		auto connect = [&](auto *field) {
+			if (field == nullptr) {
+				return;
+			}
 			field->on_changed.connect([edited](const bool &value) { edited(PropertyValue{ value }); });
 			row.widget = field;
 			row.show = [field](const PropertyValue &value) { field->set_value_without_notify(std::get<bool>(value)); };
@@ -112,6 +120,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	}
 	case PropertyKind::Int: {
 		auto *field = grid.add_row<DragInt>(property.name);
+		if (field == nullptr) {
+			break;
+		}
 		field->set_speed(property.hints.speed);
 		field->on_changed.connect(
 			[edited](float value) { edited(PropertyValue{ static_cast<Int32>(std::lround(value)) }); });
@@ -123,6 +134,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 		const Reflection::PropertyHints &hints = property.hints;
 		if (hints.logarithmic || !hints.marks.empty() || !hints.gradient.empty()) {
 			auto *field = grid.add_stacked_row<SliderField>(property.name);
+			if (field == nullptr) {
+				break;
+			}
 			const bool narrower = hints.slider_max > hints.slider_min;
 			field->set_range(hints.min, hints.max);
 			field->set_slider_range(narrower ? hints.slider_min : hints.min, narrower ? hints.slider_max : hints.max);
@@ -142,6 +156,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 			break;
 		}
 		auto *field = grid.add_row<DragFloat>(property.name, drag_config(property.hints));
+		if (field == nullptr) {
+			break;
+		}
 		field->set_slider(property.hints.slider);
 		field->set_suffix(std::string(property.hints.unit));
 		field->on_changed.connect([edited](float value) { edited(PropertyValue{ value }); });
@@ -151,6 +168,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	}
 	case PropertyKind::Vec2: {
 		auto *field = grid.add_stacked_row<Vec2Field>(property.name);
+		if (field == nullptr) {
+			break;
+		}
 		field->set_speed(property.hints.speed);
 		field->set_stacked(split);
 		field->on_changed.connect([edited](Vec2 value) { edited(PropertyValue{ value }); });
@@ -161,11 +181,17 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	case PropertyKind::Vec3: {
 		if (property.hints.color && ctx != nullptr) {
 			auto *field = grid.add_row<ColorPicker>(property.name, *ctx, Vec4(1.F));
+			if (field == nullptr) {
+				break;
+			}
 			field->on_changed.connect([edited](Vec4 value) { edited(PropertyValue{ Vec3(value) }); });
 			row.widget = field;
 			row.show = [field](const PropertyValue &value) { field->set_value(Vec4(std::get<Vec3>(value), 1.F)); };
 		} else {
 			auto *field = grid.add_stacked_row<Vec3Field>(property.name);
+			if (field == nullptr) {
+				break;
+			}
 			field->set_speed(property.hints.speed);
 			field->set_stacked(split);
 			field->set_suffix(std::string(property.hints.unit));
@@ -181,11 +207,17 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	case PropertyKind::Vec4: {
 		if (property.hints.color && ctx != nullptr) {
 			auto *field = grid.add_row<ColorPicker>(property.name, *ctx, Vec4(1.F));
+			if (field == nullptr) {
+				break;
+			}
 			field->on_changed.connect([edited](Vec4 value) { edited(PropertyValue{ value }); });
 			row.widget = field;
 			row.show = [field](const PropertyValue &value) { field->set_value(std::get<Vec4>(value)); };
 		} else {
 			auto *field = grid.add_stacked_row<Vec4Field>(property.name);
+			if (field == nullptr) {
+				break;
+			}
 			field->set_speed(property.hints.speed);
 			field->set_stacked(split);
 			field->on_changed.connect([edited](Vec4 value) { edited(PropertyValue{ value }); });
@@ -197,6 +229,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	case PropertyKind::String: {
 		if (property.hints.read_only) {
 			auto *label = grid.add_row<Label>(property.name, std::string{});
+			if (label == nullptr) {
+				break;
+			}
 			row.widget = label;
 			row.show = [label](const PropertyValue &value) { label->set_text(std::get<std::string>(value)); };
 			break;
@@ -204,6 +239,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 		if (!property.hints.asset_type.empty()) {
 			const std::string type(property.hints.asset_type);
 			auto *slot = grid.add_row<AssetSlot>(property.name, type);
+			if (slot == nullptr) {
+				break;
+			}
 			slot->on_changed.connect([edited](const Option<AssetPayload> &asset) {
 				edited(PropertyValue{ asset ? asset->asset_path : std::string{} });
 			});
@@ -226,6 +264,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 			break;
 		}
 		auto *field = grid.add_row<TextInput>(property.name);
+		if (field == nullptr) {
+			break;
+		}
 		field->on_changed.connect([edited](const std::string &value) { edited(PropertyValue{ value }); });
 		row.widget = field;
 		row.show = [field](const PropertyValue &value) { field->set_text(std::get<std::string>(value)); };
@@ -233,6 +274,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	}
 	case PropertyKind::Enum: {
 		auto *field = grid.add_row<Dropdown>(property.name);
+		if (field == nullptr) {
+			break;
+		}
 		for (const auto &option : property.options) {
 			field->add_option(std::to_string(option.value), option.name);
 		}
@@ -244,6 +288,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	}
 	}
 
+	if (row.widget == nullptr) {
+		return;
+	}
 	if (property.hints.read_only && property.kind != PropertyKind::String) {
 		row.widget->set_enabled(false);
 	}

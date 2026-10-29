@@ -74,6 +74,25 @@ template <typename W> W &widget(ReflectedPropertyGrid &grid, const char *name) {
 }
 
 TEST_SUITE("ReflectedPropertyGrid") {
+	TEST_CASE("a grid outside a canvas reports it once and gets no rows") {
+		const TypeInfo type = make_type();
+		PropertyGrid grid;
+		Thing thing;
+		LogCapture capture;
+		ReflectedPropertyGrid reflected(grid, type, nullptr);
+		reflected.bind(&thing);
+		reflected.refresh();
+
+		CHECK(grid.get_children().empty());
+		CHECK(reflected.get_widget("Size") == nullptr);
+		const std::string log = capture.stream.str();
+		const std::string expected = "ReflectedPropertyGrid: 'Thing' needs a canvas with a layout loader";
+		const Usize at = log.find(expected);
+		CHECK_MESSAGE(at != std::string::npos, log);
+		CHECK_MESSAGE(log.find(expected, at + 1) == std::string::npos, log);
+		CHECK_MESSAGE(log.find("PropertyGrid: 'Size'") == std::string::npos, log);
+	}
+
 	TEST_CASE("each property kind gets its matching widget") {
 		const TypeInfo type = make_type();
 		CanvasGrid in_canvas;
