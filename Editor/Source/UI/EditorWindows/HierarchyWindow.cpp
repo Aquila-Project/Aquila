@@ -10,17 +10,14 @@ namespace Editor {
 
 using Aquila::SceneManagement::Entity;
 
-HierarchyWindow::HierarchyWindow(EditorContext &context) : EditorWindow(context) {}
+HierarchyWindow::HierarchyWindow(EditorContext &context) : EditorWindow(context, context.window_layout("hierarchy")) {}
 
 HierarchyWindow::~HierarchyWindow() = default;
 
-void HierarchyWindow::build(Aquila::UI::Core::View &content) {
-	if (auto layout = load_layout("hierarchy.aqlayout")) {
-		content.add_child(std::move(layout));
-	}
-
-	m_panel = std::make_unique<HierarchyPanel>(*context().engine().get_scene().get_entity_manager());
-	m_panel->build(&content, overlay_root());
+void HierarchyWindow::define_behaviour() {
+	m_panel = std::make_unique<HierarchyPanel>(*context().engine().get_scene().get_entity_manager(),
+											   context().window_layout("hierarchy"));
+	m_panel->build(&root(), overlay_root());
 	m_panel->set_tree_icons(context().icon("chevron-right"), context().icon("chevron-down"));
 	m_panel->set_entity_icons(EntityIcons{
 		.entity = [this](Entity entity) { return context().icon(context().component_editors.entity_icon(entity)); },

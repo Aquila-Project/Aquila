@@ -30,7 +30,7 @@ enum class EntityGroup { Environment, Lights, Geometry, Cameras, Other, Count };
 
 class HierarchyTreeView : public Aquila::UI::Core::TreeView {
   public:
-	explicit HierarchyTreeView(Aquila::SceneManagement::EntityManager &entity_manager);
+	HierarchyTreeView(Aquila::SceneManagement::EntityManager &entity_manager, std::string components_file);
 
 	HierarchyTreeNode *add_entity_node(std::string label, Aquila::SceneManagement::Entity entity,
 									   HierarchyTreeNode *parent = nullptr);
@@ -73,6 +73,7 @@ class HierarchyTreeView : public Aquila::UI::Core::TreeView {
 
 	EntityIcons m_icons;
 	Aquila::SceneManagement::EntityManager &m_entity_manager;
+	std::string m_components_file;
 	std::unordered_map<HierarchyTreeNode *, Aquila::SceneManagement::Entity> m_node_entity_map;
 	std::array<Group, static_cast<Usize>(EntityGroup::Count)> m_groups{};
 	std::string m_filter;

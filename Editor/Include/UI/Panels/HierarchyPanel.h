@@ -21,7 +21,7 @@ struct EntityIcons;
 
 class HierarchyPanel : public IEditorPanel {
   public:
-	explicit HierarchyPanel(Aquila::SceneManagement::EntityManager &entity_manager);
+	HierarchyPanel(Aquila::SceneManagement::EntityManager &entity_manager, std::string components_file);
 	void build(Aquila::UI::Core::View *panel, Aquila::UI::Core::View *overlay_root) override;
 	Signal<void(Aquila::SceneManagement::Entity)> on_entity_selected;
 	Signal<void()> on_entity_deselected;
@@ -47,6 +47,7 @@ class HierarchyPanel : public IEditorPanel {
 	void populate_hierarchy_context_menu();
 
 	Aquila::SceneManagement::EntityManager &m_entity_manager;
+	std::string m_components_file;
 	HierarchyTreeView *m_tree_view = nullptr;
 	HierarchyTreeNode *m_selected_node = nullptr;
 	Aquila::UI::Core::PopupMenu *m_node_context_menu = nullptr;

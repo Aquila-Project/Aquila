@@ -1,0 +1,91 @@
+#hierarchy-root {
+    flex-direction: column;
+    width: 100%;
+    height: grow;
+}
+
+#hierarchy-scroll {
+    width: 100%;
+    height: grow;
+}
+
+.hierarchy-toolbar {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 4px;
+    padding: 6px 6px 4px 6px;
+}
+
+.hierarchy-filter {
+    width: grow;
+    height: 24px;
+    font-size: 12px;
+}
+
+.hierarchy-tool-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0px;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 4px;
+}
+
+.hierarchy-tool-btn:hover {
+    background-color: var(--bg-hover);
+}
+
+.hierarchy-group-header {
+    font-size: 11px;
+    color: var(--text-muted);
+    min-height: 26px;
+}
+
+.hierarchy-group-header:hover {
+    color: var(--text-dim);
+}
+
+.hierarchy-group-count {
+    font-family: mono;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 0px 6px 0px 0px;
+}
+
+.hierarchy-eye {
+    width: 22px;
+    height: 22px;
+    padding: 0px;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 3px;
+    transition: 60ms linear;
+}
+
+.hierarchy-eye:hover {
+    background-color: var(--bg-hover);
+}
+
+.hierarchy-eye-shown {
+    background-color: transparent;
+}
+
+.hierarchy-entity-hidden {
+    color: var(--text-muted);
+}
+
+.hierarchy-drop-target {
+    background-color: var(--drop-overlay);
+}
+
+.hierarchy-toolbar-btn {
+    width: grow;
+    height: 26px;
+    background-color: var(--bg-muted);
+    border-radius: 4px;
+}

@@ -26,7 +26,9 @@ constexpr std::array<const char *, static_cast<Usize>(EntityGroup::Count)> K_GRO
 
 }
 
-HierarchyTreeView::HierarchyTreeView(EntityManager &entity_manager) : m_entity_manager(entity_manager) {
+HierarchyTreeView::HierarchyTreeView(EntityManager &entity_manager, std::string components_file)
+	: m_entity_manager(entity_manager), m_components_file(std::move(components_file)) {
+	set_row_component(m_components_file, "HierarchyRow");
 	m_is_accepting_payload = true;
 	m_is_draggable = false;
 
@@ -77,9 +79,9 @@ TreeNode *HierarchyTreeView::ensure_group(EntityGroup group) {
 	auto node = std::make_unique<TreeNode>(K_GROUP_LABELS[static_cast<Usize>(group)], *this, 0);
 	node->set_selectable(false);
 	node->get_header()->add_class("hierarchy-group-header");
-	slot.count = node->get_actions()->add_child<Label>(std::string{});
-	slot.count->add_class("hierarchy-group-count");
+	node->set_row_component(m_components_file, "HierarchyGroupCount");
 	slot.node = add_child(std::move(node));
+	slot.count = dynamic_cast<Label *>(slot.node->get_row_component());
 
 	for (Usize next = static_cast<Usize>(group) + 1; next < m_groups.size(); ++next) {
 		if (m_groups[next].node != nullptr) {
@@ -176,7 +178,9 @@ void HierarchyTreeView::refresh_groups() {
 			group = Group{};
 			continue;
 		}
-		group.count->set_text(std::to_string(count));
+		if (group.count != nullptr) {
+			group.count->set_text(std::to_string(count));
+		}
 	}
 }
 

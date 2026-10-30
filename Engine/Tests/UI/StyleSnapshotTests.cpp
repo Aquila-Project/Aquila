@@ -10,7 +10,9 @@
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/TextInput.h"
+#include "Aquila/UI/Widgets/TreeView.h"
 #include "GpuTestSupport.h"
 #include "InspectorFixture.h"
 #include "LoaderTestSupport.h"
@@ -134,6 +136,42 @@ TEST_SUITE("Style snapshots") {
 		root->add_panel("second");
 		fixture.settle_fully();
 		write_style_snapshot("dock", box);
+	}
+
+	TEST_CASE("style snapshot hierarchy" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		View &box = snapshot_box(fixture, 280.F, 400.F);
+		const std::string file = "/resources/Engine/UI/Windows/hierarchy.aqlayout";
+		const Aquila::Foundation::Registration registration =
+			fixture.loader.behaviours().add("HierarchyRow", [] { return std::make_unique<Behaviour>(); });
+		View *window = fixture.loader.build_file(file, box);
+		REQUIRE(window != nullptr);
+		View *scroll = window->find_by_id("hierarchy-scroll");
+		REQUIRE(scroll != nullptr);
+		auto *tree = scroll->add_child<TreeView>();
+		tree->set_row_component(file, "HierarchyRow");
+		const auto eye_of = [](TreeNode &node, bool hidden) {
+			auto *eye = dynamic_cast<Button *>(node.get_row_component());
+			REQUIRE(eye != nullptr);
+			eye->set_icon(nullptr);
+			eye->set_class("hierarchy-eye-shown", hidden);
+			node.get_header()->set_class("hierarchy-entity-hidden", hidden);
+		};
+		auto group_node = std::make_unique<TreeNode>("Geometry", *tree, 0);
+		group_node->set_selectable(false);
+		group_node->get_header()->add_class("hierarchy-group-header");
+		group_node->set_row_component(file, "HierarchyGroupCount");
+		auto *group = dynamic_cast<TreeNode *>(tree->add_child(std::move(group_node)));
+		REQUIRE(group != nullptr);
+		auto *count = dynamic_cast<Label *>(group->get_row_component());
+		REQUIRE(count != nullptr);
+		count->set_text("3");
+		TreeNode *parent = group->add_child_node("Cube");
+		eye_of(*parent, false);
+		eye_of(*parent->add_child_node("Child"), false);
+		eye_of(*group->add_child_node("Hidden"), true);
+		fixture.settle_fully();
+		write_style_snapshot("hierarchy", box);
 	}
 
 	TEST_CASE("style snapshot console" * doctest::skip()) {

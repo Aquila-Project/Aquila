@@ -11,6 +11,7 @@
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "UI/Components/DockTabActions.h"
+#include "UI/Components/HierarchyRow.h"
 
 #include <charconv>
 
@@ -68,7 +69,8 @@ void EditorWindows::attach(DockSpace &dock_space) {
 		m_staging->set_hidden(true);
 	}
 
-	m_tab_actions_behaviour = m_context.layouts().behaviours().add<DockTabActions>("DockTabActions");
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<DockTabActions>("DockTabActions"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<HierarchyRow>("HierarchyRow"));
 	dock_space.set_closable_tabs(true, m_context.icon("x"));
 	dock_space.set_panel_factory([this](const std::string &panel_id) { return create_panel(panel_id); });
 	dock_space.set_tab_bar_decorator([this](DockNode *node, View *actions) { decorate(node, actions); });

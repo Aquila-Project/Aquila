@@ -6,6 +6,7 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Image.h"
+#include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
@@ -173,5 +174,23 @@ TEST_SUITE("Shipped UI resources") {
 		}
 		Core::View parent;
 		CHECK(dynamic_cast<Core::Image *>(loader.create(file, "InspectorPreview", parent)) != nullptr);
+	}
+
+	TEST_CASE("the hierarchy layout holds its toolbar, its scroll and its row components") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const Aquila::Foundation::Registration registration =
+			loader.behaviours().add("HierarchyRow", [] { return std::make_unique<Core::Behaviour>(); });
+		const std::string file = "/resources/Engine/UI/Windows/hierarchy.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "hierarchy-root");
+		for (const char *id : { "hierarchy-toolbar", "hierarchy-filter", "hierarchy-create", "hierarchy-scroll" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		Core::View parent;
+		CHECK(dynamic_cast<Core::Button *>(loader.create(file, "HierarchyRow", parent)) != nullptr);
+		CHECK(dynamic_cast<Core::Label *>(loader.create(file, "HierarchyGroupCount", parent)) != nullptr);
 	}
 }

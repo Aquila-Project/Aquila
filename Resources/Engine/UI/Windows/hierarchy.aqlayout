@@ -1,3 +1,11 @@
+<Component name="HierarchyRow" behaviour="HierarchyRow">
+    <Button id="eye" class="hierarchy-eye"/>
+</Component>
+
+<Component name="HierarchyGroupCount">
+    <Label class="hierarchy-group-count"/>
+</Component>
+
 <View id="hierarchy-root">
     <View id="hierarchy-toolbar" class="hierarchy-toolbar">
         <TextInput id="hierarchy-filter" class="hierarchy-filter"/>

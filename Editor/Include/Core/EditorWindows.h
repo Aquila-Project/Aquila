@@ -89,7 +89,7 @@ class EditorWindows {
 	Aquila::UI::Core::DockSpace *m_dock_space = nullptr;
 	Aquila::UI::Core::PopupMenu *m_menu = nullptr;
 	Aquila::UI::Core::View *m_staging = nullptr;
-	Aquila::Foundation::Registration m_tab_actions_behaviour;
+	std::vector<Aquila::Foundation::Registration> m_component_behaviours;
 	std::vector<EditorWindowType> m_types;
 	std::vector<Live> m_live;
 	Uint32 m_next_instance = 1;
