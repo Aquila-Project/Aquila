@@ -16,6 +16,7 @@ class Event;
 namespace Aquila::UI::Core {
 class Button;
 class Label;
+class PropertyGrid;
 class ReflectedPropertyGrid;
 class ScrollView;
 class SelectableTextView;
@@ -24,6 +25,7 @@ class View;
 
 namespace Editor {
 
+class BuildTemplateInfo;
 class EditorContext;
 
 /// UI around plan_build() and run_build(). Builds run on a worker thread, progress is queued under
@@ -73,10 +75,9 @@ class BuildWindow final : public Aquila::UI::Core::WindowBehaviour {
 	Unique<Aquila::Reflection::TypeInfo> m_settings_type;
 	Unique<Aquila::UI::Core::ReflectedPropertyGrid> m_fields;
 	Signal<void()>::Connection m_settings_connection;
-	Aquila::UI::Core::View *m_form = nullptr;
+	Aquila::UI::Core::PropertyGrid *m_grid = nullptr;
 	bool m_rebuild_settings = false;
-	Aquila::UI::Core::Label *m_template_state = nullptr;
-	Aquila::UI::Core::SelectableTextView *m_template_path = nullptr;
+	BuildTemplateInfo *m_template = nullptr;
 	Aquila::UI::Core::Label *m_status = nullptr;
 	Aquila::UI::Core::ScrollView *m_log_scroll = nullptr;
 	Aquila::UI::Core::SelectableTextView *m_log = nullptr;

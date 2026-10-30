@@ -19,6 +19,7 @@
 #include "Core/EditorContext.h"
 #include "Core/FileDialog.h"
 #include "Core/ProjectSettingsFields.h"
+#include "UI/Components/BuildTemplateInfo.h"
 
 namespace Editor {
 
@@ -50,19 +51,6 @@ std::string describe(const Player::BuildStep &step) {
 std::string template_dir() {
 	return std::string(Player::player_template_dir(Aquila::Platform::Filesystem::path_executable_dir()));
 }
-
-void add_browse_button(View *field, Aquila::GFX::GfxTexture *icon, std::string tooltip, Delegate<void()> on_click) {
-	View *row = field != nullptr ? field->get_parent() : nullptr;
-	if (row == nullptr) {
-		return;
-	}
-	auto *button = row->add_child<Button>();
-	button->set_icon(icon);
-	button->add_class("build-btn");
-	button->add_class("build-browse");
-	button->set_tooltip(std::move(tooltip));
-	button->on_click.connect(std::move(on_click));
-}
 }
 
 BuildWindow::BuildWindow(EditorContext &context)
@@ -83,7 +71,7 @@ void BuildWindow::define_behaviour() {
 	m_log_scroll = get<ScrollView>("build-log");
 	m_log = get<SelectableTextView>("build-log-text");
 
-	m_form = get("build-settings");
+	m_grid = get<PropertyGrid>("build-grid");
 	build_settings();
 	m_settings_connection = m_context.on_settings_changed.connect([this] {
 		if (m_fields && m_context.project().settings != m_settings) {
@@ -99,12 +87,13 @@ void BuildWindow::define_behaviour() {
 }
 
 void BuildWindow::build_settings() {
-	if (m_form == nullptr) {
+	if (m_grid == nullptr) {
 		return;
 	}
 	m_rebuild_settings = false;
 	m_fields.reset();
-	m_form->clear_children();
+	m_template = nullptr;
+	m_grid->clear_children();
 
 	const ProjectInfo &project = m_context.project();
 	m_settings = project.settings;
@@ -114,31 +103,36 @@ void BuildWindow::build_settings() {
 	add_icon_field(*m_settings_type, project);
 	add_window_size_fields(*m_settings_type);
 
-	auto *grid = m_form->add_child<PropertyGrid>(120.F);
-	grid->set_split(true);
-	m_fields = std::make_unique<ReflectedPropertyGrid>(*grid, *m_settings_type, nullptr);
+	m_fields = std::make_unique<ReflectedPropertyGrid>(*m_grid, *m_settings_type, nullptr);
 	m_fields->bind(&m_settings, [this] { m_context.set_project_settings(m_settings); });
 
-	add_browse_button(m_fields->get_widget("Output Folder"), m_context.icon("folder-open"), "Pick the output folder",
-					  [this] {
-						  const std::string current =
-							  m_settings.build_output.empty() ? default_build_output() : m_settings.build_output;
-						  if (Option<std::string> folder = FileDialog::pick_folder(current)) {
-							  m_settings.build_output = *folder;
-							  m_context.set_project_settings(m_settings);
-							  m_fields->refresh();
-						  }
-					  });
-	add_browse_button(m_fields->get_widget("Icon"), m_context.icon("folder-open"),
-					  "Pick a PNG anywhere on disk, files outside the project are copied into Content",
+	const auto add_browse_button = [this](std::string_view field, std::string tooltip, Delegate<void()> on_click) {
+		View *widget = m_fields->get_widget(field);
+		Unique<View> button =
+			create_detached("BuildBrowseButton", { .attributes = { { "tooltip", std::move(tooltip) } } });
+		if (widget == nullptr || button == nullptr) {
+			return;
+		}
+		if (auto *added = dynamic_cast<Button *>(m_grid->add_action(*widget, std::move(button)))) {
+			added->on_click.connect(std::move(on_click));
+		}
+	};
+	add_browse_button("Output Folder", "Pick the output folder", [this] {
+		const std::string current = m_settings.build_output.empty() ? default_build_output() : m_settings.build_output;
+		if (Option<std::string> folder = FileDialog::pick_folder(current)) {
+			m_settings.build_output = *folder;
+			m_context.set_project_settings(m_settings);
+			m_fields->refresh();
+		}
+	});
+	add_browse_button("Icon", "Pick a PNG anywhere on disk, files outside the project are copied into Content",
 					  [this] { pick_icon(); });
 
-	auto *template_info = grid->add_row<View>("Player Template");
-	template_info->add_class("build-template");
-	m_template_state = template_info->add_child<Label>(std::string());
-	m_template_state->add_class("build-template-state");
-	m_template_path = template_info->add_child<SelectableTextView>();
-	m_template_path->add_class("build-template-path");
+	if (Unique<View> info = create_detached("BuildTemplateInfo")) {
+		if (View *row = m_grid->add_row("Player Template", std::move(info))) {
+			m_template = find_behaviour<BuildTemplateInfo>(*row);
+		}
+	}
 	refresh_template();
 }
 
@@ -330,17 +324,11 @@ void BuildWindow::finish(const Player::BuildResult &result) {
 }
 
 void BuildWindow::refresh_template() {
-	if (m_template_state == nullptr || m_template_path == nullptr) {
+	if (m_template == nullptr) {
 		return;
 	}
 	const std::string directory = template_dir();
-	const bool found = fs::exists(fs::path(directory) / AQUILA_PLAYER_EXECUTABLE_NAME);
-	m_template_state->set_text(found ? "Found" : "Missing: build the PlayerTemplate target");
-	m_template_state->set_class("build-template-found", found);
-	m_template_state->set_class("build-template-missing", !found);
-
-	m_template_path->clear();
-	m_template_path->add_line(directory);
+	m_template->show(fs::exists(fs::path(directory) / AQUILA_PLAYER_EXECUTABLE_NAME), directory);
 }
 
 void BuildWindow::set_busy(bool busy) {

@@ -12,6 +12,7 @@
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Widgets/DragFloat.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/OverlayCheckRow.h"
@@ -307,20 +308,40 @@ TEST_SUITE("Style snapshots") {
 	}
 
 	TEST_CASE("style snapshot build" * doctest::skip()) {
-		LoaderCanvas fixture(1200, 900);
-		View &box = snapshot_box(fixture, 720.F, 600.F);
-		View *window = fixture.loader.build_file("/resources/Engine/UI/Windows/build.aqlayout", box);
-		REQUIRE(window != nullptr);
-		View *settings = window->find_by_id("build-settings");
-		REQUIRE(settings != nullptr);
-		auto *grid = settings->add_child<PropertyGrid>(120.F);
-		grid->add_row<TextInput>("Game Name");
-		grid->add_row<Dropdown>("Startup Scene");
-		grid->add_row<DragInt>("Width");
-		grid->add_check_row<Checkbox>("Fullscreen", false);
-		grid->add_separator();
-		grid->add_stacked_row<TextInput>("Output Folder");
-		fixture.settle_fully();
-		write_style_snapshot("build", box);
+		const std::string file = "/resources/Engine/UI/Windows/build.aqlayout";
+		for (const bool found : { true, false }) {
+			LoaderCanvas fixture(1200, 900);
+			const Aquila::Foundation::Registration registration =
+				fixture.loader.behaviours().add("BuildTemplateInfo", [] { return std::make_unique<Behaviour>(); });
+			View &box = snapshot_box(fixture, 720.F, 600.F);
+			View *window = fixture.loader.build_file(file, box);
+			REQUIRE(window != nullptr);
+			auto *grid = window->find_by_id<PropertyGrid>("build-grid");
+			REQUIRE(grid != nullptr);
+			const auto browse = [&](View &field, const char *tooltip) {
+				REQUIRE(grid->add_action(
+							field,
+							fixture.loader.create_detached(file, "BuildBrowseButton",
+														   { .attributes = { { "tooltip", tooltip } } })) != nullptr);
+			};
+			grid->add_row<TextInput>("Game Name");
+			browse(*grid->add_row<TextInput>("Output Folder"), "Pick the output folder");
+			grid->add_row<Dropdown>("Startup Scene");
+			browse(*grid->add_row<TextInput>("Icon"), "Pick a PNG");
+			grid->add_row<DragInt>("Width");
+			grid->add_check_row<Checkbox>("Fullscreen", false);
+			View *info = grid->add_row("Player Template", fixture.loader.create_detached(file, "BuildTemplateInfo"));
+			REQUIRE(info != nullptr);
+			auto *state = info->find_by_id<Label>("state");
+			auto *path = info->find_by_id<SelectableTextView>("path");
+			REQUIRE(state != nullptr);
+			REQUIRE(path != nullptr);
+			state->set_text(found ? "Found" : "Missing: build the PlayerTemplate target");
+			state->set_class("build-template-found", found);
+			state->set_class("build-template-missing", !found);
+			path->add_line("/home/user/Aquila Studio/Templates/Player");
+			fixture.settle_fully();
+			write_style_snapshot(found ? "build" : "build-missing", box);
+		}
 	}
 }

@@ -278,4 +278,28 @@ TEST_SUITE("Shipped UI resources") {
 			CHECK_MESSAGE(Core::find_behaviour<Core::OverlayCheckRow>(*row) != nullptr, id);
 		}
 	}
+
+	TEST_CASE("the build layout holds its form grid, browse button and template info") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const Aquila::Foundation::Registration registration =
+			loader.behaviours().add("BuildTemplateInfo", [] { return std::make_unique<Core::Behaviour>(); });
+		const std::string file = "/resources/Engine/UI/Windows/build.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		const auto *grid = root->find_by_id<Core::PropertyGrid>("build-grid");
+		REQUIRE(grid != nullptr);
+		CHECK(grid->get_label_width() == 120.F);
+		CHECK(grid->is_split());
+
+		const Unique<Core::View> browse =
+			loader.create_detached(file, "BuildBrowseButton", { .attributes = { { "tooltip", "Pick $1 & <b>" } } });
+		REQUIRE(dynamic_cast<Core::Button *>(browse.get()) != nullptr);
+		CHECK(browse->get_tooltip() == "Pick $1 & <b>");
+		const Unique<Core::View> info = loader.create_detached(file, "BuildTemplateInfo");
+		REQUIRE(info != nullptr);
+		CHECK(info->find_by_id<Core::Label>("state") != nullptr);
+		CHECK(info->find_by_id<Core::SelectableTextView>("path") != nullptr);
+	}
 }

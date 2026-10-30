@@ -1,3 +1,14 @@
+<Component name="BuildBrowseButton" props="tooltip">
+    <Button class="build-btn build-browse" tooltip="$tooltip" src="Engine/UI/Icons/folder-open.svg"/>
+</Component>
+
+<Component name="BuildTemplateInfo" behaviour="BuildTemplateInfo">
+    <View class="build-template">
+        <Label id="state" class="build-template-state"/>
+        <SelectableTextView id="path" class="build-template-path"/>
+    </View>
+</Component>
+
 <View id="build-root" class="build-root">
     <View class="build-header">
         <Image class="build-header-icon" src="Engine/UI/Icons/package.svg"/>
@@ -5,7 +16,9 @@
         <Label id="build-project" class="build-project">Project</Label>
     </View>
     <View class="build-body">
-        <View id="build-settings" class="build-settings"/>
+        <View id="build-settings" class="build-settings">
+            <PropertyGrid id="build-grid" label-width="120" split="true"/>
+        </View>
         <View class="build-log-header">
             <Label class="build-log-title">Log</Label>
             <Label id="build-status" class="build-status">Ready</Label>
