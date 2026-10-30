@@ -235,6 +235,7 @@ void HierarchyPanel::refresh_entity(Entity entity) {
 	}
 	if (HierarchyTreeNode *node = m_tree_view->find_node_for_entity(entity)) {
 		node->set_label(entity.get_name());
+		node->refresh_subtree_visibility();
 		m_tree_view->refresh_node_icon(node);
 		m_tree_view->regroup(node);
 	}

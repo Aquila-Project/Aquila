@@ -5,6 +5,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/EntityManager.h"
+#include "Aquila/Scene/Visibility.h"
 #include "Aquila/UI/Widgets/AssetPayload.h"
 
 namespace Editor {
@@ -41,7 +42,7 @@ void HierarchyTreeNode::toggle_visibility() {
 		return;
 	}
 	metadata->set_visible(!metadata->is_visible());
-	refresh_visibility();
+	refresh_subtree_visibility();
 	m_hierarchy_view.on_visibility_changed(m_entity);
 }
 
@@ -51,7 +52,17 @@ void HierarchyTreeNode::refresh_visibility() {
 	if (auto *row = get_row_behaviour<HierarchyRow>()) {
 		row->set_visible(visible, m_row_hovered, m_hierarchy_view.get_icons());
 	}
-	get_header()->set_class("hierarchy-entity-hidden", !visible);
+	get_header()->set_class("hierarchy-entity-hidden",
+							!is_visible_in_hierarchy(m_entity_manager.get_registry(), m_entity.get_handle()));
+}
+
+void HierarchyTreeNode::refresh_subtree_visibility() {
+	refresh_visibility();
+	for (const auto &child : get_children_container()->get_children()) {
+		if (auto *node = dynamic_cast<HierarchyTreeNode *>(child.get())) {
+			node->refresh_subtree_visibility();
+		}
+	}
 }
 
 void HierarchyTreeNode::on_drag_start(DragState &state) {
@@ -108,6 +119,7 @@ void HierarchyTreeNode::on_drop(DragState &state) {
 	auto *new_node = dynamic_cast<HierarchyTreeNode *>(add_child(std::move(detached)));
 	if (new_node != nullptr) {
 		new_node->update_depth(get_depth() + 1);
+		new_node->refresh_subtree_visibility();
 		set_expanded(true);
 	}
 	m_hierarchy_view.refresh_groups();

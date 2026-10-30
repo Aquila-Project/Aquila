@@ -18,6 +18,7 @@ class HierarchyTreeNode : public Aquila::UI::Core::TreeNode {
 
 	[[nodiscard]] Aquila::SceneManagement::Entity get_entity() const { return m_entity; }
 	void refresh_visibility();
+	void refresh_subtree_visibility();
 
   private:
 	void on_drag_start(Aquila::UI::Core::DragState &state) override;
