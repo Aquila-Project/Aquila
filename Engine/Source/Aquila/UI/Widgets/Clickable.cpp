@@ -27,6 +27,10 @@ void Clickable::on_mouse_release(Platform::MouseButton btn, Vec2 pos) {
 void Clickable::on_drag_start(DragState &state) {
 	m_click_armed = false;
 	View::on_drag_start(state);
+	on_drag_start_requested(state);
 }
 
+void Clickable::on_key_press(Platform::KeyCode key, int mods) {
+	on_key_pressed(key, mods);
+}
 }

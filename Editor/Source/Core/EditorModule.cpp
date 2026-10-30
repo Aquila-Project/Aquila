@@ -26,6 +26,7 @@
 #include "UI/Windows/BuildWindow.h"
 #include "UI/Windows/ProjectLauncher.h"
 #include "UI/Windows/SettingsWindow.h"
+#include "UI/Widgets/RenameField.h"
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/SharedConstants.h"
@@ -106,6 +107,9 @@ void EditorModule::on_attach(EngineContext &engine) {
 	layouts.register_texture_cache(m_texture_cache.get());
 	layouts.register_widget("ColorPicker", [this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
 		return std::make_unique<ColorPicker>(m_engine->get_context());
+	});
+	layouts.register_widget("RenameField", [](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+		return std::make_unique<RenameField>();
 	});
 
 	if (!m_startup_project.empty()) {

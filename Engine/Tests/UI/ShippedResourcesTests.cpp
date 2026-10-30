@@ -6,7 +6,9 @@
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Image.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
@@ -192,5 +194,47 @@ TEST_SUITE("Shipped UI resources") {
 		Core::View parent;
 		CHECK(dynamic_cast<Core::Button *>(loader.create(file, "HierarchyRow", parent)) != nullptr);
 		CHECK(dynamic_cast<Core::Label *>(loader.create(file, "HierarchyGroupCount", parent)) != nullptr);
+	}
+
+	TEST_CASE("the content browser layout holds its toolbar, grid, empty text and components") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const Aquila::Foundation::Registration registration =
+			loader.behaviours().add("ContentTile", [] { return std::make_unique<Core::Behaviour>(); });
+		loader.register_widget("RenameField",
+							   [](std::string_view, Text::FontAtlas *) { return std::make_unique<Core::TextInput>(); });
+		const std::string file = "/resources/Engine/UI/Windows/content_browser.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "content-root");
+		for (const char *id : { "content-toolbar", "content-up", "content-path", "content-filter", "content-refresh",
+								"content-scroll", "content-grid", "content-empty" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+
+		Core::View parent;
+		Core::View *tile = loader.create(file, "ContentTile", parent);
+		REQUIRE(dynamic_cast<Core::Clickable *>(tile) != nullptr);
+		CHECK(tile->find_by_id("preview") != nullptr);
+		CHECK(tile->find_by_id<Core::Image>("image") != nullptr);
+		CHECK(tile->find_by_id<Core::Label>("name") != nullptr);
+		CHECK(dynamic_cast<Core::TextInput *>(loader.create(file, "ContentRename", parent)) != nullptr);
+		CHECK(dynamic_cast<Core::Image *>(loader.create(file, "ContentCrumbSeparator", parent)) != nullptr);
+
+		Core::View *crumb =
+			loader.create(file, "ContentCrumb", parent, { .attributes = { { "label", "Tiles $1 & <b>" } } });
+		REQUIRE(dynamic_cast<Core::Button *>(crumb) != nullptr);
+		bool written = false;
+		const auto find = [&written](const auto &self, const Core::View &view) -> void {
+			for (const auto &child : view.get_children()) {
+				if (const auto *label = dynamic_cast<const Core::Label *>(child.get())) {
+					written = written || label->get_text() == "Tiles $1 & <b>";
+				}
+				self(self, *child);
+			}
+		};
+		find(find, *crumb);
+		CHECK(written);
 	}
 }

@@ -3,11 +3,13 @@
 #include "Aquila/UI/Core/Behaviour.h"
 #include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
+#include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/DragInt.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
+#include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/Label.h"
@@ -172,6 +174,76 @@ TEST_SUITE("Style snapshots") {
 		eye_of(*group->add_child_node("Hidden"), true);
 		fixture.settle_fully();
 		write_style_snapshot("hierarchy", box);
+	}
+
+	TEST_CASE("style snapshot content browser" * doctest::skip()) {
+		constexpr F32 K_SIZE = 64.F;
+		const std::string file = "/resources/Engine/UI/Windows/content_browser.aqlayout";
+		for (const bool empty : { false, true }) {
+			LoaderCanvas fixture(1200, 900);
+			const Aquila::Foundation::Registration registration =
+				fixture.loader.behaviours().add("ContentTile", [] { return std::make_unique<Behaviour>(); });
+			View &box = snapshot_box(fixture, 520.F, 400.F);
+			View *window = fixture.loader.build_file(file, box);
+			REQUIRE(window != nullptr);
+			View *path = window->find_by_id("content-path");
+			View *grid = window->find_by_id("content-grid");
+			View *empty_text = window->find_by_id("content-empty");
+			REQUIRE(path != nullptr);
+			REQUIRE(grid != nullptr);
+			REQUIRE(empty_text != nullptr);
+			const auto crumb = [&](const char *label, bool current) {
+				if (!path->get_children().empty()) {
+					REQUIRE(fixture.loader.create(file, "ContentCrumbSeparator", *path) != nullptr);
+				}
+				auto *button = dynamic_cast<Button *>(
+					fixture.loader.create(file, "ContentCrumb", *path, { .attributes = { { "label", label } } }));
+				REQUIRE(button != nullptr);
+				button->set_class("content-crumb-current", current);
+			};
+			crumb("Content", false);
+			crumb("Materials", false);
+			crumb("Tiles $1 & <b>", true);
+			const auto tile = [&](const char *name, bool folder, bool thumbnail) {
+				View *root = fixture.loader.create(file, "ContentTile", *grid);
+				REQUIRE(root != nullptr);
+				StyleProperties tile_style;
+				tile_style.width = StyleLength::pixel(K_SIZE + 40.F);
+				root->merge_style(tile_style);
+				View *preview = root->find_by_id("preview");
+				auto *image = root->find_by_id<Image>("image");
+				auto *label = root->find_by_id<Label>("name");
+				REQUIRE(preview != nullptr);
+				REQUIRE(image != nullptr);
+				REQUIRE(label != nullptr);
+				StyleProperties preview_style;
+				preview_style.width = StyleLength::pixel(K_SIZE);
+				preview_style.height = StyleLength::pixel(K_SIZE);
+				preview->merge_style(preview_style);
+				StyleProperties image_style;
+				if (thumbnail) {
+					image->set_class("content-tile-icon", false);
+					image->set_class("content-tile-thumbnail", true);
+					image_style.width = StyleLength::pixel(K_SIZE);
+					image_style.height = StyleLength::pixel(K_SIZE / 2.F);
+				} else {
+					image->set_class("content-tile-folder", folder);
+					image_style.width = StyleLength::pixel(48.F);
+					image_style.height = StyleLength::pixel(48.F);
+				}
+				image->set_style(image_style);
+				label->set_text(name);
+			};
+			if (!empty) {
+				tile("Bricks", true, false);
+				tile("Floor", false, false);
+				tile("Albedo", false, true);
+				tile("move_player", false, false);
+			}
+			empty_text->set_hidden(!empty);
+			fixture.settle_fully();
+			write_style_snapshot(empty ? "content-browser-empty" : "content-browser", box);
+		}
 	}
 
 	TEST_CASE("style snapshot console" * doctest::skip()) {

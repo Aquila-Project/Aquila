@@ -11,212 +11,48 @@
 #include "Aquila/UI/Widgets/AssetPayload.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Clickable.h"
-#include "Aquila/UI/Widgets/Image.h"
-#include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Core/AssetThumbnails.h"
 #include "Core/EditorConfig.h"
 #include "Core/FileDialog.h"
+#include "UI/Components/ContentTile.h"
 
 namespace Editor {
 
 using namespace Aquila::UI::Core;
 using Aquila::Platform::KeyCode;
 using Aquila::Platform::Filesystem::VirtualFileSystem;
-using Aquila::UI::StyleLength;
-using Aquila::UI::StyleProperties;
 
 namespace {
 
 constexpr std::string_view K_ROOT = Aquila::SharedConstants::PROJECT_CONTENT_DIR;
-constexpr Usize K_LINE_LENGTH = 12;
 constexpr std::chrono::milliseconds K_DOUBLE_CLICK{ 400 };
-constexpr F32 K_TILE_PADDING = 40.F;
-constexpr F32 K_ICON_SCALE = 0.75F;
-
-StyleProperties fit_thumbnail(const Aquila::GFX::GfxTexture &texture, F32 size) {
-	const F32 width = static_cast<F32>(std::max(1U, texture.get_width()));
-	const F32 height = static_cast<F32>(std::max(1U, texture.get_height()));
-	const F32 scale = size / std::max(width, height);
-	StyleProperties style;
-	style.width = StyleLength::pixel(width * scale);
-	style.height = StyleLength::pixel(height * scale);
-	return style;
-}
-
-bool is_break(std::string_view name, Usize i) {
-	const char c = name[i];
-	return c == '.' || c == '_' || c == '-' || c == ' ' ||
-		(std::isupper(static_cast<unsigned char>(c)) != 0 &&
-		 std::islower(static_cast<unsigned char>(name[i - 1])) != 0);
-}
-
-std::string wrap_name(std::string_view name) {
-	std::string wrapped;
-	while (name.size() > K_LINE_LENGTH) {
-		Usize cut = K_LINE_LENGTH;
-		for (Usize i = K_LINE_LENGTH; i > 0; --i) {
-			if (is_break(name, i)) {
-				cut = i;
-				break;
-			}
-		}
-		wrapped.append(name.substr(0, cut)).push_back('\n');
-		name.remove_prefix(cut);
-		if (name.starts_with(' ')) {
-			name.remove_prefix(1);
-		}
-	}
-	return wrapped.append(name);
-}
-
-class RenameField final : public TextInput {
-  public:
-	explicit RenameField(Delegate<void(Option<std::string>)> done) : m_done(std::move(done)) {
-		add_class("content-tile-rename");
-		on_submit.connect([this](const std::string &text) { finish(text); });
-	}
-
-	void on_key_press(KeyCode key, int mods) override {
-		if (key == KeyCode::Escape) {
-			finish(std::nullopt);
-			return;
-		}
-		TextInput::on_key_press(key, mods);
-	}
-
-	void on_focus_lost() override {
-		TextInput::on_focus_lost();
-		finish(get_text());
-	}
-
-	void select_stem() {
-		const Usize dot = m_state.text.find('.');
-		m_state.select_anchor = 0;
-		m_state.cursor = dot == 0 || dot == std::string::npos ? m_state.text.size() : dot;
-		queue_redraw();
-	}
-
-  private:
-	void finish(Option<std::string> name) {
-		if (m_finished) {
-			return;
-		}
-		m_finished = true;
-		m_done(std::move(name));
-	}
-
-	Delegate<void(Option<std::string>)> m_done;
-	bool m_finished = false;
-};
-
-class ContentTile final : public Clickable {
-  public:
-	ContentTile(AssetPayload payload, bool is_directory, Aquila::GFX::GfxTexture *icon, bool thumbnail,
-				const Config::ContentBrowserPreferences &prefs)
-		: m_payload(std::move(payload)), m_size(prefs.thumbnail_size) {
-		m_is_draggable = !is_directory;
-		set_tooltip(m_payload.display_name);
-		add_class("content-tile");
-		StyleProperties tile_style;
-		tile_style.width = StyleLength::pixel(m_size + K_TILE_PADDING);
-		merge_style(tile_style);
-
-		auto *preview = add_child<View>();
-		preview->add_class("content-tile-preview");
-		StyleProperties preview_style;
-		preview_style.width = StyleLength::pixel(m_size);
-		preview_style.height = StyleLength::pixel(m_size);
-		preview->merge_style(preview_style);
-		m_image = preview->add_child<Image>(icon);
-		if (thumbnail) {
-			set_thumbnail(icon);
-		} else {
-			m_image->add_class("content-tile-icon");
-			m_image->set_class("content-tile-folder", is_directory);
-			StyleProperties icon_style;
-			icon_style.width = StyleLength::pixel(std::round(m_size * K_ICON_SCALE));
-			icon_style.height = StyleLength::pixel(std::round(m_size * K_ICON_SCALE));
-			m_image->set_style(icon_style);
-		}
-		const std::string_view name = m_payload.display_name;
-		const Usize dot = name.find_last_of('.');
-		const bool strip = !is_directory && !prefs.show_extensions && dot != std::string_view::npos && dot > 0;
-		m_name = add_child<Label>(wrap_name(strip ? name.substr(0, dot) : name));
-		m_name->add_class("content-tile-name");
-	}
-
-	Delegate<void(KeyCode)> on_key;
-
-	void set_thumbnail(Aquila::GFX::GfxTexture *texture) {
-		if (texture == nullptr) {
-			return;
-		}
-		m_image->set_texture(texture);
-		m_image->remove_class("content-tile-icon");
-		m_image->add_class("content-tile-thumbnail");
-		m_image->set_style(fit_thumbnail(*texture, m_size));
-	}
-
-	void begin_rename(Delegate<void(Option<std::string>)> done) {
-		set_input_leaf(false);
-		m_name->set_hidden(true);
-		auto *field = add_child<RenameField>(std::move(done));
-		field->set_text(m_payload.display_name);
-		field->request_focus();
-		field->select_stem();
-	}
-
-	void on_key_press(KeyCode key, int) override {
-		if (on_key) {
-			on_key(key);
-		}
-	}
-
-	[[nodiscard]] std::string_view get_type_name() const override { return "ContentTile"; }
-
-	void on_drag_start(DragState &state) override {
-		Clickable::on_drag_start(state);
-		state.payload = m_payload;
-		state.label = m_payload.display_name;
-	}
-
-  private:
-	AssetPayload m_payload;
-	F32 m_size = 48.F;
-	Image *m_image = nullptr;
-	Label *m_name = nullptr;
-};
 
 } // namespace
 
-ContentBrowserWindow::ContentBrowserWindow(EditorContext &context) : EditorWindow(context), m_directory(K_ROOT) {}
+ContentBrowserWindow::ContentBrowserWindow(EditorContext &context)
+	: EditorWindow(context, context.window_layout("content_browser")), m_directory(K_ROOT) {}
 
-void ContentBrowserWindow::build(View &content) {
-	auto layout = load_layout("content_browser.aqlayout");
-	if (!layout) {
-		return;
-	}
-	View *root = content.add_child(std::move(layout));
-	m_path = root->find_by_id("content-path");
-	m_grid = root->find_by_id("content-grid");
-	m_filter = root->find_by_id<TextInput>("content-filter");
+void ContentBrowserWindow::define_behaviour() {
+	m_path = get("content-path");
+	m_grid = get("content-grid");
+	m_filter = get<TextInput>("content-filter");
+	m_empty = get("content-empty");
 	if (m_path == nullptr || m_grid == nullptr || m_filter == nullptr) {
-		AQUILA_LOG_ERROR("ContentBrowserWindow: content_browser.aqlayout is missing an element");
 		return;
 	}
 
 	m_filter->set_placeholder("Filter");
 	m_filter->on_changed.connect([this](const std::string &) { apply_filter(); });
-	if (auto *up = root->find_by_id<Button>("content-up")) {
+	if (auto *up = get<Button>("content-up")) {
 		up->on_click.connect([this] {
 			if (m_directory != K_ROOT) {
 				navigate(m_directory.substr(0, m_directory.find_last_of('/')));
 			}
 		});
 	}
-	if (auto *refresh = root->find_by_id<Button>("content-refresh")) {
+	if (auto *refresh = get<Button>("content-refresh")) {
 		refresh->on_click.connect([this] { navigate(m_directory); });
 	}
 
@@ -226,11 +62,11 @@ void ContentBrowserWindow::build(View &content) {
 	listen(context().thumbnails().on_ready, [this](const std::string &path) {
 		for (const Tile &tile : m_tiles) {
 			if (tile.path == path && !tile.is_directory) {
-				static_cast<ContentTile *>(tile.view)->set_thumbnail(context().thumbnails().get(path));
+				tile.tile->set_thumbnail(context().thumbnails().get(path));
 			}
 		}
 	});
-	if (auto *scroll = root->find_by_id("content-scroll")) {
+	if (auto *scroll = get("content-scroll")) {
 		scroll->on_context_menu.connect([this](Vec2 position) { open_background_menu(position); });
 	}
 	m_prefs = Config::get_preferences().content_browser;
@@ -285,10 +121,13 @@ void ContentBrowserWindow::build_path() {
 
 	const auto add_crumb = [this](std::string label, std::string path) {
 		if (!m_path->get_children().empty()) {
-			m_path->add_child<Image>(context().icon("chevron-right"))->add_class("content-crumb-separator");
+			Behaviour::create("ContentCrumbSeparator", *m_path);
 		}
-		auto *crumb = m_path->add_child<Button>(std::move(label));
-		crumb->add_class("content-crumb");
+		auto *crumb = dynamic_cast<Button *>(
+			Behaviour::create("ContentCrumb", *m_path, { .attributes = { { "label", std::move(label) } } }));
+		if (crumb == nullptr) {
+			return;
+		}
 		crumb->set_class("content-crumb-current", path == m_directory);
 		crumb->on_click.connect([this, path = std::move(path)] { navigate(path); });
 	};
@@ -303,7 +142,10 @@ void ContentBrowserWindow::build_path() {
 }
 
 void ContentBrowserWindow::build_grid() {
-	m_grid->clear_children();
+	for (const Tile &tile : m_tiles) {
+		m_grid->remove_child(tile.view);
+	}
+	m_tiles.clear();
 
 	auto *vfs = VirtualFileSystem::get();
 	std::vector<Tile> tiles;
@@ -327,26 +169,32 @@ void ContentBrowserWindow::build_grid() {
 		const std::string type = tile.is_directory ? "folder" : (asset != nullptr ? asset->id : "file");
 		const std::string icon = tile.is_directory ? "folder" : (asset != nullptr ? asset->icon : "file");
 		Aquila::GFX::GfxTexture *thumbnail = tile.is_directory ? nullptr : context().thumbnails().get(tile.path);
-		tile.view = m_grid->add_child<ContentTile>(AssetPayload{ tile.path, type, tile.name }, tile.is_directory,
-												   thumbnail != nullptr ? thumbnail : context().icon(icon),
-												   thumbnail != nullptr, m_prefs);
+		tile.tile = Behaviour::create<ContentTile>("ContentTile", *m_grid);
+		if (tile.tile == nullptr) {
+			continue;
+		}
+		tile.tile->show(AssetPayload{ tile.path, type, tile.name }, tile.is_directory,
+						thumbnail != nullptr ? thumbnail : context().icon(icon), thumbnail != nullptr, m_prefs);
+		tile.view = &tile.tile->root();
 		tile.view->set_class("content-tile-selected", tile.path == m_selected);
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
 		tile.view->on_context_menu.connect([this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
-		static_cast<ContentTile *>(tile.view)->on_click.connect([this, path = tile.path] { open_in_inspector(path); });
-		static_cast<ContentTile *>(tile.view)->on_key = [this, path = tile.path, view = tile.view](KeyCode key) {
-			if (key == KeyCode::F2) {
-				begin_rename(path);
-			} else if (key == KeyCode::Delete) {
-				const Rect rect = view->get_absolute_rect();
-				confirm_delete(path, { rect.position.x, rect.position.y + rect.size.y });
-			}
-		};
+		if (Clickable *clickable = tile.tile->get_clickable()) {
+			clickable->on_click.connect([this, path = tile.path] { open_in_inspector(path); });
+			clickable->on_key_pressed.connect([this, path = tile.path, view = tile.view](KeyCode key, int) {
+				if (key == KeyCode::F2) {
+					begin_rename(path);
+				} else if (key == KeyCode::Delete) {
+					const Rect rect = view->get_absolute_rect();
+					confirm_delete(path, { rect.position.x, rect.position.y + rect.size.y });
+				}
+			});
+		}
+		m_tiles.push_back(std::move(tile));
 	}
-	m_tiles = std::move(tiles);
 
-	if (m_tiles.empty()) {
-		m_grid->add_child<Label>(std::string("This folder is empty"))->add_class("content-empty");
+	if (m_empty != nullptr) {
+		m_empty->set_hidden(!m_tiles.empty());
 	}
 	apply_filter();
 }
@@ -444,7 +292,7 @@ void ContentBrowserWindow::begin_rename(const std::string &path) {
 	if (tile == m_tiles.end()) {
 		return;
 	}
-	static_cast<ContentTile *>(tile->view)->begin_rename([this, path](Option<std::string> name) {
+	tile->tile->start_rename([this, path](Option<std::string> name) {
 		if (name) {
 			rename(path, *name);
 		}

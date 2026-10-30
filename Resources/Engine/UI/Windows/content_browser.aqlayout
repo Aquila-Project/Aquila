@@ -1,0 +1,37 @@
+<Component name="ContentTile" behaviour="ContentTile">
+    <Clickable class="content-tile">
+        <View id="preview" class="content-tile-preview">
+            <Image id="image" class="content-tile-icon"/>
+            <View id="badge" class="content-tile-badge">
+                <Label id="badge-text"/>
+            </View>
+        </View>
+        <Label id="name" class="content-tile-name"/>
+    </Clickable>
+</Component>
+
+<Component name="ContentRename">
+    <RenameField class="content-tile-rename"/>
+</Component>
+
+<Component name="ContentCrumb" props="label">
+    <Button class="content-crumb">$label</Button>
+</Component>
+
+<Component name="ContentCrumbSeparator">
+    <Image class="content-crumb-separator" src="Engine/UI/Icons/chevron-right.svg"/>
+</Component>
+
+<View id="content-root">
+    <View id="content-toolbar" class="content-toolbar">
+        <Button id="content-up" class="content-tool-btn" src="Engine/UI/Icons/arrow-up.svg" tooltip="Parent folder"/>
+        <View id="content-path" class="content-path"/>
+        <TextInput id="content-filter" class="content-filter"/>
+        <Button id="content-refresh" class="content-tool-btn" src="Engine/UI/Icons/refresh-cw.svg" tooltip="Refresh"/>
+    </View>
+    <ScrollView id="content-scroll">
+        <View id="content-grid" class="content-grid">
+            <Label id="content-empty" class="content-empty">This folder is empty</Label>
+        </View>
+    </ScrollView>
+</View>
