@@ -25,17 +25,17 @@ class ViewportWindow final : public EditorWindow {
 	explicit ViewportWindow(EditorContext &context);
 	~ViewportWindow() override;
 
-	void build(Aquila::UI::Core::View &content) override;
+	void define_behaviour() override;
 	void update(F32 delta_time) override;
 	/// While hovered or while the gizmo drags, never while the camera is flying.
 	[[nodiscard]] bool accepts_shortcuts(bool hovered) const override;
 
   private:
-	void wire_tools(Aquila::UI::Core::View &content);
-	void wire_shading(Aquila::UI::Core::View &content);
-	void wire_show_menu(Aquila::UI::Core::View &content);
+	void wire_tools();
+	void wire_shading();
+	void wire_show_menu();
 	void apply_overlay_preferences();
-	void wire_camera_menu(Aquila::UI::Core::View &content);
+	void wire_camera_menu();
 	void refresh_camera_menu();
 	void refresh_exposure_rows();
 	void refresh_debug_info(F32 delta_time);

@@ -156,6 +156,15 @@ TEST_SUITE("PropertyGrid") {
 		CHECK(grid->get_label_width() == 120.F);
 	}
 
+	TEST_CASE("split from markup splits the grid") {
+		LoaderCanvas fixture;
+		const Unique<View> loaded = fixture.loader.load_string(R"(<PropertyGrid split="true"/>)");
+		const auto *grid = dynamic_cast<const PropertyGrid *>(loaded.get());
+		REQUIRE(grid != nullptr);
+		CHECK(grid->is_split());
+		CHECK(has_class(*grid, "property-grid-split"));
+	}
+
 	TEST_CASE("stacked vectors label each axis inside its field") {
 		Vec3Field field;
 		field.set_stacked(true);

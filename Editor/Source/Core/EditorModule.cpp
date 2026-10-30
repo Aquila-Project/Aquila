@@ -26,6 +26,8 @@
 #include "UI/Windows/BuildWindow.h"
 #include "UI/Windows/ProjectLauncher.h"
 #include "UI/Windows/SettingsWindow.h"
+#include "UI/Viewport/TransformGizmo.h"
+#include "UI/Viewport/ViewportOverlay.h"
 #include "UI/Widgets/RenameField.h"
 
 #include "Aquila/Foundation/Macros.h"
@@ -110,6 +112,12 @@ void EditorModule::on_attach(EngineContext &engine) {
 	});
 	layouts.register_widget("RenameField", [](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
 		return std::make_unique<RenameField>();
+	});
+	layouts.register_widget("TransformGizmo", [this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+		return m_context ? std::make_unique<TransformGizmo>(*m_context) : nullptr;
+	});
+	layouts.register_widget("ViewportOverlay", [this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+		return m_context ? std::make_unique<ViewportOverlay>(*m_context) : nullptr;
 	});
 
 	if (!m_startup_project.empty()) {

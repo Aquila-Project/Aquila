@@ -1,0 +1,16 @@
+#viewport-image {
+    width: grow;
+    height: grow;
+    flex-grow: 1;
+}
+
+.viewport-root {
+    width: grow;
+    height: grow;
+    flex-direction: column;
+}
+
+.viewport-canvas-layer {
+    font-family: mono;
+    font-size: 12px;
+}

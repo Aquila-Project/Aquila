@@ -25,6 +25,10 @@ void PropertyGrid::set_split(bool split) {
 }
 
 void PropertyGrid::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name == "split") {
+		set_split(value == "true");
+		return;
+	}
 	if (name != "label-width") {
 		View::apply_xml_attribute(name, value, resolver);
 		return;

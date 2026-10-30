@@ -19,7 +19,7 @@
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
-#include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/OverlayCheckRow.h"
 #include "Aquila/UI/Widgets/Popup.h"
 #include "UI/EditorWindows/GameWindow.h"
 #include "UI/Panels/ViewportPanel.h"
@@ -51,21 +51,35 @@ constexpr std::array<ShadingMode, 7> K_SHADING_MODES = { {
 } };
 
 struct ShowToggle {
-	const char *label;
+	const char *id;
 	bool Rendering::RenderSettings::*flag;
 };
 
 constexpr std::array<ShowToggle, 5> K_SHOW_TOGGLES = { {
-	{ .label = "Grid", .flag = &Rendering::RenderSettings::show_grid },
-	{ .label = "Sky", .flag = &Rendering::RenderSettings::show_sky },
-	{ .label = "Shadows", .flag = &Rendering::RenderSettings::show_shadows },
-	{ .label = "Selection Outline", .flag = &Rendering::RenderSettings::show_outline },
-	{ .label = "Realtime", .flag = &Rendering::RenderSettings::realtime },
+	{ .id = "show-grid", .flag = &Rendering::RenderSettings::show_grid },
+	{ .id = "show-sky", .flag = &Rendering::RenderSettings::show_sky },
+	{ .id = "show-shadows", .flag = &Rendering::RenderSettings::show_shadows },
+	{ .id = "show-outline", .flag = &Rendering::RenderSettings::show_outline },
+	{ .id = "show-realtime", .flag = &Rendering::RenderSettings::realtime },
+} };
+
+struct OverlayToggle {
+	const char *id;
+	bool ViewportOverlay::Options::*flag;
+};
+
+constexpr std::array<OverlayToggle, 6> K_OVERLAY_TOGGLES = { {
+	{ .id = "overlay-axis-widget", .flag = &ViewportOverlay::Options::axis_widget },
+	{ .id = "overlay-selection-label", .flag = &ViewportOverlay::Options::selection_label },
+	{ .id = "overlay-safe-frame", .flag = &ViewportOverlay::Options::safe_frame },
+	{ .id = "overlay-render-status", .flag = &ViewportOverlay::Options::render_status },
+	{ .id = "overlay-statistics", .flag = &ViewportOverlay::Options::statistics },
+	{ .id = "overlay-gpu-timings", .flag = &ViewportOverlay::Options::gpu_timings },
 } };
 
 } // namespace
 
-ViewportWindow::ViewportWindow(EditorContext &context) : EditorWindow(context) {}
+ViewportWindow::ViewportWindow(EditorContext &context) : EditorWindow(context, context.window_layout("viewport")) {}
 
 ViewportWindow::~ViewportWindow() {
 	if (Rendering::CameraController *camera = context().camera()) {
@@ -73,20 +87,16 @@ ViewportWindow::~ViewportWindow() {
 	}
 }
 
-void ViewportWindow::build(UI::Core::View &content) {
-	if (auto layout = load_layout("viewport.aqlayout")) {
-		content.add_child(std::move(layout));
-	}
-
+void ViewportWindow::define_behaviour() {
 	m_panel = std::make_unique<ViewportPanel>(context().engine().get_render_output());
-	m_panel->build(&content, overlay_root());
+	m_panel->build(&root(), overlay_root());
 	m_panel->on_clicked_uv.connect([this](Vec2 uv) { request_pick(uv); });
 
 	listen(context().on_render_output_changed,
 		   [this] { m_panel->set_texture(&context().engine().get_render_output()); });
 
-	if (UI::Core::View *root = content.find_by_id("viewport-root")) {
-		m_overlay = root->add_child<ViewportOverlay>(context());
+	m_overlay = get<ViewportOverlay>("viewport-overlay");
+	if (m_overlay != nullptr) {
 		m_applied_viewport = Config::get_preferences().viewport;
 		apply_overlay_preferences();
 		listen(context().on_settings_changed, [this] {
@@ -95,7 +105,9 @@ void ViewportWindow::build(UI::Core::View &content) {
 				apply_overlay_preferences();
 			}
 		});
-		m_gizmo = root->add_child<TransformGizmo>(context());
+	}
+	m_gizmo = get<TransformGizmo>("viewport-gizmo");
+	if (m_gizmo != nullptr) {
 		m_gizmo->on_background_pressed.connect([this](Vec2 position) {
 			const Rect rect = m_panel->get_content_rect();
 			if (rect.size.x > 0.F && rect.size.y > 0.F) {
@@ -104,10 +116,10 @@ void ViewportWindow::build(UI::Core::View &content) {
 		});
 	}
 
-	wire_tools(content);
-	wire_shading(content);
-	wire_show_menu(content);
-	wire_camera_menu(content);
+	wire_tools();
+	wire_shading();
+	wire_show_menu();
+	wire_camera_menu();
 	listen(context().selection.on_scene_replaced, [this] {
 		m_view_camera = {};
 		m_scene_cameras.clear();
@@ -231,26 +243,26 @@ void ViewportWindow::request_pick(Vec2 uv) {
 	context().engine().get_object_picking().request_pick(static_cast<Uint32>(x), static_cast<Uint32>(y));
 }
 
-void ViewportWindow::wire_tools(UI::Core::View &content) {
+void ViewportWindow::wire_tools() {
 	const std::array<std::pair<const char *, TransformTool>, 3> tools = { {
 		{ "tool-translate", TransformTool::Translate },
 		{ "tool-rotate", TransformTool::Rotate },
 		{ "tool-scale", TransformTool::Scale },
 	} };
 	for (Usize i = 0; i < tools.size(); ++i) {
-		m_tool_buttons[i] = content.find_by_id<UI::Core::Button>(tools[i].first);
+		m_tool_buttons[i] = get<UI::Core::Button>(tools[i].first);
 		if (m_tool_buttons[i] != nullptr) {
 			const TransformTool tool = tools[i].second;
 			m_tool_buttons[i]->on_click.connect([this, tool] { context().tools.set_tool(tool); });
 		}
 	}
 
-	m_space_button = content.find_by_id<UI::Core::Button>("tool-space");
+	m_space_button = get<UI::Core::Button>("tool-space");
 	if (m_space_button != nullptr) {
 		m_space_button->on_click.connect([this] { context().tools.toggle_space(); });
 	}
 
-	m_snap_button = content.find_by_id<UI::Core::Button>("tool-snap");
+	m_snap_button = get<UI::Core::Button>("tool-snap");
 	if (m_snap_button != nullptr) {
 		m_snap_button->on_click.connect([this] { context().tools.toggle_snapping(); });
 	}
@@ -261,8 +273,8 @@ void ViewportWindow::wire_tools(UI::Core::View &content) {
 	refresh_tools();
 }
 
-void ViewportWindow::wire_shading(UI::Core::View &content) {
-	auto *shading = content.find_by_id<UI::Core::Dropdown>("viewport-shading");
+void ViewportWindow::wire_shading() {
+	auto *shading = get<UI::Core::Dropdown>("viewport-shading");
 	if (shading == nullptr) {
 		return;
 	}
@@ -280,28 +292,25 @@ void ViewportWindow::wire_shading(UI::Core::View &content) {
 	});
 }
 
-void ViewportWindow::wire_show_menu(UI::Core::View &content) {
-	UI::Core::View *anchor = content.find_by_id("viewport-show");
-	auto *button = content.find_by_id<UI::Core::Button>("viewport-show-button");
-	if (anchor == nullptr || button == nullptr) {
+void ViewportWindow::wire_show_menu() {
+	auto *popup = get<UI::Core::Popup>("viewport-show-popover");
+	auto *button = get<UI::Core::Button>("viewport-show-button");
+	if (popup == nullptr || button == nullptr) {
 		return;
 	}
+	const auto check_of = [this](std::string_view id) -> UI::Core::Checkbox * {
+		const auto *row = get_component<UI::Core::OverlayCheckRow>(id);
+		return row != nullptr ? row->get_check() : nullptr;
+	};
 
 	Rendering::RenderSettings &settings = context().engine().get_render_pipeline().get_settings();
-	auto *popup = anchor->add_child<UI::Core::Popup>();
-	popup->add_class("overlay-popover");
-
-	auto *title = popup->add_child<UI::Core::Label>(std::string("Show"));
-	title->add_class("overlay-popover-title");
-
 	auto syncs = std::make_shared<std::vector<Delegate<void()>>>();
 	for (const ShowToggle &toggle : K_SHOW_TOGGLES) {
-		auto *row = popup->add_child<UI::Core::View>();
-		row->add_class("overlay-check-row");
-		auto *check = row->add_child<UI::Core::Checkbox>(settings.*toggle.flag);
-		check->add_class("overlay-check");
+		UI::Core::Checkbox *check = check_of(toggle.id);
+		if (check == nullptr) {
+			continue;
+		}
 		syncs->emplace_back([check, &settings, flag = toggle.flag] { check->set_checked(settings.*flag); });
-		row->add_child<UI::Core::Label>(std::string(toggle.label))->add_class("overlay-check-text");
 		check->on_changed.connect([&settings, flag = toggle.flag](const bool &enabled) {
 			settings.*flag = enabled;
 			Foundation::FrameScheduler::get()->request_frame();
@@ -309,23 +318,13 @@ void ViewportWindow::wire_show_menu(UI::Core::View &content) {
 	}
 
 	if (m_overlay != nullptr) {
-		popup->add_child<UI::Core::Label>(std::string("Overlays"))->add_class("overlay-popover-title");
-		const std::array<std::pair<const char *, bool ViewportOverlay::Options::*>, 6> overlays = { {
-			{ "Axis Widget", &ViewportOverlay::Options::axis_widget },
-			{ "Selection Label", &ViewportOverlay::Options::selection_label },
-			{ "Safe Frame", &ViewportOverlay::Options::safe_frame },
-			{ "Render Status", &ViewportOverlay::Options::render_status },
-			{ "Statistics", &ViewportOverlay::Options::statistics },
-			{ "GPU Timings", &ViewportOverlay::Options::gpu_timings },
-		} };
-		for (const auto &[label, flag] : overlays) {
-			auto *row = popup->add_child<UI::Core::View>();
-			row->add_class("overlay-check-row");
-			auto *check = row->add_child<UI::Core::Checkbox>(m_overlay->options().*flag);
-			check->add_class("overlay-check");
-			syncs->emplace_back([this, check, flag] { check->set_checked(m_overlay->options().*flag); });
-			row->add_child<UI::Core::Label>(std::string(label))->add_class("overlay-check-text");
-			check->on_changed.connect([this, flag](const bool &enabled) {
+		for (const OverlayToggle &toggle : K_OVERLAY_TOGGLES) {
+			UI::Core::Checkbox *check = check_of(toggle.id);
+			if (check == nullptr) {
+				continue;
+			}
+			syncs->emplace_back([this, check, flag = toggle.flag] { check->set_checked(m_overlay->options().*flag); });
+			check->on_changed.connect([this, flag = toggle.flag](const bool &enabled) {
 				m_overlay->set_option(flag, enabled);
 				m_debug_refresh_timer = 0.F;
 				Foundation::FrameScheduler::get()->request_frame();
@@ -397,20 +396,13 @@ Rendering::RenderView ViewportWindow::current_view() const {
 	return camera->get_render_view();
 }
 
-void ViewportWindow::wire_camera_menu(UI::Core::View &content) {
-	UI::Core::View *anchor = content.find_by_id("viewport-camera");
-	m_camera_button = content.find_by_id<UI::Core::Button>("viewport-camera-button");
-	if (anchor == nullptr || m_camera_button == nullptr) {
+void ViewportWindow::wire_camera_menu() {
+	m_camera_popup = get<UI::Core::Popup>("viewport-camera-popover");
+	m_camera_button = get<UI::Core::Button>("viewport-camera-button");
+	auto *grid = get<UI::Core::PropertyGrid>("camera-grid");
+	if (m_camera_popup == nullptr || m_camera_button == nullptr || grid == nullptr) {
 		return;
 	}
-
-	m_camera_popup = anchor->add_child<UI::Core::Popup>();
-	m_camera_popup->add_class("overlay-popover");
-	m_camera_popup->add_class("overlay-popover-wide");
-	m_camera_popup->add_child<UI::Core::Label>(std::string("Camera"))->add_class("overlay-popover-title");
-
-	auto *grid = m_camera_popup->add_child<UI::Core::PropertyGrid>();
-	grid->set_split(true);
 
 	m_fov_field = grid->add_row<UI::Core::DragFloat>(
 		"Field of View", UI::Core::DragFloat::Config{ .min = 10.F, .max = 120.F, .speed = 0.25F, .precision = 0 });

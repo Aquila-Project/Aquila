@@ -73,12 +73,6 @@
     flex-direction: column;
 }
 
-#viewport-image {
-    width: grow;
-    height: grow;
-    flex-grow: 1;
-}
-
 .props-dropdown {
     min-height: 20px;
     min-width: 0px;
@@ -677,17 +671,6 @@
     flex-direction: column;
     padding: 0px 2px 2px 2px;
     background-color: var(--bg-deep);
-}
-
-.viewport-root {
-    width: grow;
-    height: grow;
-    flex-direction: column;
-}
-
-.viewport-canvas-layer {
-    font-family: mono;
-    font-size: 12px;
 }
 
 .play-tint {

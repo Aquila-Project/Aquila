@@ -7,7 +7,11 @@
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Clickable.h"
+#include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/OverlayCheckRow.h"
+#include "Aquila/UI/Widgets/Popup.h"
+#include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
@@ -35,6 +39,13 @@ std::vector<std::filesystem::path> files_with(std::string_view extension) {
 
 std::string vfs_path(const std::filesystem::path &file) {
 	return "/resources/Engine/UI/" + std::filesystem::relative(file, K_UI_DIR).generic_string();
+}
+
+void register_editor_widget_stand_ins(Core::LayoutLoader &loader) {
+	for (const char *widget : { "ColorPicker", "RenameField", "TransformGizmo", "ViewportOverlay" }) {
+		loader.register_widget(widget,
+							   [](std::string_view, Text::FontAtlas *) { return std::make_unique<Core::View>(); });
+	}
 }
 }
 
@@ -64,6 +75,7 @@ TEST_SUITE("Shipped UI resources") {
 			const std::string path = vfs_path(file);
 			LogCapture capture;
 			Core::LayoutLoader loader;
+			register_editor_widget_stand_ins(loader);
 			const auto root = loader.load_file(path);
 			if (file.parent_path().filename() != "Components") {
 				CHECK_MESSAGE(root != nullptr, path);
@@ -236,5 +248,34 @@ TEST_SUITE("Shipped UI resources") {
 		};
 		find(find, *crumb);
 		CHECK(written);
+	}
+
+	TEST_CASE("the viewport layout holds its toolbars, popovers, rows and canvases") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		register_editor_widget_stand_ins(loader);
+		CHECK(std::filesystem::exists(K_UI_DIR / "Components/overlay.aqstyle"));
+		const auto root = loader.load_file("/resources/Engine/UI/Windows/viewport.aqlayout");
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "viewport-root");
+		for (const char *id : { "viewport-image", "viewport-transform-tools", "tool-translate", "tool-rotate",
+								"tool-scale", "tool-space", "tool-snap", "viewport-view-tools", "viewport-shading",
+								"viewport-show", "viewport-show-button", "viewport-camera", "viewport-camera-button",
+								"viewport-gizmo", "viewport-overlay" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		CHECK(root->find_by_id<Core::Popup>("viewport-show-popover") != nullptr);
+		CHECK(root->find_by_id<Core::Popup>("viewport-camera-popover") != nullptr);
+		const auto *grid = root->find_by_id<Core::PropertyGrid>("camera-grid");
+		REQUIRE(grid != nullptr);
+		CHECK(grid->is_split());
+		for (const char *id : { "show-grid", "show-sky", "show-shadows", "show-outline", "show-realtime",
+								"overlay-axis-widget", "overlay-selection-label", "overlay-safe-frame",
+								"overlay-render-status", "overlay-statistics", "overlay-gpu-timings" }) {
+			Core::View *row = root->find_by_id(id);
+			REQUIRE_MESSAGE(row != nullptr, id);
+			CHECK_MESSAGE(Core::find_behaviour<Core::OverlayCheckRow>(*row) != nullptr, id);
+		}
 	}
 }

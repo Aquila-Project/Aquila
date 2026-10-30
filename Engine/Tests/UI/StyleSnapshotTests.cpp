@@ -12,7 +12,10 @@
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/DragFloat.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/OverlayCheckRow.h"
+#include "Aquila/UI/Widgets/Popup.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/TreeView.h"
 #include "GpuTestSupport.h"
@@ -244,6 +247,55 @@ TEST_SUITE("Style snapshots") {
 			fixture.settle_fully();
 			write_style_snapshot(empty ? "content-browser-empty" : "content-browser", box);
 		}
+	}
+
+	TEST_CASE("style snapshot viewport popovers" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		for (const char *widget : { "TransformGizmo", "ViewportOverlay" }) {
+			fixture.loader.register_widget(
+				widget, [](std::string_view, Aquila::UI::Text::FontAtlas *) { return std::make_unique<View>(); });
+		}
+		View &box = snapshot_box(fixture, 800.F, 600.F);
+		View *root = fixture.loader.build_file("/resources/Engine/UI/Windows/viewport.aqlayout", box);
+		REQUIRE(root != nullptr);
+		auto *shading = root->find_by_id<Dropdown>("viewport-shading");
+		REQUIRE(shading != nullptr);
+		shading->set_variant("overlay-dropdown");
+		shading->add_option("0", "Lit");
+
+		const auto check = [root](const char *id, bool checked) {
+			View *row = root->find_by_id(id);
+			REQUIRE(row != nullptr);
+			auto *behaviour = find_behaviour<OverlayCheckRow>(*row);
+			REQUIRE(behaviour != nullptr);
+			REQUIRE(behaviour->get_check() != nullptr);
+			behaviour->get_check()->set_checked(checked);
+		};
+		check("show-grid", true);
+		check("show-sky", true);
+		check("show-shadows", true);
+		check("show-outline", true);
+		check("show-realtime", false);
+		check("overlay-axis-widget", true);
+		for (const char *id : { "overlay-selection-label", "overlay-safe-frame", "overlay-render-status",
+								"overlay-statistics", "overlay-gpu-timings" }) {
+			check(id, false);
+		}
+		auto *show = root->find_by_id<Popup>("viewport-show-popover");
+		REQUIRE(show != nullptr);
+		show->open();
+
+		auto *camera = root->find_by_id<Popup>("viewport-camera-popover");
+		auto *grid = root->find_by_id<PropertyGrid>("camera-grid");
+		REQUIRE(camera != nullptr);
+		REQUIRE(grid != nullptr);
+		grid->add_row<DragFloat>("Field of View", DragFloat::Config{ .min = 10.F, .max = 120.F, .speed = 0.25F });
+		grid->add_check_row<Checkbox>("Auto Exposure", true);
+		grid->add_row<Dropdown>("Tone Mapping")->set_variant("props-dropdown");
+		camera->open();
+
+		fixture.settle_fully();
+		write_style_snapshot("viewport", box);
 	}
 
 	TEST_CASE("style snapshot console" * doctest::skip()) {

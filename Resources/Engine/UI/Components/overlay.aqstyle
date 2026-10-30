@@ -1,0 +1,104 @@
+.overlay-tool {
+    width: 26px;
+    height: 26px;
+    padding: 0px;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 4px;
+    color: var(--text-dim);
+    transition: 80ms ease-out;
+}
+
+.overlay-tool:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-bright);
+}
+
+.overlay-tool:pressed {
+    background-color: var(--bg-surface);
+}
+
+.overlay-tool-active {
+    background-color: var(--accent-dark);
+    color: var(--text-bright);
+}
+
+.overlay-dropdown {
+    min-height: 26px;
+    min-width: 0px;
+}
+
+.overlay-dropdown-header {
+    min-height: 26px;
+    gap: 6px;
+    padding: 0px 8px;
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text);
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 4px;
+}
+
+.overlay-dropdown-header:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-bright);
+}
+
+.overlay-dropdown-popup {
+    min-width: 170px;
+}
+
+.overlay-menu {
+    flex-direction: column;
+}
+
+.overlay-popover {
+    flex-direction: column;
+    min-width: 170px;
+    gap: 2px;
+    padding: 6px;
+    background-color: var(--bg-deep);
+    border-width: 1px;
+    border-color: var(--hairline);
+    border-radius: 6px;
+}
+
+.overlay-popover-wide {
+    min-width: 280px;
+}
+
+.overlay-popover-title {
+    font-family: medium;
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 2px 4px 4px 4px;
+}
+
+.overlay-check-row {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 24px;
+    gap: 8px;
+    padding: 0px 4px;
+    border-radius: 4px;
+}
+
+.overlay-check-row:hover {
+    background-color: var(--bg-muted);
+}
+
+.overlay-check {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+.overlay-check-text {
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text);
+}
