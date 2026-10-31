@@ -300,6 +300,27 @@ TEST_SUITE("Markup items") {
 		CHECK(log.stream.str().find("nope") != std::string::npos);
 	}
 
+	TEST_CASE("a menu item with an action gets what it runs from code") {
+		LayoutLoader loader;
+		const Unique<View> root = loader.load_string(R"(<PopupMenu>
+	<MenuItem action="open" label="Open"/>
+	<Submenu label="More"><MenuItem action="delete" label="Delete"/></Submenu>
+</PopupMenu>)");
+		auto *menu = root_as<PopupMenu>(root);
+		int opened = 0;
+		int deleted = 0;
+		CHECK(menu->set_action("open", [&opened] { ++opened; }));
+		CHECK(menu->set_action("delete", [&deleted] { ++deleted; }));
+		CHECK_FALSE(menu->set_action("missing", [] {}));
+
+		menu_button(*menu, 0).on_click();
+		CHECK(opened == 1);
+		PopupMenu *more = first_submenu(*menu);
+		REQUIRE(more != nullptr);
+		menu_button(*more, 0).on_click();
+		CHECK(deleted == 1);
+	}
+
 	TEST_CASE("items from code go between the markup items") {
 		LayoutLoader loader;
 		const Unique<View> root = loader.load_string(R"(<PopupMenu>

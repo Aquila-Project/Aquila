@@ -61,6 +61,19 @@ PopupMenu *PopupMenu::add_submenu(std::string text, GFX::GfxTexture *icon) {
 	return submenu;
 }
 
+bool PopupMenu::set_action(std::string_view action, Delegate<void()> callback) {
+	bool found = false;
+	for (Item &item : m_items) {
+		if (item.submenu != nullptr) {
+			found = item.submenu->set_action(action, callback) || found;
+		} else if (!item.action.empty() && item.action == action) {
+			item.callback = callback;
+			found = true;
+		}
+	}
+	return found;
+}
+
 void PopupMenu::clear_items() {
 	close_submenu();
 	for (View *v : m_item_views) {
@@ -208,6 +221,7 @@ bool PopupMenu::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
 		return true;
 	}
 	add_item(std::move(text), std::move(shortcut), item.get_texture("icon", resolver), std::move(callback));
+	m_items.back().action = item.get("action");
 	return true;
 }
 

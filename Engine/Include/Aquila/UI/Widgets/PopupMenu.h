@@ -23,6 +23,7 @@ class PopupMenu : public FloatingOverlay {
 	void insert_item(Usize index, std::string text, std::string shortcut, GFX::GfxTexture *icon,
 					 Delegate<void()> callback);
 	PopupMenu *add_submenu(std::string text, GFX::GfxTexture *icon = nullptr);
+	bool set_action(std::string_view action, Delegate<void()> callback);
 
 	/// A search field on top that filters the items as you type.
 	TextInput *enable_search(std::string placeholder);
@@ -48,6 +49,7 @@ class PopupMenu : public FloatingOverlay {
 		Delegate<void()> callback;
 		PopupMenu *submenu = nullptr;
 		bool is_separator = false;
+		std::string action{};
 	};
 
 	void rebuild();

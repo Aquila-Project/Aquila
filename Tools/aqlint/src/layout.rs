@@ -181,7 +181,7 @@ const ITEM_RULES: &[ItemRule] = &[
     ItemRule {
         tag: "MenuItem",
         goes_in: IN_MENUS,
-        attributes: &["command", "label", "icon"],
+        attributes: &["command", "action", "label", "icon"],
         items: &[],
         takes_elements: false,
     },
@@ -1249,6 +1249,7 @@ mod tests {
     <TreeView><TreeNode label="Root"><TreeNode label="Child"/></TreeNode></TreeView>
     <PopupMenu>
         <MenuItem command="scene.save" icon="save.svg"/>
+        <MenuItem action="open" label="Open"/>
         <MenuSeparator/>
         <Submenu label="More"><MenuItem label="Inner"/><Submenu label="Deeper"/></Submenu>
     </PopupMenu>
