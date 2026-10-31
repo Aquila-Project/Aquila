@@ -1,0 +1,115 @@
+<Component name="LauncherRow">
+    <View class="launcher-row"/>
+</Component>
+
+<Component name="LauncherSpacer">
+    <View class="launcher-spacer"/>
+</Component>
+
+<Component name="LauncherCard" props="name meta letter palette">
+    <Clickable class="launcher-card">
+        <View class="launcher-thumb launcher-thumb-$palette">
+            <Label class="launcher-thumb-letter">$letter</Label>
+        </View>
+        <View class="launcher-card-body">
+            <Label class="launcher-card-name">$name</Label>
+            <Label class="launcher-card-meta">$meta</Label>
+        </View>
+    </Clickable>
+</Component>
+
+<Component name="LauncherTemplate" props="name description">
+    <Clickable class="launcher-template">
+        <Label class="launcher-template-name">$name</Label>
+        <Label class="launcher-template-desc">$description</Label>
+    </Clickable>
+</Component>
+
+<View id="launcher-root" class="launcher-root">
+    <View class="launcher-header">
+        <Image class="launcher-logo" src="Engine/aquila-logo.png"/>
+        <View class="launcher-brand">
+            <Label class="launcher-title">Aquila</Label>
+            <Label class="launcher-tagline">Real-time rendering sandbox</Label>
+        </View>
+        <View class="launcher-header-fill"/>
+        <Label id="launcher-version" class="launcher-version"/>
+    </View>
+
+    <View class="launcher-main">
+        <TabBar id="launcher-rail" class="launcher-rail" tab-class="launcher-nav">
+            <Tab title="Recent projects" icon="Engine/UI/Icons/folder-open.svg"/>
+            <Tab title="New project" icon="Engine/UI/Icons/plus.svg"/>
+            <Tab title="Learn" icon="Engine/UI/Icons/book-open-text.svg"/>
+        </TabBar>
+
+        <View class="launcher-content">
+            <View id="launcher-page-recent" class="launcher-page">
+                <View class="launcher-title-row">
+                    <Label class="launcher-page-title">Recent projects</Label>
+                    <Label id="launcher-count" class="launcher-page-count"/>
+                </View>
+                <ScrollView id="launcher-grid-scroll" class="launcher-grid-scroll">
+                    <View id="launcher-grid" class="launcher-grid"/>
+                </ScrollView>
+                <View id="launcher-empty" class="launcher-empty">
+                    <Image class="launcher-empty-logo" src="Engine/aquila-logo.png"/>
+                    <Label class="launcher-empty-title">No projects yet</Label>
+                    <Label class="launcher-empty-hint">Create a project to start building a scene, a shader or a rendering pipeline.</Label>
+                    <Button id="launcher-empty-create" class="launcher-primary">Create your first project</Button>
+                </View>
+                <View id="launcher-action-bar" class="launcher-action-bar hidden">
+                    <Label id="launcher-action-label" class="launcher-action-label"/>
+                    <TextInput id="launcher-action-input" class="launcher-action-input" placeholder="Project name"/>
+                    <Button id="launcher-action-confirm" class="launcher-primary">Confirm</Button>
+                    <Button id="launcher-action-cancel" class="launcher-secondary">Cancel</Button>
+                </View>
+            </View>
+
+            <View id="launcher-page-new" class="launcher-page">
+                <Label class="launcher-page-title">New project</Label>
+                <Label class="launcher-section">Template</Label>
+                <View id="launcher-templates" class="launcher-template-row"/>
+                <Label class="launcher-section">Name</Label>
+                <TextInput id="launcher-name" class="launcher-name-input" placeholder="My project"/>
+                <Label id="launcher-location" class="launcher-hint"/>
+                <Label id="launcher-error" class="launcher-error"/>
+                <View class="launcher-form-actions">
+                    <Button id="launcher-create" class="launcher-primary">Create project</Button>
+                    <Button id="launcher-back" class="launcher-secondary">Back</Button>
+                </View>
+            </View>
+
+            <View id="launcher-page-learn" class="launcher-page">
+                <Label class="launcher-page-title">Learn</Label>
+                <Label class="launcher-section">Documentation</Label>
+                <Clickable id="launcher-wiki" class="launcher-link">
+                    <Label class="launcher-tip-title">Aquila wiki</Label>
+                    <Label class="launcher-tip-text">Guides and reference for the engine and the editor.</Label>
+                    <Label class="launcher-link-url">github.com/Aquila-Project/Aquila/wiki</Label>
+                </Clickable>
+                <Label class="launcher-section">Tips</Label>
+                <View class="launcher-tips">
+                    <View class="launcher-tip">
+                        <Label class="launcher-tip-title">Build a scene</Label>
+                        <Label class="launcher-tip-text">Add entities from the Hierarchy panel and edit their components in the Inspector.</Label>
+                    </View>
+                    <View class="launcher-tip">
+                        <Label class="launcher-tip-title">Move around</Label>
+                        <Label class="launcher-tip-text">Hold the right mouse button in the viewport to fly. Use W, E and R for the transform tools.</Label>
+                    </View>
+                    <View class="launcher-tip">
+                        <Label class="launcher-tip-title">Scale the interface</Label>
+                        <Label class="launcher-tip-text">Ctrl plus, Ctrl minus and Ctrl zero change the interface scale.</Label>
+                    </View>
+                </View>
+            </View>
+        </View>
+    </View>
+
+    <PopupMenu id="launcher-menu">
+        <MenuItem action="open" label="Open"/>
+        <MenuItem action="rename" label="Rename"/>
+        <MenuItem action="delete" label="Delete"/>
+    </PopupMenu>
+</View>

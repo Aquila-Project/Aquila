@@ -12,6 +12,7 @@
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/OverlayCheckRow.h"
 #include "Aquila/UI/Widgets/Popup.h"
+#include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TextInput.h"
@@ -364,6 +365,61 @@ TEST_SUITE("Shipped UI resources") {
 			REQUIRE_MESSAGE(label != nullptr, component);
 			CHECK(label->get_text() == "Nothing $1 & <b>");
 		}
+		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
+	}
+
+	TEST_CASE("the launcher layout holds its header, rail, pages and components") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const std::string file = "/resources/Engine/UI/Windows/launcher.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "launcher-root");
+		const auto *rail = root->find_by_id<Core::TabBar>("launcher-rail");
+		REQUIRE(rail != nullptr);
+		CHECK(rail->get_tab_count() == 3);
+		constexpr std::array<const char *, 22> K_IDS = {
+			"launcher-version",		   "launcher-page-recent",	 "launcher-page-new",	  "launcher-page-learn",
+			"launcher-count",		   "launcher-grid-scroll",	 "launcher-grid",		  "launcher-empty",
+			"launcher-empty-create",   "launcher-action-bar",	 "launcher-action-label", "launcher-action-input",
+			"launcher-action-confirm", "launcher-action-cancel", "launcher-templates",	  "launcher-name",
+			"launcher-location",	   "launcher-error",		 "launcher-create",		  "launcher-back",
+			"launcher-wiki",		   "launcher-menu",
+		};
+		for (const char *id : K_IDS) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		CHECK(root->find_by_id<Core::PopupMenu>("launcher-menu") != nullptr);
+		CHECK(root->find_by_id<Core::TextInput>("launcher-name")->get_placeholder() == "My project");
+
+		Core::View parent;
+		Core::View *row = loader.create(file, "LauncherRow", parent);
+		REQUIRE(row != nullptr);
+		CHECK(loader.create(file, "LauncherSpacer", *row) != nullptr);
+		Core::ComponentArgs card_args{
+			.attributes = { { "name", "Shader $1 & <b>" }, { "meta", "m" }, { "letter", "S" }, { "palette", "3" } }
+		};
+		auto *card = dynamic_cast<Core::Clickable *>(loader.create(file, "LauncherCard", *row, std::move(card_args)));
+		REQUIRE(card != nullptr);
+		bool named = false;
+		bool themed = false;
+		const auto find = [&](const auto &self, const Core::View &view) -> void {
+			for (const auto &child : view.get_children()) {
+				if (const auto *text = dynamic_cast<const Core::Label *>(child.get())) {
+					named = named || text->get_text() == "Shader $1 & <b>";
+				}
+				const auto &classes = child->get_classes();
+				themed = themed || std::ranges::find(classes, "launcher-thumb-3") != classes.end();
+				self(self, *child);
+			}
+		};
+		find(find, *card);
+		CHECK(named);
+		CHECK(themed);
+		CHECK(dynamic_cast<Core::Clickable *>(
+				  loader.create(file, "LauncherTemplate", parent,
+								{ .attributes = { { "name", "Empty" }, { "description", "Nothing" } } })) != nullptr);
 		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
 	}
 }

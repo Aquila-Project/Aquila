@@ -72,6 +72,11 @@ namespace {
 constexpr std::string_view K_GAME_WORKSPACE = "Game";
 constexpr F64 K_SETTINGS_SAVE_SECONDS = 0.5;
 constexpr auto K_SETTINGS_SAVE_DELAY = std::chrono::milliseconds(500);
+
+std::string layout_dir() {
+	const std::string &layout_path = Config::get_preferences().ui.layout_path;
+	return layout_path.substr(0, layout_path.find_last_of('/') + 1);
+}
 }
 
 EditorModule::EditorModule(std::string project) : m_startup_project(std::move(project)) {}
@@ -145,12 +150,15 @@ void EditorModule::on_attach(EngineContext &engine) {
 }
 
 void EditorModule::open_project_launcher() {
-	m_project_launcher = std::make_unique<ProjectLauncher>();
-	m_project_launcher->build(m_project_manager.get(), m_texture_cache.get(), 900, 600, m_ui_host->get_layout_loader());
-	m_project_launcher->on_project_ready = [this](const ProjectInfo &project) {
-		m_pending_project = project;
-		Aquila::Foundation::FrameScheduler::get()->request_frame();
-	};
+	m_project_launcher = std::make_unique<BehaviourWindow>(
+		m_ui_host->get_layout_loader(),
+		std::make_unique<ProjectLauncher>(layout_dir() + "Windows/launcher.aqlayout", *m_project_manager), 900, 600);
+	if (auto *launcher = m_project_launcher->get_behaviour<ProjectLauncher>()) {
+		launcher->on_project_ready = [this](const ProjectInfo &project) {
+			m_pending_project = project;
+			Aquila::Foundation::FrameScheduler::get()->request_frame();
+		};
+	}
 
 	m_project_launcher->open(m_engine->get_window_host(), "Aquila - Projects", [this] {
 		m_project_launcher.reset();
@@ -680,9 +688,8 @@ void EditorModule::setup_editor_ui() {
 	const auto &cfg = Config::get_preferences();
 	LayoutLoader &layouts = m_ui_host->get_layout_loader();
 
-	const std::string layout_dir = cfg.ui.layout_path.substr(0, cfg.ui.layout_path.find_last_of('/') + 1);
 	m_context =
-		std::make_unique<EditorContext>(*m_engine, editor_canvas, layouts, *m_texture_cache, layout_dir, m_project);
+		std::make_unique<EditorContext>(*m_engine, editor_canvas, layouts, *m_texture_cache, layout_dir(), m_project);
 	m_context->set_camera(m_editor_camera.get());
 	add_builtin_component_editors(m_context->component_editors);
 	add_builtin_asset_types(m_context->asset_types);

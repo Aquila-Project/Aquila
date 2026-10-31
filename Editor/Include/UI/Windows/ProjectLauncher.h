@@ -1,31 +1,26 @@
 #pragma once
 
 #include "Aquila/Foundation/PrimitiveTypes.h"
-#include "Aquila/UI/Core/CanvasWindow.h"
+#include "Aquila/UI/Core/WindowBehaviour.h"
 #include "Core/ProjectManager.h"
 
-namespace Aquila::GFX {
-class GfxTexture;
-} // namespace Aquila::GFX
 namespace Aquila::UI::Core {
 class Button;
 class Label;
 class PopupMenu;
 class TabBar;
 class TextInput;
-class TextureCache;
 class View;
 } // namespace Aquila::UI::Core
 
 namespace Editor {
 
-class ProjectLauncher final : public Aquila::UI::Core::CanvasWindow {
+class ProjectLauncher final : public Aquila::UI::Core::WindowBehaviour {
   public:
-	ProjectLauncher();
+	ProjectLauncher(std::string layout_path, ProjectManager &project_manager);
 	~ProjectLauncher() override;
 
-	void build(ProjectManager *project_manager, Aquila::UI::Core::TextureCache *texture_cache, Uint32 width,
-			   Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
+	void define_behaviour() override;
 
 	Delegate<void(const ProjectInfo &)> on_project_ready;
 
@@ -33,11 +28,8 @@ class ProjectLauncher final : public Aquila::UI::Core::CanvasWindow {
 	enum class Page : Uint8 { Recent, New, Learn };
 	enum class ActionMode : Uint8 { None, Rename, Delete };
 
-	void build_header(Aquila::UI::Core::View *root);
-	void build_rail(Aquila::UI::Core::View *main);
-	void build_recent_page(Aquila::UI::Core::View *content);
-	void build_new_page(Aquila::UI::Core::View *content);
-	void build_learn_page(Aquila::UI::Core::View *content);
+	void wire_recent_page();
+	void wire_new_page();
 
 	void show_page(Page page);
 	void refresh_list();
@@ -49,9 +41,7 @@ class ProjectLauncher final : public Aquila::UI::Core::CanvasWindow {
 	void end_action();
 	void confirm_action();
 
-	ProjectManager *m_project_manager = nullptr;
-	Aquila::UI::Core::TextureCache *m_texture_cache = nullptr;
-	Aquila::GFX::GfxTexture *m_logo = nullptr;
+	ProjectManager &m_project_manager;
 
 	Page m_page = Page::Recent;
 	Aquila::UI::Core::TabBar *m_rail = nullptr;
