@@ -422,4 +422,40 @@ TEST_SUITE("Shipped UI resources") {
 								{ .attributes = { { "name", "Empty" }, { "description", "Nothing" } } })) != nullptr);
 		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
 	}
+
+	TEST_CASE("the widget gallery layout holds every widget and its item component") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		register_editor_widget_stand_ins(loader);
+		const std::string file = "/resources/Engine/UI/Windows/widget_gallery.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "gallery-root");
+		for (const char *id : { "gallery-grid", "gallery-tooltip", "gallery-tooltip-button" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		std::vector<std::string> headings;
+		const auto collect = [&headings](const auto &self, const Core::View &view) -> void {
+			for (const auto &child : view.get_children()) {
+				const auto &classes = child->get_classes();
+				if (std::ranges::find(classes, "gallery-heading") != classes.end()) {
+					headings.push_back(dynamic_cast<const Core::Label &>(*child).get_text());
+				}
+				self(self, *child);
+			}
+		};
+		collect(collect, *root);
+		CHECK(headings.size() == 23);
+		CHECK(headings.front() == "Button");
+		CHECK(headings.back() == "Tooltip");
+
+		Core::View parent;
+		Core::View *item =
+			loader.create(file, "GalleryItem", parent, { .attributes = { { "title", "Card $1 & <b>" } } });
+		REQUIRE(item != nullptr);
+		REQUIRE_FALSE(item->get_children().empty());
+		CHECK(dynamic_cast<const Core::Label &>(*item->get_children().front()).get_text() == "Card $1 & <b>");
+		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
+	}
 }

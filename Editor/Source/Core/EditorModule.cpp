@@ -1076,7 +1076,7 @@ void EditorModule::register_editor_commands() {
 	commands.add({
 		.id = "devtools.widget_gallery",
 		.title = "Widget gallery",
-		.run = [this] { m_devtools->open_widget_gallery(m_engine->get_context(), m_texture_cache.get()); },
+		.run = [this] { m_devtools->open_widget_gallery(); },
 		.enabled = [this] { return m_devtools != nullptr; },
 	});
 

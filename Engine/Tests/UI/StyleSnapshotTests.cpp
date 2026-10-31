@@ -1,11 +1,15 @@
 #include <doctest.h>
 
 #include "Aquila/UI/Core/Behaviour.h"
+#include "Aquila/UI/Core/BehaviourWindow.h"
+#include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/DevTools/WidgetGalleryWindow.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/Clickable.h"
+#include "Aquila/UI/Widgets/ColorPicker.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
@@ -596,5 +600,28 @@ TEST_SUITE("Style snapshots") {
 															  "launcher-new", "launcher-learn" };
 			write_style_snapshot(K_NAMES.at(static_cast<Usize>(shown)), box);
 		}
+	}
+
+	TEST_CASE("style snapshot widget gallery" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		TextureCache icons(*test_gpu().ctx, "/resources");
+		fixture.loader.register_texture_cache(&icons);
+		fixture.loader.register_widget("ColorPicker", [](std::string_view, Text::FontAtlas *) -> Unique<View> {
+			return std::make_unique<ColorPicker>(*test_gpu().ctx);
+		});
+		BehaviourWindow gallery(fixture.loader, std::make_unique<DevTools::WidgetGalleryWindow>(), 420, 720);
+		Canvas &canvas = *gallery.get_canvas();
+		const auto settle = [&canvas] {
+			for (int i = 0; i < 4; ++i) {
+				canvas.update(0.016F);
+				canvas.compute();
+			}
+		};
+		settle();
+		std::this_thread::sleep_for(std::chrono::milliseconds(400));
+		settle();
+		View *root = canvas.get_root()->find_by_id("gallery-root");
+		REQUIRE(root != nullptr);
+		write_style_snapshot("widget-gallery", *root);
 	}
 }

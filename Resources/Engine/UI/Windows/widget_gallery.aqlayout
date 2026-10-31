@@ -1,0 +1,70 @@
+<Component name="GalleryItem" props="title">
+    <View class="gallery-item">
+        <Label class="gallery-heading">$title</Label>
+        <Slot/>
+    </View>
+</Component>
+
+<View id="gallery-root" class="gallery-root">
+    <View class="gallery-header">
+        <Label class="gallery-title">Widget Gallery</Label>
+    </View>
+
+    <ScrollView class="gallery-scroll">
+        <View class="gallery-content">
+            <GalleryItem title="Button"><Button>Click me</Button></GalleryItem>
+            <GalleryItem title="Label"><Label>The quick brown fox</Label></GalleryItem>
+            <GalleryItem title="Checkbox"><Checkbox checked="true"/></GalleryItem>
+            <GalleryItem title="Toggle"><Toggle checked="true"/></GalleryItem>
+            <GalleryItem title="Slider"><Slider min="0" max="100" value="40"/></GalleryItem>
+            <GalleryItem title="ProgressBar"><ProgressBar value="0.65"/></GalleryItem>
+            <GalleryItem title="TextInput"><TextInput placeholder="Type here…"/></GalleryItem>
+            <GalleryItem title="NumberInput"><NumberInput/></GalleryItem>
+            <GalleryItem title="DragFloat"><DragFloat/></GalleryItem>
+            <GalleryItem title="DragInt"><DragInt/></GalleryItem>
+            <GalleryItem title="Dropdown">
+                <Dropdown>
+                    <Option value="first" label="First"/>
+                    <Option value="second" label="Second"/>
+                    <Option value="third" label="Third"/>
+                </Dropdown>
+            </GalleryItem>
+            <GalleryItem title="ColorPicker"><ColorPicker color="#cc6633"/></GalleryItem>
+            <GalleryItem title="Vec3Field"><Vec3Field/></GalleryItem>
+            <GalleryItem title="Separator"><Separator/></GalleryItem>
+            <GalleryItem title="Collapsible">
+                <Collapsible>Expandable section<Label>Hidden content revealed on expand</Label></Collapsible>
+            </GalleryItem>
+            <GalleryItem title="TabView">
+                <TabView class="gallery-tabview">
+                    <Tab title="Tab One"><Label>Contents of tab one</Label></Tab>
+                    <Tab title="Tab Two"><Label>Contents of tab two</Label></Tab>
+                </TabView>
+            </GalleryItem>
+            <GalleryItem title="ListBox">
+                <ListBox class="gallery-listbox">
+                    <Item value="a" label="Alpha"/>
+                    <Item value="b" label="Bravo"/>
+                    <Item value="c" label="Charlie"/>
+                </ListBox>
+            </GalleryItem>
+            <GalleryItem title="TreeView">
+                <TreeView>
+                    <TreeNode label="Root">
+                        <TreeNode label="Child A"/>
+                        <TreeNode label="Child B"/>
+                    </TreeNode>
+                </TreeView>
+            </GalleryItem>
+            <GalleryItem title="PropertyGrid"><PropertyGrid id="gallery-grid"/></GalleryItem>
+            <GalleryItem title="Image"><Image class="gallery-image" src="Engine/UI/Icons/info.svg"/></GalleryItem>
+            <GalleryItem title="AssetSlot"><AssetSlot accept="texture"/></GalleryItem>
+            <GalleryItem title="AssetCard">
+                <AssetCard path="textures/wood.png" type="texture" name="wood.png" src="Engine/UI/Icons/info.svg"/>
+            </GalleryItem>
+            <GalleryItem title="Tooltip"><Button id="gallery-tooltip-button">Show tooltip</Button></GalleryItem>
+        </View>
+    </ScrollView>
+
+    <Tooltip id="gallery-tooltip"/>
+</View>

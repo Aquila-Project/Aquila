@@ -3,6 +3,7 @@
 #include "Aquila/Platform/Events/Event.h"
 #include "Aquila/Platform/Events/InputEvent.h"
 #include "Aquila/Rendering/IRenderWindowHost.h"
+#include "Aquila/UI/Core/BehaviourWindow.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/DevTools/PickerOverlay.h"
 #include "Aquila/UI/DevTools/UIDebugPanel.h"
@@ -62,7 +63,7 @@ void UIDevTools::open_inspector_window() {
 	});
 }
 
-void UIDevTools::open_widget_gallery(GFX::GfxContext &ctx, Core::TextureCache *texture_cache) {
+void UIDevTools::open_widget_gallery() {
 	if (m_gallery) {
 		return;
 	}
@@ -70,8 +71,8 @@ void UIDevTools::open_widget_gallery(GFX::GfxContext &ctx, Core::TextureCache *t
 	constexpr Uint32 width = 420;
 	constexpr Uint32 height = 720;
 
-	m_gallery = std::make_unique<WidgetGalleryWindow>();
-	m_gallery->build(ctx, texture_cache, width, height, m_layouts);
+	m_gallery =
+		std::make_unique<Core::BehaviourWindow>(m_layouts, std::make_unique<WidgetGalleryWindow>(), width, height);
 
 	m_gallery->open(m_host, "Aquila - Widget Gallery", [this] { m_gallery.reset(); });
 }
