@@ -49,6 +49,7 @@ class UIDevTools {
 	bool on_event(Platform::Events::Event &event);
 
   private:
+	[[nodiscard]] UIDebugWindow *inspector() const;
 	void start_pick();
 	void stop_pick();
 
@@ -56,8 +57,8 @@ class UIDevTools {
 	Aquila::Rendering::IRenderWindowHost &m_host;
 	Core::LayoutLoader &m_layouts;
 
-	Unique<UIDebugPanel> m_panel;
-	Unique<UIDebugWindow> m_inspector;
+	UIDebugPanel *m_panel = nullptr;
+	Unique<Core::BehaviourWindow> m_inspector;
 	Unique<Core::BehaviourWindow> m_gallery;
 	PickerOverlay *m_picker = nullptr;
 

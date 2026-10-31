@@ -196,3 +196,21 @@
         padding: 0px 6px;
     }
 }
+
+.floating-panel-root {
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    background-color: var(--bg-base);
+}
+
+#panel-hierarchy {
+    gap: 2px;
+    padding: 2px;
+}
+
+.floating-panel-body {
+    flex-direction: column;
+    width: 100%;
+    height: grow;
+}

@@ -1,0 +1,118 @@
+<Component name="DebugSection" props="title">
+    <View class="inspector-section">
+        <Label class="inspector-section-header">$title</Label>
+        <Slot/>
+    </View>
+</Component>
+
+<Component name="DebugRow" props="key">
+    <View class="inspector-row">
+        <Label class="inspector-key">$key</Label>
+        <Slot/>
+    </View>
+</Component>
+
+<View id="inspector-root" class="inspector-root">
+    <View class="inspector-toolbar">
+        <Button id="inspector-pick" class="inspector-tool-btn">Inspect</Button>
+        <Button id="inspector-refresh" class="inspector-tool-btn">Refresh</Button>
+        <View class="inspector-tool-spacer"/>
+        <TextInput id="inspector-filter" class="inspector-search" placeholder="Filter styles"/>
+    </View>
+
+    <View class="inspector-body">
+        <ScrollView class="inspector-tree-scroll">
+            <View class="inspector-tree-host">
+                <TreeView id="inspector-tree"/>
+            </View>
+        </ScrollView>
+
+        <ScrollView class="inspector-style-scroll">
+            <View class="inspector-style">
+                <View id="inspector-empty" class="inspector-empty">
+                    <Label class="inspector-empty-label">Press Inspect, hover the editor to highlight, then click an element to inspect it.</Label>
+                </View>
+
+                <View id="inspector-detail" class="inspector-detail">
+                    <Label id="inspector-subtitle" class="inspector-subtitle"/>
+
+                    <DebugSection title="Box Model">
+                        <View class="bm-wrap">
+                            <View class="bm-padbox">
+                                <Label id="bm-top" class="bm-pad"/>
+                                <View class="bm-mid">
+                                    <Label id="bm-left" class="bm-pad"/>
+                                    <View class="bm-content">
+                                        <Label id="bm-content" class="bm-content-label"/>
+                                    </View>
+                                    <Label id="bm-right" class="bm-pad"/>
+                                </View>
+                                <Label id="bm-bottom" class="bm-pad"/>
+                            </View>
+                            <Label class="bm-caption">padding</Label>
+                        </View>
+                    </DebugSection>
+
+                    <DebugSection id="section-element" title="Element">
+                        <DebugRow key="type"><Label id="v-type" class="inspector-val"/></DebugRow>
+                        <DebugRow key="id"><Label id="v-id" class="inspector-val"/></DebugRow>
+                        <DebugRow key="classes"><Label id="v-classes" class="inspector-val"/></DebugRow>
+                        <DebugRow key="state"><Label id="v-state" class="inspector-val"/></DebugRow>
+                        <DebugRow key="children"><Label id="v-children" class="inspector-val"/></DebugRow>
+                    </DebugSection>
+
+                    <DebugSection id="section-geometry" title="Geometry">
+                        <DebugRow key="position"><Label id="v-pos" class="inspector-val"/></DebugRow>
+                        <DebugRow key="size"><Label id="v-size" class="inspector-val"/></DebugRow>
+                        <DebugRow key="ids"><Label id="v-ids" class="inspector-val"/></DebugRow>
+                    </DebugSection>
+
+                    <DebugSection id="section-layout" title="Layout">
+                        <DebugRow key="display"><Label id="v-display" class="inspector-val"/></DebugRow>
+                        <DebugRow key="position"><Label id="v-position" class="inspector-val"/></DebugRow>
+                        <DebugRow key="overflow"><Label id="v-overflow" class="inspector-val"/></DebugRow>
+                        <DebugRow key="flex-direction"><Label id="v-flex" class="inspector-val"/></DebugRow>
+                        <DebugRow key="justify"><Label id="v-justify" class="inspector-val"/></DebugRow>
+                        <DebugRow key="align"><Label id="v-align" class="inspector-val"/></DebugRow>
+                        <DebugRow key="flex-grow"><Label id="v-grow" class="inspector-val"/></DebugRow>
+                        <DebugRow key="gap"><Label id="v-gap" class="inspector-val"/></DebugRow>
+                        <DebugRow key="width / height"><Label id="v-dims" class="inspector-val"/></DebugRow>
+                        <DebugRow key="min / max"><Label id="v-minmax" class="inspector-val"/></DebugRow>
+                        <DebugRow key="aspect-ratio"><Label id="v-aspect" class="inspector-val"/></DebugRow>
+                        <DebugRow key="inset"><Label id="v-inset" class="inspector-val"/></DebugRow>
+                        <DebugRow key="z-index"><Label id="v-zindex" class="inspector-val"/></DebugRow>
+                    </DebugSection>
+
+                    <DebugSection id="section-appearance" title="Appearance">
+                        <DebugRow key="background">
+                            <View id="sw-bg" class="inspector-swatch"/>
+                            <Label id="v-bg" class="inspector-val"/>
+                        </DebugRow>
+                        <DebugRow key="color">
+                            <View id="sw-color" class="inspector-swatch"/>
+                            <Label id="v-color" class="inspector-val"/>
+                        </DebugRow>
+                        <DebugRow key="border">
+                            <View id="sw-border" class="inspector-swatch"/>
+                            <Label id="v-border" class="inspector-val"/>
+                        </DebugRow>
+                        <DebugRow key="border-radius"><Label id="v-radius" class="inspector-val"/></DebugRow>
+                        <DebugRow key="opacity"><Label id="v-opacity" class="inspector-val"/></DebugRow>
+                        <DebugRow key="box-shadows"><Label id="v-shadows" class="inspector-val"/></DebugRow>
+                    </DebugSection>
+
+                    <DebugSection id="section-text" title="Text">
+                        <DebugRow key="font-size"><Label id="v-fontsize" class="inspector-val"/></DebugRow>
+                        <DebugRow key="font-family"><Label id="v-family" class="inspector-val"/></DebugRow>
+                        <DebugRow key="text-align"><Label id="v-textalign" class="inspector-val"/></DebugRow>
+                        <DebugRow key="white-space"><Label id="v-whitespace" class="inspector-val"/></DebugRow>
+                    </DebugSection>
+                </View>
+            </View>
+        </ScrollView>
+    </View>
+
+    <View class="inspector-breadcrumb-bar">
+        <Label id="inspector-breadcrumb" class="inspector-breadcrumb"/>
+    </View>
+</View>

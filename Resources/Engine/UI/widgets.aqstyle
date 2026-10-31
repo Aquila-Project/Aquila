@@ -1173,3 +1173,9 @@ Vec4Field {
         font-size: 14px;
     }
 }
+
+.picker-overlay {
+    width: 100%;
+    height: 100%;
+    color: var(--accent);
+}

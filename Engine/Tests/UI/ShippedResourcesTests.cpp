@@ -16,6 +16,7 @@
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TextInput.h"
+#include "Aquila/UI/Widgets/TreeView.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Style/StyleSheet.h"
@@ -457,5 +458,51 @@ TEST_SUITE("Shipped UI resources") {
 		REQUIRE_FALSE(item->get_children().empty());
 		CHECK(dynamic_cast<const Core::Label &>(*item->get_children().front()).get_text() == "Card $1 & <b>");
 		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
+	}
+
+	TEST_CASE("the ui debug window layout holds its toolbar, panes, sections and box model") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		const std::string file = "/resources/Engine/UI/Windows/ui_debug.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "inspector-root");
+		constexpr std::array<const char *, 15> K_PARTS = {
+			"inspector-pick",  "inspector-refresh", "inspector-filter",	  "inspector-tree",
+			"inspector-empty", "inspector-detail",	"inspector-subtitle", "inspector-breadcrumb",
+			"bm-top",		   "bm-right",			"bm-bottom",		  "bm-left",
+			"bm-content",	   "section-element",	"section-text",
+		};
+		for (const char *id : K_PARTS) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		CHECK(root->find_by_id<Core::TreeView>("inspector-tree") != nullptr);
+		constexpr std::array<const char *, 34> K_VALUES = {
+			"v-type",	"v-id",		   "v-classes",	   "v-state",	 "v-children", "v-pos",		"v-size",
+			"v-ids",	"v-display",   "v-position",   "v-overflow", "v-flex",	   "v-justify", "v-align",
+			"v-grow",	"v-gap",	   "v-dims",	   "v-minmax",	 "v-aspect",   "v-inset",	"v-zindex",
+			"v-bg",		"v-color",	   "v-border",	   "v-radius",	 "v-opacity",  "v-shadows", "v-fontsize",
+			"v-family", "v-textalign", "v-whitespace", "sw-bg",		 "sw-color",   "sw-border",
+		};
+		for (const char *id : K_VALUES) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
+	}
+
+	TEST_CASE("the ui debug panel component holds its window, refresh button and tree") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		Core::View parent;
+		Core::View *panel = loader.create("Components/ui_debug_panel", "UIDebugPanel", parent);
+		REQUIRE(panel != nullptr);
+		CHECK(panel->get_id() == "ui-debug-window");
+		REQUIRE(panel->has_floating());
+		CHECK(panel->get_floating().z_index == 1000);
+		CHECK(panel->find_by_id<Core::Button>("refresh") != nullptr);
+		CHECK(panel->find_by_id<Core::TreeView>("tree") != nullptr);
+		CHECK_MESSAGE(capture.stream.str().find("ui_debug_panel.aqlayout:") == std::string::npos, capture.stream.str());
 	}
 }

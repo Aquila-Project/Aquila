@@ -6,6 +6,7 @@
 #include "Aquila/UI/Core/ComponentInstance.h"
 #include "Aquila/UI/Core/MarkupItem.h"
 #include "Aquila/UI/Core/UIResources.h"
+#include "Aquila/UI/DevTools/UIDebugPanel.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
@@ -873,6 +874,7 @@ void LayoutLoader::register_builtins() {
 
 	m_builtin_behaviours.push_back(m_behaviours.add<InspectorPage>("InspectorPage"));
 	m_builtin_behaviours.push_back(m_behaviours.add<OverlayCheckRow>("OverlayCheckRow"));
+	m_builtin_behaviours.push_back(m_behaviours.add<DevTools::UIDebugPanel>("UIDebugPanel"));
 }
 
 LayoutLoader *find_layout_loader(const View &view) {

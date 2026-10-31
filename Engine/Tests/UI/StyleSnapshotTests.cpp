@@ -3,6 +3,8 @@
 #include "Aquila/UI/Core/Behaviour.h"
 #include "Aquila/UI/Core/BehaviourWindow.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/DevTools/UIDebugPanel.h"
+#include "Aquila/UI/DevTools/UIDebugWindow.h"
 #include "Aquila/UI/DevTools/WidgetGalleryWindow.h"
 #include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/UIResources.h"
@@ -107,6 +109,42 @@ constexpr std::array<LauncherProject, 3> K_LAUNCHER_PROJECTS = { {
 	{ .name = "Shader $1 & <b>", .meta = "Opened just now  ·  1 scene", .letter = "S", .palette = "5" },
 	{ .name = "Untitled", .meta = "Opened never  ·  0 scenes", .letter = "U", .palette = "0" },
 } };
+
+View &debug_target(View &host) {
+	auto *stage = host.add_child<View>();
+	stage->set_id("stage");
+	stage->add_class("stage");
+	stage->add_child<Label>(std::string("Title"))->add_class("stage-title");
+	auto *row = stage->add_child<View>();
+	row->add_class("stage-row");
+	row->add_child<Button>(std::string("Go"))->set_id("go");
+	row->add_child<Label>(std::string("Deep"));
+	return *stage;
+}
+
+void settle_canvas(Canvas &canvas) {
+	const auto settle = [&canvas] {
+		for (int i = 0; i < 4; ++i) {
+			canvas.update(0.016F);
+			canvas.compute();
+		}
+	};
+	settle();
+	std::this_thread::sleep_for(std::chrono::milliseconds(400));
+	settle();
+}
+
+TextInput *first_text_input(View &view) {
+	for (const auto &child : view.get_children()) {
+		if (auto *input = dynamic_cast<TextInput *>(child.get())) {
+			return input;
+		}
+		if (TextInput *found = first_text_input(*child)) {
+			return found;
+		}
+	}
+	return nullptr;
+}
 }
 
 TEST_SUITE("Style snapshots") {
@@ -623,5 +661,42 @@ TEST_SUITE("Style snapshots") {
 		View *root = canvas.get_root()->find_by_id("gallery-root");
 		REQUIRE(root != nullptr);
 		write_style_snapshot("widget-gallery", *root);
+	}
+
+	TEST_CASE("style snapshot ui debug window" * doctest::skip()) {
+		for (const bool filtered : { false, true }) {
+			LoaderCanvas fixture(1200, 900);
+			test_gpu();
+			View &stage = debug_target(fixture.host());
+			fixture.settle();
+			BehaviourWindow window(fixture.loader, std::make_unique<DevTools::UIDebugWindow>(*fixture.canvas), 800,
+								   600);
+			auto *inspector = window.get_behaviour<DevTools::UIDebugWindow>();
+			REQUIRE(inspector != nullptr);
+			inspector->select_view(stage.find_by_id("go"));
+			if (filtered) {
+				auto *search = window.get_canvas()->get_root()->find_by_id<TextInput>("inspector-filter");
+				REQUIRE(search != nullptr);
+				search->on_changed("color");
+			}
+			settle_canvas(*window.get_canvas());
+			View *root = window.get_canvas()->get_root()->find_by_id("inspector-root");
+			REQUIRE(root != nullptr);
+			write_style_snapshot(filtered ? "ui-debug-filtered" : "ui-debug", *root);
+		}
+	}
+
+	TEST_CASE("style snapshot ui debug panel" * doctest::skip()) {
+		LoaderCanvas fixture(1200, 900);
+		View &box = snapshot_box(fixture, 800.F, 600.F);
+		debug_target(box);
+		auto *panel = fixture.loader.create<DevTools::UIDebugPanel>("Components/ui_debug_panel", "UIDebugPanel", box);
+		REQUIRE(panel != nullptr);
+		panel->set_target(fixture.canvas.get());
+		panel->toggle();
+		fixture.settle_fully();
+		View *window = box.find_by_id("ui-debug-window");
+		REQUIRE(window != nullptr);
+		write_style_snapshot("ui-debug-panel", *window);
 	}
 }
