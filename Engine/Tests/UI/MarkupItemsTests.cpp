@@ -6,7 +6,9 @@
 #include "Aquila/UI/Widgets/AssetCard.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
+#include "Aquila/UI/Widgets/ColorPicker.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
+#include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/IconLabel.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/ListBox.h"
@@ -18,6 +20,7 @@
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/Toggle.h"
 #include "Aquila/UI/Widgets/TreeView.h"
+#include "GpuTestSupport.h"
 #include "VfsTestSupport.h"
 
 using namespace Aquila::UI::Core;
@@ -376,6 +379,36 @@ TEST_SUITE("Markup items") {
 		CHECK(asset.asset_path == "textures/wood.png");
 		CHECK(asset.asset_type == "texture");
 		CHECK(asset.display_name == "wood.png");
+	}
+
+	TEST_CASE("an asset card takes its thumbnail") {
+		IconLoader loader;
+		const Unique<View> root = loader.load_string(R"(<AssetCard path="a.png" src="info.svg"/>)");
+		auto *card = root_as<AssetCard>(root);
+		const auto *thumbnail = dynamic_cast<const Image *>(card->get_children().front().get());
+		REQUIRE(thumbnail != nullptr);
+		CHECK(thumbnail->get_texture() == loader.resolve_texture("info.svg"));
+		CHECK_FALSE(has_class(*thumbnail, "hidden"));
+	}
+
+	TEST_CASE("a color picker takes its color") {
+		LogCapture log;
+		LayoutLoader loader;
+		loader.register_widget("ColorPicker", [](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+			return std::make_unique<ColorPicker>(*test_gpu().ctx);
+		});
+		const Unique<View> root = loader.load_string(R"(<View>
+	<ColorPicker id="orange" color="#cc6633"/>
+	<ColorPicker id="broken" color="orange-ish"/>
+</View>)");
+		REQUIRE(root != nullptr);
+		const Vec4 orange = root->find_by_id<ColorPicker>("orange")->get_color();
+		CHECK(orange.r == doctest::Approx(0.8F));
+		CHECK(orange.g == doctest::Approx(0.4F));
+		CHECK(orange.b == doctest::Approx(0.2F));
+		CHECK(orange.a == doctest::Approx(1.F));
+		CHECK(root->find_by_id<ColorPicker>("broken")->get_color() == Vec4(1.F));
+		CHECK(log.stream.str().find("'orange-ish'") != std::string::npos);
 	}
 
 	TEST_CASE("bad values are reported, never thrown") {

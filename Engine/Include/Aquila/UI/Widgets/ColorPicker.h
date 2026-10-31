@@ -26,6 +26,8 @@ class ColorPicker : public Control {
 	[[nodiscard]] Vec4 get_color() const { return m_color; }
 
 	void set_value(Vec4 color) { set_color(color); }
+	void apply_xml_attribute(std::string_view name, std::string_view value,
+							 IResourceResolver *resolver = nullptr) override;
 	[[nodiscard]] Vec4 get_value() const { return m_color; }
 
 	Signal<void(Vec4)> on_changed;
