@@ -112,3 +112,32 @@ TEST_SUITE("TreeView") {
 					  capture.stream.str());
 	}
 }
+
+TEST_SUITE("TreeView clear") {
+	TEST_CASE("clearing a tree drops every node and the selection without a deselect") {
+		TreeView tree;
+		TreeNode *root = tree.add_node("Root");
+		TreeNode *child = root->add_child_node("Child");
+		tree.add_node("Second");
+		tree.select_node(child);
+		int deselected = 0;
+		tree.on_deselected.connect([&deselected] { ++deselected; });
+
+		tree.clear();
+		CHECK(tree.get_selected() == nullptr);
+		CHECK(deselected == 0);
+		bool any_node = false;
+		const auto find = [&any_node](const auto &self, const View &view) -> void {
+			for (const auto &node : view.get_children()) {
+				any_node = any_node || dynamic_cast<const TreeNode *>(node.get()) != nullptr;
+				self(self, *node);
+			}
+		};
+		find(find, tree);
+		CHECK_FALSE(any_node);
+
+		TreeNode *again = tree.add_node("Again");
+		REQUIRE(again != nullptr);
+		CHECK(again->get_depth() == 0);
+	}
+}

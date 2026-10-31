@@ -21,6 +21,7 @@ class TreeView : public View {
 
 	TreeNode *add_node(std::string label);
 	void remove_node(TreeNode *node);
+	void clear();
 	using View::add_child;
 	View *add_child(Unique<View> child) override;
 	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;

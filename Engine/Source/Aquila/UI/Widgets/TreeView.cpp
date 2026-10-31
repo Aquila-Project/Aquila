@@ -94,6 +94,11 @@ void TreeView::set_on_background_right_clicked(Delegate<void(Vec2)> callback) {
 	m_content->on_context_menu.set(std::move(callback));
 }
 
+void TreeView::clear() {
+	m_selected = nullptr;
+	m_content->clear_children();
+}
+
 void TreeView::select_node(TreeNode *node) {
 	if (m_selected != nullptr) {
 		m_selected->set_selected(false);
