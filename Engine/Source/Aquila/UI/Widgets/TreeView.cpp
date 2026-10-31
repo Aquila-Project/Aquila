@@ -1,8 +1,19 @@
 #include "Aquila/UI/Widgets/TreeView.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 
 namespace Aquila::UI::Core {
+
+namespace {
+
+void add_markup_nodes(TreeNode &parent, const std::vector<MarkupItem> &items) {
+	for (const MarkupItem &item : items) {
+		add_markup_nodes(*parent.add_child_node(std::string(item.get("label"))), item.items);
+	}
+}
+
+}
 
 TreeView::TreeView() {
 	add_class("tree-view");
@@ -26,6 +37,14 @@ View *TreeView::add_child(Unique<View> child) {
 		node->build_row_components();
 	}
 	return added;
+}
+
+bool TreeView::add_markup_item(MarkupItem &item, IResourceResolver *) {
+	if (item.tag != "TreeNode") {
+		return false;
+	}
+	add_markup_nodes(*add_node(std::string(item.get("label"))), item.items);
+	return true;
 }
 
 void TreeView::set_row_component(std::string file, std::string component) {

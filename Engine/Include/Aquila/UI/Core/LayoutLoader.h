@@ -146,6 +146,7 @@ class LayoutLoader : public IResourceResolver {
 								 const BuildScope &scope, std::vector<Unique<View>> *slot_children = nullptr);
 	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font,
 						bool skip_text = false);
+	void add_item(View &parent, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font);
 };
 
 [[nodiscard]] LayoutLoader *find_layout_loader(const View &view);

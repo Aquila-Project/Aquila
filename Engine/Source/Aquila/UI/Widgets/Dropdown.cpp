@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Core/IResourceResolver.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 
 namespace Aquila::UI::Core {
 
@@ -107,6 +108,20 @@ void Dropdown::apply_xml_attribute(std::string_view name, std::string_view value
 		return;
 	}
 	Control::apply_xml_attribute(name, value, resolver);
+}
+
+bool Dropdown::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
+	if (item.tag != "Option") {
+		return false;
+	}
+	const std::string_view label = item.get("label");
+	const std::string_view value = item.get("value").empty() ? label : item.get("value");
+	if (value.empty()) {
+		AQUILA_LOG_WARNING("Dropdown: {}: an <Option> needs a value or a label", item.location);
+		return true;
+	}
+	add_option(std::string(value), std::string(label), item.get_texture("icon", resolver));
+	return true;
 }
 
 void Dropdown::set_placeholder(std::string text) {

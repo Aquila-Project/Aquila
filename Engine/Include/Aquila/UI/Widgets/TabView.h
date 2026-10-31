@@ -19,6 +19,8 @@ class TabView : public View {
 	[[nodiscard]] int get_active_tab() const { return m_active_tab; }
 	Signal<void(int)> on_tab_changed;
 
+	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;
+
   private:
 	void apply_active_tab();
 

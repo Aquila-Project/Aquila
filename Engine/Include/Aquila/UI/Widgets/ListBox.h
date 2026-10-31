@@ -22,6 +22,8 @@ class ListBox : public View {
 
 	Signal<void(const std::string &)> on_selection_changed;
 
+	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;
+
   private:
 	void select_item(const std::string &id);
 	void update_selection_styles();

@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/ListBox.h"
 
+#include "Aquila/UI/Core/MarkupItem.h"
+
 namespace Aquila::UI::Core {
 
 ListBox::ListBox() {
@@ -17,6 +19,20 @@ void ListBox::add_item(std::string id, std::string display) {
 
 	Button *btn_ptr = m_scroll->add_child(std::move(btn));
 	m_items.push_back({ std::move(id), std::move(display), btn_ptr });
+}
+
+bool ListBox::add_markup_item(MarkupItem &item, IResourceResolver *) {
+	if (item.tag != "Item") {
+		return false;
+	}
+	const std::string_view value = item.get("value");
+	const std::string_view label = item.get("label");
+	if (value.empty() && label.empty()) {
+		AQUILA_LOG_WARNING("ListBox: {}: an <Item> needs a value or a label", item.location);
+		return true;
+	}
+	add_item(std::string(value.empty() ? label : value), std::string(label.empty() ? value : label));
+	return true;
 }
 
 void ListBox::remove_item(const std::string &id) {

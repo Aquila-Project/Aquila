@@ -23,6 +23,7 @@ class TreeView : public View {
 	void remove_node(TreeNode *node);
 	using View::add_child;
 	View *add_child(Unique<View> child) override;
+	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;
 
 	void on_drag_enter(DragState &state) override;
 	void on_drag_leave(DragState &state) override;

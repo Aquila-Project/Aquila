@@ -4,6 +4,7 @@
 #include "Aquila/UI/Markup/MarkupPath.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/ComponentInstance.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 #include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Widgets/Button.h"
@@ -98,6 +99,60 @@ Uint64 next_scope_id() {
 	static Uint64 s_next = 0;
 	return ++s_next;
 }
+
+struct ItemRule {
+	std::string_view tag{};
+	std::string_view goes_in{};
+	std::vector<std::string_view> attributes{};
+	std::vector<std::string_view> items{};
+	bool takes_elements = false;
+};
+
+const ItemRule *find_item_rule(std::string_view tag) {
+	static const std::array<ItemRule, 7> s_rules{ {
+		{ .tag = "Option", .goes_in = "a Dropdown", .attributes = { "value", "label", "icon" } },
+		{ .tag = "Item", .goes_in = "a ListBox", .attributes = { "value", "label" } },
+		{ .tag = "Tab",
+		  .goes_in = "a TabView or a TabBar",
+		  .attributes = { "title", "icon", "tooltip" },
+		  .takes_elements = true },
+		{ .tag = "TreeNode",
+		  .goes_in = "a TreeView or a <TreeNode>",
+		  .attributes = { "label" },
+		  .items = { "TreeNode" } },
+		{ .tag = "MenuItem", .goes_in = "a PopupMenu or a <Submenu>", .attributes = { "command", "label", "icon" } },
+		{ .tag = "MenuSeparator", .goes_in = "a PopupMenu or a <Submenu>" },
+		{ .tag = "Submenu",
+		  .goes_in = "a PopupMenu or a <Submenu>",
+		  .attributes = { "label", "icon" },
+		  .items = { "MenuItem", "MenuSeparator", "Submenu" } },
+	} };
+	const auto it = std::ranges::find(s_rules, tag, &ItemRule::tag);
+	return it != s_rules.end() ? &*it : nullptr;
+}
+
+class ItemHolder final : public View {
+  public:
+	ItemHolder(MarkupItem &item, const ItemRule &rule) : m_item(item), m_rule(rule) {}
+
+	[[nodiscard]] std::string_view get_type_name() const override { return m_rule.tag; }
+	[[nodiscard]] bool has_text() const { return m_has_text; }
+
+	bool add_markup_item(MarkupItem &item, IResourceResolver *) override {
+		if (std::ranges::find(m_rule.items, item.tag) == m_rule.items.end()) {
+			return false;
+		}
+		m_item.items.push_back(std::move(item));
+		return true;
+	}
+
+	void apply_xml_text_content(std::string_view text) override { m_has_text = m_has_text || !text.empty(); }
+
+  private:
+	MarkupItem &m_item;
+	const ItemRule &m_rule;
+	bool m_has_text = false;
+};
 
 bool is_built_in_attribute(std::string_view name) {
 	return name == "id" || name == "class" || name == "font" || name == "style" || name == "src" || name == "uv" ||
@@ -421,6 +476,9 @@ void LayoutLoader::check_document(const Markup::MarkupDocument &document) {
 		if (m_factories.contains(definition.name)) {
 			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> has the name of a widget",
 							 document.location(definition.where), definition.name);
+		} else if (find_item_rule(definition.name) != nullptr) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> has the name of an item tag",
+							 document.location(definition.where), definition.name);
 		}
 		defined_in.emplace(definition.name, document.source_name);
 		check_slots(document, definition.root);
@@ -518,6 +576,12 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 	if (node.tag == "Slot") {
 		AQUILA_LOG_ERROR("LayoutLoader: {}: <Slot/> only works inside a <Component>, as one of its elements",
 						 document.location(node.where));
+		return nullptr;
+	}
+
+	if (const ItemRule *rule = find_item_rule(node.tag)) {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: <{}> goes inside {}, it is left out", document.location(node.where),
+						 node.tag, rule->goes_in);
 		return nullptr;
 	}
 
@@ -717,9 +781,47 @@ void LayoutLoader::build_children(View &view, const Markup::MarkupNode &node, co
 			}
 			continue;
 		}
+		if (find_item_rule(child.tag) != nullptr) {
+			add_item(view, child, scope, font);
+			continue;
+		}
 		if (Unique<View> built = build_element(child, scope)) {
 			view.add_child(std::move(built));
 		}
+	}
+}
+
+void LayoutLoader::add_item(View &parent, const Markup::MarkupNode &node, const BuildScope &scope,
+							Text::FontAtlas *font) {
+	const Markup::MarkupDocument &document = *scope.document;
+	const ItemRule &rule = *find_item_rule(node.tag);
+	MarkupItem item{ .tag = node.tag, .location = document.location(node.where) };
+	for (const Markup::MarkupAttribute &attribute : node.attributes) {
+		if (std::ranges::find(rule.attributes, attribute.name) == rule.attributes.end()) {
+			AQUILA_LOG_WARNING("LayoutLoader: {}: <{}> doesn't take the attribute '{}'",
+							   document.location(attribute.where), node.tag, attribute.name);
+			continue;
+		}
+		item.attributes[attribute.name] = scope.substitute(attribute.value, attribute.value_where);
+	}
+
+	ItemHolder holder(item, rule);
+	build_children(holder, node, scope, font);
+	if (holder.has_text()) {
+		AQUILA_LOG_WARNING("LayoutLoader: {}: the text inside <{}> is left out, write it in an attribute",
+						   item.location, node.tag);
+	}
+	if (!holder.get_children().empty() && !rule.takes_elements) {
+		AQUILA_LOG_WARNING("LayoutLoader: {}: <{}> only takes {}, the other elements inside are left out",
+						   item.location, node.tag, rule.items.empty() ? "attributes" : "items");
+	}
+	while (rule.takes_elements && !holder.get_children().empty()) {
+		item.views.push_back(holder.detach_child(holder.get_children().front().get()));
+	}
+
+	if (!parent.add_markup_item(item, this)) {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: <{}> goes inside {}, not '{}', it is left out", item.location, node.tag,
+						 rule.goes_in, parent.get_type_name());
 	}
 }
 

@@ -16,6 +16,7 @@ namespace Aquila::UI::Core {
 class Canvas;
 class ComponentInstance;
 class IResourceResolver;
+struct MarkupItem;
 
 enum class ViewKind : Uint8 {
 	Generic,
@@ -266,6 +267,8 @@ class View {
 
 	/// The text between the tags.
 	virtual void apply_xml_text_content(std::string_view text) { (void)text; }
+
+	virtual bool add_markup_item(MarkupItem &, IResourceResolver *) { return false; }
 
 	/// After every attribute and child of the element was applied.
 	virtual void on_xml_loaded() {}

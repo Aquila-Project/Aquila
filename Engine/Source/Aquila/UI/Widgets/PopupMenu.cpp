@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/PopupMenu.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/IResourceResolver.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 #include "Aquila/UI/Widgets/Separator.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
@@ -23,6 +25,13 @@ void PopupMenu::add_item(std::string text, Delegate<void()> callback) {
 
 void PopupMenu::add_item(std::string text, std::string shortcut, GFX::GfxTexture *icon, Delegate<void()> callback) {
 	m_items.push_back({ std::move(text), std::move(shortcut), icon, std::move(callback), nullptr, false });
+}
+
+void PopupMenu::insert_item(Usize index, std::string text, std::string shortcut, GFX::GfxTexture *icon,
+							Delegate<void()> callback) {
+	const auto at = static_cast<std::ptrdiff_t>(std::min(index, m_items.size()));
+	m_items.insert(m_items.begin() + at,
+				   { std::move(text), std::move(shortcut), icon, std::move(callback), nullptr, false });
 }
 
 void PopupMenu::add_separator() {
@@ -163,6 +172,43 @@ void PopupMenu::rebuild() {
 
 void PopupMenu::refresh() {
 	rebuild();
+}
+
+bool PopupMenu::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
+	if (item.tag == "MenuSeparator") {
+		add_separator();
+		return true;
+	}
+	if (item.tag == "Submenu") {
+		PopupMenu *submenu = add_submenu(std::string(item.get("label")), item.get_texture("icon", resolver));
+		for (MarkupItem &entry : item.items) {
+			submenu->add_markup_item(entry, resolver);
+		}
+		return true;
+	}
+	if (item.tag != "MenuItem") {
+		return false;
+	}
+
+	std::string text(item.get("label"));
+	std::string shortcut;
+	Delegate<void()> callback;
+	if (const std::string_view command = item.get("command"); !command.empty()) {
+		const CommandInfo info = resolver != nullptr ? resolver->query_command(command) : CommandInfo{};
+		if (info.known) {
+			text = text.empty() ? info.title : text;
+			shortcut = info.shortcut;
+			callback = resolver->resolve_command(std::string(command));
+		} else {
+			AQUILA_LOG_WARNING("PopupMenu: {}: unknown command '{}'", item.location, command);
+			text = text.empty() ? std::string(command) : text;
+		}
+	} else if (text.empty()) {
+		AQUILA_LOG_WARNING("PopupMenu: {}: a <MenuItem> needs a command or a label", item.location);
+		return true;
+	}
+	add_item(std::move(text), std::move(shortcut), item.get_texture("icon", resolver), std::move(callback));
+	return true;
 }
 
 void PopupMenu::open_at(Vec2 canvas_pos) {
