@@ -324,6 +324,15 @@ TEST_SUITE("Markup items") {
 		CHECK(deleted == 1);
 	}
 
+	TEST_CASE("a menu item's command isn't checked when the loader has no commands") {
+		LogCapture log;
+		LayoutLoader loader;
+		const Unique<View> root = loader.load_string(R"(<PopupMenu><MenuItem command="scene.save"/></PopupMenu>)");
+		auto *menu = root_as<PopupMenu>(root);
+		CHECK(menu_texts(*menu) == std::vector<std::string>{ "scene.save" });
+		CHECK_MESSAGE(log.stream.str().empty(), log.stream.str());
+	}
+
 	TEST_CASE("items from code go between the markup items") {
 		LayoutLoader loader;
 		const Unique<View> root = loader.load_string(R"(<PopupMenu>

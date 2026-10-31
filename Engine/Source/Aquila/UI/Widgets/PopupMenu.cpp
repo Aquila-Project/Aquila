@@ -213,7 +213,9 @@ bool PopupMenu::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
 			shortcut = info.shortcut;
 			callback = resolver->resolve_command(std::string(command));
 		} else {
-			AQUILA_LOG_WARNING("PopupMenu: {}: unknown command '{}'", item.location, command);
+			if (resolver != nullptr && resolver->has_commands()) {
+				AQUILA_LOG_WARNING("PopupMenu: {}: unknown command '{}'", item.location, command);
+			}
 			text = text.empty() ? std::string(command) : text;
 		}
 	} else if (text.empty()) {

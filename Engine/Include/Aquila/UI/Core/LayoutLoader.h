@@ -47,6 +47,7 @@ class LayoutLoader : public IResourceResolver {
 	void set_command_source(const Commands *commands, const Shortcuts *shortcuts = nullptr);
 	[[nodiscard]] Delegate<void()> resolve_command(const std::string &name) const override;
 	[[nodiscard]] CommandInfo query_command(std::string_view name) const override;
+	[[nodiscard]] bool has_commands() const override { return m_command_source != nullptr; }
 
 	/// VFS path. Null when the file can't be read or an <Include> loops.
 	Unique<View> load_file(const std::string &path);
