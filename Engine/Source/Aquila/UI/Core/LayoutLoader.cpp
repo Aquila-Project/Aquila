@@ -127,7 +127,7 @@ const ItemRule *find_item_rule(std::string_view tag) {
 		{ .tag = "MenuSeparator", .goes_in = "a PopupMenu or a <Submenu>" },
 		{ .tag = "Submenu",
 		  .goes_in = "a PopupMenu or a <Submenu>",
-		  .attributes = { "label", "icon" },
+		  .attributes = { "id", "label", "icon" },
 		  .items = { "MenuItem", "MenuSeparator", "Submenu" } },
 	} };
 	const auto it = std::ranges::find(s_rules, tag, &ItemRule::tag);
@@ -798,7 +798,7 @@ void LayoutLoader::add_item(View &parent, const Markup::MarkupNode &node, const 
 							Text::FontAtlas *font) {
 	const Markup::MarkupDocument &document = *scope.document;
 	const ItemRule &rule = *find_item_rule(node.tag);
-	MarkupItem item{ .tag = node.tag, .location = document.location(node.where) };
+	MarkupItem item{ .tag = node.tag, .location = document.location(node.where), .id_scope = scope.scope_id };
 	for (const Markup::MarkupAttribute &attribute : node.attributes) {
 		if (std::ranges::find(rule.attributes, attribute.name) == rule.attributes.end()) {
 			AQUILA_LOG_WARNING("LayoutLoader: {}: <{}> doesn't take the attribute '{}'",

@@ -1,5 +1,6 @@
 #include <doctest.h>
 
+#include "Aquila/UI/Core/Behaviour.h"
 #include "Aquila/UI/Core/Command.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/Shortcuts.h"
@@ -331,6 +332,24 @@ TEST_SUITE("Markup items") {
 		auto *menu = root_as<PopupMenu>(root);
 		CHECK(menu_texts(*menu) == std::vector<std::string>{ "scene.save" });
 		CHECK_MESSAGE(log.stream.str().empty(), log.stream.str());
+	}
+
+	TEST_CASE("a submenu's id is found by the behaviour of the markup that wrote it") {
+		struct Finder : Behaviour {
+			PopupMenu *found = nullptr;
+			void define_behaviour() override { found = get<PopupMenu>("more"); }
+		};
+		LayoutLoader loader;
+		const Aquila::Foundation::Registration registration = loader.behaviours().add<Finder>("Finder");
+		const Unique<View> root = loader.load_string(R"(<Component name="Menu" behaviour="Finder">
+	<PopupMenu><Submenu id="more" label="More"><MenuItem label="Inner"/></Submenu></PopupMenu>
+</Component>
+<Menu/>)");
+		REQUIRE(root != nullptr);
+		auto *finder = find_behaviour<Finder>(*root);
+		REQUIRE(finder != nullptr);
+		REQUIRE(finder->found != nullptr);
+		CHECK(menu_texts(*finder->found) == std::vector<std::string>{ "Inner" });
 	}
 
 	TEST_CASE("items from code go between the markup items") {

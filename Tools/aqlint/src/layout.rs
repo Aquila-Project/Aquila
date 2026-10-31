@@ -195,7 +195,7 @@ const ITEM_RULES: &[ItemRule] = &[
     ItemRule {
         tag: "Submenu",
         goes_in: IN_MENUS,
-        attributes: &["label", "icon"],
+        attributes: &["id", "label", "icon"],
         items: MENU_ITEMS,
         takes_elements: false,
     },
@@ -1251,7 +1251,7 @@ mod tests {
         <MenuItem command="scene.save" icon="save.svg"/>
         <MenuItem action="open" label="Open"/>
         <MenuSeparator/>
-        <Submenu label="More"><MenuItem label="Inner"/><Submenu label="Deeper"/></Submenu>
+        <Submenu id="more" label="More"><MenuItem label="Inner"/><Submenu label="Deeper"/></Submenu>
     </PopupMenu>
 </View>"#;
         assert_eq!(errors_of(src), []);

@@ -17,6 +17,7 @@ struct MarkupItem {
 	std::vector<MarkupItem> items{};
 	std::vector<Unique<View>> views{};
 	std::string location{};
+	Uint64 id_scope = 0;
 
 	[[nodiscard]] std::string_view get(std::string_view name) const;
 	[[nodiscard]] GFX::GfxTexture *get_texture(std::string_view name, IResourceResolver *resolver) const;

@@ -194,6 +194,10 @@ bool PopupMenu::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
 	}
 	if (item.tag == "Submenu") {
 		PopupMenu *submenu = add_submenu(std::string(item.get("label")), item.get_texture("icon", resolver));
+		if (const std::string_view id = item.get("id"); !id.empty()) {
+			submenu->set_id(std::string(id));
+			submenu->set_id_scope(item.id_scope);
+		}
 		for (MarkupItem &entry : item.items) {
 			submenu->add_markup_item(entry, resolver);
 		}
