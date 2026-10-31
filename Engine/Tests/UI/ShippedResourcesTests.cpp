@@ -8,10 +8,12 @@
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
+#include "Aquila/UI/Widgets/IconLabel.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/OverlayCheckRow.h"
 #include "Aquila/UI/Widgets/Popup.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
 #include "Aquila/UI/Style/StyleParser.h"
@@ -42,7 +44,7 @@ std::string vfs_path(const std::filesystem::path &file) {
 }
 
 void register_editor_widget_stand_ins(Core::LayoutLoader &loader) {
-	for (const char *widget : { "ColorPicker", "RenameField", "TransformGizmo", "ViewportOverlay" }) {
+	for (const char *widget : { "ChordButton", "ColorPicker", "RenameField", "TransformGizmo", "ViewportOverlay" }) {
 		loader.register_widget(widget,
 							   [](std::string_view, Text::FontAtlas *) { return std::make_unique<Core::View>(); });
 	}
@@ -301,5 +303,67 @@ TEST_SUITE("Shipped UI resources") {
 		REQUIRE(info != nullptr);
 		CHECK(info->find_by_id<Core::Label>("state") != nullptr);
 		CHECK(info->find_by_id<Core::SelectableTextView>("path") != nullptr);
+	}
+
+	TEST_CASE("the settings layout holds its header, pages, footer and components") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		register_editor_widget_stand_ins(loader);
+		std::vector<Aquila::Foundation::Registration> registrations;
+		for (const char *behaviour : { "SettingsSection", "SettingsShortcutRow" }) {
+			registrations.push_back(
+				loader.behaviours().add(behaviour, [] { return std::make_unique<Core::Behaviour>(); }));
+		}
+		const std::string file = "/resources/Engine/UI/Windows/settings.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "settings-root");
+		const auto *scopes = root->find_by_id<Core::TabBar>("settings-scopes");
+		REQUIRE(scopes != nullptr);
+		REQUIRE(scopes->get_tab_count() == 2);
+		CHECK(scopes->get_tab(1)->get_tooltip() == "Saved in this project, shipped with its builds");
+		CHECK(root->find_by_id<Core::TextInput>("settings-search") != nullptr);
+		CHECK(root->find_by_id("settings-nav") != nullptr);
+		CHECK(root->find_by_id("settings-content") != nullptr);
+		CHECK(root->find_by_id<Core::Label>("settings-footer-note") != nullptr);
+		CHECK(root->find_by_id<Core::Button>("settings-close") != nullptr);
+
+		Core::View parent;
+		auto *nav = dynamic_cast<Core::Button *>(loader.create(
+			file, "SettingsNavItem", parent, { .attributes = { { "label", "Tiles $1 & <b>" }, { "icon", "eye" } } }));
+		REQUIRE(nav != nullptr);
+		REQUIRE(nav->get_content() != nullptr);
+		CHECK(nav->get_content()->get_label()->get_text() == "Tiles $1 & <b>");
+
+		Core::View *section = loader.create(file, "SettingsSection", parent);
+		REQUIRE(section != nullptr);
+		CHECK(section->find_by_id<Core::Label>("title") != nullptr);
+		CHECK(section->find_by_id<Core::Label>("description") != nullptr);
+		const auto *grid = section->find_by_id<Core::PropertyGrid>("grid");
+		REQUIRE(grid != nullptr);
+		CHECK(grid->get_label_width() == 150.F);
+		CHECK(grid->is_split());
+		CHECK(section->find_by_id<Core::Button>("reset") != nullptr);
+
+		Core::View *row = loader.create(file, "SettingsShortcutRow", parent);
+		REQUIRE(row != nullptr);
+		CHECK(row->find_by_id<Core::Label>("title") != nullptr);
+		CHECK(row->find_by_id("chord") != nullptr);
+		CHECK(row->find_by_id<Core::Button>("reset") != nullptr);
+
+		using TextComponent = std::pair<const char *, const char *>;
+		constexpr std::array<TextComponent, 3> K_TEXT_COMPONENTS = { {
+			{ "SettingsShortcutGroup", "title" },
+			{ "SettingsShortcutClash", "text" },
+			{ "SettingsEmpty", "text" },
+		} };
+		for (const auto &[component, prop] : K_TEXT_COMPONENTS) {
+			auto *label = dynamic_cast<Core::Label *>(
+				loader.create(file, component, parent, { .attributes = { { prop, "Nothing $1 & <b>" } } }));
+			REQUIRE_MESSAGE(label != nullptr, component);
+			CHECK(label->get_text() == "Nothing $1 & <b>");
+		}
+		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
 	}
 }

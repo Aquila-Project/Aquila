@@ -1,0 +1,61 @@
+<Component name="SettingsNavItem" props="label icon">
+    <Button class="settings-nav-item" src="Engine/UI/Icons/$icon.svg">$label</Button>
+</Component>
+
+<Component name="SettingsSection" behaviour="SettingsSection">
+    <View class="settings-section">
+        <Label id="title" class="settings-page-title"/>
+        <Label id="description" class="settings-page-description"/>
+        <PropertyGrid id="grid" label-width="150" split="true" class="settings-grid"/>
+        <Button id="reset" class="settings-reset"/>
+    </View>
+</Component>
+
+<Component name="SettingsShortcutGroup" props="title">
+    <Label class="settings-shortcut-group">$title</Label>
+</Component>
+
+<Component name="SettingsShortcutRow" behaviour="SettingsShortcutRow">
+    <View class="settings-shortcut-row">
+        <Label id="title" class="settings-shortcut-title"/>
+        <ChordButton id="chord" class="settings-chord" tooltip="Click, then press the new shortcut"/>
+        <Button id="reset" class="settings-chord-reset" src="Engine/UI/Icons/undo-2.svg" tooltip="Back to the default shortcut"/>
+    </View>
+</Component>
+
+<Component name="SettingsShortcutClash" props="text">
+    <Label class="settings-shortcut-clash">$text</Label>
+</Component>
+
+<Component name="SettingsEmpty" props="text">
+    <Label class="settings-empty">$text</Label>
+</Component>
+
+<View id="settings-root" class="settings-root">
+    <View class="settings-header">
+        <Image class="settings-header-icon" src="Engine/UI/Icons/settings.svg"/>
+        <Label class="settings-title">Settings</Label>
+        <TabBar id="settings-scopes" class="settings-scopes" tab-class="settings-scope">
+            <Tab title="Editor" tooltip="Your preferences, the same in every project"/>
+            <Tab title="Project" tooltip="Saved in this project, shipped with its builds"/>
+        </TabBar>
+        <View class="settings-search">
+            <Image class="settings-search-icon" src="Engine/UI/Icons/search.svg"/>
+            <TextInput id="settings-search" class="settings-search-input" placeholder="Search settings"/>
+        </View>
+    </View>
+    <View class="settings-body">
+        <ScrollView class="settings-sidebar">
+            <View id="settings-nav" class="settings-nav"/>
+        </ScrollView>
+        <View class="settings-main">
+            <ScrollView class="settings-scroll">
+                <View id="settings-content" class="settings-content"/>
+            </ScrollView>
+        </View>
+    </View>
+    <View class="settings-footer">
+        <Label id="settings-footer-note" class="settings-footer-note"/>
+        <Button id="settings-close" class="settings-btn">Close</Button>
+    </View>
+</View>

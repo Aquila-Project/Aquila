@@ -1,7 +1,9 @@
 #include <doctest.h>
 
 #include "Aquila/UI/Core/Behaviour.h"
+#include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Core/UIResources.h"
+#include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/DockNode.h"
@@ -12,7 +14,10 @@
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
+#include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
+#include "Aquila/UI/Widgets/ScrollView.h"
 #include "Aquila/UI/Widgets/SelectableTextView.h"
+#include "Aquila/UI/Widgets/TabBar.h"
 #include "Aquila/UI/Widgets/DragFloat.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/OverlayCheckRow.h"
@@ -42,6 +47,46 @@ View &snapshot_box(const LoaderCanvas &fixture, F32 width, F32 height) {
 	return *box;
 }
 
+class ChordStandIn final : public Button {
+  public:
+	explicit ChordStandIn(std::string label = {}) : Button(std::move(label)) {}
+	[[nodiscard]] std::string_view get_type_name() const override { return "ChordButton"; }
+};
+
+enum class SettingsShown : Uint8 { Page, Search, Shortcuts, Empty };
+
+struct SettingsNav {
+	const char *name;
+	const char *icon;
+};
+
+constexpr std::array<SettingsNav, 8> K_SETTINGS_NAV = { {
+	{ .name = "Interface", .icon = "palette" },
+	{ .name = "Viewport", .icon = "eye" },
+	{ .name = "Navigation", .icon = "video" },
+	{ .name = "Gizmos", .icon = "move-3d" },
+	{ .name = "Play", .icon = "play" },
+	{ .name = "Content Browser", .icon = "folder" },
+	{ .name = "Shortcuts", .icon = "keyboard" },
+	{ .name = "Advanced", .icon = "wrench" },
+} };
+
+const Aquila::Reflection::TypeInfo &settings_search_type() {
+	static const Unique<Aquila::Reflection::TypeInfo> type = [] {
+		auto filtered = std::make_unique<Aquila::Reflection::TypeInfo>("Interface");
+		for (const Aquila::Reflection::Property &property : InspectorFixture::everything_type().get_properties()) {
+			if (property.name == "Roughness" || property.name == "Count") {
+				filtered->add(property);
+			}
+		}
+		return filtered;
+	}();
+	return *type;
+}
+
+Aquila::GFX::GfxTexture *settings_icon(TextureCache &icons, std::string_view name) {
+	return icons.load("Engine/UI/Icons/" + std::string(name) + ".svg");
+}
 }
 
 TEST_SUITE("Style snapshots") {
@@ -342,6 +387,118 @@ TEST_SUITE("Style snapshots") {
 			path->add_line("/home/user/Aquila Studio/Templates/Player");
 			fixture.settle_fully();
 			write_style_snapshot(found ? "build" : "build-missing", box);
+		}
+	}
+
+	TEST_CASE("style snapshot settings" * doctest::skip()) {
+		using InspectorFixture::Everything;
+		const std::string file = "/resources/Engine/UI/Windows/settings.aqlayout";
+		for (const SettingsShown shown :
+			 { SettingsShown::Page, SettingsShown::Search, SettingsShown::Shortcuts, SettingsShown::Empty }) {
+			LoaderCanvas fixture(1200, 900);
+			TextureCache icons(*test_gpu().ctx, "/resources");
+			fixture.loader.register_texture_cache(&icons);
+			fixture.loader.register_widget("ChordButton", [](std::string_view text, Text::FontAtlas *) {
+				return std::make_unique<ChordStandIn>(std::string(text));
+			});
+			std::vector<Aquila::Foundation::Registration> registrations;
+			for (const char *behaviour : { "SettingsSection", "SettingsShortcutRow" }) {
+				registrations.push_back(
+					fixture.loader.behaviours().add(behaviour, [] { return std::make_unique<Behaviour>(); }));
+			}
+			View &box = snapshot_box(fixture, 860.F, 640.F);
+			View *window = fixture.loader.build_file(file, box);
+			REQUIRE(window != nullptr);
+			auto *note = window->find_by_id<Label>("settings-footer-note");
+			auto *scopes = window->find_by_id<TabBar>("settings-scopes");
+			View *nav = window->find_by_id("settings-nav");
+			View *content = window->find_by_id("settings-content");
+			REQUIRE(note != nullptr);
+			REQUIRE(scopes != nullptr);
+			REQUIRE(nav != nullptr);
+			REQUIRE(content != nullptr);
+			note->set_text("Saved for you in editor_preferences.json, for every project.");
+			scopes->set_active(0);
+
+			const bool searching = shown == SettingsShown::Search || shown == SettingsShown::Empty;
+			const Usize selected = shown == SettingsShown::Shortcuts ? 6 : 0;
+			for (Usize i = 0; i < K_SETTINGS_NAV.size(); ++i) {
+				View *item = fixture.loader.create(
+					file, "SettingsNavItem", *nav,
+					{ .attributes = { { "label", K_SETTINGS_NAV[i].name }, { "icon", K_SETTINGS_NAV[i].icon } } });
+				REQUIRE(item != nullptr);
+				item->set_class("settings-nav-item-active", !searching && i == selected);
+			}
+
+			const auto section = [&](const std::string &title, const std::string &description, bool full,
+									 const std::string &reset_text) -> View & {
+				View *created = fixture.loader.create(file, "SettingsSection", *content);
+				REQUIRE(created != nullptr);
+				auto *title_label = created->find_by_id<Label>("title");
+				auto *description_label = created->find_by_id<Label>("description");
+				auto *reset = created->find_by_id<Button>("reset");
+				REQUIRE(title_label != nullptr);
+				REQUIRE(description_label != nullptr);
+				REQUIRE(reset != nullptr);
+				title_label->set_text(title);
+				title_label->set_class("settings-page-title", full);
+				title_label->set_class("settings-section-title", !full);
+				description_label->set_text(description);
+				description_label->set_hidden(!full || description.empty());
+				reset->set_text(reset_text);
+				reset->set_hidden(reset_text.empty());
+				return *created;
+			};
+			const auto add = [&](View &host, View &before, const char *component, ComponentArgs args = {}) -> View & {
+				View *created = fixture.loader.create(file, component, host, std::move(args));
+				REQUIRE(created != nullptr);
+				host.reorder_child(created, &before);
+				return *created;
+			};
+
+			Everything instance;
+			Unique<ReflectedPropertyGrid> reflected;
+			if (shown == SettingsShown::Page || shown == SettingsShown::Search) {
+				const bool full = shown == SettingsShown::Page;
+				View &page =
+					section("Interface", "Fonts and size of the whole editor.", full, full ? "Reset to Defaults" : "");
+				auto *grid = page.find_by_id<PropertyGrid>("grid");
+				REQUIRE(grid != nullptr);
+				reflected = std::make_unique<ReflectedPropertyGrid>(
+					*grid, full ? InspectorFixture::everything_type() : settings_search_type(), nullptr);
+				reflected->bind(&instance);
+			} else if (shown == SettingsShown::Shortcuts) {
+				View &page =
+					section("Shortcuts", "Click a shortcut and press the new keys.", true, "Reset All Shortcuts");
+				page.find_by_id("grid")->set_hidden(true);
+				View &page_reset = *page.find_by_id("reset");
+				add(page, page_reset, "SettingsShortcutGroup", { .attributes = { { "title", "Scene" } } });
+				for (const bool bound : { true, false }) {
+					View &row = add(page, page_reset, "SettingsShortcutRow");
+					auto *title = row.find_by_id<Label>("title");
+					auto *chord = row.find_by_id<Button>("chord");
+					auto *reset = row.find_by_id<Button>("reset");
+					REQUIRE(title != nullptr);
+					REQUIRE(chord != nullptr);
+					REQUIRE(reset != nullptr);
+					title->set_text(bound ? "Save Scene" : "Open Scene");
+					chord->set_text(bound ? "Ctrl+S" : "Not set");
+					chord->set_class("settings-chord-empty", !bound);
+					reset->set_hidden(!bound);
+					if (bound) {
+						add(page, page_reset, "SettingsShortcutClash",
+							{ .attributes = { { "text", "Also used by Save Scene As" } } });
+					}
+				}
+			} else {
+				REQUIRE(fixture.loader.create(file, "SettingsEmpty", *content,
+											  { .attributes = { { "text", "Nothing matches \"zzz\"." } } }) != nullptr);
+			}
+
+			fixture.settle_fully();
+			constexpr std::array<const char *, 4> K_NAMES = { "settings-page", "settings-search", "settings-shortcuts",
+															  "settings-empty" };
+			write_style_snapshot(K_NAMES.at(static_cast<Usize>(shown)), box);
 		}
 	}
 }

@@ -34,7 +34,6 @@ class EditorContext;
 class EditorWindows;
 class Workspaces;
 class StatusBar;
-class SettingsWindow;
 class BuildWindow;
 class ProjectLauncher;
 class ProjectManager;
@@ -142,7 +141,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<Aquila::UI::Core::DockWindowManager> m_dock_manager;
 
 	Unique<Aquila::UI::DevTools::UIDevTools> m_devtools;
-	Unique<SettingsWindow> m_settings_window;
+	Unique<Aquila::UI::Core::BehaviourWindow> m_settings_window;
 	Unique<Aquila::UI::Core::BehaviourWindow> m_build_window;
 	Unique<ProjectLauncher> m_project_launcher;
 	bool m_editor_entered = false;

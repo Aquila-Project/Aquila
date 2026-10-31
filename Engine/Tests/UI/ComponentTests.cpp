@@ -390,6 +390,23 @@ TEST_SUITE("Components from code") {
 		CHECK(texts(*maker->detached) == std::vector<std::string>{ "detached" });
 	}
 
+	TEST_CASE("a behaviour creating components on every rebuild leaves the style set alone") {
+		MarkupFiles files;
+		files.write(K_FILE, std::string(K_ROW) + R"(<Component name="Maker" behaviour="Maker"><View/></Component>)");
+		LayoutLoader loader;
+		const Aquila::Foundation::Registration registration = loader.behaviours().add<Maker>("Maker");
+		View parent;
+		auto *maker = loader.create<Maker>(K_FILE, "Maker", parent);
+		REQUIRE(maker != nullptr);
+		const Uint64 revision = loader.styles().get_revision();
+		for (int rebuild = 0; rebuild < 20; ++rebuild) {
+			maker->root().clear_children();
+			REQUIRE(maker->create("Row", maker->root(), { .attributes = { { "label", "again" } } }) != nullptr);
+		}
+		CHECK(texts(*maker->root().get_children().front()) == std::vector<std::string>{ "again" });
+		CHECK(loader.styles().get_revision() == revision);
+	}
+
 	TEST_CASE("a relative file resolves against the UI folder, not the last file read") {
 		MarkupFiles files;
 		files.write(K_FILE, R"(<View/>)");

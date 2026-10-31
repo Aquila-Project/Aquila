@@ -28,6 +28,7 @@
 #include "UI/Windows/SettingsWindow.h"
 #include "UI/Viewport/TransformGizmo.h"
 #include "UI/Viewport/ViewportOverlay.h"
+#include "UI/Widgets/ChordButton.h"
 #include "UI/Widgets/RenameField.h"
 
 #include "Aquila/Foundation/Macros.h"
@@ -112,6 +113,9 @@ void EditorModule::on_attach(EngineContext &engine) {
 	});
 	layouts.register_widget("RenameField", [](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
 		return std::make_unique<RenameField>();
+	});
+	layouts.register_widget("ChordButton", [](std::string_view text, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
+		return std::make_unique<ChordButton>(std::string(text));
 	});
 	layouts.register_widget("TransformGizmo", [this](std::string_view, Aquila::UI::Text::FontAtlas *) -> Unique<View> {
 		return m_context ? std::make_unique<TransformGizmo>(*m_context) : nullptr;
@@ -818,9 +822,11 @@ void EditorModule::open_settings_window() {
 		return;
 	}
 
-	m_settings_window = std::make_unique<SettingsWindow>(*m_context);
-	m_settings_window->build(860, 640, m_ui_host->get_layout_loader());
-	m_settings_window->on_preferences_changed = [this] { preferences_edited(); };
+	m_settings_window = std::make_unique<BehaviourWindow>(m_ui_host->get_layout_loader(),
+														  std::make_unique<SettingsWindow>(*m_context), 860, 640);
+	if (auto *settings = m_settings_window->get_behaviour<SettingsWindow>()) {
+		settings->on_preferences_changed = [this] { preferences_edited(); };
+	}
 	m_settings_window->open(m_engine->get_window_host(), "Aquila - Settings",
 							[this] {
 								m_settings_window.reset();
