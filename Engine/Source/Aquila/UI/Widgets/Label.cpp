@@ -6,6 +6,60 @@
 
 namespace Aquila::UI::Core {
 
+namespace {
+
+constexpr F32 K_FIT_TOLERANCE_PX = 0.5F;
+
+Usize next_char(std::string_view text, Usize at) {
+	const Foundation::Utf8::Decoded decoded = Foundation::Utf8::decode(text, at);
+	return std::min(text.size(), at + (decoded.size > 0 ? decoded.size : 1U));
+}
+
+Usize previous_char(std::string_view text, Usize at) {
+	if (at == 0) {
+		return 0;
+	}
+	--at;
+	while (at > 0 && (static_cast<Uint8>(text[at]) & 0xC0U) == 0x80U) {
+		--at;
+	}
+	return at;
+}
+
+std::string shortened(std::string_view text, Text::FontAtlas &font, F32 size, F32 width, TextOverflow overflow) {
+	const std::string mark = font.get_glyph(0x2026) != nullptr ? "\u2026" : "...";
+	const auto fits = [&](const std::string &candidate) {
+		return font.measure_text(candidate, size).x <= width + K_FIT_TOLERANCE_PX;
+	};
+
+	if (overflow == TextOverflow::Ellipsis) {
+		for (Usize keep = previous_char(text, text.size()); keep > 0; keep = previous_char(text, keep)) {
+			std::string candidate = std::string(text.substr(0, keep)) + mark;
+			if (fits(candidate)) {
+				return candidate;
+			}
+		}
+		return mark;
+	}
+
+	Usize head = previous_char(text, next_char(text, text.size() / 2));
+	Usize tail = head;
+	while (head > 0 || tail < text.size()) {
+		if (head >= text.size() - tail) {
+			head = previous_char(text, head);
+		} else {
+			tail = next_char(text, tail);
+		}
+		std::string candidate = std::string(text.substr(0, head)) + mark + std::string(text.substr(tail));
+		if (fits(candidate)) {
+			return candidate;
+		}
+	}
+	return mark;
+}
+
+}
+
 Label::Label(std::string text, Text::FontAtlas *font) : m_text(std::move(text)), m_font(font) {
 	m_should_skip_hit_test = true;
 }
@@ -83,7 +137,15 @@ void Label::on_draw_self(Rendering::DrawList &draw_list) {
 	const float font_size = get_display_style().font_size;
 	const Int32 z = 3;
 	const bool wrap = get_display_style().white_space == WhiteSpace::Normal;
+	const TextOverflow overflow = get_display_style().text_overflow;
+	const F32 size = font_size > 0.F ? font_size : SharedConstants::FONT_DEFAULT_SIZE;
 
+	if (!wrap && overflow != TextOverflow::Clip &&
+		font->measure_text(m_text, size).x > world_rect.size.x + K_FIT_TOLERANCE_PX) {
+		draw_list.draw_text(world_rect, shortened(m_text, *font, size, world_rect.size.x, overflow), font, color,
+							font_size, get_display_style().text_align, z, false);
+		return;
+	}
 	draw_list.draw_text(world_rect, m_text, font, color, font_size, get_display_style().text_align, z, wrap);
 }
 

@@ -44,6 +44,7 @@ struct StyleProperties {
 	Option<std::string> font_family;
 	Option<TextAlign> text_align;
 	Option<WhiteSpace> white_space;
+	Option<TextOverflow> text_overflow;
 
 	Option<std::vector<BoxShadow>> box_shadows;
 

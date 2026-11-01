@@ -547,6 +547,14 @@ void apply_declaration(StyleProperties &props, std::string_view prop_raw, std::s
 		} else if (value_lower == "nowrap" || value_lower == "no-wrap") {
 			props.white_space = WhiteSpace::Nowrap;
 		}
+	} else if (prop == "text-overflow") {
+		if (value_lower == "clip") {
+			props.text_overflow = TextOverflow::Clip;
+		} else if (value_lower == "ellipsis") {
+			props.text_overflow = TextOverflow::Ellipsis;
+		} else if (value_lower == "ellipsis-middle") {
+			props.text_overflow = TextOverflow::EllipsisMiddle;
+		}
 
 	} else if (prop == "box-shadow") {
 		if (value_lower == "none") {

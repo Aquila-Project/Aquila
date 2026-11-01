@@ -48,6 +48,33 @@ struct Fixture {
 };
 
 constexpr const char *K_LONG_TEXT = "Build and run the whole project with every scene in it";
+constexpr const char *K_FILE_NAME = "Tiles_GreenAndGoldPattern_01_basecolor.jpg";
+
+Label *one_line_label(View &parent, TextOverflow overflow) {
+	auto *label = parent.add_child<Label>(std::string(K_FILE_NAME));
+	StyleProperties style;
+	style.width = StyleLength::grow();
+	style.min_width = StyleLength::pixel(0.F);
+	style.white_space = WhiteSpace::Nowrap;
+	style.text_overflow = overflow;
+	label->merge_style(style);
+	return label;
+}
+
+std::string drawn_text(View &view) {
+	Rendering::DrawList list;
+	view.on_draw_self(list);
+	for (const Rendering::DrawCmd &command : list.take_commands()) {
+		if (const auto *text = std::get_if<Rendering::TextCmd>(&command)) {
+			return text->text;
+		}
+	}
+	return {};
+}
+
+bool has_ellipsis(const std::string &text) {
+	return text.find("\u2026") != std::string::npos || text.find("...") != std::string::npos;
+}
 
 F32 single_line_height(const std::function<View *(View &)> &make) {
 	Fixture wide(2000.F);
@@ -201,5 +228,37 @@ TEST_SUITE("Text wrapping") {
 		const std::vector<Rendering::TextLine> broken = Rendering::wrap_text("one two", font, 14.F, narrow);
 		REQUIRE(broken.size() == 2);
 		CHECK(broken[1].start == 4);
+	}
+
+	TEST_CASE("a one-line label with a middle ellipsis keeps both ends of its text") {
+		Fixture narrow(120.F);
+		Label *label = one_line_label(*narrow.box, TextOverflow::EllipsisMiddle);
+		narrow.layout();
+		const Rect rect = label->get_layout_rect();
+		CHECK(rect.size.x <= 120.F + 0.5F);
+		const std::string text = drawn_text(*label);
+		CHECK(text.starts_with("Tiles"));
+		CHECK(text.ends_with(".jpg"));
+		CHECK(has_ellipsis(text));
+		CHECK(test_gpu().font->measure_text(text, label->get_display_style().font_size).x <= rect.size.x + 0.5F);
+	}
+
+	TEST_CASE("a one-line label with an end ellipsis keeps the start of its text") {
+		Fixture narrow(120.F);
+		Label *label = one_line_label(*narrow.box, TextOverflow::Ellipsis);
+		narrow.layout();
+		const std::string text = drawn_text(*label);
+		CHECK(text.starts_with("Tiles"));
+		CHECK(!text.ends_with(".jpg"));
+		CHECK(has_ellipsis(text));
+		CHECK(test_gpu().font->measure_text(text, label->get_display_style().font_size).x <=
+			  label->get_layout_rect().size.x + 0.5F);
+	}
+
+	TEST_CASE("a one-line label that fits is drawn as it is") {
+		Fixture wide(2000.F);
+		Label *label = one_line_label(*wide.box, TextOverflow::EllipsisMiddle);
+		wide.layout();
+		CHECK(drawn_text(*label) == K_FILE_NAME);
 	}
 }
