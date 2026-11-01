@@ -11,6 +11,7 @@
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
 #include "Aquila/UI/Widgets/TextInput.h"
+#include "Aquila/UI/Widgets/TreeView.h"
 #include "Aquila/UI/Rendering/DrawList.h"
 
 #include "CanvasTestSupport.h"
@@ -27,10 +28,13 @@ struct Fixture {
 	Canvas canvas{ 800, 600 };
 	View *box = nullptr;
 
-	explicit Fixture(F32 width, Overflow overflow = Overflow::Hidden) {
+	explicit Fixture(F32 width, Overflow overflow = Overflow::Hidden, bool dock_styles = false) {
 		test_gpu();
-		const std::array<std::string, 2> styles = { "/resources/Engine/UI/tokens.aqstyle",
-													"/resources/Engine/UI/widgets.aqstyle" };
+		std::vector<std::string> styles = { "/resources/Engine/UI/tokens.aqstyle",
+											"/resources/Engine/UI/widgets.aqstyle" };
+		if (dock_styles) {
+			styles.emplace_back("/resources/Engine/UI/dock.aqstyle");
+		}
 		StyleParser::load_files(styles, canvas.get_style_sheet());
 
 		box = canvas.get_root()->add_child<View>();
@@ -74,6 +78,27 @@ std::string drawn_text(View &view) {
 		}
 	}
 	return {};
+}
+
+void collect_labels(const View &view, std::vector<const Label *> &found) {
+	if (const auto *label = dynamic_cast<const Label *>(&view); label != nullptr && !label->get_text().empty()) {
+		found.push_back(label);
+	}
+	for (const auto &child : view.get_children()) {
+		collect_labels(*child, found);
+	}
+}
+
+void check_one_line(const View &view) {
+	std::vector<const Label *> labels;
+	collect_labels(view, labels);
+	REQUIRE(!labels.empty());
+	for (const Label *label : labels) {
+		CAPTURE(label->get_text());
+		const F32 line = test_gpu().font->get_line_height() * label->get_display_style().font_size;
+		CHECK(label->get_layout_rect().size.y < line * 1.5F);
+		CHECK(label->get_display_style().white_space == WhiteSpace::Nowrap);
+	}
 }
 
 bool has_ellipsis(const std::string &text) {
@@ -311,5 +336,42 @@ TEST_SUITE("Text wrapping") {
 		}
 		AssetSlot::set_adapter("texture", {});
 		Aquila::UI::Core::FontRegistry::set_ui_scale(1.F);
+	}
+
+	TEST_CASE("a dock tab keeps its title on one line and stays inside the tab bar") {
+		Fixture narrow(90.F, Overflow::Hidden, true);
+		auto *strip = narrow.box->add_child<View>();
+		strip->add_class("dock-tab-strip");
+		StyleProperties strip_size;
+		strip_size.width = StyleLength::percent(100.F);
+		strip_size.height = StyleLength::pixel(28.F);
+		strip->merge_style(strip_size);
+		auto *tab = strip->add_child<Button>(std::string("Content Browser And Everything Else"));
+		tab->add_class("dock-tab-btn");
+		narrow.layout();
+
+		check_one_line(*tab);
+		CHECK(tab->get_absolute_rect().right() <= strip->get_absolute_rect().right() + 0.5F);
+		CHECK(tab->get_display_style().overflow == Overflow::Clip);
+	}
+
+	TEST_CASE("a tab view tab keeps its title on one line") {
+		Fixture narrow(90.F);
+		auto *tab = narrow.box->add_child<Button>(std::string("Rendering And Post Processing"));
+		tab->add_class("tab-button");
+		narrow.layout();
+		check_one_line(*tab);
+		CHECK(tab->get_absolute_rect().right() <= narrow.box->get_absolute_rect().right() + 0.5F);
+	}
+
+	TEST_CASE("a hierarchy row keeps its name on one line and stays inside the panel") {
+		Fixture narrow(110.F);
+		auto *tree = narrow.box->add_child<TreeView>();
+		TreeNode *node = tree->add_node("Directional Light With A Very Long Name");
+		REQUIRE(node != nullptr);
+		narrow.layout();
+
+		check_one_line(*node);
+		CHECK(node->get_header()->get_absolute_rect().right() <= narrow.box->get_absolute_rect().right() + 0.5F);
 	}
 }

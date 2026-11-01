@@ -21,9 +21,10 @@ TabView {
     padding: 0px 14px;
     height: 100%;
     min-width: 0px;
-    overflow: hidden;
+    overflow: clip;
+    white-space: nowrap;
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     font-family: regular;
     font-size: 14px;
     color: var(--text-dim);
@@ -944,7 +945,10 @@ Vec4Field {
     font-size: 13px;
     color: var(--text);
     width: grow;
+    min-width: 0px;
     height: 100%;
+    overflow: clip;
+    white-space: nowrap;
     padding: 0px 8px;
     align-items: center;
     justify-content: start;

@@ -70,9 +70,10 @@
     padding: 0px 8px 0px 10px;
     height: 100%;
     min-width: 0px;
-    overflow: hidden;
+    overflow: clip;
+    white-space: nowrap;
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     background-color: transparent;
     border-width: 0px;
     transition: 60ms linear;

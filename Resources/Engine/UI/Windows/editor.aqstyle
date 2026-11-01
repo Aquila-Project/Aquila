@@ -111,9 +111,12 @@
     font-size: 13px;
     color: var(--text-dim);
     min-height: 26px;
+    min-width: 0px;
     padding: 0px 12px;
+    overflow: clip;
+    white-space: nowrap;
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     background-color: transparent;
     border-width: 0px;
     border-radius: 4px;
