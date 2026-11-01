@@ -7,6 +7,17 @@
 
 namespace Aquila::UI::Rendering {
 
+/// One line of wrapped text, the bytes [start, end). start == end is a blank line.
+struct TextLine {
+	Usize start = 0;
+	Usize end = 0;
+};
+
+/// Breaks text the way the layout does: at spaces and newlines, and a word wider than the line between characters
+/// (the last piece starts the next line), so drawn text fills exactly the lines its view was given.
+[[nodiscard]] std::vector<TextLine> wrap_text(std::string_view text, Text::FontAtlas &font, F32 font_size,
+											  F32 max_width);
+
 /// What views draw into. Positions are absolute canvas pixels, higher z draws on top.
 class DrawList {
   public:

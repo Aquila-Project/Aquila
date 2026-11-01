@@ -167,4 +167,39 @@ TEST_SUITE("Text wrapping") {
 		CHECK(label->get_layout_rect().size.x <= 150.F + 0.5F);
 		CHECK(label->get_layout_rect().size.y > test_gpu().font->measure_text("A", 14.F).y * 1.5F);
 	}
+
+	TEST_CASE("a word wider than its label is drawn on the lines the layout made for it") {
+		Fixture narrow(120.F);
+		auto *label = narrow.box->add_child<Label>(std::string("Tiles_GreenAndGoldPattern_01_basecolor.jpg"));
+		narrow.layout();
+		const Rect rect = label->get_layout_rect();
+		const F32 size = label->get_display_style().font_size;
+		Text::FontAtlas &font = *test_gpu().font;
+		const std::string &text = label->get_text();
+
+		const std::vector<Rendering::TextLine> lines = Rendering::wrap_text(text, font, size, rect.size.x);
+		CHECK(lines.size() > 1);
+		CHECK(static_cast<F32>(lines.size()) * font.get_line_height() * size == doctest::Approx(rect.size.y));
+		for (const Rendering::TextLine &line : lines) {
+			const std::string_view piece = std::string_view(text).substr(line.start, line.end - line.start);
+			CHECK(font.measure_text(piece, size).x <= rect.size.x + 0.5F);
+		}
+		CHECK(lines.front().start == 0);
+		CHECK(lines.back().end == text.size());
+	}
+
+	TEST_CASE("wrapped text still breaks at spaces and keeps blank lines") {
+		Text::FontAtlas &font = *test_gpu().font;
+		const std::string text = "one two\n\nthree";
+		const std::vector<Rendering::TextLine> lines = Rendering::wrap_text(text, font, 14.F, 1000.F);
+		REQUIRE(lines.size() == 3);
+		CHECK(text.substr(lines[0].start, lines[0].end - lines[0].start) == "one two");
+		CHECK(lines[1].start == lines[1].end);
+		CHECK(text.substr(lines[2].start, lines[2].end - lines[2].start) == "three");
+
+		const F32 narrow = std::max(font.measure_text("one", 14.F).x, font.measure_text("two", 14.F).x) + 1.F;
+		const std::vector<Rendering::TextLine> broken = Rendering::wrap_text("one two", font, 14.F, narrow);
+		REQUIRE(broken.size() == 2);
+		CHECK(broken[1].start == 4);
+	}
 }
