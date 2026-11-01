@@ -13,9 +13,9 @@ struct UISettings {
 	std::string resources_path = "/resources";
 	std::string layout_dir = "/resources/Engine/UI/";
 	std::vector<std::string> style_paths = {
-		"/resources/Engine/UI/tokens.aqstyle",		  "/resources/Engine/UI/widgets.aqstyle",
-		"/resources/Engine/UI/dock.aqstyle",		  "/resources/Engine/UI/launcher.aqstyle",
-		"/resources/Engine/UI/editor_chrome.aqstyle", "/resources/Engine/UI/devtools.aqstyle",
+		"/resources/Engine/UI/tokens.aqstyle",
+		"/resources/Engine/UI/widgets.aqstyle",
+		"/resources/Engine/UI/dock.aqstyle",
 	};
 };
 

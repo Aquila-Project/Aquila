@@ -958,15 +958,6 @@ void EditorModule::register_editor_commands() {
 		.enabled = [this] { return build_window() == nullptr || !build_window()->is_busy(); },
 	});
 	commands.add({
-		.id = "editor.reload_layout",
-		.title = "Reload layout",
-		.run =
-			[this] {
-				m_ui_host->get_layout_loader().load_file(m_context->window_layout("editor"));
-				AQUILA_LOG_INFO("Editor layout reloaded");
-			},
-	});
-	commands.add({
 		.id = "editor.reload_styles",
 		.title = "Reload styles",
 		.run =

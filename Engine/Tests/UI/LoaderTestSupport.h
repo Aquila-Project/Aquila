@@ -7,9 +7,8 @@
 #include "VfsTestSupport.h"
 
 inline std::vector<std::string> editor_base_styles() {
-	return { "/resources/Engine/UI/tokens.aqstyle",		   "/resources/Engine/UI/widgets.aqstyle",
-			 "/resources/Engine/UI/dock.aqstyle",		   "/resources/Engine/UI/launcher.aqstyle",
-			 "/resources/Engine/UI/editor_chrome.aqstyle", "/resources/Engine/UI/devtools.aqstyle" };
+	return { "/resources/Engine/UI/tokens.aqstyle", "/resources/Engine/UI/widgets.aqstyle",
+			 "/resources/Engine/UI/dock.aqstyle" };
 }
 
 struct LoaderCanvas {

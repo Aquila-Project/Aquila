@@ -25,9 +25,8 @@ struct Fixture {
 
 	explicit Fixture(F32 width, Overflow overflow = Overflow::Hidden) {
 		test_gpu();
-		const std::array<std::string, 3> styles = { "/resources/Engine/UI/tokens.aqstyle",
-													"/resources/Engine/UI/widgets.aqstyle",
-													"/resources/Engine/UI/editor_chrome.aqstyle" };
+		const std::array<std::string, 2> styles = { "/resources/Engine/UI/tokens.aqstyle",
+													"/resources/Engine/UI/widgets.aqstyle" };
 		StyleParser::load_files(styles, canvas.get_style_sheet());
 
 		box = canvas.get_root()->add_child<View>();

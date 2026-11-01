@@ -15,8 +15,7 @@ namespace {
 struct Inspector {
 	LoaderCanvas fixture{ 1200,
 						  900,
-						  { "/resources/Engine/UI/tokens.aqstyle", "/resources/Engine/UI/widgets.aqstyle",
-							"/resources/Engine/UI/editor_chrome.aqstyle" } };
+						  { "/resources/Engine/UI/tokens.aqstyle", "/resources/Engine/UI/widgets.aqstyle" } };
 	View *box = nullptr;
 	EverythingInspector inspector;
 

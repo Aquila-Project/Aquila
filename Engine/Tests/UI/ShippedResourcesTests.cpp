@@ -90,6 +90,15 @@ TEST_SUITE("Shipped UI resources") {
 		}
 	}
 
+	TEST_CASE("the old shared sheets are gone, windows and components carry their own") {
+		for (const char *sheet : { "editor_chrome.aqstyle", "launcher.aqstyle", "devtools.aqstyle" }) {
+			CHECK_FALSE_MESSAGE(std::filesystem::exists(K_UI_DIR / sheet), sheet);
+		}
+		for (const char *sheet : { "tokens.aqstyle", "widgets.aqstyle", "dock.aqstyle" }) {
+			CHECK_MESSAGE(std::filesystem::exists(K_UI_DIR / sheet), sheet);
+		}
+	}
+
 	TEST_CASE("every window has its layout and its style in Windows") {
 		CHECK(std::filesystem::exists(K_UI_DIR / "Windows/game.aqlayout"));
 		for (const auto &file : files_with(".aqlayout")) {
@@ -107,9 +116,6 @@ TEST_SUITE("Shipped UI resources") {
 			"/resources/Engine/UI/tokens.aqstyle",
 			"/resources/Engine/UI/widgets.aqstyle",
 			"/resources/Engine/UI/dock.aqstyle",
-			"/resources/Engine/UI/editor_chrome.aqstyle",
-			"/resources/Engine/UI/launcher.aqstyle",
-			"/resources/Engine/UI/devtools.aqstyle",
 			"/resources/Engine/UI/Windows/console.aqstyle",
 			"/resources/Engine/UI/Windows/build.aqstyle",
 		};

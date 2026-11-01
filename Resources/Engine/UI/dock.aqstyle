@@ -204,11 +204,6 @@
     background-color: var(--bg-base);
 }
 
-#panel-hierarchy {
-    gap: 2px;
-    padding: 2px;
-}
-
 .floating-panel-body {
     flex-direction: column;
     width: 100%;

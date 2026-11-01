@@ -5,12 +5,6 @@
     background-color: var(--bg-base);
 }
 
-#workspace {
-    width: 100%;
-    height: grow;
-    flex-direction: column;
-}
-
 #dock-root {
     width: 100%;
     height: grow;

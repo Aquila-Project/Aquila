@@ -206,14 +206,10 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 	}
 
 	EditorWindow *built = window.get();
-	if (built->get_layout_path().empty()) {
-		built->build(*panel);
-	} else {
-		const std::string path = built->get_layout_path();
-		if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
-			AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
-			return unstage();
-		}
+	const std::string path = built->get_layout_path();
+	if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
+		AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
+		return unstage();
 	}
 
 	if (overlay != nullptr) {
@@ -230,9 +226,6 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 
 	built->m_on_destroyed = [this](EditorWindow *destroyed) { forget(destroyed); };
 	m_live.push_back({ built, panel });
-	if (window) {
-		panel->set_content_owner(std::move(window));
-	}
 	return unstage();
 }
 
