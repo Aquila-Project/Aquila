@@ -40,12 +40,16 @@ class SettingsWindow final : public Aquila::UI::Core::WindowBehaviour {
 		Unique<Aquila::Reflection::TypeInfo> type;
 		void *instance = nullptr;
 		Delegate<void()> reset;
+		Delegate<void(SettingsSection &, Aquila::UI::Core::ReflectedPropertyGrid &)> extra;
 		bool shortcuts = false;
 	};
 
 	Page &add_page(Scope scope, std::string name, std::string icon, std::string description);
 	void add_editor_pages();
 	void add_project_pages();
+	void fill_interface_type(Page &page);
+	void refresh_font_families();
+	void add_font();
 
 	void select_scope(Scope scope);
 	void select_page(Usize index);
@@ -59,6 +63,8 @@ class SettingsWindow final : public Aquila::UI::Core::WindowBehaviour {
 	EditorContext &m_context;
 	ProjectSettings m_project;
 	std::vector<std::string> m_font_families;
+	Usize m_interface_page = 0;
+	bool m_fonts_changed = false;
 	std::vector<Page> m_pages;
 	Scope m_scope = Scope::Editor;
 	std::array<Usize, 2> m_selected{};

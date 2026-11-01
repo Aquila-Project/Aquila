@@ -122,6 +122,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	EditorShell *m_shell = nullptr;
 	Unique<Aquila::UI::Core::UIHost> m_ui_host;
 	Aquila::Foundation::Registration m_layout_service;
+	Aquila::Foundation::Registration m_user_fonts;
 	Unique<ProjectManager> m_project_manager;
 	Unique<Aquila::UI::Core::TextureCache> m_texture_cache;
 	Unique<AssetThumbnails> m_thumbnails;

@@ -21,7 +21,11 @@ class FontFace {
 	AQUILA_NONCOPYABLE(FontFace);
 	AQUILA_NONMOVEABLE(FontFace);
 
+	/// Null when the data isn't a TrueType/OpenType font.
 	static Unique<FontFace> create(const Uint8 *ttf_data, Uint64 data_size);
+	/// The family name the font stores (the typographic family, else the family), "" when it stores none.
+	/// @return nullopt when the data isn't a font
+	[[nodiscard]] static Option<std::string> read_family_name(const Uint8 *ttf_data, Uint64 data_size);
 
 	[[nodiscard]] int find_glyph_index(Uint32 codepoint) const;
 	[[nodiscard]] GlyphOutline extract_outline(int glyph_index) const;

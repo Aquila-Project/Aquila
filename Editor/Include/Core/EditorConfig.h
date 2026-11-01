@@ -12,6 +12,8 @@ using FontSettings = Aquila::UI::Core::FontSettings;
 struct UISettings {
 	std::string resources_path = "/resources";
 	std::string layout_dir = "/resources/Engine/UI/";
+	/// Font families added from Settings, one folder each. Next to editor_preferences.json, so updates keep them.
+	std::string user_fonts_dir = "/app/Fonts";
 	std::vector<std::string> style_paths = {
 		"/resources/Engine/UI/tokens.aqstyle",
 		"/resources/Engine/UI/widgets.aqstyle",

@@ -103,6 +103,7 @@ void EditorModule::on_attach(EngineContext &engine) {
 		Aquila::Graphics::Shader::ShaderHotReload::get()->enable(Config::get_preferences().advanced.shader_hot_reload);
 	}
 
+	m_user_fonts = FontManager::get().add_font_dir(Config::get_preferences().ui.user_fonts_dir);
 	FontManager::get().initialize(m_engine->get_context(), Config::get_preferences().fonts);
 
 	m_project_manager = std::make_unique<ProjectManager>();

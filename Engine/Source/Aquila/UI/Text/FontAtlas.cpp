@@ -30,8 +30,13 @@ bool FontAtlas::append_glyph(Uint32 codepoint) {
 }
 
 Unique<FontAtlas> FontAtlas::create(GFX::GfxContext &ctx, const Uint8 *ttf_data, Uint64 data_size) {
+	Unique<FontFace> face = FontFace::create(ttf_data, data_size);
+	if (face == nullptr) {
+		AQUILA_LOG_ERROR("FontAtlas: the data isn't a TrueType or OpenType font");
+		return nullptr;
+	}
 	Unique<FontAtlas> atlas(new FontAtlas());
-	atlas->m_face = FontFace::create(ttf_data, data_size);
+	atlas->m_face = std::move(face);
 	atlas->m_glyph_atlas = SlugGlyphAtlas::create(ctx);
 
 	for (int i = 0; i < SharedConstants::FONT_GLYPH_COUNT; ++i) {

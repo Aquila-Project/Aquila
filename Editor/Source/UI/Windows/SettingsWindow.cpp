@@ -16,6 +16,7 @@
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Core/EditorConfig.h"
 #include "Core/EditorContext.h"
+#include "Core/FileDialog.h"
 #include "Core/ProjectSettingsFields.h"
 #include "UI/Components/SettingsSection.h"
 #include "UI/Components/SettingsShortcutRow.h"
@@ -85,18 +86,22 @@ void SettingsWindow::add_editor_pages() {
 	EditorPreferences &prefs = Config::get_preferences();
 
 	Page &interface = add_page(Scope::Editor, "Interface", "palette", "Fonts and size of the whole editor.");
+	m_interface_page = m_pages.size() - 1;
 	interface.instance = &prefs;
-	TypeBuilder<EditorPreferences>(*interface.type)
-		.choice(
-			"Main Font", [](EditorPreferences &p) -> std::string & { return p.fonts.main_family; }, m_font_families)
-		.choice(
-			"Mono Font", [](EditorPreferences &p) -> std::string & { return p.fonts.mono_family; }, m_font_families)
-		.property("Interface Scale", &EditorPreferences::ui_scale,
-				  PropertyHints{ .min = 0.5F, .max = 2.F, .speed = 0.01F, .precision = 2, .slider = true })
-		.property(
-			"Reopen Last Project", [](const EditorPreferences &p) { return p.startup.reopen_last_project; },
-			[](EditorPreferences &p, bool value) { p.startup.reopen_last_project = value; },
-			PropertyHints{ .toggle = true });
+	fill_interface_type(interface);
+	interface.extra = [this](SettingsSection &section, ReflectedPropertyGrid &reflected) {
+		PropertyGrid *grid = section.get_grid();
+		auto *button = grid != nullptr ? grid->add_row<Button>("", std::string("Add Font...")) : nullptr;
+		if (button == nullptr) {
+			return;
+		}
+		button->set_tooltip("Copies a .ttf or .otf file into the editor's Fonts folder");
+		button->on_click.connect([this] { add_font(); });
+		View *scale = reflected.get_widget("Interface Scale");
+		if (scale != nullptr && scale->get_parent() != nullptr && button->get_parent() != nullptr) {
+			grid->reorder_child(button->get_parent(), scale->get_parent());
+		}
+	};
 	interface.reset = [&prefs] {
 		prefs.fonts = {};
 		prefs.ui_scale = 1.F;
@@ -254,15 +259,51 @@ void SettingsWindow::add_project_pages() {
 	build.reset = [this] { m_project.build_output.clear(); };
 }
 
-void SettingsWindow::define_behaviour() {
-	m_project = m_context.project().settings;
-	m_font_families = FontManager::available_families();
+void SettingsWindow::fill_interface_type(Page &page) {
+	page.type = std::make_unique<TypeInfo>(page.name);
+	TypeBuilder<EditorPreferences>(*page.type)
+		.choice(
+			"Main Font", [](EditorPreferences &p) -> std::string & { return p.fonts.main_family; }, m_font_families)
+		.choice(
+			"Mono Font", [](EditorPreferences &p) -> std::string & { return p.fonts.mono_family; }, m_font_families)
+		.property("Interface Scale", &EditorPreferences::ui_scale,
+				  PropertyHints{ .min = 0.5F, .max = 2.F, .speed = 0.01F, .precision = 2, .slider = true })
+		.property(
+			"Reopen Last Project", [](const EditorPreferences &p) { return p.startup.reopen_last_project; },
+			[](EditorPreferences &p, bool value) { p.startup.reopen_last_project = value; },
+			PropertyHints{ .toggle = true });
+}
+
+void SettingsWindow::refresh_font_families() {
+	m_font_families = FontManager::get().available_families();
 	const Config::FontSettings &fonts = Config::get_preferences().fonts;
 	for (const std::string &family : { fonts.main_family, fonts.mono_family }) {
 		if (std::ranges::find(m_font_families, family) == m_font_families.end()) {
 			m_font_families.push_back(family);
 		}
 	}
+}
+
+void SettingsWindow::add_font() {
+	const std::array filters{ FileDialog::Filter{ .name = "Fonts", .extensions = "ttf,otf,TTF,OTF" } };
+	const Option<std::string> picked = FileDialog::open_file(filters);
+	if (!picked) {
+		return;
+	}
+	const std::string file_name = std::filesystem::path(*picked).filename().string();
+	const Option<std::string> family = FontManager::import_font(*picked, Config::get_preferences().ui.user_fonts_dir);
+	if (!family) {
+		m_footer_note->set_text("Couldn't add " + file_name + ", it isn't a font the editor can read.");
+		return;
+	}
+	m_fonts_changed = true;
+	m_footer_note->set_text("Added " + *family + ". Pick it in Main Font or Mono Font.");
+	request_rebuild();
+}
+
+void SettingsWindow::define_behaviour() {
+	m_project = m_context.project().settings;
+	refresh_font_families();
 	add_editor_pages();
 	add_project_pages();
 
@@ -324,6 +365,11 @@ void SettingsWindow::rebuild() {
 	m_rebuild_pending = false;
 	m_grids.clear();
 	m_filtered_types.clear();
+	if (m_fonts_changed) {
+		m_fonts_changed = false;
+		refresh_font_families();
+		fill_interface_type(m_pages[m_interface_page]);
+	}
 	m_content->clear_children();
 	rebuild_sidebar();
 
@@ -431,6 +477,9 @@ void SettingsWindow::show_page(Page &page, const std::string &query, bool full) 
 				shown->refresh();
 			}
 		});
+	}
+	if (full && query.empty() && page.extra) {
+		page.extra(*section, *m_grids.back());
 	}
 }
 
