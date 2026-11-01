@@ -114,8 +114,10 @@ ListBox {
     border-width: 1px;
     border-color: var(--input-border);
     border-radius: 4px;
-    align-items: center;
-    justify-content: start;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0px;
     padding: 0px 10px;
     color: var(--text);
     font-family: regular;
@@ -126,6 +128,13 @@ ListBox {
 .dropdown-header:hover {
     background-color: var(--bg-hover);
     border-color: var(--border-lit);
+}
+
+.dropdown-sizer {
+    flex-direction: column;
+    height: 0.001px;
+    overflow: clip;
+    opacity: 0;
 }
 
 .tooltip {
@@ -167,6 +176,7 @@ ScrollView {
 
 .scroll-bar-track {
     width: 12px;
+    height: 100%;
     flex-direction: column;
     align-items: center;
     padding: 0px 3px;
@@ -1214,7 +1224,6 @@ Vec4Field {
 
 .props-dropdown-header {
     min-height: 20px;
-    gap: 6px;
     padding: 0px 6px;
     font-family: regular;
     font-size: 12px;

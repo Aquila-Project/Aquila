@@ -257,9 +257,7 @@ void TreeNode::track_row_hover(View *view) {
 }
 
 void TreeNode::apply_state() {
-	StyleProperties p;
-	p.display = m_expanded ? Display::Flex : Display::None;
-	m_children->merge_style(p);
+	m_children->set_hidden(!m_expanded);
 }
 
 void TreeNode::on_header_clicked() {

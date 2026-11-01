@@ -32,7 +32,6 @@
 
 .overlay-dropdown-header {
     min-height: 26px;
-    gap: 6px;
     padding: 0px 8px;
     font-family: regular;
     font-size: 12px;

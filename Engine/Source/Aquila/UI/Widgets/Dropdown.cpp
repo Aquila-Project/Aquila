@@ -4,12 +4,6 @@
 
 namespace Aquila::UI::Core {
 
-namespace {
-
-constexpr F32 K_SIZER_HEIGHT = 0.001F;
-
-}
-
 Dropdown::Dropdown() {
 	auto header = std::make_unique<Button>();
 	header->add_class("dropdown-header");
@@ -22,21 +16,8 @@ Dropdown::Dropdown() {
 
 	update_header();
 
-	StyleProperties header_style;
-	header_style.flex_direction = FlexDirection::Column;
-	header_style.align_items = AlignItems::Stretch;
-	header_style.justify_content = JustifyContent::Center;
-	header_style.gap = 0.F;
-	m_header->merge_style(header_style);
-
 	m_sizer = m_header->add_child<View>();
 	m_sizer->add_class("dropdown-sizer");
-	StyleProperties sizer_style;
-	sizer_style.flex_direction = FlexDirection::Column;
-	sizer_style.height = StyleLength::pixel(K_SIZER_HEIGHT);
-	sizer_style.overflow = Overflow::Clip;
-	sizer_style.opacity = 0.F;
-	m_sizer->merge_style(sizer_style);
 	rebuild_sizer();
 }
 

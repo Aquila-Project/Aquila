@@ -25,6 +25,7 @@ class CanvasLayer final : public UI::Core::View {
 
 ViewportCanvas::ViewportCanvas(Int16 z_index) {
 	set_pass_through_scroll(true);
+	add_class("viewport-canvas");
 
 	UI::FloatingConfig floating;
 	floating.attach_to = UI::FloatingAttachTo::Parent;
@@ -33,15 +34,7 @@ ViewportCanvas::ViewportCanvas(Int16 z_index) {
 	floating.z_index = z_index;
 	set_floating(floating);
 
-	UI::StyleProperties clip;
-	clip.overflow = UI::Overflow::Hidden;
-	merge_style(clip);
-
 	m_layer = add_child<CanvasLayer>(*this);
-	UI::StyleProperties fill;
-	fill.width = UI::StyleLength::percent(100.F);
-	fill.height = UI::StyleLength::percent(100.F);
-	m_layer->set_style(fill);
 }
 
 void ViewportCanvas::fit(const Rect &viewport) {

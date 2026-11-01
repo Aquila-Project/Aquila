@@ -83,16 +83,12 @@ void IconLabel::apply_xml_attribute(std::string_view name, std::string_view valu
 }
 
 void IconLabel::update_label_visibility() {
-	StyleProperties sp;
-	sp.display = m_label->get_text().empty() ? Display::None : Display::Flex;
-	m_label->merge_style(sp);
+	m_label->set_hidden(m_label->get_text().empty());
 }
 
 void IconLabel::update_icon_visibility() {
 	const bool has_icon = m_icon->get_texture() != nullptr;
-	StyleProperties sp;
-	sp.display = (has_icon || m_reserve_icon_space) ? Display::Flex : Display::None;
-	m_icon->merge_style(sp);
+	m_icon->set_hidden(!has_icon && !m_reserve_icon_space);
 }
 
 void IconLabel::update_right_content() {
@@ -100,17 +96,9 @@ void IconLabel::update_right_content() {
 	const bool has_trailing = m_trailing->get_texture() != nullptr;
 	const bool has_right = has_shortcut || has_trailing;
 
-	StyleProperties shortcut_sp;
-	shortcut_sp.display = has_shortcut ? Display::Flex : Display::None;
-	m_shortcut->merge_style(shortcut_sp);
-
-	StyleProperties trailing_sp;
-	trailing_sp.display = has_trailing ? Display::Flex : Display::None;
-	m_trailing->merge_style(trailing_sp);
-
-	StyleProperties spacer_sp;
-	spacer_sp.display = has_right ? Display::Flex : Display::None;
-	m_spacer->merge_style(spacer_sp);
+	m_shortcut->set_hidden(!has_shortcut);
+	m_trailing->set_hidden(!has_trailing);
+	m_spacer->set_hidden(!has_right);
 
 	StyleProperties self_sp;
 	self_sp.width = has_right ? StyleLength::grow() : StyleLength::Auto();
