@@ -1,10 +1,3 @@
-#root {
-    width: grow;
-    height: grow;
-    flex-direction: column;
-    background-color: var(--bg-base);
-}
-
 #toolbar {
     width: 100%;
     min-height: 40px;
@@ -34,68 +27,6 @@
     height: 32px;
 }
 
-.menu-bar {
-    gap: 2px;
-}
-
-.menu-bar-item {
-    font-family: regular;
-    font-size: 16px;
-    color: var(--text-dim);
-    padding: 4px 10px;
-    align-items: center;
-    justify-content: center;
-    transition: 80ms ease-out;
-    background-color: var(--bg-deep);
-    border-width: 0px;
-    border-radius: 4px;
-}
-
-.menu-bar-item:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-bright);
-}
-
-.menu-bar-item:pressed {
-    background-color: var(--bg-surface);
-    color: var(--text);
-}
-
-#workspace {
-    width: 100%;
-    height: grow;
-    flex-direction: column;
-}
-
-#dock-root {
-    width: 100%;
-    height: grow;
-    flex-direction: column;
-}
-
-.props-dropdown {
-    min-height: 20px;
-    min-width: 0px;
-}
-
-.props-dropdown-header {
-    min-height: 20px;
-    gap: 6px;
-    padding: 0px 6px;
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text);
-    background-color: var(--input-bg);
-    border-width: 1px;
-    border-color: var(--input-border);
-    border-radius: 4px;
-}
-
-.props-dropdown-header:hover {
-    background-color: var(--bg-muted);
-    border-color: var(--border-lit);
-}
-
 @media (max-width: 500px) {
     #toolbar {
         min-height: 36px;
@@ -118,10 +49,6 @@
     border-color: var(--hairline);
     border-radius: 6px;
     overflow: hidden;
-}
-
-.collapsed {
-    height: auto;
 }
 
 .card-console {
@@ -149,18 +76,6 @@
     gap: 4px;
     background-color: transparent;
     border-width: 0px;
-}
-
-.collapsible-action {
-    width: 24px;
-    height: 24px;
-    padding: 0px;
-    background-color: transparent;
-    border-radius: 4px;
-}
-
-.collapsible-action:hover {
-    background-color: var(--bg-hover);
 }
 
 .hud-round {
@@ -211,144 +126,4 @@
     gap: 6px;
     background-color: transparent;
     border-width: 0px;
-}
-
-.hud-status {
-    flex-direction: row;
-    align-items: center;
-    width: 100vw;
-    min-height: 24px;
-    padding: 0px 12px;
-    gap: 16px;
-    background-color: var(--bg-deep);
-    border-width: 0px;
-}
-
-.status-spacer {
-    width: grow;
-}
-
-.status-item {
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-}
-
-.status-selection {
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text);
-}
-
-.status-key {
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text-dim);
-}
-
-.status-value {
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text-bright);
-}
-
-.selectable-text-view {
-    width: grow;
-    font-family: mono;
-    font-size: 14px;
-    color: var(--text);
-    cursor: text;
-    selection-color: var(--selection);
-}
-
-.topbar {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    min-height: 36px;
-    padding: 0px 6px;
-    gap: 2px;
-    background-color: var(--bg-deep);
-}
-
-.topbar-btn {
-    width: 28px;
-    height: 28px;
-    padding: 0px;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    border-width: 0px;
-    border-radius: 4px;
-    transition: 60ms linear;
-}
-
-.topbar-btn:hover {
-    background-color: var(--bg-hover);
-}
-
-.topbar-btn:disabled {
-    opacity: 0.4;
-}
-
-.topbar-btn-active {
-    background-color: var(--accent-dark);
-}
-
-.topbar-btn-active:hover {
-    background-color: var(--accent-muted);
-}
-
-.topbar-sep {
-    width: 1px;
-    height: 18px;
-    background-color: var(--hairline);
-}
-
-.topbar-spacer {
-    width: grow;
-}
-
-.workspace-tabs {
-    flex-direction: row;
-    align-items: center;
-    height: 100%;
-    gap: 2px;
-    padding: 0px 4px;
-}
-
-.workspace-tab {
-    font-family: regular;
-    font-size: 13px;
-    color: var(--text-dim);
-    min-height: 26px;
-    padding: 0px 12px;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    border-width: 0px;
-    border-radius: 4px;
-    transition: 60ms linear;
-}
-
-.workspace-tab:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-bright);
-}
-
-.workspace-tab-active {
-    background-color: var(--bg-panel);
-    color: var(--text-bright);
-}
-
-.dock-root {
-    width: 100%;
-    height: grow;
-    flex-direction: column;
-    padding: 0px 2px 2px 2px;
-    background-color: var(--bg-deep);
-}
-
-.play-tint {
-    background-color: var(--play-tint);
 }

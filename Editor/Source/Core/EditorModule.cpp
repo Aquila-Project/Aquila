@@ -22,9 +22,9 @@
 #include "UI/EditorWindows/HierarchyWindow.h"
 #include "UI/EditorWindows/InspectorWindow.h"
 #include "UI/EditorWindows/ViewportWindow.h"
-#include "UI/Panels/StatusBar.h"
 #include "UI/Windows/BuildWindow.h"
 #include "UI/Windows/ProjectLauncher.h"
+#include "UI/Windows/EditorShell.h"
 #include "UI/Windows/SettingsWindow.h"
 #include "UI/Viewport/TransformGizmo.h"
 #include "UI/Viewport/ViewportOverlay.h"
@@ -74,8 +74,7 @@ constexpr F64 K_SETTINGS_SAVE_SECONDS = 0.5;
 constexpr auto K_SETTINGS_SAVE_DELAY = std::chrono::milliseconds(500);
 
 std::string layout_dir() {
-	const std::string &layout_path = Config::get_preferences().ui.layout_path;
-	return layout_path.substr(0, layout_path.find_last_of('/') + 1);
+	return Config::get_preferences().ui.layout_dir;
 }
 }
 
@@ -270,10 +269,10 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		}
 	}
 
-	if (m_status_bar && m_status_bar->is_visible()) {
+	if (m_shell != nullptr && m_shell->is_status_visible()) {
 		const bool has_selection = m_outlined_entity.is_valid() && m_outlined_entity.exists();
-		m_status_bar->update(m_statistics.collect(m_engine->get_scene(), m_outlined_entity),
-							 has_selection ? m_outlined_entity.get_name() : std::string());
+		m_shell->update_status(m_statistics.collect(m_engine->get_scene(), m_outlined_entity),
+							   has_selection ? m_outlined_entity.get_name() : std::string());
 	}
 
 	if (m_thumbnails) {
@@ -453,43 +452,9 @@ void EditorModule::restore_edit_scene() {
 	AQUILA_LOG_INFO("EditorModule: stopped, scene restored");
 }
 
-void EditorModule::wire_play_controls(View *layout_root) {
-	const auto wire = [this, layout_root](std::string_view id, std::string_view command) {
-		auto *button = layout_root->find_by_id<Button>(id);
-		if (button != nullptr) {
-			button->on_click.connect([this, command = std::string(command)] { m_context->commands.execute(command); });
-		}
-		return button;
-	};
-	m_play_button = wire("topbar-play", "play.start");
-	m_pause_button = wire("topbar-pause", "play.pause");
-	m_stop_button = wire("topbar-stop", "play.stop");
-
-	for (std::string_view id : { "topbar", "dock-root", "hud-status" }) {
-		if (View *view = layout_root->find_by_id(id)) {
-			m_play_tinted.push_back(view);
-		}
-	}
-	if (m_dock_space != nullptr) {
-		m_play_tinted.push_back(m_dock_space);
-	}
-	sync_play_controls();
-}
-
 void EditorModule::sync_play_controls() {
-	const PlayState state = m_engine->get_play_state();
-	if (m_play_button != nullptr) {
-		m_play_button->set_class("topbar-btn-active", state != PlayState::Stopped);
-	}
-	if (m_pause_button != nullptr) {
-		m_pause_button->set_enabled(state != PlayState::Stopped);
-		m_pause_button->set_class("topbar-btn-active", state == PlayState::Paused);
-	}
-	if (m_stop_button != nullptr) {
-		m_stop_button->set_enabled(state != PlayState::Stopped);
-	}
-	for (View *view : m_play_tinted) {
-		view->set_class("play-tint", state != PlayState::Stopped);
+	if (m_shell != nullptr) {
+		m_shell->set_play_state(m_engine->get_play_state());
 	}
 }
 
@@ -702,21 +667,6 @@ void EditorModule::setup_editor_ui() {
 	register_thumbnail_slots();
 	register_content_creators();
 
-	auto root = layouts.load_file(cfg.ui.layout_path);
-	if (!root) {
-		AQUILA_LOG_ERROR("EditorModule: failed to load editor layout from {}", cfg.ui.layout_path);
-		return;
-	}
-
-	View *layout_root = editor_canvas.get_root()->add_child(std::move(root));
-	m_context->set_overlay_root(layout_root);
-
-	m_dock_space = layout_root->find_by_id<DockSpace>("editor-dock");
-	if (m_dock_space == nullptr) {
-		AQUILA_LOG_ERROR("EditorModule: 'editor-dock' not found, check editor.aqlayout");
-		return;
-	}
-
 	m_windows = std::make_unique<EditorWindows>(*m_context);
 	register_windows();
 	for (EditorWindowType &type : m_pending_window_types) {
@@ -730,6 +680,23 @@ void EditorModule::setup_editor_ui() {
 	layouts.set_command_source(&m_context->commands, &m_context->shortcuts);
 
 	m_pending_window_types.clear();
+
+	const std::string shell_path = m_context->window_layout("editor");
+	View *layout_root = layouts.build_file(shell_path, *editor_canvas.get_root(),
+										   std::make_unique<EditorShell>(*m_context, *m_windows));
+	m_shell = layout_root != nullptr ? find_behaviour<EditorShell>(*layout_root) : nullptr;
+	if (m_shell == nullptr) {
+		AQUILA_LOG_ERROR("EditorModule: failed to build the editor shell from {}", shell_path);
+		return;
+	}
+	m_context->set_overlay_root(layout_root);
+
+	m_dock_space = m_shell->get_dock_space();
+	if (m_dock_space == nullptr) {
+		AQUILA_LOG_ERROR("EditorModule: 'editor-dock' not found, check {}", shell_path);
+		return;
+	}
+
 	m_windows->attach(*m_dock_space);
 	m_context->shortcuts.set_scope_resolver(
 		[this](std::string_view scope) { return m_windows && m_windows->is_scope_active(scope); });
@@ -751,25 +718,11 @@ void EditorModule::setup_editor_ui() {
 		m_workspaces->add(std::move(name), std::move(preset));
 	}
 	m_pending_workspaces.clear();
-	if (auto *tabs = layout_root->find_by_id<TabBar>("workspace-tabs")) {
+	if (TabBar *tabs = m_shell->get_workspace_tabs()) {
 		m_workspaces->build_tabs(*tabs);
 	}
 	m_workspaces->activate("Scene");
-
-	wire_main_menu(layout_root);
-	wire_play_controls(layout_root);
-	m_status_bar = std::make_unique<StatusBar>();
-	m_status_bar->build(layout_root);
-
-	if (auto *settings = layout_root->find_by_id<Button>("topbar-settings")) {
-		settings->on_click.connect([this] { open_settings_window(); });
-	}
-	if (auto *build = layout_root->find_by_id<Button>("topbar-build")) {
-		build->on_click.connect([this] { open_build_window(); });
-	}
-	if (auto *reset = layout_root->find_by_id<Button>("topbar-reset")) {
-		reset->on_click.connect([this] { m_workspaces->reset_active(); });
-	}
+	sync_play_controls();
 
 	m_devtools = std::make_unique<Aquila::UI::DevTools::UIDevTools>(Aquila::UI::DevTools::UIDevToolsDesc{
 		.target = editor_canvas,
@@ -1009,7 +962,7 @@ void EditorModule::register_editor_commands() {
 		.title = "Reload layout",
 		.run =
 			[this] {
-				m_ui_host->get_layout_loader().load_file(Config::get_preferences().ui.layout_path);
+				m_ui_host->get_layout_loader().load_file(m_context->window_layout("editor"));
 				AQUILA_LOG_INFO("Editor layout reloaded");
 			},
 	});
@@ -1061,8 +1014,8 @@ void EditorModule::register_editor_commands() {
 		.title = "Status bar",
 		.run =
 			[this] {
-				if (m_status_bar) {
-					m_status_bar->set_visible(!m_status_bar->is_visible());
+				if (m_shell != nullptr) {
+					m_shell->set_status_visible(!m_shell->is_status_visible());
 				}
 			},
 	});
@@ -1100,61 +1053,6 @@ void EditorModule::register_editor_commands() {
 void EditorModule::add_window_command(const EditorWindowType &type) {
 	m_context->commands.add(
 		{ .id = "window.open." + type.id, .title = type.title, .run = [this, id = type.id] { m_windows->open(id); } });
-}
-
-void EditorModule::wire_main_menu(View *layout_root) {
-	auto *menu_button = layout_root->find_by_id<Button>("topbar-menu");
-	if (menu_button == nullptr) {
-		return;
-	}
-
-	auto popup = std::make_unique<PopupMenu>();
-	popup->set_submenu_icon(m_context->icon("chevron-right"));
-	m_main_menu = layout_root->add_child(std::move(popup));
-
-	const auto add = [this](PopupMenu *menu, std::string_view command_id, std::string_view icon) {
-		const Command *command = m_context->commands.find(command_id);
-		if (command == nullptr) {
-			AQUILA_LOG_WARNING("EditorModule: menu command '{}' is not registered", command_id);
-			return;
-		}
-		menu->add_item(command->title, m_context->shortcuts.get_label(command_id), m_context->icon(icon),
-					   [this, id = std::string(command_id)] { m_context->commands.execute(id); });
-	};
-
-	PopupMenu *file_menu = m_main_menu->add_submenu("File", m_context->icon("folder-open"));
-	add(file_menu, "scene.new", "layers-plus");
-	add(file_menu, "scene.open", "folder-open");
-	add(file_menu, "scene.save", "save");
-	add(file_menu, "scene.save_as", "save");
-	file_menu->add_separator();
-	add(file_menu, "editor.quit", "x");
-
-	PopupMenu *edit_menu = m_main_menu->add_submenu("Edit", m_context->icon("pencil"));
-	add(edit_menu, "editor.preferences", "settings");
-	edit_menu->add_separator();
-	add(edit_menu, "play.start", "play");
-	add(edit_menu, "play.pause", "pause");
-	add(edit_menu, "play.stop", "square");
-	edit_menu->add_separator();
-	add(edit_menu, "scene.reset_demo", "refresh-cw");
-
-	PopupMenu *window_menu = m_main_menu->add_submenu("Window", m_context->icon("panel-left"));
-	for (const EditorWindowType &type : m_windows->get_types()) {
-		add(window_menu, "window.open." + type.id, type.icon);
-	}
-	add(window_menu, "window.open.build", "wrench");
-	window_menu->add_separator();
-	add(window_menu, "workspace.reset", "refresh-cw");
-	add(window_menu, "view.status_bar", "info");
-	window_menu->add_separator();
-	add(window_menu, "devtools.ui_inspector", "bug");
-	add(window_menu, "devtools.widget_gallery", "layers");
-
-	menu_button->on_click.connect([this, menu_button] {
-		const Rect rect = menu_button->get_absolute_rect();
-		m_main_menu->open_at({ rect.position.x, rect.position.y + rect.size.y + 4.F });
-	});
 }
 
 } // namespace Editor

@@ -1,6 +1,7 @@
 #include <doctest.h>
 
 #include "Aquila/UI/Core/Behaviour.h"
+#include "Aquila/UI/Core/Command.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Core/View.h"
@@ -504,5 +505,72 @@ TEST_SUITE("Shipped UI resources") {
 		CHECK(panel->find_by_id<Core::Button>("refresh") != nullptr);
 		CHECK(panel->find_by_id<Core::TreeView>("tree") != nullptr);
 		CHECK_MESSAGE(capture.stream.str().find("ui_debug_panel.aqlayout:") == std::string::npos, capture.stream.str());
+	}
+
+	TEST_CASE("the editor shell layout holds its top bar, dock space, status bar and main menu") {
+		test_vfs();
+		LogCapture capture;
+		Core::LayoutLoader loader;
+		Core::Commands commands;
+		for (const char *id :
+			 { "scene.new", "scene.open", "scene.save", "scene.save_as", "editor.quit", "editor.preferences",
+			   "play.start", "play.pause", "play.stop", "scene.reset_demo", "window.open.build", "workspace.reset",
+			   "view.status_bar", "devtools.ui_inspector", "devtools.widget_gallery" }) {
+			commands.add({ .id = id, .title = id });
+		}
+		loader.set_command_source(&commands);
+		const std::string file = "/resources/Engine/UI/Windows/editor.aqlayout";
+		const auto root = loader.load_file(file);
+		REQUIRE(root != nullptr);
+		CHECK(root->get_id() == "root");
+		for (const char *id :
+			 { "topbar", "topbar-menu", "workspace-tabs", "topbar-play", "topbar-pause", "topbar-stop", "topbar-build",
+			   "topbar-reset", "topbar-settings", "dock-root", "editor-dock", "hud-status", "status-selection",
+			   "stat-objects", "stat-lights", "stat-vertices", "stat-triangles", "window-menu" }) {
+			CHECK_MESSAGE(root->find_by_id(id) != nullptr, id);
+		}
+		auto *menu = root->find_by_id<Core::PopupMenu>("main-menu");
+		REQUIRE(menu != nullptr);
+		int submenus = 0;
+		for (const auto &child : menu->get_children()) {
+			submenus += dynamic_cast<const Core::PopupMenu *>(child.get()) != nullptr ? 1 : 0;
+		}
+		CHECK(submenus == 3);
+
+		const auto rows = [](Core::PopupMenu &target) {
+			target.refresh();
+			std::vector<std::string> texts;
+			for (const auto &child : target.get_children()) {
+				const auto &classes = child->get_classes();
+				if (std::ranges::find(classes, "menu-separator") != classes.end()) {
+					texts.emplace_back("---");
+				} else if (const auto *item = dynamic_cast<const Core::Button *>(child.get());
+						   item != nullptr && std::ranges::find(classes, "menu-item") != classes.end()) {
+					texts.push_back(item->get_content()->get_label()->get_text());
+				}
+			}
+			return texts;
+		};
+		std::vector<Core::PopupMenu *> submenu_list;
+		for (const auto &child : menu->get_children()) {
+			if (auto *submenu = dynamic_cast<Core::PopupMenu *>(child.get())) {
+				submenu_list.push_back(submenu);
+			}
+		}
+		REQUIRE(submenu_list.size() == 3);
+		CHECK(rows(*menu) == std::vector<std::string>{ "File", "Edit", "Window" });
+		CHECK(
+			rows(*submenu_list[0]) ==
+			std::vector<std::string>{ "scene.new", "scene.open", "scene.save", "scene.save_as", "---", "editor.quit" });
+		CHECK(rows(*submenu_list[1]) ==
+			  std::vector<std::string>{ "editor.preferences", "---", "play.start", "play.pause", "play.stop", "---",
+										"scene.reset_demo" });
+		auto *window_menu = root->find_by_id<Core::PopupMenu>("window-menu");
+		REQUIRE(window_menu == submenu_list[2]);
+		CHECK(rows(*window_menu) ==
+			  std::vector<std::string>{ "window.open.build", "---", "workspace.reset", "view.status_bar", "---",
+										"devtools.ui_inspector", "devtools.widget_gallery" });
+		CHECK_MESSAGE(capture.stream.str().find(file + ":") == std::string::npos, capture.stream.str());
+		CHECK_FALSE(std::filesystem::exists(K_UI_DIR / "editor.aqlayout"));
 	}
 }

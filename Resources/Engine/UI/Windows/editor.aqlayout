@@ -1,0 +1,59 @@
+<View id="root">
+
+    <View id="topbar" class="topbar">
+        <Button id="topbar-menu" class="topbar-btn" src="Engine/UI/Icons/menu.svg" tooltip="Menu"/>
+        <View class="topbar-sep"/>
+        <TabBar id="workspace-tabs" class="workspace-tabs" tab-class="workspace-tab"/>
+        <View class="topbar-spacer"/>
+        <Button id="topbar-play" class="topbar-btn" src="Engine/UI/Icons/play.svg" tooltip="Play" on-click="play.start"/>
+        <Button id="topbar-pause" class="topbar-btn" src="Engine/UI/Icons/pause.svg" tooltip="Pause" on-click="play.pause"/>
+        <Button id="topbar-stop" class="topbar-btn" src="Engine/UI/Icons/square.svg" tooltip="Stop" on-click="play.stop"/>
+        <View class="topbar-spacer"/>
+        <Button id="topbar-build" class="topbar-btn" src="Engine/UI/Icons/package.svg" tooltip="Build the project" on-click="window.open.build"/>
+        <Button id="topbar-reset" class="topbar-btn" src="Engine/UI/Icons/refresh-cw.svg" tooltip="Reset this workspace" on-click="workspace.reset"/>
+        <Button id="topbar-settings" class="topbar-btn" src="Engine/UI/Icons/settings.svg" tooltip="Preferences" on-click="editor.preferences"/>
+    </View>
+
+    <View id="dock-root" class="dock-root">
+        <DockSpace id="editor-dock"/>
+    </View>
+
+    <View id="hud-status" class="hud-status">
+        <Label id="status-selection" class="status-selection">No selection</Label>
+        <View class="status-spacer"/>
+        <View class="status-item"><Label class="status-key">Objects</Label><Label id="stat-objects" class="status-value">0</Label></View>
+        <View class="status-item"><Label class="status-key">Lights</Label><Label id="stat-lights" class="status-value">0</Label></View>
+        <View class="status-item"><Label class="status-key">Vertices</Label><Label id="stat-vertices" class="status-value">0</Label></View>
+        <View class="status-item"><Label class="status-key">Triangles</Label><Label id="stat-triangles" class="status-value">0</Label></View>
+    </View>
+
+    <PopupMenu id="main-menu">
+        <Submenu label="File" icon="Engine/UI/Icons/folder-open.svg">
+            <MenuItem command="scene.new" icon="Engine/UI/Icons/layers-plus.svg"/>
+            <MenuItem command="scene.open" icon="Engine/UI/Icons/folder-open.svg"/>
+            <MenuItem command="scene.save" icon="Engine/UI/Icons/save.svg"/>
+            <MenuItem command="scene.save_as" icon="Engine/UI/Icons/save.svg"/>
+            <MenuSeparator/>
+            <MenuItem command="editor.quit" icon="Engine/UI/Icons/x.svg"/>
+        </Submenu>
+        <Submenu label="Edit" icon="Engine/UI/Icons/pencil.svg">
+            <MenuItem command="editor.preferences" icon="Engine/UI/Icons/settings.svg"/>
+            <MenuSeparator/>
+            <MenuItem command="play.start" icon="Engine/UI/Icons/play.svg"/>
+            <MenuItem command="play.pause" icon="Engine/UI/Icons/pause.svg"/>
+            <MenuItem command="play.stop" icon="Engine/UI/Icons/square.svg"/>
+            <MenuSeparator/>
+            <MenuItem command="scene.reset_demo" icon="Engine/UI/Icons/refresh-cw.svg"/>
+        </Submenu>
+        <Submenu id="window-menu" label="Window" icon="Engine/UI/Icons/panel-left.svg">
+            <MenuItem command="window.open.build" icon="Engine/UI/Icons/wrench.svg"/>
+            <MenuSeparator/>
+            <MenuItem command="workspace.reset" icon="Engine/UI/Icons/refresh-cw.svg"/>
+            <MenuItem command="view.status_bar" icon="Engine/UI/Icons/info.svg"/>
+            <MenuSeparator/>
+            <MenuItem command="devtools.ui_inspector" icon="Engine/UI/Icons/bug.svg"/>
+            <MenuItem command="devtools.widget_gallery" icon="Engine/UI/Icons/layers.svg"/>
+        </Submenu>
+    </PopupMenu>
+
+</View>

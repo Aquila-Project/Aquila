@@ -3,6 +3,8 @@
 #include "Aquila/UI/Core/Behaviour.h"
 #include "Aquila/UI/Core/BehaviourWindow.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/Command.h"
+#include "Aquila/UI/Core/Shortcuts.h"
 #include "Aquila/UI/DevTools/UIDebugPanel.h"
 #include "Aquila/UI/DevTools/UIDebugWindow.h"
 #include "Aquila/UI/DevTools/WidgetGalleryWindow.h"
@@ -144,6 +146,89 @@ TextInput *first_text_input(View &view) {
 		}
 	}
 	return nullptr;
+}
+
+enum class ShellShown : Uint8 { Idle, Playing, Menu };
+
+struct ShellWindow {
+	const char *id;
+	const char *title;
+	const char *icon;
+};
+
+constexpr std::array<ShellWindow, 6> K_SHELL_WINDOWS = { {
+	{ .id = "viewport", .title = "Viewport", .icon = "video" },
+	{ .id = "hierarchy", .title = "Hierarchy", .icon = "list-tree" },
+	{ .id = "inspector", .title = "Inspector", .icon = "sliders-horizontal" },
+	{ .id = "content", .title = "Content", .icon = "folder-open" },
+	{ .id = "console", .title = "Console", .icon = "terminal" },
+	{ .id = "game", .title = "Game", .icon = "gamepad-2" },
+} };
+
+struct ShellCommands {
+	Commands commands;
+	Shortcuts shortcuts{ commands };
+
+	ShellCommands() {
+		using Entry = std::pair<const char *, const char *>;
+		constexpr std::array<Entry, 16> K_COMMANDS = { {
+			{ "scene.new", "New scene" },
+			{ "scene.open", "Open scene" },
+			{ "scene.save", "Save scene" },
+			{ "scene.save_as", "Save scene as" },
+			{ "editor.quit", "Quit" },
+			{ "editor.preferences", "Preferences" },
+			{ "play.start", "Play" },
+			{ "play.pause", "Pause" },
+			{ "play.stop", "Stop" },
+			{ "scene.reset_demo", "Reset demo scene" },
+			{ "window.open.build", "Build" },
+			{ "workspace.reset", "Reset workspace" },
+			{ "view.status_bar", "Status bar" },
+			{ "devtools.ui_inspector", "UI inspector" },
+			{ "devtools.widget_gallery", "Widget gallery" },
+			{ "editor.reload_styles", "Reload styles" },
+		} };
+		for (const auto &[id, title] : K_COMMANDS) {
+			commands.add({ .id = id, .title = title, .run = [] {} });
+		}
+		for (const ShellWindow &window : K_SHELL_WINDOWS) {
+			commands.add({ .id = std::string("window.open.") + window.id, .title = window.title, .run = [] {} });
+		}
+		constexpr std::array<Entry, 10> K_CHORDS = { {
+			{ "scene.new", "Ctrl+N" },
+			{ "scene.open", "Ctrl+O" },
+			{ "scene.save", "Ctrl+S" },
+			{ "scene.save_as", "Ctrl+Shift+S" },
+			{ "editor.preferences", "Ctrl+," },
+			{ "editor.quit", "Ctrl+Q" },
+			{ "devtools.ui_inspector", "Ctrl+Shift+I" },
+			{ "play.start", "Ctrl+P" },
+			{ "play.pause", "Ctrl+Shift+P" },
+			{ "play.stop", "Ctrl+Alt+P" },
+		} };
+		for (const auto &[id, chord] : K_CHORDS) {
+			shortcuts.bind(id, chord);
+		}
+	}
+};
+
+void set_shell_play_state(View &root, bool playing) {
+	if (auto *play = root.find_by_id<Button>("topbar-play")) {
+		play->set_class("topbar-btn-active", playing);
+	}
+	if (auto *pause = root.find_by_id<Button>("topbar-pause")) {
+		pause->set_enabled(playing);
+		pause->set_class("topbar-btn-active", false);
+	}
+	if (auto *stop = root.find_by_id<Button>("topbar-stop")) {
+		stop->set_enabled(playing);
+	}
+	for (const char *id : { "topbar", "dock-root", "hud-status", "editor-dock" }) {
+		if (View *view = root.find_by_id(id)) {
+			view->set_class("play-tint", playing);
+		}
+	}
 }
 }
 
@@ -698,5 +783,51 @@ TEST_SUITE("Style snapshots") {
 		View *window = box.find_by_id("ui-debug-window");
 		REQUIRE(window != nullptr);
 		write_style_snapshot("ui-debug-panel", *window);
+	}
+
+	TEST_CASE("style snapshot editor shell" * doctest::skip()) {
+		for (const ShellShown shown : { ShellShown::Idle, ShellShown::Playing, ShellShown::Menu }) {
+			LoaderCanvas fixture(1400, 900);
+			TextureCache icons(*test_gpu().ctx, "/resources");
+			fixture.loader.register_texture_cache(&icons);
+			ShellCommands shell;
+			fixture.loader.set_command_source(&shell.commands, &shell.shortcuts);
+			View &box = snapshot_box(fixture, 1280.F, 720.F);
+			View *root = fixture.loader.build_file("/resources/Engine/UI/Windows/editor.aqlayout", box);
+			REQUIRE(root != nullptr);
+			auto *tabs = root->find_by_id<TabBar>("workspace-tabs");
+			REQUIRE(tabs != nullptr);
+			for (const char *workspace : { "Scene", "Layout", "Debug", "Game" }) {
+				tabs->add_tab(workspace);
+			}
+			tabs->set_active(0);
+
+			const auto icon = [&icons](std::string_view name) {
+				return icons.load("Engine/UI/Icons/" + std::string(name) + ".svg");
+			};
+			auto *menu = root->find_by_id<PopupMenu>("main-menu");
+			auto *window_menu = root->find_by_id<PopupMenu>("window-menu");
+			REQUIRE(menu != nullptr);
+			REQUIRE(window_menu != nullptr);
+			menu->set_submenu_icon(icon("chevron-right"));
+			Usize index = 0;
+			for (const ShellWindow &window : K_SHELL_WINDOWS) {
+				const std::string command = std::string("window.open.") + window.id;
+				window_menu->insert_item(index++, shell.commands.find(command)->title,
+										 shell.shortcuts.get_label(command), icon(window.icon), [] {});
+			}
+
+			set_shell_play_state(*root, shown == ShellShown::Playing);
+			fixture.settle();
+			if (shown == ShellShown::Menu) {
+				auto *menu_button = root->find_by_id<Button>("topbar-menu");
+				REQUIRE(menu_button != nullptr);
+				const Rect rect = menu_button->get_absolute_rect();
+				menu->open_at({ rect.position.x, rect.position.y + rect.size.y + 4.F });
+			}
+			fixture.settle_fully();
+			constexpr std::array<const char *, 3> K_NAMES = { "shell", "shell-playing", "shell-menu" };
+			write_style_snapshot(K_NAMES.at(static_cast<Usize>(shown)), *root);
+		}
 	}
 }
