@@ -14,6 +14,7 @@
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/ListBox.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "Aquila/UI/Widgets/ProgressBar.h"
 #include "Aquila/UI/Widgets/Separator.h"
 #include "Aquila/UI/Widgets/Slider.h"
 #include "Aquila/UI/Widgets/TabBar.h"
@@ -452,6 +453,24 @@ TEST_SUITE("Markup items") {
 		CHECK(log.stream.str().find("'low'") != std::string::npos);
 		CHECK(log.stream.str().find("'1e999'") != std::string::npos);
 		CHECK(log.stream.str().find("'maybe'") != std::string::npos);
+	}
+
+	TEST_CASE("a progress bar's bad value is reported, never thrown") {
+		LogCapture log;
+		LayoutLoader loader;
+		Unique<View> root;
+		CHECK_NOTHROW(root = loader.load_string(R"(<View>
+	<ProgressBar id="bad" value="half"/>
+	<ProgressBar id="good" value="0.25"/>
+</View>)"));
+		REQUIRE(root != nullptr);
+		auto *bad = root->find_by_id<ProgressBar>("bad");
+		auto *good = root->find_by_id<ProgressBar>("good");
+		REQUIRE(bad != nullptr);
+		REQUIRE(good != nullptr);
+		CHECK(bad->get_value() == doctest::Approx(0.F));
+		CHECK(good->get_value() == doctest::Approx(0.25F));
+		CHECK(log.stream.str().find("'half'") != std::string::npos);
 	}
 
 	TEST_CASE("an item outside a widget that takes it says where it is and builds nothing") {
