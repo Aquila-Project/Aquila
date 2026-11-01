@@ -225,7 +225,6 @@ void HierarchyPanel::sync() {
 		}
 		node->refresh_visibility();
 		m_tree_view->refresh_node_icon(node);
-		m_tree_view->regroup(node);
 	});
 }
 
@@ -237,7 +236,6 @@ void HierarchyPanel::refresh_entity(Entity entity) {
 		node->set_label(entity.get_name());
 		node->refresh_subtree_visibility();
 		m_tree_view->refresh_node_icon(node);
-		m_tree_view->regroup(node);
 	}
 }
 

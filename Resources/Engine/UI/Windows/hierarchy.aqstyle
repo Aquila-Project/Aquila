@@ -38,23 +38,6 @@
     background-color: var(--bg-hover);
 }
 
-.hierarchy-group-header {
-    font-size: 11px;
-    color: var(--text-muted);
-    min-height: 26px;
-}
-
-.hierarchy-group-header:hover {
-    color: var(--text-dim);
-}
-
-.hierarchy-group-count {
-    font-family: mono;
-    font-size: 11px;
-    color: var(--text-muted);
-    padding: 0px 6px 0px 0px;
-}
-
 .hierarchy-eye {
     width: 22px;
     height: 22px;

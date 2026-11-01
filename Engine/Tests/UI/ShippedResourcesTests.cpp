@@ -216,7 +216,6 @@ TEST_SUITE("Shipped UI resources") {
 		}
 		Core::View parent;
 		CHECK(dynamic_cast<Core::Button *>(loader.create(file, "HierarchyRow", parent)) != nullptr);
-		CHECK(dynamic_cast<Core::Label *>(loader.create(file, "HierarchyGroupCount", parent)) != nullptr);
 	}
 
 	TEST_CASE("the content browser layout holds its toolbar, grid, empty text and components") {

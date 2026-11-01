@@ -351,19 +351,10 @@ TEST_SUITE("Style snapshots") {
 			eye->set_class("hierarchy-eye-shown", hidden);
 			node.get_header()->set_class("hierarchy-entity-hidden", hidden);
 		};
-		auto group_node = std::make_unique<TreeNode>("Geometry", *tree, 0);
-		group_node->set_selectable(false);
-		group_node->get_header()->add_class("hierarchy-group-header");
-		group_node->set_row_component(file, "HierarchyGroupCount");
-		auto *group = dynamic_cast<TreeNode *>(tree->add_child(std::move(group_node)));
-		REQUIRE(group != nullptr);
-		auto *count = dynamic_cast<Label *>(group->get_row_component());
-		REQUIRE(count != nullptr);
-		count->set_text("3");
-		TreeNode *parent = group->add_child_node("Cube");
+		TreeNode *parent = tree->add_node("Cube");
 		eye_of(*parent, false);
 		eye_of(*parent->add_child_node("Child"), false);
-		eye_of(*group->add_child_node("Hidden"), true);
+		eye_of(*tree->add_node("Hidden"), true);
 		fixture.settle_fully();
 		write_style_snapshot("hierarchy", box);
 	}

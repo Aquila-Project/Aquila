@@ -122,7 +122,6 @@ void HierarchyTreeNode::on_drop(DragState &state) {
 		new_node->refresh_subtree_visibility();
 		set_expanded(true);
 	}
-	m_hierarchy_view.refresh_groups();
 }
 
 } // namespace Editor
