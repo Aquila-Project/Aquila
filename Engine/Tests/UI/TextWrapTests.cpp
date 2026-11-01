@@ -1,8 +1,12 @@
 #include <doctest.h>
 
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/FontRegistry.h"
+#include "Aquila/UI/Core/TextureCache.h"
 #include "Aquila/UI/Style/StyleParser.h"
+#include "Aquila/UI/Widgets/AssetSlot.h"
 #include "Aquila/UI/Widgets/Button.h"
+#include "Aquila/UI/Widgets/DragFloat.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/ScrollView.h"
@@ -135,8 +139,9 @@ TEST_SUITE("Text wrapping") {
 		dropdown->add_option("long", K_LONG_TEXT);
 		dropdown->set_value("short");
 		wide.layout();
-		CHECK(dropdown->get_layout_rect().size.x > test_gpu().font->measure_text(K_LONG_TEXT, 14.F).x);
-		CHECK(dropdown->get_layout_rect().size.y < 2.F * test_gpu().font->measure_text("A", 14.F).y + 12.F);
+		const F32 size = dropdown->get_children().front()->get_display_style().font_size;
+		CHECK(dropdown->get_layout_rect().size.x > test_gpu().font->measure_text(K_LONG_TEXT, size).x);
+		CHECK(dropdown->get_layout_rect().size.y < 2.F * test_gpu().font->measure_text("A", size).y + 12.F);
 	}
 
 	TEST_CASE("a long option without spaces doesn't stop a dropdown from shrinking") {
@@ -260,5 +265,51 @@ TEST_SUITE("Text wrapping") {
 		Label *label = one_line_label(*wide.box, TextOverflow::EllipsisMiddle);
 		wide.layout();
 		CHECK(drawn_text(*label) == K_FILE_NAME);
+	}
+
+	TEST_CASE("a filled asset slot with a long name is as tall as a number field") {
+		Fixture narrow(160.F);
+		auto *slot = narrow.box->add_child<AssetSlot>(std::string("texture"));
+		slot->add_class("split-AssetSlot");
+		slot->set_value({ .asset_path = std::string("/project/Content/") + K_FILE_NAME, .asset_type = "texture" });
+		auto *field = narrow.box->add_child<DragFloat>();
+		field->add_class("split-DragFloat");
+		narrow.layout();
+		CHECK(slot->get_layout_rect().size.y == doctest::Approx(field->get_layout_rect().size.y));
+		CHECK(slot->get_tooltip() == std::string("/project/Content/") + K_FILE_NAME);
+	}
+
+	TEST_CASE("an asset slot never draws its name over its clear button") {
+		Aquila::UI::Core::FontRegistry::set_ui_scale(1.05F);
+		Aquila::UI::Core::TextureCache textures(*test_gpu().ctx);
+		GFX::GfxTexture *thumbnail = textures.load("/resources/Engine/aquila-logo.png");
+		REQUIRE(thumbnail != nullptr);
+		bool loaded = false;
+		AssetSlot::set_adapter("texture",
+							   { .thumbnail = [&](const std::string &) { return loaded ? thumbnail : nullptr; } });
+
+		for (F32 width = 90.F; width <= 420.F; width += 11.F) {
+			CAPTURE(width);
+			loaded = false;
+			Fixture panel(width);
+			auto *slot = panel.box->add_child<AssetSlot>(std::string("texture"));
+			slot->add_class("split-AssetSlot");
+			slot->set_value({ .asset_path = std::string("/project/Content/") + K_FILE_NAME, .asset_type = "texture" });
+			panel.layout();
+			loaded = true;
+			AssetSlot::refresh_thumbnails(slot->get_value().asset_path);
+			panel.layout();
+
+			const auto *label = dynamic_cast<const Label *>(slot->get_children()[1].get());
+			const View &clear = *slot->get_children()[2];
+			REQUIRE(label != nullptr);
+			CHECK(slot->get_children()[0]->get_layout_rect().size.x > 0.F);
+			CHECK(label->get_absolute_rect().right() <= clear.get_absolute_rect().left() + 0.5F);
+			const std::string text = drawn_text(const_cast<Label &>(*label));
+			const F32 drawn = test_gpu().font->measure_text(text, label->get_display_style().font_size).x;
+			CHECK(label->get_absolute_rect().left() + drawn <= clear.get_absolute_rect().left() + 0.5F);
+		}
+		AssetSlot::set_adapter("texture", {});
+		Aquila::UI::Core::FontRegistry::set_ui_scale(1.F);
 	}
 }

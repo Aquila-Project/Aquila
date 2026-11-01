@@ -53,7 +53,7 @@
     height: 22px;
     padding: 0px 4px;
     font-family: medium;
-    font-size: 13px;
+    font-size: var(--font-size-control);
     color: var(--text-bright);
     background-color: transparent;
     border-width: 0px;
@@ -65,7 +65,7 @@
 
 .props-uuid {
     font-family: mono;
-    font-size: 11px;
+    font-size: var(--font-size-caption);
     color: var(--text-muted);
 }
 

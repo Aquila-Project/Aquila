@@ -14,23 +14,29 @@
 
 <Component name="PropertySplitRow" props="label">
     <View class="property-split-row">
-        <Label class="property-split-label">$label</Label>
+        <View class="property-split-label-box">
+            <Label class="property-split-label">$label</Label>
+        </View>
         <Slot class="property-split-value"/>
     </View>
 </Component>
 
 <Component name="PropertySplitStackedRow" props="label">
     <View class="property-split-row property-split-row-top">
-        <Label class="property-split-label">$label</Label>
+        <View class="property-split-label-box">
+            <Label class="property-split-label">$label</Label>
+        </View>
         <Slot class="property-split-value"/>
     </View>
 </Component>
 
 <Component name="PropertySplitCheckRow" props="label">
     <View class="property-split-row">
-        <Label class="property-split-label"/>
-        <Slot class="property-split-check"/>
-        <Label class="property-split-check-text">$label</Label>
+        <View class="property-split-label-box"/>
+        <View class="property-split-value property-split-check-value">
+            <Slot class="property-split-check"/>
+            <Label class="property-split-check-text">$label</Label>
+        </View>
     </View>
 </Component>
 

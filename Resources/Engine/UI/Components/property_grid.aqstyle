@@ -7,7 +7,7 @@
 
 .property-label {
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
     color: var(--text-dim);
     width: 84px;
 }
@@ -33,7 +33,7 @@
     flex-direction: row;
     align-items: center;
     width: 100%;
-    min-height: 20px;
+    min-height: var(--control-height-compact);
     gap: 8px;
 }
 
@@ -41,13 +41,18 @@
     align-items: start;
 }
 
-.property-split-label {
+.property-split-label-box {
+    flex-direction: row;
+    align-items: center;
     width: 38%;
-    min-height: 20px;
+    min-height: var(--control-height-compact);
+}
+
+.property-split-label {
+    width: grow;
     font-family: regular;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text-dim);
-    text-align: right;
 }
 
 .property-split-value {
@@ -55,9 +60,15 @@
     min-width: 0px;
 }
 
+.property-split-check-value {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--control-gap);
+}
+
 .property-split-check-text {
     width: grow;
     font-family: regular;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
 }

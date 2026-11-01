@@ -113,15 +113,15 @@ ListBox {
     background-color: var(--bg-widget);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     flex-direction: column;
     align-items: stretch;
     justify-content: center;
     gap: 0px;
-    padding: 0px 10px;
+    padding: 0px var(--control-padding-x);
     color: var(--text);
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-control);
     transition: 60ms ease-out;
 }
 
@@ -211,23 +211,24 @@ MenuBar {
 }
 
 Dropdown {
-    min-height: 28px;
+    min-height: var(--control-height);
     flex-direction: column;
 }
 
 AssetSlot {
     width: 100%;
-    min-height: 60px;
-    padding: 4px 6px;
+    height: var(--control-height);
+    padding: 0px 2px 0px var(--control-padding-x);
+    gap: var(--control-gap);
     overflow: hidden;
     flex-direction: row;
     background-color: var(--bg-surface);
-    border-width: 2px;
+    border-width: 1px;
     border-color: var(--border-dim);
     border-style: dashed;
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     transition: 80ms ease-out;
 }
 
@@ -239,19 +240,21 @@ AssetSlot:hover {
 .asset-slot-filled {
     border-style: solid;
     border-color: var(--accent);
-    gap: 6px;
 }
 
 .asset-slot-thumbnail {
-    width: 32px;
-    height: 32px;
+    width: var(--control-thumbnail);
+    height: var(--control-thumbnail);
     color: #ffffff;
     border-radius: 2px;
 }
 
 .asset-slot-label {
-    flex-grow: 1;
+    width: grow;
+    min-width: 0px;
     font-family: regular;
+    white-space: nowrap;
+    text-overflow: ellipsis-middle;
 }
 
 .asset-slot-placeholder {
@@ -270,8 +273,8 @@ AssetSlot:hover {
 }
 
 .asset-slot-clear {
-    padding: 0px 6px;
-    font-size: 12px;
+    padding: 0px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
     background-color: transparent;
 }
 
@@ -533,13 +536,14 @@ OverlayToolbar {
 .vec-stack-first,
 .vec-stack-middle,
 .vec-stack-last {
-    height: 20px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
     font-family: mono;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--bg-surface);
     border-width: 0px;
-    border-radius: 4px;
+    border-radius: var(--control-radius);
 }
 
 .split-DragFloat:hover,
@@ -559,7 +563,7 @@ OverlayToolbar {
 }
 
 .vec-stack-first {
-    border-radius: 4px 4px 0px 0px;
+    border-radius: var(--control-radius) var(--control-radius) 0px 0px;
 }
 
 .vec-stack-middle {
@@ -567,7 +571,7 @@ OverlayToolbar {
 }
 
 .vec-stack-last {
-    border-radius: 0px 0px 4px 4px;
+    border-radius: 0px 0px var(--control-radius) var(--control-radius);
 }
 
 .vec-field-stacked {
@@ -602,7 +606,7 @@ SliderField {
 .slider-field-track {
     width: grow;
     min-width: 20px;
-    height: 20px;
+    height: var(--control-height-compact);
     color: var(--text-dim);
     accent-color: var(--accent);
 }
@@ -611,13 +615,14 @@ SliderField {
     width: grow;
     min-width: 32px;
     max-width: 84px;
-    height: 20px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
     font-family: mono;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--bg-surface);
     border-width: 0px;
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     selection-color: var(--selection);
 }
 
@@ -632,7 +637,7 @@ SliderField {
 .slider-field-caption {
     min-height: 14px;
     font-family: regular;
-    font-size: 11px;
+    font-size: var(--font-size-caption);
     color: var(--text-muted);
 }
 
@@ -643,25 +648,32 @@ SliderField {
 }
 
 .split-Label {
-    min-height: 20px;
     font-family: mono;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
 }
 
 .split-TextInput {
-    height: 20px;
-    padding: 0px 6px;
-    font-size: 12px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
 }
 
 .split-AssetSlot {
-    min-height: 20px;
-    padding: 3px 2px 3px 6px;
-    font-size: 12px;
-    border-width: 1px;
-    border-radius: 4px;
-    justify-content: start;
+    height: var(--control-height-compact);
+    padding: 0px 2px 0px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
+}
+
+.split-Button {
+    min-height: var(--control-height-compact);
+    padding: 2px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
+    border-radius: var(--control-radius);
+}
+
+.split-ColorPicker {
+    height: var(--control-height-compact);
 }
 
 Button {
@@ -693,21 +705,22 @@ Collapsible {
 ColorPicker {
     flex-direction: column;
     width: grow;
+    height: var(--control-height);
 }
 
 TextInput {
     overflow: hidden;
     width: grow;
     min-width: 0px;
-    height: 22px;
-    padding: 10px;
+    height: var(--control-height);
+    padding: 0px var(--control-padding-x);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     color: var(--text);
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
     transition: 60ms ease-out;
 }
 
@@ -770,46 +783,36 @@ Toggle {
     accent-color: var(--accent);
 }
 
-DragFloat {
-    width: grow;
-    height: 22px;
-    min-width: 0px;
-    background-color: var(--input-bg);
-    border-width: 1px;
-    border-color: var(--input-border);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: regular;
-    font-size: 13px;
-    transition: 60ms ease-out;
-}
-
+DragFloat,
 DragInt {
     width: grow;
-    height: 22px;
+    height: var(--control-height);
     min-width: 0px;
+    padding: 0px var(--control-padding-x);
+    gap: var(--control-gap);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     color: var(--text);
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
+    text-align: left;
     transition: 60ms ease-out;
 }
 
 NumberInput {
     width: grow;
-    height: 22px;
+    height: var(--control-height);
     min-width: 0px;
-    padding: 0px 8px;
+    padding: 0px var(--control-padding-x);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     color: var(--text);
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
     transition: 60ms ease-out;
 }
 
@@ -817,12 +820,14 @@ NumberInput:focus {
     border-color: var(--accent);
 }
 
-DragFloat:hover {
+DragFloat:hover,
+DragInt:hover {
     border-color: var(--border-lit);
     background-color: var(--bg-muted);
 }
 
-DragFloat:focus {
+DragFloat:focus,
+DragInt:focus {
     border-color: var(--accent);
 }
 
@@ -853,10 +858,10 @@ Vec4Field {
 
 .vec-label {
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-control);
     color: var(--text-bright);
     width: auto;
-    height: 20px;
+    height: var(--control-height);
     border-radius: 2px;
     align-items: center;
     justify-content: center;
@@ -864,7 +869,7 @@ Vec4Field {
 
 .vec-drag {
     width: grow;
-    height: 22px;
+    height: var(--control-height);
 }
 
 .vec-drag-x {
@@ -978,8 +983,8 @@ Vec4Field {
 
 .cp-swatch {
     width: grow;
-    height: 24px;
-    border-radius: 2px;
+    height: grow;
+    border-radius: var(--control-radius);
     border-width: 1px;
     border-color: var(--line-inset);
     padding: 0px;
@@ -1040,14 +1045,14 @@ Vec4Field {
 
 .cp-mode-btn {
     width: grow;
-    min-height: 22px;
+    min-height: var(--control-height-compact);
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-compact);
     color: var(--text-dim);
     background-color: var(--bg-widget);
     border-width: 1px;
     border-color: var(--border-ui);
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     transition: 60ms ease-out;
 }
 
@@ -1076,7 +1081,7 @@ Vec4Field {
 
 .cp-ch-lbl {
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-compact);
     color: var(--text-muted);
     width: 12px;
 }
@@ -1088,14 +1093,15 @@ Vec4Field {
 
 .cp-ch-input {
     width: 38px;
-    height: 20px;
-    font-family: regular;
-    font-size: 14px;
+    height: var(--control-height-compact);
+    padding: 0px 4px;
+    font-family: mono;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     transition: 60ms ease-out;
 }
 
@@ -1113,21 +1119,22 @@ Vec4Field {
 
 .cp-hex-lbl {
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-compact);
     color: var(--text-muted);
     width: 8px;
 }
 
 .cp-hex-input {
     width: grow;
-    height: 20px;
-    font-family: regular;
-    font-size: 14px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
+    font-family: mono;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     transition: 60ms ease-out;
 }
 
@@ -1178,9 +1185,10 @@ Vec4Field {
         padding: 0px 6px;
     }
 
-    DragFloat {
-        height: 20px;
-        font-size: 14px;
+    DragFloat,
+    DragInt {
+        height: var(--control-height-compact);
+        font-size: var(--font-size-compact);
     }
 }
 
@@ -1218,20 +1226,20 @@ Vec4Field {
 }
 
 .props-dropdown {
-    min-height: 20px;
+    min-height: var(--control-height-compact);
     min-width: 0px;
 }
 
 .props-dropdown-header {
-    min-height: 20px;
-    padding: 0px 6px;
+    min-height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
     font-family: regular;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
 }
 
 .props-dropdown-header:hover {

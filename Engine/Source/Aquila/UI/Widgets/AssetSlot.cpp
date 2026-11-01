@@ -158,6 +158,7 @@ void AssetSlot::update_display() {
 	set_class("asset-slot-filled", m_has_value);
 
 	m_label->set_class("asset-slot-placeholder", !m_has_value);
+	set_tooltip(m_has_value ? m_value.asset_path : std::string{});
 	if (m_has_value) {
 		m_label->set_text(m_value.display_name.empty() ? m_value.asset_path : m_value.display_name);
 	} else {

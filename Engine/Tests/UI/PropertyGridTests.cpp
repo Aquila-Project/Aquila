@@ -56,7 +56,10 @@ TEST_SUITE("PropertyGrid") {
 
 		const View *row = field->get_parent();
 		CHECK(has_class(*row, "property-split-row"));
-		CHECK(has_class(*row->get_children().front(), "property-split-label"));
+		const View &label_box = *row->get_children().front();
+		CHECK(has_class(label_box, "property-split-label-box"));
+		REQUIRE(label_box.get_children().size() == 1);
+		CHECK(has_class(*label_box.get_children().front(), "property-split-label"));
 		CHECK(has_class(*field, "split-DragFloat"));
 	}
 
@@ -69,17 +72,24 @@ TEST_SUITE("PropertyGrid") {
 		CHECK(has_class(*field->get_parent(), "property-split-row-top"));
 	}
 
-	TEST_CASE("split check rows put the text after the checkbox and leave the label column empty") {
+	TEST_CASE("split check rows put the checkbox and its text in the value column") {
 		CanvasGrid in_canvas;
 		PropertyGrid &grid = in_canvas.grid;
 		grid.set_split(true);
 		auto *check = grid.add_check_row<Checkbox>("Cast Shadows", true);
 
-		const auto &cells = check->get_parent()->get_children();
-		REQUIRE(cells.size() == 3);
-		CHECK(dynamic_cast<Label *>(cells[0].get())->get_text().empty());
-		CHECK(cells[1].get() == check);
-		CHECK(dynamic_cast<Label *>(cells[2].get())->get_text() == "Cast Shadows");
+		View *value = check->get_parent();
+		REQUIRE(value != nullptr);
+		CHECK(has_class(*value, "property-split-value"));
+		const auto &cells = value->get_children();
+		REQUIRE(cells.size() == 2);
+		CHECK(cells[0].get() == check);
+		CHECK(dynamic_cast<Label *>(cells[1].get())->get_text() == "Cast Shadows");
+
+		const auto &row = value->get_parent()->get_children();
+		REQUIRE(row.size() == 2);
+		CHECK(has_class(*row[0], "property-split-label-box"));
+		CHECK(row[0]->get_children().empty());
 	}
 
 	TEST_CASE("check rows fall back to a regular row outside split mode") {
