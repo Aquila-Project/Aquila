@@ -17,7 +17,8 @@ using namespace Aquila;
 using namespace Aquila::SceneManagement;
 using namespace Aquila::SceneManagement::Components;
 
-HierarchyPanel::HierarchyPanel(EntityManager &entity_manager) : m_entity_manager(entity_manager) {}
+HierarchyPanel::HierarchyPanel(EntityManager &entity_manager, std::string components_file)
+	: m_entity_manager(entity_manager), m_components_file(std::move(components_file)) {}
 
 void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) {
 	auto ctx_uniq = std::make_unique<UI::Core::PopupMenu>();
@@ -31,7 +32,7 @@ void HierarchyPanel::build(UI::Core::View *panel, UI::Core::View *overlay_root) 
 			return;
 		}
 
-		auto tree_uniq = std::make_unique<HierarchyTreeView>(m_entity_manager);
+		auto tree_uniq = std::make_unique<HierarchyTreeView>(m_entity_manager, m_components_file);
 		m_tree_view = scroll->add_child(std::move(tree_uniq));
 
 		populate_tree();
@@ -224,7 +225,6 @@ void HierarchyPanel::sync() {
 		}
 		node->refresh_visibility();
 		m_tree_view->refresh_node_icon(node);
-		m_tree_view->regroup(node);
 	});
 }
 
@@ -234,8 +234,8 @@ void HierarchyPanel::refresh_entity(Entity entity) {
 	}
 	if (HierarchyTreeNode *node = m_tree_view->find_node_for_entity(entity)) {
 		node->set_label(entity.get_name());
+		node->refresh_subtree_visibility();
 		m_tree_view->refresh_node_icon(node);
-		m_tree_view->regroup(node);
 	}
 }
 

@@ -3,14 +3,8 @@
 #include "UI/Panels/HierarchyTreeNode.h"
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
-#include "Aquila/Scene/Components/CameraComponent.h"
-#include "Aquila/Scene/Components/FogComponent.h"
-#include "Aquila/Scene/Components/LightComponent.h"
-#include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
-#include "Aquila/Scene/Components/SkyLightComponent.h"
 #include "Aquila/Scene/EntityManager.h"
-#include "Aquila/UI/Widgets/Label.h"
 
 namespace Editor {
 
@@ -18,15 +12,9 @@ using namespace Aquila::SceneManagement;
 using namespace Aquila::SceneManagement::Components;
 using namespace Aquila::UI::Core;
 
-namespace {
-
-constexpr std::array<const char *, static_cast<Usize>(EntityGroup::Count)> K_GROUP_LABELS = {
-	"ENVIRONMENT", "LIGHTS", "GEOMETRY", "CAMERAS", "EMPTY",
-};
-
-}
-
-HierarchyTreeView::HierarchyTreeView(EntityManager &entity_manager) : m_entity_manager(entity_manager) {
+HierarchyTreeView::HierarchyTreeView(EntityManager &entity_manager, std::string components_file)
+	: m_entity_manager(entity_manager), m_components_file(std::move(components_file)) {
+	set_row_component(m_components_file, "HierarchyRow");
 	m_is_accepting_payload = true;
 	m_is_draggable = false;
 
@@ -47,59 +35,14 @@ HierarchyTreeView::HierarchyTreeView(EntityManager &entity_manager) : m_entity_m
 	});
 }
 
-EntityGroup HierarchyTreeView::group_for(Entity entity) {
-	if (entity.has_component<CameraComponent>()) {
-		return EntityGroup::Cameras;
-	}
-	if (entity.has_component<SkyLightComponent>() || entity.has_component<FogComponent>()) {
-		return EntityGroup::Environment;
-	}
-	if (entity.has_component<LightComponent>()) {
-		return EntityGroup::Lights;
-	}
-	if (entity.has_component<MeshComponent>()) {
-		return EntityGroup::Geometry;
-	}
-	return EntityGroup::Other;
-}
-
-bool HierarchyTreeView::is_group_node(const View *view) const {
-	return std::ranges::any_of(m_groups,
-							   [view](const Group &group) { return group.node != nullptr && group.node == view; });
-}
-
-TreeNode *HierarchyTreeView::ensure_group(EntityGroup group) {
-	Group &slot = m_groups[static_cast<Usize>(group)];
-	if (slot.node != nullptr) {
-		return slot.node;
-	}
-
-	auto node = std::make_unique<TreeNode>(K_GROUP_LABELS[static_cast<Usize>(group)], *this, 0);
-	node->set_selectable(false);
-	node->get_header()->add_class("hierarchy-group-header");
-	slot.count = node->get_actions()->add_child<Label>(std::string{});
-	slot.count->add_class("hierarchy-group-count");
-	slot.node = add_child(std::move(node));
-
-	for (Usize next = static_cast<Usize>(group) + 1; next < m_groups.size(); ++next) {
-		if (m_groups[next].node != nullptr) {
-			m_content->reorder_child(slot.node, m_groups[next].node);
-			break;
-		}
-	}
-	return slot.node;
-}
-
 HierarchyTreeNode *HierarchyTreeView::add_entity_node(std::string label, Entity entity, HierarchyTreeNode *parent) {
-	TreeNode *container = parent != nullptr ? static_cast<TreeNode *>(parent) : ensure_group(group_for(entity));
-	const int depth = container->get_depth() + 1;
+	const int depth = parent != nullptr ? parent->get_depth() + 1 : 0;
 	auto node = std::make_unique<HierarchyTreeNode>(std::move(label), *this, depth, entity, m_entity_manager);
 
-	auto *raw = container->add_child(std::move(node));
+	auto *raw = parent != nullptr ? parent->add_child(std::move(node)) : add_child(std::move(node));
 	m_node_entity_map[raw] = entity;
 	raw->set_type_icon(icon_for(entity));
 	raw->refresh_visibility();
-	refresh_groups();
 	if (!m_filter.empty()) {
 		apply_filter(m_filter);
 	}
@@ -125,61 +68,6 @@ void HierarchyTreeView::refresh_node_icon(HierarchyTreeNode *node) {
 	}
 }
 
-void HierarchyTreeView::regroup(HierarchyTreeNode *node) {
-	if (node == nullptr) {
-		return;
-	}
-	View *container = node->get_parent();
-	View *owner = container != nullptr ? container->get_parent() : nullptr;
-	if (!is_group_node(owner)) {
-		return;
-	}
-	const TreeNode *target = m_groups[static_cast<Usize>(group_for(node->get_entity()))].node;
-	if (owner != target) {
-		move_to_group(node);
-	}
-}
-
-void HierarchyTreeView::move_to_group(HierarchyTreeNode *node) {
-	View *container = node->get_parent();
-	if (container == nullptr) {
-		return;
-	}
-	auto *old_owner = view_cast<TreeNode>(container->get_parent());
-	Unique<View> detached = container->detach_child(node);
-	if (old_owner != nullptr) {
-		old_owner->refresh_indicator();
-	}
-
-	TreeNode *group = ensure_group(group_for(node->get_entity()));
-	auto *moved = dynamic_cast<HierarchyTreeNode *>(group->add_child(std::move(detached)));
-	if (moved != nullptr) {
-		moved->update_depth(group->get_depth() + 1);
-		group->set_expanded(true);
-	}
-	refresh_groups();
-}
-
-void HierarchyTreeView::refresh_groups() {
-	for (Group &group : m_groups) {
-		if (group.node == nullptr) {
-			continue;
-		}
-		Usize count = 0;
-		for (const auto &child : group.node->get_children_container()->get_children()) {
-			if (view_is<TreeNode>(child.get())) {
-				++count;
-			}
-		}
-		if (count == 0) {
-			remove_node(group.node);
-			group = Group{};
-			continue;
-		}
-		group.count->set_text(std::to_string(count));
-	}
-}
-
 void HierarchyTreeView::delete_entity_node(Entity entity) {
 	HierarchyTreeNode *target = find_node_for_entity(entity);
 	if (target == nullptr) {
@@ -194,7 +82,6 @@ void HierarchyTreeView::delete_entity_node(Entity entity) {
 		return false;
 	});
 	remove_node(target);
-	refresh_groups();
 }
 
 void HierarchyTreeView::populate_from_entity(Entity entity, HierarchyTreeNode *parent) {
@@ -212,7 +99,6 @@ void HierarchyTreeView::clear() {
 		m_content->clear_children();
 	}
 	m_node_entity_map.clear();
-	m_groups = {};
 }
 
 HierarchyTreeNode *HierarchyTreeView::find_node_for_entity(Entity entity) const {
@@ -239,17 +125,10 @@ bool HierarchyTreeView::filter_node(TreeNode *node, const std::string &query) {
 
 void HierarchyTreeView::apply_filter(const std::string &query) {
 	m_filter = Aquila::Foundation::to_lower(query);
-	for (Group &group : m_groups) {
-		if (group.node == nullptr) {
-			continue;
+	for (const auto &child : m_content->get_children()) {
+		if (auto *node = view_cast<TreeNode>(child.get())) {
+			filter_node(node, m_filter);
 		}
-		bool any = false;
-		for (const auto &child : group.node->get_children_container()->get_children()) {
-			if (auto *child_node = view_cast<TreeNode>(child.get())) {
-				any = filter_node(child_node, m_filter) || any;
-			}
-		}
-		group.node->set_hidden(!any);
 	}
 }
 
@@ -266,7 +145,7 @@ void HierarchyTreeView::on_drop(DragState &state) {
 	}
 
 	View *container = source_node->get_parent();
-	if (container != nullptr && is_group_node(container->get_parent())) {
+	if (container == nullptr || container == m_content) {
 		return;
 	}
 
@@ -274,7 +153,16 @@ void HierarchyTreeView::on_drop(DragState &state) {
 	if (node != nullptr && node->parent.is_valid()) {
 		m_entity_manager.remove_child(node->parent, dragged_entity);
 	}
-	move_to_group(source_node);
+
+	auto *old_owner = view_cast<TreeNode>(container->get_parent());
+	Unique<View> detached = container->detach_child(source_node);
+	if (old_owner != nullptr) {
+		old_owner->refresh_indicator();
+	}
+	if (auto *moved = dynamic_cast<HierarchyTreeNode *>(add_child(std::move(detached)))) {
+		moved->update_depth(0);
+		moved->refresh_subtree_visibility();
+	}
 }
 
 } // namespace Editor

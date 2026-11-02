@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Aquila/UI/Core/Behaviour.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Button.h"
 
@@ -9,6 +10,7 @@ class GfxTexture;
 
 namespace Aquila::UI::Core {
 
+class LayoutLoader;
 class TreeNode;
 
 class TreeView : public View {
@@ -19,8 +21,10 @@ class TreeView : public View {
 
 	TreeNode *add_node(std::string label);
 	void remove_node(TreeNode *node);
+	void clear();
 	using View::add_child;
 	View *add_child(Unique<View> child) override;
+	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;
 
 	void on_drag_enter(DragState &state) override;
 	void on_drag_leave(DragState &state) override;
@@ -35,6 +39,7 @@ class TreeView : public View {
 	[[nodiscard]] TreeNode *get_selected() const { return m_selected; }
 
 	void set_expand_icons(GFX::GfxTexture *collapsed, GFX::GfxTexture *expanded);
+	void set_row_component(std::string file, std::string component);
 
   protected:
 	View *m_content = nullptr;
@@ -48,6 +53,8 @@ class TreeView : public View {
 	TreeNode *m_selected = nullptr;
 	GFX::GfxTexture *m_icon_collapsed = nullptr;
 	GFX::GfxTexture *m_icon_expanded = nullptr;
+	std::string m_row_file;
+	std::string m_row_component;
 };
 
 class TreeNode : public View {
@@ -83,13 +90,24 @@ class TreeNode : public View {
 	[[nodiscard]] View *get_children_container() const { return m_children; }
 	/// Counts hover over extra views on the row, like action buttons, so the row stays hovered.
 	void track_row_hover(View *view);
+	void set_row_component(std::string file, std::string component);
+	[[nodiscard]] View *get_row_component() const { return m_row_view; }
+	template <typename T> [[nodiscard]] T *get_row_behaviour() const {
+		return m_row_view != nullptr ? find_behaviour<T>(*m_row_view) : nullptr;
+	}
 
 	Signal<void(bool)> on_row_hover_changed;
 
   protected:
+	virtual void on_row_component_built() {}
+
 	TreeView &m_owner;
 
   private:
+	friend class TreeView;
+
+	void build_row_components();
+	void build_rows(LayoutLoader &loader);
 	void apply_state();
 	void update_header_text();
 	void on_header_clicked();
@@ -106,6 +124,9 @@ class TreeNode : public View {
 	Button *m_header = nullptr;
 	View *m_actions = nullptr;
 	View *m_children = nullptr;
+	std::string m_row_file;
+	std::string m_row_component;
+	View *m_row_view = nullptr;
 };
 
 } // namespace Aquila::UI::Core

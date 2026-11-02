@@ -1,10 +1,12 @@
 #include <doctest.h>
 
 #include "CanvasTestSupport.h"
+#include "LoaderTestSupport.h"
 #include "GpuTestSupport.h"
 
 #include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/ComponentInstance.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Collapsible.h"
@@ -90,14 +92,15 @@ std::string read_file(const std::string &path) {
 }
 
 struct Fixture {
-	Unique<View> root;
+	LoaderCanvas canvas;
+	View *root = nullptr;
 	Unique<InspectorView> view;
 
 	Fixture() {
-		LayoutLoader loader;
-		root =
-			loader.load_string(read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout"));
-		REQUIRE(root != nullptr);
+		Unique<View> loaded = canvas.loader.load_string(
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/Windows/inspector.aqlayout"));
+		REQUIRE(loaded != nullptr);
+		root = canvas.host().add_child(std::move(loaded));
 		view = std::make_unique<InspectorView>(*root, InspectorView::IconResolver{}, nullptr);
 	}
 };
@@ -390,6 +393,26 @@ TEST_SUITE("InspectorView") {
 		CHECK(other->is_expanded());
 	}
 
+	TEST_CASE("a folded section stays folded only on the inspectable it was folded on") {
+		Light light;
+		Fixture f;
+		const auto shown = [&f, &light](std::string id) {
+			Inspectable inspectable = one_tab(light_section(light, "light"));
+			inspectable.id = std::move(id);
+			f.view->show(std::move(inspectable));
+			auto *section = dynamic_cast<Collapsible *>(f.view->find_section("light"));
+			REQUIRE(section != nullptr);
+			return section;
+		};
+
+		Collapsible *cube = shown("cube");
+		cube->set_expanded(false);
+		cube->on_toggled(false);
+
+		CHECK(shown("sphere")->is_expanded());
+		CHECK_FALSE(shown("cube")->is_expanded());
+	}
+
 	TEST_CASE("the canvas can go away while something is shown") {
 		struct Owner final : View {
 			Unique<InspectorView> inspector;
@@ -397,15 +420,14 @@ TEST_SUITE("InspectorView") {
 		};
 		Light light;
 		test_gpu();
-		CanvasSingletonsScope singletons;
-		auto canvas = std::make_unique<Canvas>(320, 480);
+		LoaderCanvas fixture(320, 480);
+		Unique<Canvas> &canvas = fixture.canvas;
 		auto *owner = canvas->get_root()->add_child<Owner>();
 		Aquila::UI::StyleProperties style;
 		style.font_family = "regular";
 		owner->merge_style(style);
-		LayoutLoader loader;
-		View *layout = owner->add_child(
-			loader.load_string(read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/inspector.aqlayout")));
+		View *layout = owner->add_child(fixture.loader.load_string(
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/Windows/inspector.aqlayout")));
 		REQUIRE(layout != nullptr);
 		owner->inspector = std::make_unique<InspectorView>(*layout, InspectorView::IconResolver{}, nullptr);
 		owner->inspector->show(one_tab(light_section(light, "light")));
@@ -415,6 +437,55 @@ TEST_SUITE("InspectorView") {
 
 		canvas.reset();
 		CHECK(canvas == nullptr);
+	}
+
+	TEST_CASE("showing again reads no file and keeps the style set's revision") {
+		Light light;
+		Fixture f;
+		View *pages = f.root->find_by_id("inspector-pages");
+		REQUIRE(pages != nullptr);
+		f.view->show(one_tab(light_section(light, "light")));
+		REQUIRE(pages->get_children().size() == 1);
+		const ComponentInstance *first = pages->get_children().front()->get_component_instance();
+		REQUIRE(first != nullptr);
+		CHECK(first->get_name() == "InspectorPage");
+		const Uint64 revision = f.canvas.loader.styles().get_revision();
+
+		f.view->show(one_tab(light_section(light, "light")));
+		REQUIRE(pages->get_children().size() == 1);
+		const ComponentInstance *again = pages->get_children().front()->get_component_instance();
+		REQUIRE(again != nullptr);
+		CHECK(again != first);
+		CHECK(again->get_document() == first->get_document());
+		CHECK(f.canvas.loader.styles().get_revision() == revision);
+	}
+
+	TEST_CASE("a view outside a canvas reports it and builds nothing") {
+		Light light;
+		CanvasSingletonsScope singletons;
+		test_vfs();
+		LayoutLoader loader;
+		Unique<View> root = loader.load_string(
+			read_file(std::string(AQUILA_SOURCE_DIR) + "/Resources/Engine/UI/Windows/inspector.aqlayout"));
+		REQUIRE(root != nullptr);
+		InspectorView view(*root, InspectorView::IconResolver{}, nullptr);
+
+		LogCapture capture;
+		view.show(one_tab(light_section(light, "light")));
+		const std::string log = capture.stream.str();
+		const std::string expected = "InspectorView: 'Thing' needs a canvas with a layout loader";
+		const Usize at = log.find(expected);
+		CHECK_MESSAGE(at != std::string::npos, log);
+		CHECK_MESSAGE(log.find(expected, at + 1) == std::string::npos, log);
+		CHECK(view.is_showing());
+		CHECK(view.find_section("light") == nullptr);
+		CHECK(root->find_by_id("props-tabs")->get_children().empty());
+		CHECK(root->find_by_id("inspector-pages")->get_children().empty());
+
+		view.refresh();
+		view.update();
+		view.clear();
+		CHECK_FALSE(view.is_showing());
 	}
 
 	TEST_CASE("clear goes back to the empty state") {

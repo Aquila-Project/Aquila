@@ -1,3 +1,5 @@
+<Import src="../Components/overlay"/>
+
 <View id="viewport-root" class="viewport-root">
     <Image id="viewport-image"/>
     <OverlayToolbar id="viewport-transform-tools" edge="left" along="8">
@@ -13,9 +15,28 @@
         <Separator/>
         <View id="viewport-show" class="overlay-menu">
             <Button id="viewport-show-button" class="overlay-tool" src="Engine/UI/Icons/eye.svg" tooltip="Show"/>
+            <Popover id="viewport-show-popover" title="Show">
+                <OverlayCheckRow id="show-grid" label="Grid"/>
+                <OverlayCheckRow id="show-sky" label="Sky"/>
+                <OverlayCheckRow id="show-shadows" label="Shadows"/>
+                <OverlayCheckRow id="show-outline" label="Selection Outline"/>
+                <OverlayCheckRow id="show-realtime" label="Realtime"/>
+                <PopoverTitle title="Overlays"/>
+                <OverlayCheckRow id="overlay-axis-widget" label="Axis Widget"/>
+                <OverlayCheckRow id="overlay-selection-label" label="Selection Label"/>
+                <OverlayCheckRow id="overlay-safe-frame" label="Safe Frame"/>
+                <OverlayCheckRow id="overlay-render-status" label="Render Status"/>
+                <OverlayCheckRow id="overlay-statistics" label="Statistics"/>
+                <OverlayCheckRow id="overlay-gpu-timings" label="GPU Timings"/>
+            </Popover>
         </View>
         <View id="viewport-camera" class="overlay-menu">
             <Button id="viewport-camera-button" class="overlay-tool" src="Engine/UI/Icons/video.svg" tooltip="Camera"/>
+            <Popover id="viewport-camera-popover" title="Camera" class="overlay-popover-wide">
+                <PropertyGrid id="camera-grid" split="true"/>
+            </Popover>
         </View>
     </OverlayToolbar>
+    <ViewportOverlay id="viewport-overlay"/>
+    <TransformGizmo id="viewport-gizmo"/>
 </View>

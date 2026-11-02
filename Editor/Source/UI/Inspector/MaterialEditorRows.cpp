@@ -192,9 +192,9 @@ Reflection::Property make_emit_light_property() {
 } // namespace
 
 MaterialEditorRows::MaterialEditorRows(UI::Core::PropertyGrid &parent, GFX::GfxContext *context) : m_context(context) {
-	m_settings_grid = parent.add_child<UI::Core::PropertyGrid>(parent.get_label_width());
+	m_settings_grid = parent.add_grid();
 	m_settings_grid->set_split(parent.is_split());
-	m_params_grid = parent.add_child<UI::Core::PropertyGrid>(parent.get_label_width());
+	m_params_grid = parent.add_grid();
 	m_params_grid->set_split(parent.is_split());
 	build_settings();
 }

@@ -1,0 +1,59 @@
+.ui-debug-window {
+    width: 380px;
+    height: 480px;
+    flex-direction: column;
+    background-color: var(--bg-panel);
+    border-width: 1px;
+    border-color: var(--border-dim);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.ui-debug-header {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 30px;
+    padding: 0px 10px;
+    gap: 8px;
+    background-color: var(--bg-surface);
+    border-color: var(--border);
+    border-width: 1px;
+}
+
+.ui-debug-title {
+    font-family: regular;
+    font-size: 14px;
+    color: var(--text-bright);
+    width: grow;
+}
+
+.ui-debug-refresh {
+    font-family: regular;
+    font-size: 14px;
+    color: var(--text-dim);
+    padding: 3px 10px;
+    border-radius: 2px;
+    background-color: var(--bg-widget);
+    border-width: 1px;
+    border-color: var(--border-ui);
+    align-items: center;
+    justify-content: center;
+    transition: 80ms ease-out;
+}
+
+.ui-debug-refresh:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-bright);
+}
+
+.ui-debug-body {
+    width: 100%;
+    height: grow;
+}
+
+.ui-debug-tree-host {
+    flex-direction: column;
+    width: 100%;
+    padding: 4px;
+}

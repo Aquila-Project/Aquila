@@ -62,6 +62,7 @@ struct InspectorTab {
 
 /// Move only, the view owns it while shown.
 struct Inspectable {
+	std::string id;
 	std::string icon;
 	std::string title;
 	/// Set makes the title editable.

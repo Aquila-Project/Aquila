@@ -12,7 +12,7 @@ struct VSOutput {
 };
 
 [shader("vertex")]
-VSOutput main(uint vertexIndex : SV_VertexID) {
+VSOutput main(uint vertexIndex: SV_VertexID) {
 	VSOutput o;
 	o.position = FullscreenVertexPosition(vertexIndex);
 	o.uv = FullscreenTexCoord(vertexIndex);

@@ -2,6 +2,7 @@
 #include "Aquila/Foundation/Color.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/RHI/Backend/RHITypes.h"
+#include "Aquila/UI/Style/StyleParserHelper.h"
 #include "Aquila/UI/Widgets/TabBar.h"
 
 namespace Aquila::UI::Core {
@@ -129,6 +130,18 @@ ColorPicker::ColorPicker(GFX::GfxContext &ctx, Vec4 color) : m_ctx(ctx), m_color
 	m_v = hsv.z;
 
 	init();
+}
+
+void ColorPicker::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name != "color") {
+		Control::apply_xml_attribute(name, value, resolver);
+		return;
+	}
+	if (const Option<Vec4> color = ParserHelper::parse_color(value)) {
+		set_color(*color);
+	} else {
+		AQUILA_LOG_WARNING("ColorPicker: color expects a color, got '{}'", value);
+	}
 }
 
 void ColorPicker::set_color(Vec4 color) {

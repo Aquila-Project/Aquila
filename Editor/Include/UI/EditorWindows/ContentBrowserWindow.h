@@ -11,18 +11,21 @@ class View;
 
 namespace Editor {
 
+class ContentTile;
+
 /// The open project's Content folder. It can't navigate above /project/Content.
 class ContentBrowserWindow final : public EditorWindow {
   public:
 	explicit ContentBrowserWindow(EditorContext &context);
 
-	void build(Aquila::UI::Core::View &content) override;
+	void define_behaviour() override;
 	void update(F32 delta_time) override;
 
 	void navigate(std::string directory);
 
   private:
 	struct Tile {
+		ContentTile *tile = nullptr;
 		Aquila::UI::Core::View *view = nullptr;
 		std::string name;
 		std::string path;
@@ -49,6 +52,7 @@ class ContentBrowserWindow final : public EditorWindow {
 	Aquila::UI::Core::View *m_path = nullptr;
 	Aquila::UI::Core::View *m_grid = nullptr;
 	Aquila::UI::Core::TextInput *m_filter = nullptr;
+	Aquila::UI::Core::View *m_empty = nullptr;
 	Aquila::UI::Core::PopupMenu *m_menu = nullptr;
 	Aquila::UI::Core::PopupMenu *m_confirm = nullptr;
 	std::vector<Delegate<void()>> m_deferred;

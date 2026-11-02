@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/UI/Core/BehaviourRegistry.h"
+#include "Aquila/UI/Core/ComponentArgs.h"
 #include "Aquila/UI/Style/StyleSet.h"
 #include "Aquila/UI/Core/Shortcuts.h"
 #include "Aquila/UI/Core/View.h"
@@ -46,6 +47,7 @@ class LayoutLoader : public IResourceResolver {
 	void set_command_source(const Commands *commands, const Shortcuts *shortcuts = nullptr);
 	[[nodiscard]] Delegate<void()> resolve_command(const std::string &name) const override;
 	[[nodiscard]] CommandInfo query_command(std::string_view name) const override;
+	[[nodiscard]] bool has_commands() const override { return m_command_source != nullptr; }
 
 	/// VFS path. Null when the file can't be read or an <Include> loops.
 	Unique<View> load_file(const std::string &path);
@@ -55,7 +57,22 @@ class LayoutLoader : public IResourceResolver {
 	[[nodiscard]] StyleSet &styles() { return m_styles; }
 
 	View *build_file(const std::string &path, View &parent, Unique<Behaviour> behaviour = nullptr);
-	View *create(const std::string &file, std::string_view component, View &parent);
+	View *create(const std::string &file, std::string_view component, View &parent, ComponentArgs args = {});
+	template <std::derived_from<Behaviour> T>
+	T *create(const std::string &file, std::string_view component, View &parent, ComponentArgs args = {}) {
+		View *view = create(file, component, parent, std::move(args));
+		if (view == nullptr) {
+			return nullptr;
+		}
+		if (T *typed = find_behaviour<T>(*view)) {
+			return typed;
+		}
+		report_missing_behaviour(file, component);
+		parent.remove_child(view);
+		return nullptr;
+	}
+	[[nodiscard]] Unique<View> create_detached(const std::string &file, std::string_view component,
+											   ComponentArgs args = {});
 
 	[[nodiscard]] Text::FontAtlas *resolve_font(const std::string &name) const;
 	[[nodiscard]] Unique<View> create_widget(const std::string &type, std::string_view text,
@@ -100,8 +117,17 @@ class LayoutLoader : public IResourceResolver {
 
 	std::unordered_map<std::string, CachedDocument> m_documents;
 	BehaviourRegistry m_behaviours;
+	std::vector<Foundation::Registration> m_builtin_behaviours;
 	StyleSet m_styles;
 	std::vector<std::string> m_checking;
+
+	struct BuildPass;
+	struct VisibleImports {
+		Ref<const Markup::MarkupDocument> importer;
+		std::vector<Ref<const Markup::MarkupDocument>> imports;
+	};
+	Uint32 m_build_depth = 0;
+	std::unordered_map<const Markup::MarkupDocument *, VisibleImports> m_visible_imports;
 
 	[[nodiscard]] Ref<const Markup::MarkupDocument> load_document(const std::string &path);
 	void check_document(const Markup::MarkupDocument &document);
@@ -109,16 +135,21 @@ class LayoutLoader : public IResourceResolver {
 	[[nodiscard]] FoundComponent find_visible(const BuildScope &scope, std::string_view name);
 
 	Unique<View> load_root(const std::string &path, Uint64 scope_id, Ref<const Markup::MarkupDocument> *document);
-	View *create_from(const ComponentInstance &instance, std::string_view component, View &parent);
-	View *place_instance(const FoundComponent &found, const BuildScope &scope, std::string_view component,
-						 View &parent);
+	Unique<View> create_detached_from(const ComponentInstance &instance, std::string_view component,
+									  ComponentArgs args);
+	Unique<View> build_instance(const FoundComponent &found, const BuildScope &scope, std::string_view component,
+								ComponentArgs args);
+	void report_missing_behaviour(std::string_view file, std::string_view component) const;
 	void attach_behaviour(View &root, Unique<ComponentInstance> instance, Unique<Behaviour> behaviour);
 
 	Unique<View> build_element(const Markup::MarkupNode &node, const BuildScope &scope);
 	Unique<View> build_component(const FoundComponent &found, const Markup::MarkupNode &instance,
-								 const BuildScope &scope);
+								 const BuildScope &scope, std::vector<Unique<View>> *slot_children = nullptr);
 	void build_children(View &view, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font,
 						bool skip_text = false);
+	void add_item(View &parent, const Markup::MarkupNode &node, const BuildScope &scope, Text::FontAtlas *font);
 };
+
+[[nodiscard]] LayoutLoader *find_layout_loader(const View &view);
 
 } // namespace Aquila::UI::Core

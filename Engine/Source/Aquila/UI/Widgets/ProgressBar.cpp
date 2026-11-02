@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/ProgressBar.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 
 namespace Aquila::UI::Core {
 
@@ -24,7 +25,11 @@ void ProgressBar::set_value(float value) {
 
 void ProgressBar::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
 	if (name == "value") {
-		set_value(std::stof(std::string(value)));
+		if (const Option<F32> number = parse_markup_number(value)) {
+			set_value(*number);
+		} else {
+			AQUILA_LOG_WARNING("ProgressBar: value expects a number, got '{}'", value);
+		}
 		return;
 	}
 	View::apply_xml_attribute(name, value, resolver);

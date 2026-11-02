@@ -60,6 +60,17 @@
 
     --shadow-sm: 0px 2px 6px 0px rgba(0,0,0,0.45);
     --shadow-pop: 0px 6px 22px 0px rgba(0,0,0,0.55);
+
+    --control-height: 22px;
+    --control-height-compact: 20px;
+    --control-radius: 4px;
+    --control-padding-x: 8px;
+    --control-padding-x-compact: 6px;
+    --control-gap: 6px;
+    --control-thumbnail: 16px;
+    --font-size-control: 13px;
+    --font-size-compact: 12px;
+    --font-size-caption: 11px;
 }
 
 .hidden {

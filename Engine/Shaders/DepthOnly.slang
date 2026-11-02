@@ -13,10 +13,12 @@ struct PushConstants {
 PushConstants push;
 
 struct VSInput {
-	[[vk::location(0)]] float3 position : POSITION;
+	[[vk::location(0)]]
+	float3 position : POSITION;
 };
 
-[shader("vertex")] float4 main(VSInput IN) : SV_Position {
+[shader("vertex")]
+float4 main(VSInput IN) : SV_Position {
 	return mul(GetMainCamera().viewProjection, mul(push.model, float4(IN.position, 1.0)));
 }
 

@@ -40,6 +40,7 @@ class DrawCompositor {
 	std::vector<HitTestItem> m_canvas_items;
 	std::vector<HitTestItem> m_canvas_layers;
 	std::vector<View *> m_float_roots;
+	std::vector<Option<Rect>> m_float_clips;
 	DrawList m_draw_list;
 	bool m_compose_needed = false;
 	Uint32 m_width = 0;

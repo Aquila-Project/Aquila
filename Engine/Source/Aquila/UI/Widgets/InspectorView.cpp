@@ -1,10 +1,13 @@
 #include "Aquila/UI/Widgets/InspectorView.h"
 
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Collapsible.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
 #include "Aquila/UI/Widgets/Image.h"
+#include "Aquila/UI/Widgets/InspectorPage.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
@@ -12,6 +15,27 @@
 #include "Aquila/UI/Widgets/TextInput.h"
 
 namespace Aquila::UI::Core {
+
+namespace {
+
+constexpr std::string_view K_COMPONENTS = "inspector";
+
+template <std::derived_from<View> T>
+T *create_as(LayoutLoader &loader, std::string_view component, View &parent, ComponentArgs args = {}) {
+	View *created = loader.create(engine_component_file(K_COMPONENTS), component, parent, std::move(args));
+	if (created == nullptr) {
+		return nullptr;
+	}
+	auto *typed = dynamic_cast<T *>(created);
+	if (typed == nullptr) {
+		AQUILA_LOG_ERROR("InspectorView: {} in {} can't be rooted in a {}", component,
+						 engine_component_file(K_COMPONENTS), created->get_type_name());
+		parent.remove_child(created);
+	}
+	return typed;
+}
+
+}
 
 InspectorView::InspectorView(View &root, IconResolver icons, GFX::GfxContext *ctx)
 	: m_icons(std::move(icons)), m_ctx(ctx) {
@@ -108,8 +132,12 @@ void InspectorView::show(Inspectable inspectable) {
 	m_inspectable = std::make_unique<Inspectable>(std::move(inspectable));
 
 	build_header();
-	for (InspectorTab &tab : m_inspectable->tabs) {
-		build_tab(tab);
+	if (LayoutLoader *loader = find_layout_loader(*m_pages)) {
+		for (InspectorTab &tab : m_inspectable->tabs) {
+			build_tab(*loader, tab);
+		}
+	} else {
+		AQUILA_LOG_ERROR("InspectorView: '{}' needs a canvas with a layout loader", m_inspectable->title);
 	}
 	m_tab_strip->set_hidden(m_tabs.size() <= 1);
 	refresh_tabs();
@@ -183,36 +211,36 @@ void InspectorView::build_header() {
 	m_subtitle->set_hidden(m_inspectable->subtitle.empty());
 }
 
-void InspectorView::build_tab(InspectorTab &tab) {
+void InspectorView::build_tab(LayoutLoader &loader, InspectorTab &tab) {
 	const Usize index = m_tabs.size();
 
-	auto *button = m_tab_strip->add_child<Button>();
-	button->add_class("props-tab");
+	auto *button = create_as<Button>(loader, "InspectorTabButton", *m_tab_strip);
+	if (button == nullptr) {
+		return;
+	}
+	auto *page = loader.create<InspectorPage>(engine_component_file(K_COMPONENTS), "InspectorPage", *m_pages);
+	if (page == nullptr) {
+		m_tab_strip->remove_child(button);
+		return;
+	}
 	button->set_icon(icon(tab.icon));
 	button->set_tooltip(tab.title);
 	button->on_click.connect([this, title = tab.title] { select_tab(title); });
+	page->root().set_hidden(true);
 
-	auto *page = m_pages->add_child<View>();
-	page->add_class("props-page");
-	page->set_hidden(true);
-	auto *sections = page->add_child<View>();
-	sections->add_class("props-sections");
-
-	m_tabs.push_back({ .tab = &tab, .button = button, .page = page });
+	m_tabs.push_back({ .tab = &tab, .button = button, .page = &page->root() });
 	for (InspectorSection &section : tab.sections) {
-		build_section(*sections, section, index);
+		build_section(loader, page->get_sections(), section, index);
 	}
-	build_actions(*page, tab.actions);
+	build_actions(loader, page->root(), tab.actions);
 }
 
-void InspectorView::build_section(View &parent, InspectorSection &section, Usize tab) {
+void InspectorView::build_section(LayoutLoader &loader, View &parent, InspectorSection &section, Usize tab) {
 	View *root = nullptr;
 	if (section.title.empty()) {
-		root = parent.add_child<View>();
-		root->add_class("props-section-bare");
-	} else {
-		auto *collapsible = parent.add_child<Collapsible>(section.title);
-		collapsible->set_variant("props-panel");
+		root = create_as<View>(loader, "InspectorBareSection", parent);
+	} else if (auto *collapsible = create_as<Collapsible>(loader, "InspectorPanel", parent,
+														  { .attributes = { { "title", section.title } } })) {
 		collapsible->set_state_icons(icon("chevron-right"), icon("chevron-down"), true);
 		collapsible->set_icon(icon(section.icon));
 		for (const InspectorAction &action : section.header_actions) {
@@ -224,11 +252,21 @@ void InspectorView::build_section(View &parent, InspectorSection &section, Usize
 				});
 			button->set_enabled(!action.enabled || action.enabled());
 		}
-		if (const auto it = m_collapsed.find(section.id); it != m_collapsed.end()) {
-			collapsible->set_expanded(!it->second);
+		std::pair<std::string, std::string> key{ m_inspectable->id, section.id };
+		if (m_collapsed.contains(key)) {
+			collapsible->set_expanded(false);
 		}
-		collapsible->on_toggled.connect([this, id = section.id](bool expanded) { m_collapsed[id] = !expanded; });
+		collapsible->on_toggled.connect([this, key = std::move(key)](bool expanded) {
+			if (expanded) {
+				m_collapsed.erase(key);
+			} else {
+				m_collapsed.insert(key);
+			}
+		});
 		root = collapsible;
+	}
+	if (root == nullptr) {
+		return;
 	}
 
 	auto *grid = root->add_child<PropertyGrid>();
@@ -259,10 +297,12 @@ void InspectorView::build_section(View &parent, InspectorSection &section, Usize
 	bind(m_sections.back());
 }
 
-void InspectorView::build_actions(View &parent, const std::vector<InspectorAction> &actions) {
+void InspectorView::build_actions(LayoutLoader &loader, View &parent, const std::vector<InspectorAction> &actions) {
 	for (const InspectorAction &action : actions) {
-		auto *button = parent.add_child<Button>();
-		button->add_class("props-action");
+		auto *button = create_as<Button>(loader, "InspectorAction", parent);
+		if (button == nullptr) {
+			continue;
+		}
 		button->set_icon(icon(action.icon));
 		button->set_text(action.text);
 		button->set_tooltip(action.tooltip);

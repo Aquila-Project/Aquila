@@ -1,0 +1,13 @@
+<Component name="UIDebugPanel" behaviour="UIDebugPanel">
+    <View id="ui-debug-window" class="ui-debug-window hidden" float-attach="root" float-parent="left-top" float-element="left-top" float-offset="60 60" float-z="1000">
+        <View class="ui-debug-header">
+            <Label class="ui-debug-title">UI Inspector</Label>
+            <Button id="refresh" class="ui-debug-refresh">Refresh</Button>
+        </View>
+        <ScrollView class="ui-debug-body">
+            <View class="ui-debug-tree-host">
+                <TreeView id="tree"/>
+            </View>
+        </ScrollView>
+    </View>
+</Component>

@@ -170,6 +170,7 @@ void OverlayToolbar::drag_to(Vec2 cursor) {
 
 	FloatingConfig floating;
 	floating.attach_to = FloatingAttachTo::Parent;
+	floating.clip_to_parent = true;
 	floating.element_point = FloatingAttachPoint::LeftTop;
 	floating.parent_point = FloatingAttachPoint::LeftTop;
 	floating.offset = top_left;
@@ -242,6 +243,7 @@ void OverlayToolbar::orient_child(View *child) const {
 void OverlayToolbar::apply_floating() {
 	FloatingConfig floating;
 	floating.attach_to = FloatingAttachTo::Parent;
+	floating.clip_to_parent = true;
 	floating.z_index = m_z_index;
 
 	switch (m_edge) {
@@ -291,6 +293,7 @@ void OverlayToolbar::update_dock_hint(OverlayEdge edge) {
 
 	FloatingConfig floating;
 	floating.attach_to = FloatingAttachTo::Parent;
+	floating.clip_to_parent = true;
 	floating.z_index = static_cast<Int16>(m_z_index + 5);
 	switch (edge) {
 	case OverlayEdge::Left:

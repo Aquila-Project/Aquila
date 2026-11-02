@@ -11,14 +11,13 @@ namespace Editor {
 
 class EditorWindow : public Aquila::UI::Core::DockPanelContent, public Aquila::UI::Core::WindowBehaviour {
   public:
-	explicit EditorWindow(EditorContext &context, std::string layout_path = {})
+	EditorWindow(EditorContext &context, std::string layout_path)
 		: WindowBehaviour(std::move(layout_path)), m_context(context) {}
 	~EditorWindow() override;
 
 	AQUILA_NONCOPYABLE(EditorWindow);
 	AQUILA_NONMOVEABLE(EditorWindow);
 
-	virtual void build(Aquila::UI::Core::View &content) {}
 	/// Whether this window's scoped shortcuts run right now. By default while the mouse is over it.
 	[[nodiscard]] virtual bool accepts_shortcuts(bool hovered) const { return hovered; }
 

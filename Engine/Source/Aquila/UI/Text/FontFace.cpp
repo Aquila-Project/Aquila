@@ -1,14 +1,78 @@
 #include "Aquila/UI/Text/FontFace.h"
 #include "Aquila/Foundation/Math/Geometry/Bezier.h"
+#include "Aquila/Foundation/Text/Utf8.h"
 
 namespace Aquila::UI::Text {
 
+namespace {
+
+constexpr Uint64 K_MIN_FONT_SIZE = 12;
+constexpr int K_TYPOGRAPHIC_FAMILY = 16;
+constexpr int K_FAMILY = 1;
+
+int font_offset(const Uint8 *data, Uint64 size) {
+	if (data == nullptr || size < K_MIN_FONT_SIZE) {
+		return -1;
+	}
+	const int offset = stbtt_GetFontOffsetForIndex(data, 0);
+	return offset >= 0 && static_cast<Uint64>(offset) < size ? offset : -1;
+}
+
+std::string utf16be_to_utf8(const char *text, int length) {
+	std::string out;
+	const auto unit = [text](int at) {
+		return static_cast<Uint32>((static_cast<Uint8>(text[at]) << 8U) | static_cast<Uint8>(text[at + 1]));
+	};
+	for (int i = 0; i + 1 < length; i += 2) {
+		Uint32 codepoint = unit(i);
+		if (codepoint >= 0xD800 && codepoint < 0xDC00 && i + 3 < length) {
+			const Uint32 low = unit(i + 2);
+			if (low >= 0xDC00 && low < 0xE000) {
+				codepoint = 0x10000 + ((codepoint - 0xD800) << 10U) + (low - 0xDC00);
+				i += 2;
+			}
+		}
+		char bytes[4];
+		out.append(bytes, Foundation::Utf8::encode(codepoint, bytes));
+	}
+	return out;
+}
+
+}
+
+Option<std::string> FontFace::read_family_name(const Uint8 *ttf_data, Uint64 data_size) {
+	const int offset = font_offset(ttf_data, data_size);
+	stbtt_fontinfo info{};
+	if (offset < 0 || stbtt_InitFont(&info, ttf_data, offset) == 0) {
+		return std::nullopt;
+	}
+	for (const int name_id : { K_TYPOGRAPHIC_FAMILY, K_FAMILY }) {
+		int length = 0;
+		const char *name = stbtt_GetFontNameString(&info, &length, STBTT_PLATFORM_ID_MICROSOFT,
+												   STBTT_MS_EID_UNICODE_BMP, STBTT_MS_LANG_ENGLISH, name_id);
+		if (name != nullptr && length > 0) {
+			return utf16be_to_utf8(name, length);
+		}
+		name = stbtt_GetFontNameString(&info, &length, STBTT_PLATFORM_ID_MAC, STBTT_MAC_EID_ROMAN,
+									   STBTT_MAC_LANG_ENGLISH, name_id);
+		if (name != nullptr && length > 0) {
+			return std::string(name, static_cast<Usize>(length));
+		}
+	}
+	return std::string{};
+}
+
 Unique<FontFace> FontFace::create(const Uint8 *ttf_data, Uint64 data_size) {
+	const int offset = font_offset(ttf_data, data_size);
+	if (offset < 0) {
+		return nullptr;
+	}
 	Unique<FontFace> face(new FontFace());
 
 	face->m_font_data.assign(ttf_data, ttf_data + data_size);
-	stbtt_InitFont(&face->m_font_info, face->m_font_data.data(),
-				   stbtt_GetFontOffsetForIndex(face->m_font_data.data(), 0));
+	if (stbtt_InitFont(&face->m_font_info, face->m_font_data.data(), offset) == 0) {
+		return nullptr;
+	}
 
 	face->m_font_units_to_em = stbtt_ScaleForMappingEmToPixels(&face->m_font_info, 1.0F);
 

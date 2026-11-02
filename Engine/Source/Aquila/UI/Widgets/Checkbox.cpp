@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/Checkbox.h"
 
+#include "Aquila/UI/Core/MarkupItem.h"
+
 namespace Aquila::UI::Core {
 
 Checkbox::Checkbox() {
@@ -13,6 +15,18 @@ Checkbox::Checkbox(bool checked) {
 
 void Checkbox::on_value_updated() {
 	queue_redraw();
+}
+
+void Checkbox::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name != "checked") {
+		BaseField::apply_xml_attribute(name, value, resolver);
+		return;
+	}
+	if (const Option<bool> checked = parse_markup_bool(value)) {
+		set_value_without_notify(*checked);
+	} else {
+		AQUILA_LOG_WARNING("Checkbox: checked expects true or false, got '{}'", value);
+	}
 }
 
 void Checkbox::on_mouse_release(Platform::MouseButton btn, Vec2 pos) {

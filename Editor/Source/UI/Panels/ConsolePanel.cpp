@@ -169,7 +169,7 @@ bool ConsolePanel::is_shown(LogLevel level) const {
 }
 
 void ConsolePanel::show_entry(const LogEntry &entry) {
-	m_view->add_line(entry.message, Vec4(0.F), entry.tag_begin, entry.tag_length, level_tag_color(entry.level));
+	m_view->add_line(entry.message, {}, entry.tag_begin, entry.tag_length, level_tag_class(entry.level));
 }
 
 void ConsolePanel::rebuild_view() {
@@ -240,20 +240,20 @@ ConsolePanel::FilterGroup ConsolePanel::level_to_group(LogLevel level) {
 	}
 }
 
-Vec4 ConsolePanel::level_tag_color(LogLevel level) {
+std::string ConsolePanel::level_tag_class(LogLevel level) {
 	switch (level) {
 	case LogLevel::Warning:
-		return { 0.83F, 0.67F, 0.29F, 1.F };
+		return "console-tag-warning";
 	case LogLevel::Error:
-		return { 0.87F, 0.45F, 0.45F, 1.F };
+		return "console-tag-error";
 	case LogLevel::Critical:
-		return { 1.F, 0.32F, 0.32F, 1.F };
+		return "console-tag-critical";
 	case LogLevel::Debug:
-		return { 0.F, 0.8F, 0.8F, 1.F };
+		return "console-tag-debug";
 	case LogLevel::Trace:
-		return { 0.55F, 0.55F, 0.55F, 1.F };
+		return "console-tag-trace";
 	default:
-		return { 0.35F, 0.87F, 0.35F, 1.F };
+		return "console-tag-info";
 	}
 }
 

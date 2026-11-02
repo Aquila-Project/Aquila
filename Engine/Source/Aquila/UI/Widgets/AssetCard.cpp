@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/AssetCard.h"
 
+#include "Aquila/UI/Core/IResourceResolver.h"
+
 namespace Aquila::UI::Core {
 
 AssetCard::AssetCard() {
@@ -31,6 +33,25 @@ void AssetCard::set_thumbnail(GFX::GfxTexture *texture) {
 	m_thumbnail->set_texture(texture);
 
 	m_thumbnail->set_hidden(texture == nullptr);
+}
+
+void AssetCard::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name == "src") {
+		set_thumbnail(resolver != nullptr ? resolver->resolve_texture(std::string(value)) : nullptr);
+		return;
+	}
+	AssetPayload payload = m_payload;
+	if (name == "path") {
+		payload.asset_path = value;
+	} else if (name == "type") {
+		payload.asset_type = value;
+	} else if (name == "name") {
+		payload.display_name = value;
+	} else {
+		View::apply_xml_attribute(name, value, resolver);
+		return;
+	}
+	set_asset(std::move(payload));
 }
 
 void AssetCard::on_drag_start(DragState &state) {

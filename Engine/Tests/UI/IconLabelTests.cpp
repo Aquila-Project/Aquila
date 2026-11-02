@@ -1,31 +1,46 @@
 #include <doctest.h>
 
+#include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Style/StyleParser.h"
 #include "Aquila/UI/Widgets/IconLabel.h"
+#include "CanvasTestSupport.h"
 
 using namespace Aquila::UI;
 using namespace Aquila::UI::Core;
 
 namespace {
 
-Display label_display(const IconLabel &icon_label) {
-	const View &label = *icon_label.get_children()[1];
-	return label.get_style().display.value_or(Display::Flex);
+Display label_display(Canvas &canvas, const IconLabel &icon_label) {
+	canvas.update(0.016F);
+	canvas.compute();
+	return icon_label.get_children()[1]->get_computed_style().display;
 }
+
+struct HiddenCanvas {
+	CanvasSingletonsScope singletons;
+	Canvas canvas{ 200, 100 };
+	IconLabel *icon_label = nullptr;
+
+	HiddenCanvas() {
+		StyleParser::LoadString(".hidden { display: none; }", canvas.get_style_sheet());
+		icon_label = canvas.get_root()->add_child<IconLabel>();
+	}
+};
 
 } // namespace
 
 TEST_SUITE("IconLabel") {
 	TEST_CASE("an empty label takes no space so an icon can be centered") {
-		IconLabel icon_label;
-		CHECK(label_display(icon_label) == Display::None);
+		HiddenCanvas fixture;
+		CHECK(label_display(fixture.canvas, *fixture.icon_label) == Display::None);
 	}
 
 	TEST_CASE("the label is shown once it has text") {
-		IconLabel icon_label;
-		icon_label.set_text("Move");
-		CHECK(label_display(icon_label) == Display::Flex);
+		HiddenCanvas fixture;
+		fixture.icon_label->set_text("Move");
+		CHECK(label_display(fixture.canvas, *fixture.icon_label) == Display::Flex);
 
-		icon_label.set_text("");
-		CHECK(label_display(icon_label) == Display::None);
+		fixture.icon_label->set_text("");
+		CHECK(label_display(fixture.canvas, *fixture.icon_label) == Display::None);
 	}
 }

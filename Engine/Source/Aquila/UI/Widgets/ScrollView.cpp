@@ -59,9 +59,6 @@ ScrollView::ScrollView() {
 	cfg.parent_point = FloatingAttachPoint::RightTop;
 	cfg.z_index = 20;
 	track->set_floating(cfg);
-	StyleProperties track_style;
-	track_style.height = StyleLength::percent(100.F);
-	track->set_style(track_style);
 	track->set_hidden(true);
 	m_track = View::add_child(std::move(track));
 

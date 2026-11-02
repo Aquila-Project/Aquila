@@ -1,3 +1,7 @@
+<Component name="HierarchyRow" behaviour="HierarchyRow">
+    <Button id="eye" class="hierarchy-eye"/>
+</Component>
+
 <View id="hierarchy-root">
     <View id="hierarchy-toolbar" class="hierarchy-toolbar">
         <TextInput id="hierarchy-filter" class="hierarchy-filter"/>

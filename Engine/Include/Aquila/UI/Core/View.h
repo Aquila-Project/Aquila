@@ -16,6 +16,7 @@ namespace Aquila::UI::Core {
 class Canvas;
 class ComponentInstance;
 class IResourceResolver;
+struct MarkupItem;
 
 enum class ViewKind : Uint8 {
 	Generic,
@@ -251,6 +252,8 @@ class View {
 	/// changes get another layout pass in the same frame.
 	virtual void on_scroll_layout() {}
 
+	virtual void on_floating_layout() {}
+
 	/// Called every frame while the view is registered with Canvas::register_tick().
 	/// Return true to ask for another frame.
 	virtual bool on_update(F32 delta_time) {
@@ -264,6 +267,8 @@ class View {
 
 	/// The text between the tags.
 	virtual void apply_xml_text_content(std::string_view text) { (void)text; }
+
+	virtual bool add_markup_item(MarkupItem &, IResourceResolver *) { return false; }
 
 	/// After every attribute and child of the element was applied.
 	virtual void on_xml_loaded() {}

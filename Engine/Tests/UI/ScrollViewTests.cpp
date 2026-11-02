@@ -24,7 +24,8 @@ void frames(Canvas &canvas) {
 
 void load_scroll_styles(Canvas &canvas) {
 	StyleParser::LoadString("ScrollView { overflow: scroll; width: 200px; height: 100px; flex-direction: column; } "
-							".scroll-inner { flex-direction: column; } .hidden { display: none; }",
+							".scroll-inner { flex-direction: column; } .scroll-bar-track { height: 100%; } "
+							".hidden { display: none; }",
 							canvas.get_style_sheet());
 }
 

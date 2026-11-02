@@ -1,7 +1,19 @@
 #include "Aquila/UI/Widgets/TreeView.h"
 #include "Aquila/Foundation/Macros.h"
+#include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 
 namespace Aquila::UI::Core {
+
+namespace {
+
+void add_markup_nodes(TreeNode &parent, const std::vector<MarkupItem> &items) {
+	for (const MarkupItem &item : items) {
+		add_markup_nodes(*parent.add_child_node(std::string(item.get("label"))), item.items);
+	}
+}
+
+}
 
 TreeView::TreeView() {
 	add_class("tree-view");
@@ -20,7 +32,24 @@ TreeNode *TreeView::add_node(std::string label) {
 }
 
 View *TreeView::add_child(Unique<View> child) {
-	return m_content->View::add_child(std::move(child));
+	View *added = m_content->View::add_child(std::move(child));
+	if (auto *node = view_cast<TreeNode>(added)) {
+		node->build_row_components();
+	}
+	return added;
+}
+
+bool TreeView::add_markup_item(MarkupItem &item, IResourceResolver *) {
+	if (item.tag != "TreeNode") {
+		return false;
+	}
+	add_markup_nodes(*add_node(std::string(item.get("label"))), item.items);
+	return true;
+}
+
+void TreeView::set_row_component(std::string file, std::string component) {
+	m_row_file = std::move(file);
+	m_row_component = std::move(component);
 }
 
 void TreeView::on_drag_enter(DragState &) {
@@ -63,6 +92,11 @@ void TreeView::remove_node(TreeNode *node) {
 
 void TreeView::set_on_background_right_clicked(Delegate<void(Vec2)> callback) {
 	m_content->on_context_menu.set(std::move(callback));
+}
+
+void TreeView::clear() {
+	m_selected = nullptr;
+	m_content->clear_children();
 }
 
 void TreeView::select_node(TreeNode *node) {
@@ -123,7 +157,42 @@ View *TreeNode::add_child(Unique<View> node) {
 	auto *added = m_children->View::add_child(std::move(node));
 	update_header_text();
 	queue_redraw();
+	if (auto *child = view_cast<TreeNode>(added)) {
+		child->build_row_components();
+	}
 	return added;
+}
+
+void TreeNode::set_row_component(std::string file, std::string component) {
+	m_row_file = std::move(file);
+	m_row_component = std::move(component);
+}
+
+void TreeNode::build_row_components() {
+	if (LayoutLoader *loader = find_layout_loader(*this)) {
+		build_rows(*loader);
+		return;
+	}
+	const bool has_row = !m_row_component.empty() || !m_owner.m_row_component.empty();
+	if (has_row && find_layout_loader(m_owner) == nullptr) {
+		AQUILA_LOG_ERROR("TreeView: '{}' needs a canvas with a layout loader for its row", m_label);
+	}
+}
+
+void TreeNode::build_rows(LayoutLoader &loader) {
+	const bool own = !m_row_component.empty();
+	const std::string &component = own ? m_row_component : m_owner.m_row_component;
+	if (m_row_view == nullptr && !component.empty()) {
+		m_row_view = loader.create(own ? m_row_file : m_owner.m_row_file, component, *m_actions);
+		if (m_row_view != nullptr) {
+			on_row_component_built();
+		}
+	}
+	for (const auto &child : m_children->get_children()) {
+		if (auto *node = view_cast<TreeNode>(child.get())) {
+			node->build_rows(loader);
+		}
+	}
 }
 
 void TreeNode::on_drag_enter(DragState &) {
@@ -188,9 +257,7 @@ void TreeNode::track_row_hover(View *view) {
 }
 
 void TreeNode::apply_state() {
-	StyleProperties p;
-	p.display = m_expanded ? Display::Flex : Display::None;
-	m_children->merge_style(p);
+	m_children->set_hidden(!m_expanded);
 }
 
 void TreeNode::on_header_clicked() {

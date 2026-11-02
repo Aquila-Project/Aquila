@@ -1,0 +1,77 @@
+.todo-root {
+    flex-direction: column;
+    width: grow;
+    height: grow;
+    gap: 6px;
+    padding: 6px;
+}
+
+.todo-toolbar {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 4px;
+}
+
+.todo-input {
+    width: grow;
+    height: grow;
+}
+
+.todo-list {
+    flex-direction: column;
+    width: 100%;
+    gap: 2px;
+}
+
+.todo-row {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 24px;
+    gap: 6px;
+}
+
+.todo-row-remove {
+    padding: 0;
+}
+
+.todo-row-name {
+    width: grow;
+    font-family: regular;
+    font-size: 13px;
+}
+
+.todo-row-name-done {
+    color: var(--text-dim);
+}
+
+.todo-add {
+    height: 10px;
+}
+
+.todo-row-remove {
+    width: 28px;
+    height: 28px;
+    padding: 0px;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 4px;
+    transition: 60ms linear;
+}
+
+.todo-row-remove:hover {
+    background-color: var(--bg-hover);
+}
+
+.todo-row-remove:disabled {
+    opacity: 0.4;
+}
+
+.todo-empty {
+    font-family: regular;
+    font-size: 13px;
+    color: var(--text-dim);
+}

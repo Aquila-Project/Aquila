@@ -20,7 +20,6 @@ constexpr std::array K_DEFAULT_SHORTCUTS{
 	DefaultShortcut{ .command = "scene.save_as", .chord = "Ctrl+Shift+S" },
 	DefaultShortcut{ .command = "editor.preferences", .chord = "Ctrl+," },
 	DefaultShortcut{ .command = "editor.quit", .chord = "Ctrl+Q" },
-	DefaultShortcut{ .command = "editor.reload_layout", .chord = "F5" },
 	DefaultShortcut{ .command = "editor.reload_styles", .chord = "F6" },
 	DefaultShortcut{ .command = "devtools.ui_inspector", .chord = "Ctrl+Shift+I" },
 	DefaultShortcut{ .command = "project.build", .chord = "Ctrl+B" },

@@ -33,11 +33,16 @@ pub enum LayoutErrorKind {
     ComponentWithoutName,
     ComponentRootCount,
     SecondSlot,
+    SlotAttribute,
     DuplicateComponent,
     SlotOutsideComponent,
     UndeclaredProp,
     ComponentDefinedTwice,
     MissingWindowStyle,
+    ItemMisplaced { goes_in: &'static str },
+    ItemAttribute,
+    ItemContent,
+    ComponentNamedLikeItem,
 }
 
 impl fmt::Display for LayoutErrorKind {
@@ -99,6 +104,9 @@ impl fmt::Display for LayoutErrorKind {
             LayoutErrorKind::SecondSlot => {
                 f.write_str("a component can only have one `<Slot/>`, the loader drops it")
             }
+            LayoutErrorKind::SlotAttribute => {
+                f.write_str("`<Slot/>` only takes `class`, the loader ignores this attribute")
+            }
             LayoutErrorKind::DuplicateComponent => {
                 f.write_str("a component with this name is already defined in this file")
             }
@@ -114,8 +122,109 @@ impl fmt::Display for LayoutErrorKind {
             LayoutErrorKind::MissingWindowStyle => {
                 f.write_str("a window needs its .aqstyle next to its .aqlayout")
             }
+            LayoutErrorKind::ItemMisplaced { goes_in } => {
+                write!(f, "this item goes inside {goes_in}, the loader leaves it out")
+            }
+            LayoutErrorKind::ItemAttribute => {
+                f.write_str("this item doesn't take this attribute, the loader ignores it")
+            }
+            LayoutErrorKind::ItemContent => f.write_str(
+                "this item can't hold this, the loader leaves it out (labels go in an attribute)",
+            ),
+            LayoutErrorKind::ComponentNamedLikeItem => {
+                f.write_str("a component can't have the name of an item tag")
+            }
         }
     }
+}
+
+struct ItemRule {
+    tag: &'static str,
+    goes_in: &'static str,
+    attributes: &'static [&'static str],
+    items: &'static [&'static str],
+    takes_elements: bool,
+}
+
+const MENU_ITEMS: &[&str] = &["MenuItem", "MenuSeparator", "Submenu"];
+const IN_MENUS: &str = "a PopupMenu or a <Submenu>";
+
+const ITEM_RULES: &[ItemRule] = &[
+    ItemRule {
+        tag: "Option",
+        goes_in: "a Dropdown",
+        attributes: &["value", "label", "icon"],
+        items: &[],
+        takes_elements: false,
+    },
+    ItemRule {
+        tag: "Item",
+        goes_in: "a ListBox",
+        attributes: &["value", "label"],
+        items: &[],
+        takes_elements: false,
+    },
+    ItemRule {
+        tag: "Tab",
+        goes_in: "a TabView or a TabBar",
+        attributes: &["title", "icon", "tooltip"],
+        items: &[],
+        takes_elements: true,
+    },
+    ItemRule {
+        tag: "TreeNode",
+        goes_in: "a TreeView or a <TreeNode>",
+        attributes: &["label"],
+        items: &["TreeNode"],
+        takes_elements: false,
+    },
+    ItemRule {
+        tag: "MenuItem",
+        goes_in: IN_MENUS,
+        attributes: &["command", "action", "label", "icon"],
+        items: &[],
+        takes_elements: false,
+    },
+    ItemRule {
+        tag: "MenuSeparator",
+        goes_in: IN_MENUS,
+        attributes: &[],
+        items: &[],
+        takes_elements: false,
+    },
+    ItemRule {
+        tag: "Submenu",
+        goes_in: IN_MENUS,
+        attributes: &["id", "label", "icon"],
+        items: MENU_ITEMS,
+        takes_elements: false,
+    },
+];
+
+const ITEM_WIDGETS: &[(&str, &[&str])] = &[
+    ("Dropdown", &["Option"]),
+    ("ListBox", &["Item"]),
+    ("TabView", &["Tab"]),
+    ("TabBar", &["Tab"]),
+    ("TreeView", &["TreeNode"]),
+    ("PopupMenu", MENU_ITEMS),
+];
+
+fn item_rule(tag: &str) -> Option<&'static ItemRule> {
+    ITEM_RULES.iter().find(|rule| rule.tag == tag)
+}
+
+fn takes_item(parent: Option<&str>, tag: &str) -> bool {
+    let Some(parent) = parent else {
+        return false;
+    };
+    if let Some(rule) = item_rule(parent) {
+        return rule.items.contains(&tag);
+    }
+    ITEM_WIDGETS
+        .iter()
+        .find(|(widget, _)| *widget == parent)
+        .map_or(true, |(_, items)| items.contains(&tag))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,6 +339,24 @@ fn attribute_value<'a>(element: &Element, name: &str, src: &'a str) -> Option<&'
     let value = attribute_span(element, name, src)?;
     let text = &src[value.start..value.end];
     (!text.is_empty()).then_some(text)
+}
+
+fn has_prop_reference(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let mut pos = 0;
+    while pos + 1 < bytes.len() {
+        if bytes[pos] == b'$' {
+            if bytes[pos + 1] == b'$' {
+                pos += 2;
+                continue;
+            }
+            if is_prop_start(bytes[pos + 1]) {
+                return true;
+            }
+        }
+        pos += 1;
+    }
+    false
 }
 
 fn is_prop_start(byte: u8) -> bool {
@@ -404,6 +531,14 @@ impl<'src> Parser<'src> {
         self.check_components(&layout.components);
         if let Some(root) = &layout.root {
             self.check_no_slots(root);
+            self.check_items(root, None);
+        }
+        for component in &layout.components {
+            for child in &component.children {
+                if let Node::Element(root) = child {
+                    self.check_items(root, None);
+                }
+            }
         }
         layout
     }
@@ -420,13 +555,18 @@ impl<'src> Parser<'src> {
     fn check_components(&mut self, components: &[Element]) {
         let mut names: Vec<&str> = Vec::new();
         for component in components {
-            match attribute_value(component, "name", self.src) {
+            let name = attribute_value(component, "name", self.src);
+            match name {
                 None => self.error(LayoutErrorKind::ComponentWithoutName, component.name),
                 Some(name) if names.contains(&name) => {
                     let span = attribute_span(component, "name", self.src).unwrap_or(component.name);
                     self.error(LayoutErrorKind::DuplicateComponent, span);
                 }
                 Some(name) => names.push(name),
+            }
+            if name.is_some_and(|name| item_rule(name).is_some()) {
+                let span = attribute_span(component, "name", self.src).unwrap_or(component.name);
+                self.error(LayoutErrorKind::ComponentNamedLikeItem, span);
             }
 
             let roots = component
@@ -444,6 +584,9 @@ impl<'src> Parser<'src> {
             }
             if let Some(&second) = slots.get(1) {
                 self.error(LayoutErrorKind::SecondSlot, second);
+            }
+            for child in &component.children {
+                self.check_slot_attributes(child);
             }
 
             let props: Vec<&str> = attribute_value(component, "props", self.src)
@@ -467,11 +610,59 @@ impl<'src> Parser<'src> {
         }
     }
 
+    fn check_slot_attributes(&mut self, node: &Node) {
+        if let Node::Element(element) = node {
+            if self.text(element.name) == "Slot" {
+                for attribute in &element.attributes {
+                    if self.text(attribute.name) != "class" {
+                        self.error(LayoutErrorKind::SlotAttribute, attribute.name);
+                    }
+                }
+            }
+            for child in &element.children {
+                self.check_slot_attributes(child);
+            }
+        }
+    }
+
     fn check_no_slots(&mut self, element: &Element) {
         let mut slots = Vec::new();
         self.collect_slots(&Node::Element(element.clone()), &mut slots);
         for slot in slots {
             self.error(LayoutErrorKind::SlotOutsideComponent, slot);
+        }
+    }
+
+    fn check_items(&mut self, element: &Element, parent: Option<&str>) {
+        let tag = self.text(element.name);
+        let Some(rule) = item_rule(tag) else {
+            for child in &element.children {
+                if let Node::Element(child) = child {
+                    self.check_items(child, Some(tag));
+                }
+            }
+            return;
+        };
+        if !takes_item(parent, tag) {
+            self.error(LayoutErrorKind::ItemMisplaced { goes_in: rule.goes_in }, element.name);
+        }
+        for attribute in &element.attributes {
+            if !rule.attributes.contains(&self.text(attribute.name)) {
+                self.error(LayoutErrorKind::ItemAttribute, attribute.name);
+            }
+        }
+        for child in &element.children {
+            match child {
+                Node::Text(span) => self.error(LayoutErrorKind::ItemContent, *span),
+                Node::Element(child) => {
+                    let name = self.text(child.name);
+                    if item_rule(name).is_none() && name != "Slot" && !rule.takes_elements {
+                        self.error(LayoutErrorKind::ItemContent, child.name);
+                    } else {
+                        self.check_items(child, Some(tag));
+                    }
+                }
+            }
         }
     }
 
@@ -724,6 +915,9 @@ impl<'src> Parser<'src> {
     }
 
     fn check_inline_style(&mut self, value: Span) {
+        if has_prop_reference(self.text(value)) {
+            return;
+        }
         let (_, errors) = parser::parse_inline(self.text(value));
         for error in errors {
             self.error(
@@ -1012,12 +1206,115 @@ mod tests {
     }
 
     #[test]
+    fn styles_with_props_are_checked_once_built() {
+        assert_eq!(
+            errors_of(r#"<Component name="A" props="w"><View style="width: $w"/></Component>"#),
+            []
+        );
+        assert!(!errors_of(r#"<Component name="A"><View style="width: $$5 nope"/></Component>"#).is_empty());
+    }
+
+    #[test]
+    fn slot_takes_a_class() {
+        assert_eq!(
+            errors_of(r#"<Component name="A"><View><Slot class="value"/></View></Component>"#),
+            []
+        );
+    }
+
+    #[test]
+    fn slot_rejects_other_attributes() {
+        let src = r#"<Component name="A"><View><Slot id="v" class="w"/></View></Component>"#;
+        let (_, errors) = parse(src);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::SlotAttribute]);
+        assert_eq!(&src[errors[0].span.start..errors[0].span.end], "id");
+    }
+
+    #[test]
     fn props_must_be_declared() {
         let src = r#"<Component name="A" props="title"><View tooltip="$title $$5 $5"><Label>$nope</Label></View></Component>"#;
         let (_, errors) = parse(src);
         assert_eq!(kinds(&errors), [LayoutErrorKind::UndeclaredProp]);
         assert_eq!(text(src, errors[0].span), "$nope");
         assert_eq!(errors_of(r#"<View tooltip="$anything"/>"#), []);
+    }
+
+    #[test]
+    fn items_inside_widgets_that_take_them() {
+        let src = r#"<View>
+    <Dropdown><Option value="a" label="A" icon="a.svg"/></Dropdown>
+    <ListBox><Item value="a" label="Alpha"/></ListBox>
+    <TabView><Tab title="One" tooltip="first"><Label>page</Label></Tab></TabView>
+    <TabBar><Tab title="Recent" icon="clock.svg"/></TabBar>
+    <TreeView><TreeNode label="Root"><TreeNode label="Child"/></TreeNode></TreeView>
+    <PopupMenu>
+        <MenuItem command="scene.save" icon="save.svg"/>
+        <MenuItem action="open" label="Open"/>
+        <MenuSeparator/>
+        <Submenu id="more" label="More"><MenuItem label="Inner"/><Submenu label="Deeper"/></Submenu>
+    </PopupMenu>
+</View>"#;
+        assert_eq!(errors_of(src), []);
+    }
+
+    #[test]
+    fn items_in_the_wrong_place() {
+        let src = r#"<View><Option value="a"/></View>"#;
+        assert_eq!(errors_of(src), []);
+        let (_, errors) = parse(r#"<MenuItem label="x"/>"#);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::ItemMisplaced { goes_in: "a PopupMenu or a <Submenu>" }]);
+        assert_eq!(
+            errors_of(r#"<Component name="A"><Tab title="x"/></Component>"#),
+            [LayoutErrorKind::ItemMisplaced { goes_in: "a TabView or a TabBar" }]
+        );
+        let src = r#"<TabBar><Option value="a"/></TabBar>"#;
+        let (_, errors) = parse(src);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::ItemMisplaced { goes_in: "a Dropdown" }]);
+        assert_eq!(text(src, errors[0].span), "Option");
+        assert_eq!(
+            errors_of(r#"<PopupMenu><Submenu label="x"><TreeNode label="y"/></Submenu></PopupMenu>"#),
+            [LayoutErrorKind::ItemMisplaced { goes_in: "a TreeView or a <TreeNode>" }]
+        );
+        assert_eq!(
+            errors_of(r#"<TabView><Tab title="x"><Tab title="y"/></Tab></TabView>"#),
+            [LayoutErrorKind::ItemMisplaced { goes_in: "a TabView or a TabBar" }]
+        );
+    }
+
+    #[test]
+    fn item_attributes_are_checked() {
+        let src = r#"<Dropdown><Option value="a" lable="A"/></Dropdown>"#;
+        let (_, errors) = parse(src);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::ItemAttribute]);
+        assert_eq!(text(src, errors[0].span), "lable");
+        assert_eq!(
+            errors_of(r#"<PopupMenu><MenuSeparator id="s"/></PopupMenu>"#),
+            [LayoutErrorKind::ItemAttribute]
+        );
+    }
+
+    #[test]
+    fn item_contents_are_checked() {
+        assert_eq!(
+            errors_of(r#"<Dropdown><Option value="a">A</Option></Dropdown>"#),
+            [LayoutErrorKind::ItemContent]
+        );
+        assert_eq!(
+            errors_of(r#"<PopupMenu><Submenu label="x"><Label>no</Label></Submenu></PopupMenu>"#),
+            [LayoutErrorKind::ItemContent]
+        );
+        assert_eq!(
+            errors_of(r#"<Component name="A"><PopupMenu><Submenu label="x"><Slot/></Submenu></PopupMenu></Component>"#),
+            []
+        );
+    }
+
+    #[test]
+    fn components_cant_take_item_names() {
+        let src = r#"<Component name="Tab"><View/></Component>"#;
+        let (_, errors) = parse(src);
+        assert_eq!(kinds(&errors), [LayoutErrorKind::ComponentNamedLikeItem]);
+        assert_eq!(text(src, errors[0].span), "Tab");
     }
 
     fn scratch_dir(name: &str) -> std::path::PathBuf {

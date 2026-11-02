@@ -1,0 +1,25 @@
+<Import src="../Components/card"/>
+
+<Component name="TodoRow" behaviour="TodoRow" props="label">
+    <View class="todo-row">
+        <Checkbox id="done"/>
+        <Label id="name" class="todo-row-name">$label</Label>
+        <Button id="remove" class="todo-row-remove" src="Engine/UI/Icons/trash.svg" tooltip="Remove"/>
+    </View>
+</Component>
+
+<View id="todo-root" class="todo-root">
+    <View class="todo-toolbar">
+        <TextInput id="todo-input" class="todo-input" placeholder="New task"/>
+        <Button id="todo-add">Add</Button>
+        <Dropdown id="todo-filter">
+            <Option value="all" label="All"/>
+            <Option value="open" label="Open"/>
+            <Option value="done" label="Done"/>
+        </Dropdown>
+    </View>
+    <Card title="Tasks">
+        <Label id="todo-empty" class="todo-empty">Nothing to do</Label>
+        <View id="todo-list" class="todo-list"/>
+    </Card>
+</View>

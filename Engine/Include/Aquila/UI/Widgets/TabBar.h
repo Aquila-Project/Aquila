@@ -30,6 +30,7 @@ class TabBar : public View {
 
 	void apply_xml_attribute(std::string_view name, std::string_view value,
 							 IResourceResolver *resolver = nullptr) override;
+	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;
 
 	Signal<void(int)> on_selected;
 

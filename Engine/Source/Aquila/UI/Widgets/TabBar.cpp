@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/TabBar.h"
 
+#include "Aquila/UI/Core/MarkupItem.h"
 #include "Aquila/UI/Widgets/Button.h"
 
 namespace Aquila::UI::Core {
@@ -48,6 +49,21 @@ void TabBar::apply_xml_attribute(std::string_view name, std::string_view value, 
 		return;
 	}
 	View::apply_xml_attribute(name, value, resolver);
+}
+
+bool TabBar::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
+	if (item.tag != "Tab") {
+		return false;
+	}
+	Button *tab = add_tab(std::string(item.get("title")), item.get_texture("icon", resolver));
+	if (const std::string_view tooltip = item.get("tooltip"); !tooltip.empty()) {
+		tab->set_tooltip(std::string(tooltip));
+	}
+	if (!item.views.empty()) {
+		AQUILA_LOG_WARNING("TabBar: {}: a TabBar's tabs have no page, the elements inside <Tab> are left out",
+						   item.location);
+	}
+	return true;
 }
 
 void TabBar::apply_classes() {

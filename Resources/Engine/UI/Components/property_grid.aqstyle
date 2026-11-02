@@ -1,0 +1,74 @@
+.property-row {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+}
+
+.property-label {
+    font-family: regular;
+    font-size: var(--font-size-control);
+    color: var(--text-dim);
+    width: 84px;
+}
+
+.property-row-stacked {
+    flex-direction: column;
+    align-items: start;
+    width: 100%;
+    gap: 3px;
+}
+
+.property-label-stacked {
+    width: grow;
+}
+
+.property-separator {
+    width: 100%;
+    height: 1px;
+    background-color: var(--hairline);
+}
+
+.property-split-row {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: var(--control-height-compact);
+    gap: 8px;
+}
+
+.property-split-row-top {
+    align-items: start;
+}
+
+.property-split-label-box {
+    flex-direction: row;
+    align-items: center;
+    width: 38%;
+    min-height: var(--control-height-compact);
+}
+
+.property-split-label {
+    width: grow;
+    font-family: regular;
+    font-size: var(--font-size-compact);
+    color: var(--text-dim);
+}
+
+.property-split-value {
+    width: grow;
+    min-width: 0px;
+}
+
+.property-split-check-value {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--control-gap);
+}
+
+.property-split-check-text {
+    width: grow;
+    font-family: regular;
+    font-size: var(--font-size-compact);
+    color: var(--text);
+}

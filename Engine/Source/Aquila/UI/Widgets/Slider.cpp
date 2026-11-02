@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/Slider.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 
 namespace Aquila::UI::Core {
 
@@ -29,6 +30,31 @@ void Slider::set_range(float min, float max) {
 void Slider::set_step(float step) {
 	m_step = step;
 	set_value_without_notify(get_value());
+}
+
+void Slider::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name != "min" && name != "max" && name != "value") {
+		BaseField::apply_xml_attribute(name, value, resolver);
+		return;
+	}
+	const Option<F32> number = parse_markup_number(value);
+	if (!number) {
+		AQUILA_LOG_WARNING("Slider: {} expects a number, got '{}'", name, value);
+		return;
+	}
+	if (name == "min") {
+		set_range(*number, m_max);
+	} else if (name == "max") {
+		set_range(m_min, *number);
+	} else {
+		m_markup_value = *number;
+	}
+}
+
+void Slider::on_xml_loaded() {
+	if (m_markup_value) {
+		set_value_without_notify(*m_markup_value);
+	}
 }
 
 float Slider::value_from_x(float x) const {

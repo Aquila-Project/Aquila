@@ -31,6 +31,14 @@ void TextInput::set_font(Text::FontAtlas *font) {
 	queue_redraw();
 }
 
+void TextInput::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name == "placeholder") {
+		set_placeholder(std::string(value));
+		return;
+	}
+	Control::apply_xml_attribute(name, value, resolver);
+}
+
 void TextInput::set_placeholder(std::string text) {
 	m_placeholder = std::move(text);
 	queue_redraw();

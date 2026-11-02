@@ -20,6 +20,9 @@ class AssetCard : public View {
 
 	void set_thumbnail(GFX::GfxTexture *texture);
 
+	void apply_xml_attribute(std::string_view name, std::string_view value,
+							 IResourceResolver *resolver = nullptr) override;
+
 	void on_drag_start(DragState &state) override;
 
   private:

@@ -3,7 +3,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/Foundation/Signal.h"
-#include "Aquila/UI/Core/CanvasWindow.h"
+#include "Aquila/UI/Core/WindowBehaviour.h"
 #include "Core/ProjectSettings.h"
 
 namespace Aquila::UI::Core {
@@ -17,13 +17,15 @@ class View;
 namespace Editor {
 
 class EditorContext;
+class SettingsSection;
 
-class SettingsWindow final : public Aquila::UI::Core::CanvasWindow {
+class SettingsWindow final : public Aquila::UI::Core::WindowBehaviour {
   public:
 	explicit SettingsWindow(EditorContext &context);
 	~SettingsWindow() override;
 
-	void build(Uint32 width, Uint32 height, Aquila::UI::Core::LayoutLoader &loader);
+	void define_behaviour() override;
+	void update(F32 delta_time) override;
 
 	Delegate<void()> on_preferences_changed;
 
@@ -38,15 +40,16 @@ class SettingsWindow final : public Aquila::UI::Core::CanvasWindow {
 		Unique<Aquila::Reflection::TypeInfo> type;
 		void *instance = nullptr;
 		Delegate<void()> reset;
+		Delegate<void(SettingsSection &, Aquila::UI::Core::ReflectedPropertyGrid &)> extra;
 		bool shortcuts = false;
 	};
 
-	void on_update(F32 delta_time) override;
 	Page &add_page(Scope scope, std::string name, std::string icon, std::string description);
 	void add_editor_pages();
 	void add_project_pages();
-	void build_header(Aquila::UI::Core::View &root);
-	void build_footer(Aquila::UI::Core::View &root);
+	void fill_interface_type(Page &page);
+	void refresh_font_families();
+	void add_font();
 
 	void select_scope(Scope scope);
 	void select_page(Usize index);
@@ -54,12 +57,14 @@ class SettingsWindow final : public Aquila::UI::Core::CanvasWindow {
 	void rebuild();
 	void rebuild_sidebar();
 	void show_page(Page &page, const std::string &query, bool full);
-	void show_shortcuts(Aquila::UI::Core::View &host, const std::string &query);
+	bool show_shortcuts(SettingsSection &section, const std::string &query);
 	void edited(const Page &page);
 
 	EditorContext &m_context;
 	ProjectSettings m_project;
 	std::vector<std::string> m_font_families;
+	Usize m_interface_page = 0;
+	bool m_fonts_changed = false;
 	std::vector<Page> m_pages;
 	Scope m_scope = Scope::Editor;
 	std::array<Usize, 2> m_selected{};
@@ -71,7 +76,6 @@ class SettingsWindow final : public Aquila::UI::Core::CanvasWindow {
 	Aquila::UI::Core::TabBar *m_scope_tabs = nullptr;
 	std::vector<Unique<Aquila::Reflection::TypeInfo>> m_filtered_types;
 	std::vector<Unique<Aquila::UI::Core::ReflectedPropertyGrid>> m_grids;
-	Signal<void()>::Connection m_settings_connection;
 	bool m_rebuild_pending = false;
 };
 

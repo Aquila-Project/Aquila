@@ -121,7 +121,7 @@ ScriptContent::ScriptContent(Entity entity, EditorContext &context) : m_entity(e
 ScriptContent::~ScriptContent() = default;
 
 void ScriptContent::build_below(UI::Core::PropertyGrid &grid) {
-	m_fields_grid = grid.add_child<UI::Core::PropertyGrid>(grid.get_label_width());
+	m_fields_grid = grid.add_grid();
 	m_fields_grid->set_split(grid.is_split());
 	m_fields_grid->set_hidden(true);
 	show_fields();

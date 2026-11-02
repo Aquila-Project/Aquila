@@ -1,108 +1,27 @@
 #include <doctest.h>
 
-#include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/UI/Core/Canvas.h"
-#include "Aquila/UI/Core/LayoutLoader.h"
-#include "Aquila/UI/Style/StyleParser.h"
-#include "Aquila/UI/Widgets/Button.h"
-#include "Aquila/UI/Widgets/Collapsible.h"
-#include "Aquila/UI/Widgets/Dropdown.h"
-#include "Aquila/UI/Widgets/Label.h"
-#include "Aquila/UI/Widgets/PropertyGrid.h"
-#include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
-#include "Aquila/UI/Widgets/TextInput.h"
-
-#include "CanvasTestSupport.h"
 #include "GpuTestSupport.h"
+#include "InspectorFixture.h"
+#include "LoaderTestSupport.h"
 
 using namespace Aquila;
 using namespace Aquila::UI;
 using namespace Aquila::UI::Core;
-using Aquila::Reflection::PropertyMark;
-using Aquila::Reflection::TypeBuilder;
-using Aquila::Reflection::TypeInfo;
+using InspectorFixture::EverythingInspector;
 
 namespace {
 
-enum class Mode { Directional, Point, Spot };
-
-struct Everything {
-	F32 distance = 2.5F;
-	F32 roughness = 0.5F;
-	F32 illuminance = 100000.F;
-	F32 temperature = 6500.F;
-	Int32 count = 3;
-	bool visible = true;
-	bool shadows = false;
-	Vec2 tiling = Vec2(1.F);
-	Vec3 position = Vec3(1.F, 2.F, 3.F);
-	Vec3 tint = Vec3(1.F);
-	Vec4 base_color = Vec4(1.F);
-	Mode mode = Mode::Spot;
-	std::string name = "Tiles_GreenAndGoldPattern_01_basecolor_material";
-	std::string texture =
-		"/project/Content/Materials_Tiles_03/JPEG/Tiles_GreenAndGoldPattern_01/Tiles_GreenAndGoldPattern_01_basecolor.jpg";
-};
-
-constexpr std::array<PropertyMark, 3> K_MARKS = { {
-	{ .value = 0.25F, .label = "Full moon" },
-	{ .value = 2000.F, .label = "Overcast day" },
-	{ .value = 100000.F, .label = "Clear noon sun" },
-} };
-
-const std::array<Vec4, 2> K_GRADIENT = { Vec4(1.F, 0.5F, 0.F, 1.F), Vec4(0.5F, 0.7F, 1.F, 1.F) };
-
-const TypeInfo &everything_type() {
-	static const TypeInfo type = [] {
-		TypeInfo info("Everything");
-		TypeBuilder<Everything>(info)
-			.property("Distance From The Camera", &Everything::distance, { .speed = 0.05F, .precision = 3, .unit = "m" })
-			.property("Roughness", &Everything::roughness, { .min = 0.F, .max = 1.F, .slider = true })
-			.property("Intensity", &Everything::illuminance,
-					  { .min = 0.F,
-						.max = 1000000.F,
-						.precision = 2,
-						.unit = "lx",
-						.logarithmic = true,
-						.slider_min = 0.01F,
-						.slider_max = 150000.F,
-						.marks = K_MARKS })
-			.property("Temperature", &Everything::temperature,
-					  { .min = 1667.F, .max = 12000.F, .precision = 0, .unit = "K", .gradient = K_GRADIENT })
-			.property("Count", &Everything::count)
-			.property("Visible", &Everything::visible)
-			.property("Cast Shadows", &Everything::shadows, { .toggle = true })
-			.property("Tiling", &Everything::tiling)
-			.property("Position", &Everything::position, { .speed = 0.05F, .precision = 3, .unit = "m" })
-			.property("Tint", &Everything::tint, { .color = true })
-			.property("Base Color", &Everything::base_color, { .color = true })
-			.property("Mode", &Everything::mode)
-			.options({ { .name = "Directional", .value = 0 },
-					   { .name = "Point", .value = 1 },
-					   { .name = "Spot light with a long name", .value = 2 } })
-			.property("Name", &Everything::name)
-			.property("Base Color Map", &Everything::texture, { .asset_type = "texture" })
-			.read_only("UUID", [](const Everything &) { return std::string("550e8400-e29b-41d4-a716-446655440000"); });
-		return info;
-	}();
-	return type;
-}
-
 struct Inspector {
-	CanvasSingletonsScope singletons;
-	Canvas canvas{ 1200, 900 };
+	LoaderCanvas fixture{ 1200,
+						  900,
+						  { "/resources/Engine/UI/tokens.aqstyle", "/resources/Engine/UI/widgets.aqstyle" } };
 	View *box = nullptr;
-	Everything instance;
-	Unique<ReflectedPropertyGrid> reflected;
+	EverythingInspector inspector;
 
 	explicit Inspector(F32 width) {
 		test_gpu();
-		const std::array<std::string, 3> styles = { "/resources/Engine/UI/tokens.aqstyle",
-													"/resources/Engine/UI/widgets.aqstyle",
-													"/resources/Engine/UI/editor_chrome.aqstyle" };
-		StyleParser::load_files(styles, canvas.get_style_sheet());
-
-		box = canvas.get_root()->add_child<View>();
+		box = fixture.host().add_child<View>();
 		StyleProperties style;
 		style.width = StyleLength::pixel(width);
 		style.height = StyleLength::pixel(880.F);
@@ -110,55 +29,12 @@ struct Inspector {
 		style.overflow = Overflow::Hidden;
 		style.font_family = "regular";
 		box->merge_style(style);
-
-		LayoutLoader loader;
-		Unique<View> layout = loader.load_file("/resources/Engine/UI/inspector.aqlayout");
-		REQUIRE(layout != nullptr);
-		View *root = box->add_child(std::move(layout));
-
-		for (int i = 0; i < 3; ++i) {
-			root->find_by_id("props-tabs")->add_child<Button>()->add_class("props-tab");
-		}
-		root->find_by_id("inspector-empty")->set_hidden(true);
-		root->find_by_id<TextInput>("inspector-name")->set_text(instance.name);
-		root->find_by_id<Label>("inspector-uuid")->set_text("550e8400-e29b-41d4-a716-446655440000");
-
-		auto *page = root->find_by_id("inspector-pages")->add_child<View>();
-		page->add_class("props-page");
-		auto *sections = page->add_child<View>();
-		sections->add_class("props-sections");
-		auto *section = sections->add_child<Collapsible>("Directional Light With A Long Component Name");
-		section->set_variant("props-panel");
-		section->add_header_action(nullptr, "Remove", [] {});
-		auto *grid = section->add_child<PropertyGrid>();
-		grid->set_split(true);
-		reflected = std::make_unique<ReflectedPropertyGrid>(*grid, everything_type(), nullptr);
-		reflected->bind(&instance);
-		style_dropdowns(*section);
-
-		auto *add = page->add_child<Button>();
-		add->add_class("props-action");
-		add->set_text("Add Component");
-
-		auto *path = page->add_child<Label>(instance.texture);
-		path->add_class("props-uuid");
-	}
-
-	static void style_dropdowns(View &view) {
-		if (auto *dropdown = dynamic_cast<Dropdown *>(&view)) {
-			dropdown->set_variant("props-dropdown");
-		}
-		for (const auto &child : view.get_children()) {
-			style_dropdowns(*child);
-		}
+		inspector.build(fixture.loader, *box);
 	}
 
 	void layout() {
-		canvas.reload_styles();
-		for (int i = 0; i < 4; ++i) {
-			canvas.update(0.016F);
-			canvas.compute();
-		}
+		fixture.canvas->reload_styles();
+		fixture.settle();
 	}
 
 	[[nodiscard]] std::vector<std::string> overflowing(bool visible_only) const {

@@ -1,0 +1,17 @@
+<Component name="Popover" props="title">
+    <Popup class="overlay-popover">
+        <Label class="overlay-popover-title">$title</Label>
+        <Slot/>
+    </Popup>
+</Component>
+
+<Component name="PopoverTitle" props="title">
+    <Label class="overlay-popover-title">$title</Label>
+</Component>
+
+<Component name="OverlayCheckRow" behaviour="OverlayCheckRow" props="label">
+    <View class="overlay-check-row">
+        <Checkbox id="check" class="overlay-check"/>
+        <Label class="overlay-check-text">$label</Label>
+    </View>
+</Component>

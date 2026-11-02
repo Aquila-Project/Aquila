@@ -1,4 +1,7 @@
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/IResourceResolver.h"
+#include "Aquila/UI/Core/MarkupItem.h"
 #include "Aquila/UI/Widgets/Separator.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 
@@ -22,6 +25,13 @@ void PopupMenu::add_item(std::string text, Delegate<void()> callback) {
 
 void PopupMenu::add_item(std::string text, std::string shortcut, GFX::GfxTexture *icon, Delegate<void()> callback) {
 	m_items.push_back({ std::move(text), std::move(shortcut), icon, std::move(callback), nullptr, false });
+}
+
+void PopupMenu::insert_item(Usize index, std::string text, std::string shortcut, GFX::GfxTexture *icon,
+							Delegate<void()> callback) {
+	const auto at = static_cast<std::ptrdiff_t>(std::min(index, m_items.size()));
+	m_items.insert(m_items.begin() + at,
+				   { std::move(text), std::move(shortcut), icon, std::move(callback), nullptr, false });
 }
 
 void PopupMenu::add_separator() {
@@ -49,6 +59,19 @@ PopupMenu *PopupMenu::add_submenu(std::string text, GFX::GfxTexture *icon) {
 
 	m_items.push_back({ std::move(text), {}, icon, {}, submenu, false });
 	return submenu;
+}
+
+bool PopupMenu::set_action(std::string_view action, Delegate<void()> callback) {
+	bool found = false;
+	for (Item &item : m_items) {
+		if (item.submenu != nullptr) {
+			found = item.submenu->set_action(action, callback) || found;
+		} else if (!item.action.empty() && item.action == action) {
+			item.callback = callback;
+			found = true;
+		}
+	}
+	return found;
 }
 
 void PopupMenu::clear_items() {
@@ -164,6 +187,50 @@ void PopupMenu::refresh() {
 	rebuild();
 }
 
+bool PopupMenu::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
+	if (item.tag == "MenuSeparator") {
+		add_separator();
+		return true;
+	}
+	if (item.tag == "Submenu") {
+		PopupMenu *submenu = add_submenu(std::string(item.get("label")), item.get_texture("icon", resolver));
+		if (const std::string_view id = item.get("id"); !id.empty()) {
+			submenu->set_id(std::string(id));
+			submenu->set_id_scope(item.id_scope);
+		}
+		for (MarkupItem &entry : item.items) {
+			submenu->add_markup_item(entry, resolver);
+		}
+		return true;
+	}
+	if (item.tag != "MenuItem") {
+		return false;
+	}
+
+	std::string text(item.get("label"));
+	std::string shortcut;
+	Delegate<void()> callback;
+	if (const std::string_view command = item.get("command"); !command.empty()) {
+		const CommandInfo info = resolver != nullptr ? resolver->query_command(command) : CommandInfo{};
+		if (info.known) {
+			text = text.empty() ? info.title : text;
+			shortcut = info.shortcut;
+			callback = resolver->resolve_command(std::string(command));
+		} else {
+			if (resolver != nullptr && resolver->has_commands()) {
+				AQUILA_LOG_WARNING("PopupMenu: {}: unknown command '{}'", item.location, command);
+			}
+			text = text.empty() ? std::string(command) : text;
+		}
+	} else if (text.empty()) {
+		AQUILA_LOG_WARNING("PopupMenu: {}: a <MenuItem> needs a command or a label", item.location);
+		return true;
+	}
+	add_item(std::move(text), std::move(shortcut), item.get_texture("icon", resolver), std::move(callback));
+	m_items.back().action = item.get("action");
+	return true;
+}
+
 void PopupMenu::open_at(Vec2 canvas_pos) {
 	close_submenu();
 
@@ -177,6 +244,31 @@ void PopupMenu::open_at(Vec2 canvas_pos) {
 
 void PopupMenu::open_below(Vec2 anchor_pos, float anchor_height) {
 	open_at({ anchor_pos.x, anchor_pos.y + anchor_height });
+}
+
+void PopupMenu::on_floating_layout() {
+	const Canvas *canvas = get_canvas();
+	if (canvas == nullptr) {
+		return;
+	}
+	const Vec2 bounds(static_cast<F32>(canvas->get_width()), static_cast<F32>(canvas->get_height()));
+	const Vec2 size = get_layout_rect().size;
+	const Vec2 placed = get_absolute_position();
+	Vec2 fitted = placed;
+	if (m_parent_menu != nullptr && placed.x + size.x > bounds.x) {
+		fitted.x = m_parent_menu->get_absolute_position().x - size.x;
+	}
+	fitted.x = std::clamp(fitted.x, 0.F, std::max(0.F, bounds.x - size.x));
+	fitted.y = std::clamp(fitted.y, 0.F, std::max(0.F, bounds.y - size.y));
+
+	constexpr F32 K_TOLERANCE = 0.01F;
+	if (std::abs(fitted.x - placed.x) < K_TOLERANCE && std::abs(fitted.y - placed.y) < K_TOLERANCE) {
+		return;
+	}
+	FloatingConfig floating = get_floating();
+	floating.offset += fitted - placed;
+	set_floating(floating);
+	invalidate_layout();
 }
 
 } // namespace Aquila::UI::Core

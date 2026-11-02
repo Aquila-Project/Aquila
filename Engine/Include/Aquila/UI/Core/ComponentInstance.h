@@ -25,6 +25,7 @@ class ComponentInstance {
 	[[nodiscard]] Uint64 get_scope_id() const { return m_scope_id; }
 	[[nodiscard]] const std::string &get_name() const { return m_name; }
 	[[nodiscard]] const std::string &get_file() const { return m_file; }
+	[[nodiscard]] const Markup::MarkupDocument *get_document() const { return m_document.get(); }
 	[[nodiscard]] Behaviour *get_behaviour() const { return m_behaviour.get(); }
 	[[nodiscard]] ComponentInstance *get_inner() const { return m_inner.get(); }
 

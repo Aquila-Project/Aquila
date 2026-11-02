@@ -216,8 +216,8 @@ void Canvas::compute() {
 		constexpr int K_MAX_CONTAINER_RESOLVE_PASSES = 3;
 		const bool has_container_rules = m_style_engine.get_style_sheet().has_container_blocks();
 
-		m_layout_engine.run_layout(m_root.get(), m_delta_time);
 		m_layout_dirty = false;
+		m_layout_engine.run_layout(m_root.get(), m_delta_time);
 
 		for (int pass = 0;
 			 has_container_rules && m_layout_engine.did_layout_resize() && pass < K_MAX_CONTAINER_RESOLVE_PASSES;
@@ -242,8 +242,8 @@ void Canvas::compute() {
 	if (m_scroll_target != nullptr) {
 		m_layout_engine.scroll_into_view(m_scroll_target);
 		m_scroll_target = nullptr;
-		m_layout_engine.run_layout(m_root.get(), m_delta_time);
 		m_layout_dirty = false;
+		m_layout_engine.run_layout(m_root.get(), m_delta_time);
 		finish_layout();
 	}
 

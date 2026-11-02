@@ -33,6 +33,7 @@ class Dropdown : public Control {
 
 	void apply_xml_attribute(std::string_view name, std::string_view value,
 							 IResourceResolver *resolver = nullptr) override;
+	bool add_markup_item(MarkupItem &item, IResourceResolver *resolver) override;
 
   private:
 	struct Option {

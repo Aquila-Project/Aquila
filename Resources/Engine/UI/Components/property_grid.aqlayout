@@ -1,0 +1,49 @@
+<Component name="PropertyRow" props="label width">
+    <View class="property-row">
+        <Label class="property-label" style="width: $width">$label</Label>
+        <Slot class="property-value"/>
+    </View>
+</Component>
+
+<Component name="PropertyStackedRow" props="label">
+    <View class="property-row-stacked">
+        <Label class="property-label property-label-stacked">$label</Label>
+        <Slot class="property-value"/>
+    </View>
+</Component>
+
+<Component name="PropertySplitRow" props="label">
+    <View class="property-split-row">
+        <View class="property-split-label-box">
+            <Label class="property-split-label">$label</Label>
+        </View>
+        <Slot class="property-split-value"/>
+    </View>
+</Component>
+
+<Component name="PropertySplitStackedRow" props="label">
+    <View class="property-split-row property-split-row-top">
+        <View class="property-split-label-box">
+            <Label class="property-split-label">$label</Label>
+        </View>
+        <Slot class="property-split-value"/>
+    </View>
+</Component>
+
+<Component name="PropertySplitCheckRow" props="label">
+    <View class="property-split-row">
+        <View class="property-split-label-box"/>
+        <View class="property-split-value property-split-check-value">
+            <Slot class="property-split-check"/>
+            <Label class="property-split-check-text">$label</Label>
+        </View>
+    </View>
+</Component>
+
+<Component name="PropertySeparator">
+    <View class="property-separator"/>
+</Component>
+
+<Component name="PropertyNestedGrid">
+    <PropertyGrid/>
+</Component>

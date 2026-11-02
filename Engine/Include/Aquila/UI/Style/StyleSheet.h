@@ -76,6 +76,7 @@ class StyleSheet {
 										const ResolveContext &ctx = {}) const;
 
 	[[nodiscard]] Usize get_rule_count() const { return m_rules.size(); }
+	[[nodiscard]] Option<Vec4> find_class_color(std::string_view class_name) const;
 
 	[[nodiscard]] static bool supports_pseudo_class(std::string_view pseudo_class);
 

@@ -2,13 +2,19 @@
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Markup/MarkupParser.h"
 #include "Aquila/UI/Markup/MarkupPath.h"
+#include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/ComponentInstance.h"
+#include "Aquila/UI/Core/MarkupItem.h"
+#include "Aquila/UI/Core/UIResources.h"
+#include "Aquila/UI/DevTools/UIDebugPanel.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Checkbox.h"
 #include "Aquila/UI/Widgets/Clickable.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/IconLabel.h"
+#include "Aquila/UI/Widgets/InspectorPage.h"
+#include "Aquila/UI/Widgets/OverlayCheckRow.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/Slider.h"
 #include "Aquila/UI/Widgets/Popup.h"
@@ -52,6 +58,20 @@ std::string resolve_layout_path(const std::string &current_dir, const std::strin
 	return path.empty() || current_dir.empty() ? path : Markup::resolve_markup_path(current_dir, path, {});
 }
 
+void check_slots(const Markup::MarkupDocument &document, const Markup::MarkupNode &node) {
+	if (node.tag == "Slot") {
+		for (const Markup::MarkupAttribute &attribute : node.attributes) {
+			if (attribute.name != "class") {
+				AQUILA_LOG_WARNING("LayoutLoader: {}: <Slot/> only takes 'class', '{}' is ignored",
+								   document.location(attribute.where), attribute.name);
+			}
+		}
+	}
+	for (const Markup::MarkupNode &child : node.children) {
+		check_slots(document, child);
+	}
+}
+
 void apply_inline_style(UI::StyleProperties &props, std::string_view decls, const Markup::MarkupDocument &document,
 						Markup::SourceLocation where) {
 	while (!decls.empty()) {
@@ -81,6 +101,62 @@ Uint64 next_scope_id() {
 	return ++s_next;
 }
 
+struct ItemRule {
+	std::string_view tag{};
+	std::string_view goes_in{};
+	std::vector<std::string_view> attributes{};
+	std::vector<std::string_view> items{};
+	bool takes_elements = false;
+};
+
+const ItemRule *find_item_rule(std::string_view tag) {
+	static const std::array<ItemRule, 7> s_rules{ {
+		{ .tag = "Option", .goes_in = "a Dropdown", .attributes = { "value", "label", "icon" } },
+		{ .tag = "Item", .goes_in = "a ListBox", .attributes = { "value", "label" } },
+		{ .tag = "Tab",
+		  .goes_in = "a TabView or a TabBar",
+		  .attributes = { "title", "icon", "tooltip" },
+		  .takes_elements = true },
+		{ .tag = "TreeNode",
+		  .goes_in = "a TreeView or a <TreeNode>",
+		  .attributes = { "label" },
+		  .items = { "TreeNode" } },
+		{ .tag = "MenuItem",
+		  .goes_in = "a PopupMenu or a <Submenu>",
+		  .attributes = { "command", "action", "label", "icon" } },
+		{ .tag = "MenuSeparator", .goes_in = "a PopupMenu or a <Submenu>" },
+		{ .tag = "Submenu",
+		  .goes_in = "a PopupMenu or a <Submenu>",
+		  .attributes = { "id", "label", "icon" },
+		  .items = { "MenuItem", "MenuSeparator", "Submenu" } },
+	} };
+	const auto it = std::ranges::find(s_rules, tag, &ItemRule::tag);
+	return it != s_rules.end() ? &*it : nullptr;
+}
+
+class ItemHolder final : public View {
+  public:
+	ItemHolder(MarkupItem &item, const ItemRule &rule) : m_item(item), m_rule(rule) {}
+
+	[[nodiscard]] std::string_view get_type_name() const override { return m_rule.tag; }
+	[[nodiscard]] bool has_text() const { return m_has_text; }
+
+	bool add_markup_item(MarkupItem &item, IResourceResolver *) override {
+		if (std::ranges::find(m_rule.items, item.tag) == m_rule.items.end()) {
+			return false;
+		}
+		m_item.items.push_back(std::move(item));
+		return true;
+	}
+
+	void apply_xml_text_content(std::string_view text) override { m_has_text = m_has_text || !text.empty(); }
+
+  private:
+	MarkupItem &m_item;
+	const ItemRule &m_rule;
+	bool m_has_text = false;
+};
+
 bool is_built_in_attribute(std::string_view name) {
 	return name == "id" || name == "class" || name == "font" || name == "style" || name == "src" || name == "uv" ||
 		name == "tint";
@@ -96,6 +172,7 @@ struct LayoutLoader::BuildScope {
 	Uint64 scope_id = 0;
 	std::map<std::string, std::string, std::less<>> props{};
 	Ref<const Markup::MarkupDocument> owner{};
+	std::vector<Unique<View>> *slot_children = nullptr;
 
 	[[nodiscard]] bool takes_prop(std::string_view name) const {
 		return definition != nullptr && std::ranges::find(definition->props, name) != definition->props.end();
@@ -153,6 +230,18 @@ struct LayoutLoader::BuildScope {
 		}
 		return false;
 	}
+};
+
+struct LayoutLoader::BuildPass {
+	explicit BuildPass(LayoutLoader &loader) : m_loader(loader) { ++m_loader.m_build_depth; }
+	~BuildPass() {
+		if (--m_loader.m_build_depth == 0) {
+			m_loader.m_visible_imports.clear();
+		}
+	}
+	AQUILA_NONCOPYABLE(BuildPass);
+	AQUILA_NONMOVEABLE(BuildPass);
+	LayoutLoader &m_loader;
 };
 
 LayoutLoader::LayoutLoader() {
@@ -244,6 +333,7 @@ Unique<View> LayoutLoader::load_file(const std::string &path) {
 
 Unique<View> LayoutLoader::load_root(const std::string &path, Uint64 scope_id,
 									 Ref<const Markup::MarkupDocument> *document_out) {
+	const BuildPass pass(*this);
 	const std::string resolved = resolve_layout_path(m_current_dir, path);
 
 	if (std::ranges::find(m_include_stack, resolved) != m_include_stack.end()) {
@@ -290,8 +380,14 @@ View *LayoutLoader::build_file(const std::string &path, View &parent, Unique<Beh
 	return placed;
 }
 
-View *LayoutLoader::create(const std::string &file, std::string_view component, View &parent) {
-	const std::string resolved = resolve_layout_path(m_current_dir, file);
+View *LayoutLoader::create(const std::string &file, std::string_view component, View &parent, ComponentArgs args) {
+	Unique<View> created = create_detached(file, component, std::move(args));
+	return created ? parent.add_child(std::move(created)) : nullptr;
+}
+
+Unique<View> LayoutLoader::create_detached(const std::string &file, std::string_view component, ComponentArgs args) {
+	const BuildPass pass(*this);
+	const std::string resolved = Markup::resolve_markup_path(UI_DIR, file, ".aqlayout");
 	const Ref<const Markup::MarkupDocument> document = load_document(resolved);
 	if (!document) {
 		return nullptr;
@@ -302,14 +398,16 @@ View *LayoutLoader::create(const std::string &file, std::string_view component, 
 		return nullptr;
 	}
 	const BuildScope scope{ .document = document.get(), .owner = document };
-	return place_instance({ .definition = definition, .document = document.get(), .owner = document }, scope, component,
-						  parent);
+	return build_instance({ .definition = definition, .document = document.get(), .owner = document }, scope, component,
+						  std::move(args));
 }
 
-View *LayoutLoader::create_from(const ComponentInstance &instance, std::string_view component, View &parent) {
+Unique<View> LayoutLoader::create_detached_from(const ComponentInstance &instance, std::string_view component,
+												ComponentArgs args) {
 	if (!instance.m_document) {
 		return nullptr;
 	}
+	const BuildPass pass(*this);
 	const BuildScope scope{ .document = instance.m_document.get(),
 							.scope_id = instance.m_scope_id,
 							.owner = instance.m_document };
@@ -319,15 +417,22 @@ View *LayoutLoader::create_from(const ComponentInstance &instance, std::string_v
 						 component, instance.m_file);
 		return nullptr;
 	}
-	return place_instance(found, scope, component, parent);
+	return build_instance(found, scope, component, std::move(args));
 }
 
-View *LayoutLoader::place_instance(const FoundComponent &found, const BuildScope &scope, std::string_view component,
-								   View &parent) {
+Unique<View> LayoutLoader::build_instance(const FoundComponent &found, const BuildScope &scope,
+										  std::string_view component, ComponentArgs args) {
 	Markup::MarkupNode instance;
 	instance.tag = std::string(component);
-	Unique<View> root = build_component(found, instance, scope);
-	return root ? parent.add_child(std::move(root)) : nullptr;
+	for (auto &[name, value] : args.attributes) {
+		instance.attributes.push_back(
+			{ .name = std::move(name), .value = std::move(value), .where = {}, .value_where = {} });
+	}
+	return build_component(found, instance, scope, &args.children);
+}
+
+void LayoutLoader::report_missing_behaviour(std::string_view file, std::string_view component) const {
+	AQUILA_LOG_ERROR("LayoutLoader: '{}' in {} doesn't have the behaviour that was asked for", component, file);
 }
 
 void LayoutLoader::attach_behaviour(View &root, Unique<ComponentInstance> instance, Unique<Behaviour> behaviour) {
@@ -374,8 +479,12 @@ void LayoutLoader::check_document(const Markup::MarkupDocument &document) {
 		if (m_factories.contains(definition.name)) {
 			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> has the name of a widget",
 							 document.location(definition.where), definition.name);
+		} else if (find_item_rule(definition.name) != nullptr) {
+			AQUILA_LOG_ERROR("LayoutLoader: {}: <Component '{}'> has the name of an item tag",
+							 document.location(definition.where), definition.name);
 		}
 		defined_in.emplace(definition.name, document.source_name);
+		check_slots(document, definition.root);
 	}
 
 	const std::string directory = directory_of(document);
@@ -414,16 +523,21 @@ LayoutLoader::FoundComponent LayoutLoader::find_visible(const BuildScope &scope,
 	if (const Markup::ComponentDefinition *own = scope.document->find_component(name)) {
 		return { .definition = own, .document = scope.document, .owner = scope.owner };
 	}
-	const std::string directory = directory_of(*scope.document);
-	for (const Markup::MarkupImport &import : scope.document->imports) {
-		const std::string path = Markup::resolve_markup_path(directory, import.src, ".aqlayout");
-		if (!Platform::Filesystem::VirtualFileSystem::get()->exists(path)) {
-			continue;
+	auto [cached, inserted] = m_visible_imports.try_emplace(scope.document);
+	if (inserted) {
+		cached->second.importer = scope.owner;
+		const std::string directory = directory_of(*scope.document);
+		for (const Markup::MarkupImport &import : scope.document->imports) {
+			const std::string path = Markup::resolve_markup_path(directory, import.src, ".aqlayout");
+			if (!Platform::Filesystem::VirtualFileSystem::get()->exists(path)) {
+				continue;
+			}
+			if (Ref<const Markup::MarkupDocument> imported = load_document(path)) {
+				cached->second.imports.push_back(std::move(imported));
+			}
 		}
-		const Ref<const Markup::MarkupDocument> imported = load_document(path);
-		if (imported == nullptr) {
-			continue;
-		}
+	}
+	for (const Ref<const Markup::MarkupDocument> &imported : cached->second.imports) {
 		if (const Markup::ComponentDefinition *definition = imported->find_component(name)) {
 			return { .definition = definition, .document = imported.get(), .owner = imported };
 		}
@@ -432,6 +546,7 @@ LayoutLoader::FoundComponent LayoutLoader::find_visible(const BuildScope &scope,
 }
 
 Unique<View> LayoutLoader::load_string(std::string_view xml) {
+	const BuildPass pass(*this);
 	const auto document = std::make_shared<const Markup::MarkupDocument>(Markup::parse_markup(xml, "<string>"));
 	check_document(*document);
 	if (!document->root) {
@@ -464,6 +579,12 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 	if (node.tag == "Slot") {
 		AQUILA_LOG_ERROR("LayoutLoader: {}: <Slot/> only works inside a <Component>, as one of its elements",
 						 document.location(node.where));
+		return nullptr;
+	}
+
+	if (const ItemRule *rule = find_item_rule(node.tag)) {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: <{}> goes inside {}, it is left out", document.location(node.where),
+						 node.tag, rule->goes_in);
 		return nullptr;
 	}
 
@@ -526,7 +647,7 @@ Unique<View> LayoutLoader::build_element(const Markup::MarkupNode &node, const B
 }
 
 Unique<View> LayoutLoader::build_component(const FoundComponent &found, const Markup::MarkupNode &instance,
-										   const BuildScope &scope) {
+										   const BuildScope &scope, std::vector<Unique<View>> *slot_children) {
 	const Markup::ComponentDefinition &definition = *found.definition;
 	const Markup::MarkupDocument &document = *scope.document;
 	const std::string where = document.location(instance.where);
@@ -544,13 +665,16 @@ Unique<View> LayoutLoader::build_component(const FoundComponent &found, const Ma
 					  .instance = &instance,
 					  .outer = &scope,
 					  .scope_id = next_scope_id(),
-					  .owner = found.owner };
+					  .owner = found.owner,
+					  .slot_children = slot_children };
 	const bool text_is_prop = inner.takes_prop("text");
 	const bool has_behaviour = !definition.behaviour.empty();
 	const bool text_is_read = text_is_prop || has_behaviour;
-	const bool has_children = std::ranges::any_of(instance.children, [text_is_read](const Markup::MarkupNode &child) {
-		return !text_is_read || !child.is_text();
-	});
+	const bool has_children = std::ranges::any_of(instance.children,
+												  [text_is_read](const Markup::MarkupNode &child) {
+													  return !text_is_read || !child.is_text();
+												  }) ||
+		(slot_children != nullptr && !slot_children->empty());
 	if (!definition.has_slot && has_children) {
 		AQUILA_LOG_WARNING("LayoutLoader: {}: '{}' has no <Slot/>, its children are dropped", where, definition.name);
 	}
@@ -570,12 +694,14 @@ Unique<View> LayoutLoader::build_component(const FoundComponent &found, const Ma
 		attributes[attribute.name] = std::move(value);
 	}
 	std::string text;
+	bool has_text = false;
 	for (const Markup::MarkupNode &child : instance.children) {
 		if (child.is_text()) {
 			text += (text.empty() ? "" : " ") + scope.substitute(child.text, child.where);
+			has_text = true;
 		}
 	}
-	if (text_is_prop) {
+	if (text_is_prop && has_text) {
 		inner.props["text"] = text;
 	}
 	if (!text.empty()) {
@@ -637,14 +763,68 @@ void LayoutLoader::build_children(View &view, const Markup::MarkupNode &node, co
 			continue;
 		}
 		if (child.tag == "Slot" && scope.definition != nullptr) {
+			const Usize first = view.get_children().size();
 			if (scope.instance != nullptr && scope.outer != nullptr) {
 				build_children(view, *scope.instance, *scope.outer, font, scope.takes_prop("text"));
 			}
+			if (scope.slot_children != nullptr) {
+				for (Unique<View> &placed : *scope.slot_children) {
+					view.add_child(std::move(placed));
+				}
+				scope.slot_children->clear();
+			}
+			if (const Markup::MarkupAttribute *classes = child.find("class")) {
+				std::istringstream iss(scope.substitute(classes->value, classes->value_where));
+				std::string cls;
+				while (iss >> cls) {
+					for (Usize i = first; i < view.get_children().size(); ++i) {
+						view.get_children()[i]->add_class(cls);
+					}
+				}
+			}
+			continue;
+		}
+		if (find_item_rule(child.tag) != nullptr) {
+			add_item(view, child, scope, font);
 			continue;
 		}
 		if (Unique<View> built = build_element(child, scope)) {
 			view.add_child(std::move(built));
 		}
+	}
+}
+
+void LayoutLoader::add_item(View &parent, const Markup::MarkupNode &node, const BuildScope &scope,
+							Text::FontAtlas *font) {
+	const Markup::MarkupDocument &document = *scope.document;
+	const ItemRule &rule = *find_item_rule(node.tag);
+	MarkupItem item{ .tag = node.tag, .location = document.location(node.where), .id_scope = scope.scope_id };
+	for (const Markup::MarkupAttribute &attribute : node.attributes) {
+		if (std::ranges::find(rule.attributes, attribute.name) == rule.attributes.end()) {
+			AQUILA_LOG_WARNING("LayoutLoader: {}: <{}> doesn't take the attribute '{}'",
+							   document.location(attribute.where), node.tag, attribute.name);
+			continue;
+		}
+		item.attributes[attribute.name] = scope.substitute(attribute.value, attribute.value_where);
+	}
+
+	ItemHolder holder(item, rule);
+	build_children(holder, node, scope, font);
+	if (holder.has_text()) {
+		AQUILA_LOG_WARNING("LayoutLoader: {}: the text inside <{}> is left out, write it in an attribute",
+						   item.location, node.tag);
+	}
+	if (!holder.get_children().empty() && !rule.takes_elements) {
+		AQUILA_LOG_WARNING("LayoutLoader: {}: <{}> only takes {}, the other elements inside are left out",
+						   item.location, node.tag, rule.items.empty() ? "attributes" : "items");
+	}
+	while (rule.takes_elements && !holder.get_children().empty()) {
+		item.views.push_back(holder.detach_child(holder.get_children().front().get()));
+	}
+
+	if (!parent.add_markup_item(item, this)) {
+		AQUILA_LOG_ERROR("LayoutLoader: {}: <{}> goes inside {}, not '{}', it is left out", item.location, node.tag,
+						 rule.goes_in, parent.get_type_name());
 	}
 }
 
@@ -691,6 +871,15 @@ void LayoutLoader::register_builtins() {
 	Register<DockNode>("DockNode");
 	Register<DockPanel>("DockPanel");
 	Register<OverlayToolbar>("OverlayToolbar");
+
+	m_builtin_behaviours.push_back(m_behaviours.add<InspectorPage>("InspectorPage"));
+	m_builtin_behaviours.push_back(m_behaviours.add<OverlayCheckRow>("OverlayCheckRow"));
+	m_builtin_behaviours.push_back(m_behaviours.add<DevTools::UIDebugPanel>("UIDebugPanel"));
 }
 
-} // namespace Aquila::UI::Core
+LayoutLoader *find_layout_loader(const View &view) {
+	const Canvas *canvas = view.get_canvas();
+	return canvas != nullptr ? canvas->get_layout_loader() : nullptr;
+}
+
+}

@@ -5,10 +5,6 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/UI/Core/View.h"
 
-namespace Aquila::GFX {
-class GfxContext;
-}
-
 namespace Aquila::Platform::Events {
 class Event;
 }
@@ -18,9 +14,9 @@ class IRenderWindowHost;
 }
 
 namespace Aquila::UI::Core {
+class BehaviourWindow;
 class Canvas;
 class LayoutLoader;
-class TextureCache;
 }
 
 namespace Aquila::UI::DevTools {
@@ -28,7 +24,6 @@ namespace Aquila::UI::DevTools {
 class PickerOverlay;
 class UIDebugPanel;
 class UIDebugWindow;
-class WidgetGalleryWindow;
 
 struct UIDevToolsDesc {
 	Core::Canvas &target;
@@ -48,12 +43,13 @@ class UIDevTools {
 	void attach(Core::View *layout_root);
 
 	void open_inspector_window();
-	void open_widget_gallery(GFX::GfxContext &ctx, Core::TextureCache *texture_cache);
+	void open_widget_gallery();
 
 	/// @return true when it used the event, while picking an element
 	bool on_event(Platform::Events::Event &event);
 
   private:
+	[[nodiscard]] UIDebugWindow *inspector() const;
 	void start_pick();
 	void stop_pick();
 
@@ -61,9 +57,9 @@ class UIDevTools {
 	Aquila::Rendering::IRenderWindowHost &m_host;
 	Core::LayoutLoader &m_layouts;
 
-	Unique<UIDebugPanel> m_panel;
-	Unique<UIDebugWindow> m_inspector;
-	Unique<WidgetGalleryWindow> m_gallery;
+	UIDebugPanel *m_panel = nullptr;
+	Unique<Core::BehaviourWindow> m_inspector;
+	Unique<Core::BehaviourWindow> m_gallery;
 	PickerOverlay *m_picker = nullptr;
 
 	Core::ViewRef m_pick_hover;

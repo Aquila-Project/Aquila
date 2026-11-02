@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Aquila/Foundation/Defines.h"
+#include "Aquila/Foundation/Registration.h"
 #include "Aquila/UI/Core/DockLayoutSerializer.h"
 #include "Core/EditorWindow.h"
 
@@ -87,6 +88,8 @@ class EditorWindows {
 	EditorContext &m_context;
 	Aquila::UI::Core::DockSpace *m_dock_space = nullptr;
 	Aquila::UI::Core::PopupMenu *m_menu = nullptr;
+	Aquila::UI::Core::View *m_staging = nullptr;
+	std::vector<Aquila::Foundation::Registration> m_component_behaviours;
 	std::vector<EditorWindowType> m_types;
 	std::vector<Live> m_live;
 	Uint32 m_next_instance = 1;

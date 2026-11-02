@@ -198,3 +198,19 @@
 .build-primary:pressed {
     background-color: var(--accent-press);
 }
+
+.build-log-info {
+    color: rgb(0.62, 0.62, 0.62);
+}
+
+.build-log-warning {
+    color: rgb(0.83, 0.67, 0.29);
+}
+
+.build-log-error {
+    color: rgb(0.87, 0.45, 0.45);
+}
+
+.build-log-success {
+    color: rgb(0.29, 0.72, 0.44);
+}

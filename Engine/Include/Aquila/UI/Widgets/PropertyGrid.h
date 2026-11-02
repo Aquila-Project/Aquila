@@ -5,6 +5,8 @@
 
 namespace Aquila::UI::Core {
 
+class LayoutLoader;
+
 /// Label and widget rows, the base of the inspector.
 ///
 /// @code
@@ -41,13 +43,18 @@ class PropertyGrid : public View {
 	}
 
 	void add_separator();
+	PropertyGrid *add_grid();
+	View *add_action(View &widget, Unique<View> action);
 
 	/// Right aligned label column, widgets tagged split-<TypeName> so styles can size them.
 	void set_split(bool split);
 	[[nodiscard]] bool is_split() const { return m_split; }
 
+	void apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) override;
+
   private:
-	View *add_split_row(std::string label, Unique<View> widget, RowLayout layout);
+	View *add_component_row(std::string_view component, std::string label, Unique<View> widget);
+	[[nodiscard]] LayoutLoader *loader_for(std::string_view what) const;
 
 	float m_label_width;
 	bool m_split = false;

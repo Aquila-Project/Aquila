@@ -21,9 +21,10 @@ TabView {
     padding: 0px 14px;
     height: 100%;
     min-width: 0px;
-    overflow: hidden;
+    overflow: clip;
+    white-space: nowrap;
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     font-family: regular;
     font-size: 14px;
     color: var(--text-dim);
@@ -113,19 +114,28 @@ ListBox {
     background-color: var(--bg-widget);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
-    align-items: center;
-    justify-content: start;
-    padding: 0px 10px;
+    border-radius: var(--control-radius);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0px;
+    padding: 0px var(--control-padding-x);
     color: var(--text);
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-control);
     transition: 60ms ease-out;
 }
 
 .dropdown-header:hover {
     background-color: var(--bg-hover);
     border-color: var(--border-lit);
+}
+
+.dropdown-sizer {
+    flex-direction: column;
+    height: 0.001px;
+    overflow: clip;
+    opacity: 0;
 }
 
 .tooltip {
@@ -167,6 +177,7 @@ ScrollView {
 
 .scroll-bar-track {
     width: 12px;
+    height: 100%;
     flex-direction: column;
     align-items: center;
     padding: 0px 3px;
@@ -201,23 +212,24 @@ MenuBar {
 }
 
 Dropdown {
-    min-height: 28px;
+    min-height: var(--control-height);
     flex-direction: column;
 }
 
 AssetSlot {
     width: 100%;
-    min-height: 60px;
-    padding: 4px 6px;
+    height: var(--control-height);
+    padding: 0px 2px 0px var(--control-padding-x);
+    gap: var(--control-gap);
     overflow: hidden;
     flex-direction: row;
     background-color: var(--bg-surface);
-    border-width: 2px;
+    border-width: 1px;
     border-color: var(--border-dim);
     border-style: dashed;
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     align-items: center;
-    justify-content: center;
+    justify-content: start;
     transition: 80ms ease-out;
 }
 
@@ -229,19 +241,21 @@ AssetSlot:hover {
 .asset-slot-filled {
     border-style: solid;
     border-color: var(--accent);
-    gap: 6px;
 }
 
 .asset-slot-thumbnail {
-    width: 32px;
-    height: 32px;
+    width: var(--control-thumbnail);
+    height: var(--control-thumbnail);
     color: #ffffff;
     border-radius: 2px;
 }
 
 .asset-slot-label {
-    flex-grow: 1;
+    width: grow;
+    min-width: 0px;
     font-family: regular;
+    white-space: nowrap;
+    text-overflow: ellipsis-middle;
 }
 
 .asset-slot-placeholder {
@@ -260,8 +274,8 @@ AssetSlot:hover {
 }
 
 .asset-slot-clear {
-    padding: 0px 6px;
-    font-size: 12px;
+    padding: 0px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
     background-color: transparent;
 }
 
@@ -508,183 +522,14 @@ OverlayToolbar {
     opacity: 0.7;
 }
 
-.overlay-tool {
-    width: 26px;
-    height: 26px;
-    padding: 0px;
-    align-items: center;
-    justify-content: center;
-    background-color: transparent;
-    border-width: 0px;
-    border-radius: 4px;
-    color: var(--text-dim);
-    transition: 80ms ease-out;
-}
-
-.overlay-tool:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-bright);
-}
-
-.overlay-tool:pressed {
-    background-color: var(--bg-surface);
-}
-
-.overlay-tool-active {
-    background-color: var(--accent-dark);
-    color: var(--text-bright);
-}
-
-.overlay-dropdown {
-    min-height: 26px;
-    min-width: 0px;
-}
-
-.overlay-dropdown-header {
-    min-height: 26px;
-    gap: 6px;
-    padding: 0px 8px;
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text);
-    background-color: transparent;
-    border-width: 0px;
-    border-radius: 4px;
-}
-
-.overlay-dropdown-header:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-bright);
-}
-
-.overlay-dropdown-popup {
-    min-width: 170px;
-}
-
-.overlay-menu {
-    flex-direction: column;
-}
-
-.overlay-popover {
-    flex-direction: column;
-    min-width: 170px;
-    gap: 2px;
-    padding: 6px;
-    background-color: var(--bg-deep);
-    border-width: 1px;
-    border-color: var(--hairline);
-    border-radius: 6px;
-}
-
-.overlay-popover-wide {
-    min-width: 280px;
-}
-
-.overlay-popover-title {
-    font-family: medium;
-    font-size: 11px;
-    color: var(--text-muted);
-    padding: 2px 4px 4px 4px;
-}
-
-.overlay-check-row {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    min-height: 24px;
-    gap: 8px;
-    padding: 0px 4px;
-    border-radius: 4px;
-}
-
-.overlay-check-row:hover {
-    background-color: var(--bg-muted);
-}
-
-.overlay-check {
-    width: 16px;
-    height: 16px;
-    border-radius: 2px;
-}
-
-.overlay-check-text {
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text);
-}
-
 .property-grid {
     flex-direction: column;
     width: 100%;
     gap: 4px;
 }
 
-.property-row {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    gap: 8px;
-}
-
-.property-label {
-    font-family: regular;
-    font-size: 13px;
-    color: var(--text-dim);
-    width: 84px;
-}
-
-.property-row-stacked {
-    flex-direction: column;
-    align-items: start;
-    width: 100%;
-    gap: 3px;
-}
-
-.property-label-stacked {
-    width: grow;
-}
-
-.property-separator {
-    width: 100%;
-    height: 1px;
-    background-color: var(--hairline);
-}
-
 .property-grid-split {
     gap: 3px;
-}
-
-.property-split-row {
-    flex-direction: row;
-    align-items: center;
-    width: 100%;
-    min-height: 20px;
-    gap: 8px;
-}
-
-.property-split-row-top {
-    align-items: start;
-}
-
-.property-split-label {
-    width: 38%;
-    min-height: 20px;
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text-dim);
-    text-align: right;
-}
-
-.property-split-value {
-    width: grow;
-    min-width: 0px;
-}
-
-.property-split-check-text {
-    width: grow;
-    font-family: regular;
-    font-size: 12px;
-    color: var(--text);
 }
 
 .split-DragFloat,
@@ -692,13 +537,14 @@ OverlayToolbar {
 .vec-stack-first,
 .vec-stack-middle,
 .vec-stack-last {
-    height: 20px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
     font-family: mono;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--bg-surface);
     border-width: 0px;
-    border-radius: 4px;
+    border-radius: var(--control-radius);
 }
 
 .split-DragFloat:hover,
@@ -718,7 +564,7 @@ OverlayToolbar {
 }
 
 .vec-stack-first {
-    border-radius: 4px 4px 0px 0px;
+    border-radius: var(--control-radius) var(--control-radius) 0px 0px;
 }
 
 .vec-stack-middle {
@@ -726,7 +572,7 @@ OverlayToolbar {
 }
 
 .vec-stack-last {
-    border-radius: 0px 0px 4px 4px;
+    border-radius: 0px 0px var(--control-radius) var(--control-radius);
 }
 
 .vec-field-stacked {
@@ -761,7 +607,7 @@ SliderField {
 .slider-field-track {
     width: grow;
     min-width: 20px;
-    height: 20px;
+    height: var(--control-height-compact);
     color: var(--text-dim);
     accent-color: var(--accent);
 }
@@ -770,13 +616,14 @@ SliderField {
     width: grow;
     min-width: 32px;
     max-width: 84px;
-    height: 20px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
     font-family: mono;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--bg-surface);
     border-width: 0px;
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     selection-color: var(--selection);
 }
 
@@ -791,7 +638,7 @@ SliderField {
 .slider-field-caption {
     min-height: 14px;
     font-family: regular;
-    font-size: 11px;
+    font-size: var(--font-size-caption);
     color: var(--text-muted);
 }
 
@@ -802,25 +649,32 @@ SliderField {
 }
 
 .split-Label {
-    min-height: 20px;
     font-family: mono;
-    font-size: 12px;
+    font-size: var(--font-size-compact);
     color: var(--text);
 }
 
 .split-TextInput {
-    height: 20px;
-    padding: 0px 6px;
-    font-size: 12px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
 }
 
 .split-AssetSlot {
-    min-height: 20px;
-    padding: 3px 2px 3px 6px;
-    font-size: 12px;
-    border-width: 1px;
-    border-radius: 4px;
-    justify-content: start;
+    height: var(--control-height-compact);
+    padding: 0px 2px 0px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
+}
+
+.split-Button {
+    min-height: var(--control-height-compact);
+    padding: 2px var(--control-padding-x-compact);
+    font-size: var(--font-size-compact);
+    border-radius: var(--control-radius);
+}
+
+.split-ColorPicker {
+    height: var(--control-height-compact);
 }
 
 Button {
@@ -852,21 +706,22 @@ Collapsible {
 ColorPicker {
     flex-direction: column;
     width: grow;
+    height: var(--control-height);
 }
 
 TextInput {
     overflow: hidden;
     width: grow;
     min-width: 0px;
-    height: 22px;
-    padding: 10px;
+    height: var(--control-height);
+    padding: 0px var(--control-padding-x);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     color: var(--text);
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
     transition: 60ms ease-out;
 }
 
@@ -929,46 +784,36 @@ Toggle {
     accent-color: var(--accent);
 }
 
-DragFloat {
-    width: grow;
-    height: 22px;
-    min-width: 0px;
-    background-color: var(--input-bg);
-    border-width: 1px;
-    border-color: var(--input-border);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: regular;
-    font-size: 13px;
-    transition: 60ms ease-out;
-}
-
+DragFloat,
 DragInt {
     width: grow;
-    height: 22px;
+    height: var(--control-height);
     min-width: 0px;
+    padding: 0px var(--control-padding-x);
+    gap: var(--control-gap);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     color: var(--text);
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
+    text-align: left;
     transition: 60ms ease-out;
 }
 
 NumberInput {
     width: grow;
-    height: 22px;
+    height: var(--control-height);
     min-width: 0px;
-    padding: 0px 8px;
+    padding: 0px var(--control-padding-x);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 4px;
+    border-radius: var(--control-radius);
     color: var(--text);
     font-family: regular;
-    font-size: 13px;
+    font-size: var(--font-size-control);
     transition: 60ms ease-out;
 }
 
@@ -976,12 +821,14 @@ NumberInput:focus {
     border-color: var(--accent);
 }
 
-DragFloat:hover {
+DragFloat:hover,
+DragInt:hover {
     border-color: var(--border-lit);
     background-color: var(--bg-muted);
 }
 
-DragFloat:focus {
+DragFloat:focus,
+DragInt:focus {
     border-color: var(--accent);
 }
 
@@ -1012,10 +859,10 @@ Vec4Field {
 
 .vec-label {
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-control);
     color: var(--text-bright);
     width: auto;
-    height: 20px;
+    height: var(--control-height);
     border-radius: 2px;
     align-items: center;
     justify-content: center;
@@ -1023,7 +870,7 @@ Vec4Field {
 
 .vec-drag {
     width: grow;
-    height: 22px;
+    height: var(--control-height);
 }
 
 .vec-drag-x {
@@ -1098,7 +945,10 @@ Vec4Field {
     font-size: 13px;
     color: var(--text);
     width: grow;
+    min-width: 0px;
     height: 100%;
+    overflow: clip;
+    white-space: nowrap;
     padding: 0px 8px;
     align-items: center;
     justify-content: start;
@@ -1137,8 +987,8 @@ Vec4Field {
 
 .cp-swatch {
     width: grow;
-    height: 24px;
-    border-radius: 2px;
+    height: grow;
+    border-radius: var(--control-radius);
     border-width: 1px;
     border-color: var(--line-inset);
     padding: 0px;
@@ -1199,14 +1049,14 @@ Vec4Field {
 
 .cp-mode-btn {
     width: grow;
-    min-height: 22px;
+    min-height: var(--control-height-compact);
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-compact);
     color: var(--text-dim);
     background-color: var(--bg-widget);
     border-width: 1px;
     border-color: var(--border-ui);
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     transition: 60ms ease-out;
 }
 
@@ -1235,7 +1085,7 @@ Vec4Field {
 
 .cp-ch-lbl {
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-compact);
     color: var(--text-muted);
     width: 12px;
 }
@@ -1247,14 +1097,15 @@ Vec4Field {
 
 .cp-ch-input {
     width: 38px;
-    height: 20px;
-    font-family: regular;
-    font-size: 14px;
+    height: var(--control-height-compact);
+    padding: 0px 4px;
+    font-family: mono;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     transition: 60ms ease-out;
 }
 
@@ -1272,21 +1123,22 @@ Vec4Field {
 
 .cp-hex-lbl {
     font-family: regular;
-    font-size: 14px;
+    font-size: var(--font-size-compact);
     color: var(--text-muted);
     width: 8px;
 }
 
 .cp-hex-input {
     width: grow;
-    height: 20px;
-    font-family: regular;
-    font-size: 14px;
+    height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
+    font-family: mono;
+    font-size: var(--font-size-compact);
     color: var(--text);
     background-color: var(--input-bg);
     border-width: 1px;
     border-color: var(--input-border);
-    border-radius: 2px;
+    border-radius: var(--control-radius);
     transition: 60ms ease-out;
 }
 
@@ -1337,8 +1189,89 @@ Vec4Field {
         padding: 0px 6px;
     }
 
-    DragFloat {
-        height: 20px;
-        font-size: 14px;
+    DragFloat,
+    DragInt {
+        height: var(--control-height-compact);
+        font-size: var(--font-size-compact);
     }
+}
+
+.picker-overlay {
+    width: 100%;
+    height: 100%;
+    color: var(--accent);
+}
+
+.menu-bar {
+    gap: 2px;
+}
+
+.menu-bar-item {
+    font-family: regular;
+    font-size: 16px;
+    color: var(--text-dim);
+    padding: 4px 10px;
+    align-items: center;
+    justify-content: center;
+    transition: 80ms ease-out;
+    background-color: var(--bg-deep);
+    border-width: 0px;
+    border-radius: 4px;
+}
+
+.menu-bar-item:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-bright);
+}
+
+.menu-bar-item:pressed {
+    background-color: var(--bg-surface);
+    color: var(--text);
+}
+
+.props-dropdown {
+    min-height: var(--control-height-compact);
+    min-width: 0px;
+}
+
+.props-dropdown-header {
+    min-height: var(--control-height-compact);
+    padding: 0px var(--control-padding-x-compact);
+    font-family: regular;
+    font-size: var(--font-size-compact);
+    color: var(--text);
+    background-color: var(--input-bg);
+    border-width: 1px;
+    border-color: var(--input-border);
+    border-radius: var(--control-radius);
+}
+
+.props-dropdown-header:hover {
+    background-color: var(--bg-muted);
+    border-color: var(--border-lit);
+}
+
+.collapsed {
+    height: auto;
+}
+
+.collapsible-action {
+    width: 24px;
+    height: 24px;
+    padding: 0px;
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.collapsible-action:hover {
+    background-color: var(--bg-hover);
+}
+
+.selectable-text-view {
+    width: grow;
+    font-family: mono;
+    font-size: 14px;
+    color: var(--text);
+    cursor: text;
+    selection-color: var(--selection);
 }

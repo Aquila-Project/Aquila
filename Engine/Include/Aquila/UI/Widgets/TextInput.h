@@ -19,6 +19,9 @@ class TextInput : public Control {
 	void set_text(const std::string &text);
 	void set_font(Text::FontAtlas *font) override;
 	void set_placeholder(std::string text);
+	[[nodiscard]] const std::string &get_placeholder() const { return m_placeholder; }
+	void apply_xml_attribute(std::string_view name, std::string_view value,
+							 IResourceResolver *resolver = nullptr) override;
 	/// Swallows the next typed character, for when the key that opened the field would also type into it.
 	void ignore_next_char() { m_ignore_next_char = true; }
 	/// Every edit. on_submit is Enter.

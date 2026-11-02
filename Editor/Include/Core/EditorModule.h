@@ -33,10 +33,8 @@ class AssetThumbnails;
 class EditorContext;
 class EditorWindows;
 class Workspaces;
-class StatusBar;
-class SettingsWindow;
+class EditorShell;
 class BuildWindow;
-class ProjectLauncher;
 class ProjectManager;
 
 /// The editor as an engine module: project launcher, dock shell, menus, shortcuts and preferences.
@@ -88,7 +86,6 @@ class EditorModule final : public Aquila::Application::IModule {
 	void register_thumbnail_slots();
 	void reload_styles();
 	[[nodiscard]] BuildWindow *build_window() const;
-	void wire_main_menu(Aquila::UI::Core::View *layout_root);
 	void open_settings_window();
 	void open_build_window();
 	void open_project_launcher();
@@ -113,7 +110,6 @@ class EditorModule final : public Aquila::Application::IModule {
 	void show_game_view();
 	void toggle_pause();
 	void restore_edit_scene();
-	void wire_play_controls(Aquila::UI::Core::View *layout_root);
 	/// Feeds the event to the game input while the game has focus, a press inside the Game view gives it focus.
 	/// @return true when the game took it.
 	bool route_to_game(Aquila::Platform::Events::Event &event);
@@ -123,10 +119,10 @@ class EditorModule final : public Aquila::Application::IModule {
 
 	Aquila::Application::EngineContext *m_engine = nullptr;
 	Aquila::SceneManagement::StatisticsCollector m_statistics;
-	Unique<StatusBar> m_status_bar;
-	Aquila::UI::Core::PopupMenu *m_main_menu = nullptr;
+	EditorShell *m_shell = nullptr;
 	Unique<Aquila::UI::Core::UIHost> m_ui_host;
 	Aquila::Foundation::Registration m_layout_service;
+	Aquila::Foundation::Registration m_user_fonts;
 	Unique<ProjectManager> m_project_manager;
 	Unique<Aquila::UI::Core::TextureCache> m_texture_cache;
 	Unique<AssetThumbnails> m_thumbnails;
@@ -142,9 +138,9 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<Aquila::UI::Core::DockWindowManager> m_dock_manager;
 
 	Unique<Aquila::UI::DevTools::UIDevTools> m_devtools;
-	Unique<SettingsWindow> m_settings_window;
+	Unique<Aquila::UI::Core::BehaviourWindow> m_settings_window;
 	Unique<Aquila::UI::Core::BehaviourWindow> m_build_window;
-	Unique<ProjectLauncher> m_project_launcher;
+	Unique<Aquila::UI::Core::BehaviourWindow> m_project_launcher;
 	bool m_editor_entered = false;
 	Option<ProjectInfo> m_pending_project;
 	std::string m_startup_project;
@@ -155,11 +151,6 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<Aquila::SceneManagement::Scene> m_edit_scene;
 	/// Set by on_stop(), the restore waits for the next frame so every module has stopped first.
 	bool m_restore_pending = false;
-	Aquila::UI::Core::Button *m_play_button = nullptr;
-	Aquila::UI::Core::Button *m_pause_button = nullptr;
-	Aquila::UI::Core::Button *m_stop_button = nullptr;
-	/// Views that take the play-mode tint: top bar, status bar and the gaps between docked panels.
-	std::vector<Aquila::UI::Core::View *> m_play_tinted;
 	/// Where Play came from, Stop goes back there if the Game workspace is still the active one.
 	std::string m_workspace_before_play;
 	Config::EditorPreferences m_applied_preferences;

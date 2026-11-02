@@ -4,11 +4,19 @@
 #include "Aquila/Foundation/Math/Rect.h"
 #include "Aquila/Platform/Input.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/DockNode.h"
 #include "Aquila/UI/Widgets/DockPanel.h"
 #include "Aquila/UI/Widgets/DockSpace.h"
 #include "Aquila/UI/Widgets/PopupMenu.h"
+#include "UI/Components/BuildTemplateInfo.h"
+#include "UI/Components/ContentTile.h"
+#include "UI/Components/DockTabActions.h"
+#include "UI/Components/HierarchyRow.h"
+#include "UI/Components/SettingsSection.h"
+#include "UI/Components/SettingsShortcutRow.h"
+#include "UI/Components/TodoRow.h"
 
 #include <charconv>
 
@@ -62,7 +70,17 @@ void EditorWindows::attach(DockSpace &dock_space) {
 		auto menu = std::make_unique<UI::Core::PopupMenu>();
 		menu->set_submenu_icon(m_context.icon("chevron-right"));
 		m_menu = overlay->add_child(std::move(menu));
+		m_staging = overlay->add_child<View>();
+		m_staging->set_hidden(true);
 	}
+
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<DockTabActions>("DockTabActions"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<HierarchyRow>("HierarchyRow"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<ContentTile>("ContentTile"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<BuildTemplateInfo>("BuildTemplateInfo"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<SettingsSection>("SettingsSection"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<SettingsShortcutRow>("SettingsShortcutRow"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<TodoRow>("TodoRow"));
 
 	dock_space.set_closable_tabs(true, m_context.icon("x"));
 	dock_space.set_panel_factory([this](const std::string &panel_id) { return create_panel(panel_id); });
@@ -164,9 +182,19 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 		instance_id = type_id + "#" + std::to_string(number);
 	}
 
-	auto panel = std::make_unique<DockPanel>(type->title);
+	auto created_panel = std::make_unique<DockPanel>(type->title);
+	DockPanel *panel = created_panel.get();
 	panel->set_id(instance_id);
 	panel->set_tab_icon(m_context.icon(type->icon));
+	if (m_staging != nullptr) {
+		m_staging->add_child(std::move(created_panel));
+	}
+	const auto unstage = [this, panel, &created_panel] {
+		if (m_staging != nullptr) {
+			created_panel.reset(static_cast<DockPanel *>(m_staging->detach_child(panel).release()));
+		}
+		return std::move(created_panel);
+	};
 
 	Unique<EditorWindow> window = type->create(m_context);
 	window->m_type_id = type_id;
@@ -181,14 +209,10 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 	}
 
 	EditorWindow *built = window.get();
-	if (built->get_layout_path().empty()) {
-		built->build(*panel);
-	} else {
-		const std::string path = built->get_layout_path();
-		if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
-			AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
-			return panel;
-		}
+	const std::string path = built->get_layout_path();
+	if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
+		AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
+		return unstage();
 	}
 
 	if (overlay != nullptr) {
@@ -204,11 +228,8 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 	}
 
 	built->m_on_destroyed = [this](EditorWindow *destroyed) { forget(destroyed); };
-	m_live.push_back({ built, panel.get() });
-	if (window) {
-		panel->set_content_owner(std::move(window));
-	}
-	return panel;
+	m_live.push_back({ built, panel });
+	return unstage();
 }
 
 DockNode *EditorWindows::default_target() const {
@@ -325,18 +346,16 @@ UI::Core::DockLayoutDesc EditorWindows::capture() const {
 }
 
 void EditorWindows::decorate(DockNode *node, View *actions) {
-	auto add_action = [&](const char *icon, const char *tooltip, bool replace) {
-		auto *button = actions->add_child<UI::Core::Button>();
-		button->add_class("dock-tab-action");
-		button->set_icon(m_context.icon(icon));
-		button->set_tooltip(tooltip);
-		button->on_click.connect([this, node, button, replace] {
-			const Rect rect = button->get_absolute_rect();
-			open_type_menu({ rect.position.x, rect.position.y + rect.size.y + 2.F }, replace, node);
-		});
-	};
-	add_action("grid-3x3", "Change editor", true);
-	add_action("plus", "Add editor tab", false);
+	auto *buttons = m_context.layouts().create<DockTabActions>(UI::Core::engine_component_file("dock_tab_actions"),
+															   "DockTabActions", *actions);
+	if (buttons == nullptr) {
+		return;
+	}
+	constexpr F32 K_MENU_GAP = 2.F;
+	buttons->on_change_editor.connect(
+		[this, node](Vec2 corner) { open_type_menu({ corner.x, corner.y + K_MENU_GAP }, true, node); });
+	buttons->on_add_tab.connect(
+		[this, node](Vec2 corner) { open_type_menu({ corner.x, corner.y + K_MENU_GAP }, false, node); });
 }
 
 void EditorWindows::open_type_menu(Vec2 position, bool replace, DockNode *node) {

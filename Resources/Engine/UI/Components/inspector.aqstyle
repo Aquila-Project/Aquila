@@ -1,0 +1,118 @@
+.props-tab {
+    width: 24px;
+    height: 24px;
+    padding: 0px;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border-width: 0px;
+    border-radius: 4px 0px 0px 4px;
+    color: var(--text-dim);
+    transition: 60ms ease-out;
+}
+
+.props-tab:hover {
+    background-color: var(--bg-muted);
+    color: var(--text-bright);
+}
+
+.props-tab-active {
+    width: 27px;
+    background-color: var(--bg-panel);
+    color: var(--text-bright);
+}
+
+.props-page {
+    flex-direction: column;
+    width: 100%;
+    gap: 6px;
+    padding: 0px 8px 10px 6px;
+}
+
+.props-sections {
+    flex-direction: column;
+    width: 100%;
+    gap: 4px;
+}
+
+.props-panel {
+    flex-direction: column;
+    width: 100%;
+    background-color: var(--bg-base);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.props-panel-header {
+    min-height: 26px;
+    padding: 0px 2px 0px 0px;
+    background-color: transparent;
+}
+
+.props-panel-chevron {
+    width: 20px;
+    height: 100%;
+    padding: 0px 0px 0px 4px;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border-width: 0px;
+    color: var(--text-dim);
+}
+
+.props-panel-chevron:hover {
+    color: var(--text-bright);
+    background-color: transparent;
+}
+
+.props-panel-title {
+    height: 100%;
+    gap: 6px;
+    padding: 0px 6px 0px 2px;
+    font-family: medium;
+    font-size: 12px;
+    color: var(--text);
+    background-color: transparent;
+}
+
+.props-panel-title:hover {
+    color: var(--text-bright);
+}
+
+.props-panel-grip {
+    width: 14px;
+    color: var(--text-muted);
+}
+
+.props-panel-content {
+    flex-direction: column;
+    width: 100%;
+    gap: 4px;
+    padding: 2px 8px 8px 8px;
+    background-color: transparent;
+    border-width: 0px;
+}
+
+.props-action {
+    width: 100%;
+    min-height: 24px;
+    gap: 6px;
+    padding: 0px 8px;
+    justify-content: start;
+    font-family: regular;
+    font-size: 12px;
+    color: var(--text);
+    background-color: var(--bg-surface);
+    border-width: 0px;
+    border-radius: 4px;
+    transition: 60ms ease-out;
+}
+
+.props-action:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-bright);
+}
+
+.props-action:pressed {
+    background-color: var(--bg-muted);
+}

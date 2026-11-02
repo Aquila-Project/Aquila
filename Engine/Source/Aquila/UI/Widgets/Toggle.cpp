@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/Toggle.h"
 
+#include "Aquila/UI/Core/MarkupItem.h"
+
 namespace Aquila::UI::Core {
 
 Toggle::Toggle() {
@@ -20,6 +22,18 @@ void Toggle::on_value_updated() {
 		remove_class("toggle-on");
 	}
 	queue_redraw();
+}
+
+void Toggle::apply_xml_attribute(std::string_view name, std::string_view value, IResourceResolver *resolver) {
+	if (name != "checked") {
+		BaseField::apply_xml_attribute(name, value, resolver);
+		return;
+	}
+	if (const Option<bool> checked = parse_markup_bool(value)) {
+		set_value_without_notify(*checked);
+	} else {
+		AQUILA_LOG_WARNING("Toggle: checked expects true or false, got '{}'", value);
+	}
 }
 
 void Toggle::on_mouse_release(Platform::MouseButton btn, Vec2 pos) {

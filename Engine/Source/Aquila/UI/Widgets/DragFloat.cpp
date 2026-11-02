@@ -178,7 +178,7 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 	using namespace Rendering;
 	const Rect rect = get_absolute_rect();
 	const auto &style = get_display_style();
-	const Int32 z = 0;
+	const Int32 z = 1;
 	const float font_size = style.font_size > 0.F ? style.font_size : 14.F;
 
 	Text::FontAtlas *font = resolve_font();
@@ -189,10 +189,11 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 	const float scale = font_size;
 	const float line_h = font->get_line_height() * scale;
 	const float text_y = rect.position.y + (rect.size.y - line_h) * 0.5F;
-	constexpr float K_PAD_X = 4.F;
+	const float pad_left = style.padding.left.resolve(0.F);
+	const float pad_right = style.padding.right.resolve(0.F);
 	const Rect text_rect = {
-		.position = { rect.position.x + K_PAD_X, text_y },
-		.size = { rect.size.x - K_PAD_X * 2.F, line_h },
+		.position = { rect.position.x + pad_left, text_y },
+		.size = { rect.size.x - pad_left - pad_right, line_h },
 	};
 
 	if (m_mode == Mode::Edit) {
@@ -213,7 +214,7 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 		if (m_is_focused && !m_edit_state.has_selection()) {
 			const float cx = text_rect.position.x + m_edit_state.measure_to_pos(*font, scale, m_edit_state.cursor);
 			const Rect cursor = { .position = { cx - 0.75F, text_y }, .size = { 1.5F, line_h } };
-			draw_list.draw_rect(cursor, style.color, Vec4(0.F), 0.F, Vec4(0.F), z);
+			draw_list.draw_rect(cursor, style.color, Vec4(0.F), 0.F, Vec4(0.F), z + 2);
 		}
 	} else {
 		// Drag mode: show the formatted value, optionally a subtle drag indicator.
@@ -235,15 +236,22 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 			}
 		}
 
+		const TextAlign align = style.text_align;
 		if (!m_label.empty()) {
 			const Vec4 label_color = Vec4(style.color.r, style.color.g, style.color.b, style.color.a * 0.55F);
 			draw_list.draw_text(text_rect, m_label, font, label_color, font_size, TextAlign::Left, z + 1);
-			draw_list.draw_text(text_rect, display, font, style.color, font_size, TextAlign::Right, z + 1);
+			Rect value_rect = text_rect;
+			if (align != TextAlign::Right) {
+				const float shift = font->measure_text(m_label, font_size).x + style.gap;
+				value_rect.position.x += shift;
+				value_rect.size.x = std::max(0.F, value_rect.size.x - shift);
+			}
+			draw_list.draw_text(value_rect, display, font, style.color, font_size, align, z + 1);
 			return;
 		}
 
-		draw_list.draw_text(text_rect, display, font, style.color, font_size, TextAlign::Center, z + 1);
-		if (m_slider) {
+		draw_list.draw_text(text_rect, display, font, style.color, font_size, align, z + 1);
+		if (m_slider || align != TextAlign::Center) {
 			return;
 		}
 

@@ -16,6 +16,76 @@ constexpr F32 K_WRAP_TOLERANCE_PX = 0.5F;
 
 }
 
+std::vector<TextLine> wrap_text(std::string_view text, Text::FontAtlas &font, F32 font_size, F32 max_width) {
+	std::vector<TextLine> lines;
+	const F32 limit = max_width + K_WRAP_TOLERANCE_PX;
+	const F32 space_width = font.measure_text(" ", font_size).x;
+	const auto width_of = [&](Usize start, Usize end) {
+		return font.measure_text(text.substr(start, end - start), font_size).x;
+	};
+
+	Option<TextLine> line;
+	F32 line_width = 0.F;
+	const auto flush = [&](Usize at) {
+		lines.push_back(line.value_or(TextLine{ .start = at, .end = at }));
+		line.reset();
+		line_width = 0.F;
+	};
+	const auto char_end = [&](Usize at) {
+		const Foundation::Utf8::Decoded decoded = Foundation::Utf8::decode(text, at);
+		return at + (decoded.size > 0 ? decoded.size : 1U);
+	};
+	const auto begin_line = [&](Usize start, Usize end, F32 width) {
+		while (width > limit) {
+			Usize piece_end = char_end(start);
+			while (piece_end < end) {
+				const Usize next = char_end(piece_end);
+				if (width_of(start, next) > limit) {
+					break;
+				}
+				piece_end = next;
+			}
+			if (piece_end >= end) {
+				break;
+			}
+			lines.push_back({ .start = start, .end = piece_end });
+			start = piece_end;
+			width = width_of(start, end);
+		}
+		line = TextLine{ .start = start, .end = end };
+		line_width = width;
+	};
+
+	Usize i = 0;
+	while (i < text.size()) {
+		if (text[i] == '\n') {
+			flush(i);
+			++i;
+			continue;
+		}
+		if (text[i] == ' ') {
+			++i;
+			continue;
+		}
+		const Usize word_start = i;
+		while (i < text.size() && text[i] != ' ' && text[i] != '\n') {
+			++i;
+		}
+		const F32 word_width = width_of(word_start, i);
+		if (!line) {
+			begin_line(word_start, i, word_width);
+		} else if (line_width + space_width + word_width <= limit) {
+			line->end = i;
+			line_width += space_width + word_width;
+		} else {
+			flush(word_start);
+			begin_line(word_start, i, word_width);
+		}
+	}
+	flush(text.size());
+	return lines;
+}
+
 void DrawList::draw_rect(Rect rect, Vec4 color, Vec4 radius, F32 border_width, Vec4 border_color, Int32 z,
 						 BorderStyle border_style) {
 	RectCmd command;
@@ -256,59 +326,11 @@ void DrawList::submit(Graphics::Renderer2D &r2d, GFX::GfxCommandList &cmd) {
 					if (!c.wrap) {
 						draw_line_range(0, c.text.size(), c.rect.position.y + ascent);
 					} else {
-						const std::string &s = c.text;
-						const F32 max_w = c.rect.size.x;
-						const F32 space_w = atlas->measure_text(" ", render_size).x;
 						F32 baseline_y = c.rect.position.y + ascent;
-						size_t line_start = std::string::npos;
-						size_t line_end = 0;
-						F32 line_w = 0.F;
-
-						auto flush = [&]() {
-							if (line_start != std::string::npos) {
-								draw_line_range(line_start, line_end, baseline_y);
-							}
+						for (const TextLine &line : wrap_text(c.text, *atlas, render_size, c.rect.size.x)) {
+							draw_line_range(line.start, line.end, baseline_y);
 							baseline_y += line_height;
-							line_start = std::string::npos;
-							line_w = 0.F;
-						};
-
-						size_t i = 0;
-						while (i < s.size()) {
-							if (s[i] == '\n') {
-								flush();
-								++i;
-								continue;
-							}
-							if (s[i] == ' ') {
-								++i;
-								continue;
-							}
-							const size_t word_start = i;
-							while (i < s.size() && s[i] != ' ' && s[i] != '\n') {
-								++i;
-							}
-							const size_t word_end = i;
-							const F32 word_w =
-								atlas
-									->measure_text(std::string_view(s).substr(word_start, word_end - word_start),
-												   render_size)
-									.x;
-							if (line_start == std::string::npos) {
-								line_start = word_start;
-								line_end = word_end;
-								line_w = word_w;
-							} else if (line_w + space_w + word_w <= max_w + K_WRAP_TOLERANCE_PX) {
-								line_end = word_end;
-								line_w += space_w + word_w;
-							} else {
-								flush();
-								line_start = word_start;
-								line_end = word_end;
-								line_w = word_w;
-							}
 						}
-						flush();
 					}
 				} else if constexpr (std::is_same_v<T, ClipPushCmd>) {
 					r2d.flush();

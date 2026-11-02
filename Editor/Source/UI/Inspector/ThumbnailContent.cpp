@@ -1,5 +1,6 @@
 #include "UI/Inspector/ThumbnailContent.h"
 
+#include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Widgets/Image.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Core/AssetThumbnails.h"
@@ -17,8 +18,11 @@ ThumbnailContent::~ThumbnailContent() {
 }
 
 void ThumbnailContent::build_below(Aquila::UI::Core::PropertyGrid &grid) {
-	m_image = grid.add_child<Aquila::UI::Core::Image>();
-	m_image->add_class("asset-inspector-preview");
+	m_image = dynamic_cast<Aquila::UI::Core::Image *>(
+		m_context.layouts().create(m_context.window_layout("inspector"), "InspectorPreview", grid));
+	if (m_image == nullptr) {
+		return;
+	}
 	show_texture();
 	m_ready_connection = m_context.thumbnails().on_ready.connect([this](const std::string &path) {
 		if (path == m_path) {

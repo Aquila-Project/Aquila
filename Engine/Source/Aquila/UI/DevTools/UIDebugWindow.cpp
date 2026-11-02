@@ -3,12 +3,12 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/UI/Core/Canvas.h"
+#include "Aquila/UI/Core/UIResources.h"
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Style/ComputedStyle.h"
 #include "Aquila/UI/Style/StyleProperties.h"
 #include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/Label.h"
-#include "Aquila/UI/Widgets/ScrollView.h"
 #include "Aquila/UI/Widgets/TextInput.h"
 #include "Aquila/UI/Widgets/TreeView.h"
 
@@ -171,172 +171,127 @@ std::string color_str(Vec4 c) {
 	return buf;
 }
 
-Label *make_label(View *parent, const std::string &text, const char *cls) {
-	auto *label = parent->add_child<Label>(text);
-	label->add_class(cls);
-	return label;
-}
+constexpr std::array<std::string_view, 5> K_SECTIONS = { "section-element", "section-geometry", "section-layout",
+														 "section-appearance", "section-text" };
 
-View *make_view(View *parent, const char *cls) {
-	auto *view = parent->add_child<View>();
-	view->add_class(cls);
-	return view;
-}
+constexpr std::array<std::string_view, 37> K_VALUES = {
+	"v-type",
+	"v-id",
+	"v-classes",
+	"v-state",
+	"v-children",
+	"v-pos",
+	"v-size",
+	"v-ids",
+	"v-display",
+	"v-position",
+	"v-overflow",
+	"v-flex",
+	"v-justify",
+	"v-align",
+	"v-grow",
+	"v-gap",
+	"v-dims",
+	"v-minmax",
+	"v-aspect",
+	"v-inset",
+	"v-zindex",
+	"v-bg",
+	"v-color",
+	"v-border",
+	"v-radius",
+	"v-opacity",
+	"v-shadows",
+	"v-fontsize",
+	"v-family",
+	"v-textalign",
+	"v-whitespace",
+	"bm-top",
+	"bm-right",
+	"bm-bottom",
+	"bm-left",
+	"bm-content",
+	"inspector-subtitle",
+};
 
 } // namespace
 
-UIDebugWindow::UIDebugWindow() = default;
+UIDebugWindow::UIDebugWindow(Canvas &target)
+	: WindowBehaviour(std::string(UI_DIR) + "Windows/ui_debug.aqlayout"), m_target(target) {}
+
 UIDebugWindow::~UIDebugWindow() = default;
 
-void UIDebugWindow::build(Canvas *target, Uint32 width, Uint32 height, LayoutLoader &loader) {
-	m_target = target;
-	create_canvas(width, height, loader);
+void UIDebugWindow::define_behaviour() {
+	if (auto *inspect = get<Button>("inspector-pick")) {
+		inspect->on_click.connect([this] {
+			if (on_pick_requested) {
+				on_pick_requested();
+			}
+		});
+	}
+	if (auto *refresh_button = get<Button>("inspector-refresh")) {
+		refresh_button->on_click.connect([this] { refresh(); });
+	}
+	if (auto *search = get<TextInput>("inspector-filter")) {
+		search->on_changed.connect([this](const std::string &text) {
+			m_filter = Foundation::to_lower(text);
+			apply_filter();
+		});
+	}
 
-	auto *root = get_canvas()->get_root();
-	root->set_id("inspector-root");
-	root->add_class("inspector-root");
+	m_tree = get<TreeView>("inspector-tree");
+	if (m_tree != nullptr) {
+		m_tree->on_selected.connect([this](TreeNode *node) {
+			auto it = m_node_to_view.find(node);
+			View *view = it != m_node_to_view.end() ? it->second : nullptr;
+			populate(view);
+			if (view && on_view_highlighted) {
+				on_view_highlighted(view);
+			}
+		});
+	}
 
-	build_toolbar(root);
+	m_empty_hint = get("inspector-empty");
+	m_detail_body = get("inspector-detail");
+	m_breadcrumb = get<Label>("inspector-breadcrumb");
+	for (const std::string_view id : K_VALUES) {
+		if (auto *value = get<Label>(id)) {
+			m_values.emplace(std::string(id), value);
+		}
+	}
+	m_sw_bg = get("sw-bg");
+	m_sw_color = get("sw-color");
+	m_sw_border = get("sw-border");
+	collect_rows();
 
-	auto *body = make_view(root, "inspector-body");
-	build_tree_pane(body);
-	build_style_pane(body);
-
-	auto *footer = make_view(root, "inspector-breadcrumb-bar");
-	m_breadcrumb = make_label(footer, "", "inspector-breadcrumb");
-
-	get_canvas()->reload_styles();
 	refresh();
 	populate(nullptr);
 }
 
-void UIDebugWindow::build_toolbar(View *parent) {
-	auto *bar = make_view(parent, "inspector-toolbar");
-
-	auto *inspect = bar->add_child<Button>(std::string("Inspect"));
-	inspect->add_class("inspector-tool-btn");
-	inspect->on_click.connect([this] {
-		if (on_pick_requested) {
-			on_pick_requested();
+void UIDebugWindow::collect_rows() {
+	for (const std::string_view id : K_SECTIONS) {
+		View *section = get(id);
+		if (section == nullptr) {
+			continue;
 		}
-	});
-
-	auto *refresh = bar->add_child<Button>(std::string("Refresh"));
-	refresh->add_class("inspector-tool-btn");
-	refresh->on_click.connect([this] { this->refresh(); });
-
-	make_view(bar, "inspector-tool-spacer");
-
-	m_search = bar->add_child<TextInput>(std::string("Filter styles"));
-	m_search->add_class("inspector-search");
-	m_search->on_changed.connect([this](const std::string &text) {
-		m_filter = Foundation::to_lower(text);
-		apply_filter();
-	});
+		m_sections.push_back(section);
+		const auto &children = section->get_children();
+		for (Usize i = 1; i < children.size(); ++i) {
+			View *row = children[i].get();
+			const auto &parts = row->get_children();
+			const auto *key = parts.empty() ? nullptr : dynamic_cast<const Label *>(parts.front().get());
+			auto *value = parts.empty() ? nullptr : dynamic_cast<Label *>(parts.back().get());
+			if (key != nullptr && value != nullptr) {
+				m_rows.push_back({ row, value, section, Foundation::to_lower(key->get_text()) });
+			}
+		}
+	}
 }
 
-void UIDebugWindow::build_tree_pane(View *parent) {
-	auto *scroll = parent->add_child<ScrollView>();
-	scroll->add_class("inspector-tree-scroll");
-	m_tree_host = make_view(scroll, "inspector-tree-host");
-}
-
-void UIDebugWindow::build_style_pane(View *parent) {
-	auto *scroll = parent->add_child<ScrollView>();
-	scroll->add_class("inspector-style-scroll");
-	auto *host = make_view(scroll, "inspector-style");
-
-	m_empty_hint = make_view(host, "inspector-empty");
-	make_label(m_empty_hint, "Press Inspect, hover the editor to highlight, then click an element to inspect it.",
-			   "inspector-empty-label");
-
-	m_detail_body = make_view(host, "inspector-detail");
-	m_subtitle = make_label(m_detail_body, "", "inspector-subtitle");
-
-	build_box_model(m_detail_body);
-
-	auto *element = begin_section(m_detail_body, "Element");
-	m_v_type = add_row(element, "type");
-	m_v_id = add_row(element, "id");
-	m_v_classes = add_row(element, "classes");
-	m_v_state = add_row(element, "state");
-	m_v_children = add_row(element, "children");
-
-	auto *geometry = begin_section(m_detail_body, "Geometry");
-	m_v_pos = add_row(geometry, "position");
-	m_v_size = add_row(geometry, "size");
-	m_v_ids = add_row(geometry, "ids");
-
-	auto *layout = begin_section(m_detail_body, "Layout");
-	m_v_display = add_row(layout, "display");
-	m_v_position = add_row(layout, "position");
-	m_v_overflow = add_row(layout, "overflow");
-	m_v_flex = add_row(layout, "flex-direction");
-	m_v_justify = add_row(layout, "justify");
-	m_v_align = add_row(layout, "align");
-	m_v_grow = add_row(layout, "flex-grow");
-	m_v_gap = add_row(layout, "gap");
-	m_v_dims = add_row(layout, "width / height");
-	m_v_minmax = add_row(layout, "min / max");
-	m_v_aspect = add_row(layout, "aspect-ratio");
-	m_v_inset = add_row(layout, "inset");
-	m_v_zindex = add_row(layout, "z-index");
-
-	auto *appearance = begin_section(m_detail_body, "Appearance");
-	m_v_bg = add_color_row(appearance, "background", &m_sw_bg);
-	m_v_color = add_color_row(appearance, "color", &m_sw_color);
-	m_v_border = add_color_row(appearance, "border", &m_sw_border);
-	m_v_radius = add_row(appearance, "border-radius");
-	m_v_opacity = add_row(appearance, "opacity");
-	m_v_shadows = add_row(appearance, "box-shadows");
-
-	auto *text = begin_section(m_detail_body, "Text");
-	m_v_fontsize = add_row(text, "font-size");
-	m_v_family = add_row(text, "font-family");
-	m_v_textalign = add_row(text, "text-align");
-	m_v_whitespace = add_row(text, "white-space");
-}
-
-void UIDebugWindow::build_box_model(View *parent) {
-	auto *section = make_view(parent, "inspector-section");
-	make_label(section, "Box Model", "inspector-section-header");
-
-	auto *wrap = make_view(section, "bm-wrap");
-	auto *padbox = make_view(wrap, "bm-padbox");
-	m_box_pad_top = make_label(padbox, "", "bm-pad");
-
-	auto *mid = make_view(padbox, "bm-mid");
-	m_box_pad_left = make_label(mid, "", "bm-pad");
-	auto *content = make_view(mid, "bm-content");
-	m_box_content = make_label(content, "", "bm-content-label");
-	m_box_pad_right = make_label(mid, "", "bm-pad");
-
-	m_box_pad_bottom = make_label(padbox, "", "bm-pad");
-	make_label(wrap, "padding", "bm-caption");
-}
-
-View *UIDebugWindow::begin_section(View *parent, const std::string &title) {
-	auto *section = make_view(parent, "inspector-section");
-	make_label(section, title, "inspector-section-header");
-	m_sections.push_back(section);
-	return section;
-}
-
-Label *UIDebugWindow::add_row(View *section, const std::string &key) {
-	auto *row = make_view(section, "inspector-row");
-	make_label(row, key, "inspector-key");
-	auto *value = make_label(row, "", "inspector-val");
-	m_rows.push_back({ row, value, section, Foundation::to_lower(key) });
-	return value;
-}
-
-Label *UIDebugWindow::add_color_row(View *section, const std::string &key, View **out_swatch) {
-	auto *row = make_view(section, "inspector-row");
-	make_label(row, key, "inspector-key");
-	*out_swatch = make_view(row, "inspector-swatch");
-	auto *value = make_label(row, "", "inspector-val");
-	m_rows.push_back({ row, value, section, Foundation::to_lower(key) });
-	return value;
+void UIDebugWindow::set_value(std::string_view id, const std::string &text) {
+	if (const auto it = m_values.find(std::string(id)); it != m_values.end()) {
+		it->second->set_text(text);
+	}
 }
 
 void UIDebugWindow::set_swatch(View *swatch, Vec4 color) {
@@ -366,25 +321,15 @@ TreeNode *UIDebugWindow::add_view_node(View *view, TreeNode *parent_node) {
 }
 
 void UIDebugWindow::refresh() {
-	if ((m_target == nullptr) || (m_tree_host == nullptr)) {
+	if (m_tree == nullptr) {
 		return;
 	}
 
 	m_node_to_view.clear();
 	m_view_to_node.clear();
-	m_tree_host->clear_children();
+	m_tree->clear();
 
-	m_tree = m_tree_host->add_child<TreeView>();
-	m_tree->on_selected.connect([this](TreeNode *node) {
-		auto it = m_node_to_view.find(node);
-		View *view = it != m_node_to_view.end() ? it->second : nullptr;
-		populate(view);
-		if (view && on_view_highlighted) {
-			on_view_highlighted(view);
-		}
-	});
-
-	for (const auto &child : m_target->get_root()->get_children()) {
+	for (const auto &child : m_target.get_root()->get_children()) {
 		if (child.get() == m_ignored) {
 			continue;
 		}
@@ -399,7 +344,7 @@ void UIDebugWindow::select_view(View *view) {
 	}
 
 	auto it = m_view_to_node.find(view);
-	if (it == m_view_to_node.end()) {
+	if (it == m_view_to_node.end() || m_tree == nullptr) {
 		return;
 	}
 
@@ -410,11 +355,16 @@ void UIDebugWindow::select_view(View *view) {
 		}
 	}
 	m_tree->select_node(it->second);
-	get_canvas()->scroll_into_view(it->second);
+	if (Canvas *canvas = root().get_canvas()) {
+		canvas->scroll_into_view(it->second);
+	}
 }
 
 void UIDebugWindow::populate(View *view) {
 	m_current = view;
+	if (m_empty_hint == nullptr || m_detail_body == nullptr || m_breadcrumb == nullptr) {
+		return;
+	}
 
 	if (view == nullptr) {
 		m_empty_hint->set_hidden(false);
@@ -429,56 +379,60 @@ void UIDebugWindow::populate(View *view) {
 	const UI::ComputedStyle &cs = view->get_computed_style();
 	const Rect rect = view->get_absolute_rect();
 
-	m_subtitle->set_text(short_label(view));
+	set_value("inspector-subtitle", short_label(view));
 
-	m_v_type->set_text(std::string(view->get_type_name()));
-	m_v_id->set_text(view->get_id().empty() ? "—" : view->get_id());
+	set_value("v-type", std::string(view->get_type_name()));
+	set_value("v-id", view->get_id().empty() ? "—" : view->get_id());
 	const std::string classes = join_classes(view);
-	m_v_classes->set_text(classes.empty() ? "—" : classes);
-	m_v_state->set_text(state_str(view));
-	m_v_children->set_text(std::to_string(view->get_children().size()));
+	set_value("v-classes", classes.empty() ? "—" : classes);
+	set_value("v-state", state_str(view));
+	set_value("v-children", std::to_string(view->get_children().size()));
 
-	m_v_pos->set_text(num(rect.position.x) + ", " + num(rect.position.y));
-	m_v_size->set_text(num(rect.size.x) + " × " + num(rect.size.y));
-	m_v_ids->set_text("clay " + std::to_string(view->get_clay_id()) + "   stable " +
-					  std::to_string(view->get_stable_id()) + "   z " + std::to_string(view->get_effective_z()));
+	set_value("v-pos", num(rect.position.x) + ", " + num(rect.position.y));
+	set_value("v-size", num(rect.size.x) + " × " + num(rect.size.y));
+	set_value("v-ids",
+			  "clay " + std::to_string(view->get_clay_id()) + "   stable " + std::to_string(view->get_stable_id()) +
+				  "   z " + std::to_string(view->get_effective_z()));
 
-	m_v_display->set_text(str(cs.display));
-	m_v_position->set_text(str(cs.position));
-	m_v_overflow->set_text(str(cs.overflow));
-	m_v_flex->set_text(std::string(str(cs.flex_direction)) + "  ·  " + str(cs.wrap));
-	m_v_justify->set_text(str(cs.justify));
-	m_v_align->set_text(str(cs.align));
-	m_v_grow->set_text(num(cs.flex_grow));
-	m_v_gap->set_text(num(cs.gap));
-	m_v_dims->set_text(len_str(cs.width) + " × " + len_str(cs.height));
-	m_v_minmax->set_text(len_str(cs.min_width) + " × " + len_str(cs.min_height) + "   /   " + len_str(cs.max_width) +
-						 " × " + len_str(cs.max_height));
-	m_v_aspect->set_text(cs.aspect_ratio > 0.F ? num(cs.aspect_ratio) : "—");
-	m_v_inset->set_text(len_str(cs.top) + " " + len_str(cs.right) + " " + len_str(cs.bottom) + " " + len_str(cs.left));
-	m_v_zindex->set_text(std::to_string(cs.z_index));
+	set_value("v-display", str(cs.display));
+	set_value("v-position", str(cs.position));
+	set_value("v-overflow", str(cs.overflow));
+	set_value("v-flex", std::string(str(cs.flex_direction)) + "  ·  " + str(cs.wrap));
+	set_value("v-justify", str(cs.justify));
+	set_value("v-align", str(cs.align));
+	set_value("v-grow", num(cs.flex_grow));
+	set_value("v-gap", num(cs.gap));
+	set_value("v-dims", len_str(cs.width) + " × " + len_str(cs.height));
+	set_value("v-minmax",
+			  len_str(cs.min_width) + " × " + len_str(cs.min_height) + "   /   " + len_str(cs.max_width) + " × " +
+				  len_str(cs.max_height));
+	set_value("v-aspect", cs.aspect_ratio > 0.F ? num(cs.aspect_ratio) : "—");
+	set_value("v-inset", len_str(cs.top) + " " + len_str(cs.right) + " " + len_str(cs.bottom) + " " + len_str(cs.left));
+	set_value("v-zindex", std::to_string(cs.z_index));
 
-	m_v_bg->set_text(color_str(cs.background_color));
+	set_value("v-bg", color_str(cs.background_color));
 	set_swatch(m_sw_bg, cs.background_color);
-	m_v_color->set_text(color_str(cs.color));
+	set_value("v-color", color_str(cs.color));
 	set_swatch(m_sw_color, cs.color);
-	m_v_border->set_text(num(cs.border_width) + "px  ·  " + str(cs.border_style) + "  ·  " + color_str(cs.border_color));
+	set_value("v-border",
+			  num(cs.border_width) + "px  ·  " + str(cs.border_style) + "  ·  " + color_str(cs.border_color));
 	set_swatch(m_sw_border, cs.border_color);
-	m_v_radius->set_text(num(cs.border_radius.x) + " " + num(cs.border_radius.y) + " " + num(cs.border_radius.z) + " " +
-						 num(cs.border_radius.w));
-	m_v_opacity->set_text(num(cs.opacity));
-	m_v_shadows->set_text(std::to_string(cs.box_shadows.size()));
+	set_value("v-radius",
+			  num(cs.border_radius.x) + " " + num(cs.border_radius.y) + " " + num(cs.border_radius.z) + " " +
+				  num(cs.border_radius.w));
+	set_value("v-opacity", num(cs.opacity));
+	set_value("v-shadows", std::to_string(cs.box_shadows.size()));
 
-	m_v_fontsize->set_text(cs.font_size > 0.F ? num(cs.font_size) : "inherit");
-	m_v_family->set_text(cs.font_family.empty() ? "inherit" : cs.font_family);
-	m_v_textalign->set_text(str(cs.text_align));
-	m_v_whitespace->set_text(str(cs.white_space));
+	set_value("v-fontsize", cs.font_size > 0.F ? num(cs.font_size) : "inherit");
+	set_value("v-family", cs.font_family.empty() ? "inherit" : cs.font_family);
+	set_value("v-textalign", str(cs.text_align));
+	set_value("v-whitespace", str(cs.white_space));
 
-	m_box_pad_top->set_text(len_str(cs.padding.top));
-	m_box_pad_right->set_text(len_str(cs.padding.right));
-	m_box_pad_bottom->set_text(len_str(cs.padding.bottom));
-	m_box_pad_left->set_text(len_str(cs.padding.left));
-	m_box_content->set_text(num(rect.size.x) + " × " + num(rect.size.y));
+	set_value("bm-top", len_str(cs.padding.top));
+	set_value("bm-right", len_str(cs.padding.right));
+	set_value("bm-bottom", len_str(cs.padding.bottom));
+	set_value("bm-left", len_str(cs.padding.left));
+	set_value("bm-content", num(rect.size.x) + " × " + num(rect.size.y));
 
 	std::string trail;
 	std::vector<std::string> chain;

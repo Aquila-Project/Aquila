@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/TabView.h"
 
+#include "Aquila/UI/Core/MarkupItem.h"
+#include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/TabBar.h"
 
 namespace Aquila::UI::Core {
@@ -27,6 +29,21 @@ View *TabView::add_tab(std::string title, GFX::GfxTexture *icon) {
 	}
 
 	return panel;
+}
+
+bool TabView::add_markup_item(MarkupItem &item, IResourceResolver *resolver) {
+	if (item.tag != "Tab") {
+		return false;
+	}
+	View *panel = add_tab(std::string(item.get("title")), item.get_texture("icon", resolver));
+	if (const std::string_view tooltip = item.get("tooltip"); !tooltip.empty()) {
+		m_tab_bar->get_tab(m_tab_bar->get_tab_count() - 1)->set_tooltip(std::string(tooltip));
+	}
+	for (Unique<View> &view : item.views) {
+		panel->add_child(std::move(view));
+	}
+	item.views.clear();
+	return true;
 }
 
 void TabView::set_active_tab(int index) {
