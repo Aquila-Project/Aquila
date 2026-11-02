@@ -57,7 +57,9 @@ void ShadowSystem::on_init(GFX::GfxContext &ctx) {
 			pipeline_descriptor.raster.cull_mode = RHI::CullMode::None;
 			pipeline_descriptor.depth_stencil.depth_test = true;
 			pipeline_descriptor.depth_stencil.depth_write = true;
-			pipeline_descriptor.push_constants = { { RHI::ShaderStageFlags::Vertex, 0, sizeof(ShadowPushConstants) } };
+			pipeline_descriptor.push_constants = {
+				{ .stages = RHI::ShaderStageFlags::Vertex, .offset = 0, .size = sizeof(ShadowPushConstants) }
+			};
 			return build_ctx.create_graphics_pipeline(pipeline_descriptor);
 		});
 }
@@ -82,13 +84,15 @@ ShadowSystem::Sphere ShadowSystem::world_bounds(const Ref<Graphics::Resources::M
 			local.center = (low + high) * 0.5F;
 			local.radius = Math::length(high - low) * 0.5F;
 		}
-		it = m_bounds.insert_or_assign(mesh.get(), MeshBounds{ .mesh = mesh, .revision = mesh->get_revision(), .local = local })
+		it = m_bounds
+				 .insert_or_assign(mesh.get(),
+								   MeshBounds{ .mesh = mesh, .revision = mesh->get_revision(), .local = local })
 				 .first;
 	}
 
 	const Sphere &local = it->second.local;
-	const F32 scale = Math::max(Math::length(Vec3(model[0])),
-								Math::max(Math::length(Vec3(model[1])), Math::length(Vec3(model[2]))));
+	const F32 scale =
+		Math::max(Math::length(Vec3(model[0])), Math::max(Math::length(Vec3(model[1])), Math::length(Vec3(model[2]))));
 	return { .center = Vec3(model * Vec4(local.center, 1.F)), .radius = local.radius * scale };
 }
 

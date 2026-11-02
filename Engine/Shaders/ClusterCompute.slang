@@ -10,10 +10,13 @@ struct GridData {
 	int3 grid;
 };
 
-[vk::binding(0, 1)] RWStructuredBuffer<AABB> outBuffer;
-[vk::binding(1, 1)] ConstantBuffer<GridData> gridData;
+[vk::binding(0, 1)]
+RWStructuredBuffer<AABB> outBuffer;
+[vk::binding(1, 1)]
+ConstantBuffer<GridData> gridData;
 // https://advances.realtimerendering.com/s2016/Siggraph2016_idTech6.pdf
-[numthreads(4, 4, 4)] void main(uint3 id : SV_DispatchThreadID) {
+[numthreads(4, 4, 4)]
+void main(uint3 id: SV_DispatchThreadID) {
 	if (id.x >= gridData.grid.x || id.y >= gridData.grid.y || id.z >= gridData.grid.z) {
 		return;
 	}
@@ -29,7 +32,7 @@ struct GridData {
 
 	// Compute depths
 	float nearPlane = GetNearPlane();
-	float farPlane  = GetFarPlane();
+	float farPlane = GetFarPlane();
 
 	float ratio = farPlane / nearPlane;
 
@@ -55,7 +58,8 @@ struct GridData {
 	float3 bmin = corners[0];
 	float3 bmax = corners[0];
 
-	[unroll] for (int i = 1; i < 8; i++) {
+	[unroll]
+	for (int i = 1; i < 8; i++) {
 		bmin = min(bmin, corners[i]);
 		bmax = max(bmax, corners[i]);
 	}

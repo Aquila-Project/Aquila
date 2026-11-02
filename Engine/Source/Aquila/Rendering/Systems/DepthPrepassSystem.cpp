@@ -56,7 +56,9 @@ void DepthPrepassSystem::on_init(GFX::GfxContext &ctx) {
 			pipeline_descriptor.depth_stencil.depth_test = true;
 			pipeline_descriptor.depth_stencil.depth_write = true;
 			pipeline_descriptor.set_layouts = { &SceneFrameData::get()->get_layout().get_rhi() };
-			pipeline_descriptor.push_constants = { { RHI::ShaderStageFlags::Vertex, 0, sizeof(DepthPushConstants) } };
+			pipeline_descriptor.push_constants = {
+				{ .stages = RHI::ShaderStageFlags::Vertex, .offset = 0, .size = sizeof(DepthPushConstants) }
+			};
 			return build_ctx.create_graphics_pipeline(pipeline_descriptor);
 		});
 }

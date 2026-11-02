@@ -72,19 +72,24 @@ void ObjectPickingSystem::on_init(GFX::GfxContext &ctx) {
 			pipeline_descriptor.depth_stencil.depth_compare = RHI::CompareOp::LessEqual;
 
 			// Picking is an integer target.
-			pipeline_descriptor.blend_attachments = { RHI::BlendAttachmentDesc{
-				.enable = false,
-			} };
+			pipeline_descriptor.blend_attachments = {
+				RHI::BlendAttachmentDesc{
+					.enable = false,
+				},
+			};
 
 			pipeline_descriptor.color_formats = { RHI::TextureFormat::R32UI };
 
 			pipeline_descriptor.depth_format = RHI::TextureFormat::Depth32;
 
 			pipeline_descriptor.set_layouts = { &SceneFrameData::get()->get_layout().get_rhi() };
-			pipeline_descriptor.push_constants = { { .stages = RHI::ShaderStageFlags::Vertex |
-														 RHI::ShaderStageFlags::Fragment,
-													 .offset = 0,
-													 .size = sizeof(PickingPushConstants) } };
+			pipeline_descriptor.push_constants = {
+				{
+					.stages = RHI::ShaderStageFlags::Vertex | RHI::ShaderStageFlags::Fragment,
+					.offset = 0,
+					.size = sizeof(PickingPushConstants),
+				},
+			};
 			return build_ctx.create_graphics_pipeline(pipeline_descriptor);
 		});
 }

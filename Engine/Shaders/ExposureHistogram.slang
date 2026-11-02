@@ -25,7 +25,7 @@ groupshared uint localBins[BIN_COUNT];
 
 [shader("compute")]
 [numthreads(16, 16, 1)]
-void main(uint3 id : SV_DispatchThreadID, uint index : SV_GroupIndex) {
+void main(uint3 id: SV_DispatchThreadID, uint index: SV_GroupIndex) {
 	localBins[index] = 0;
 	GroupMemoryBarrierWithGroupSync();
 

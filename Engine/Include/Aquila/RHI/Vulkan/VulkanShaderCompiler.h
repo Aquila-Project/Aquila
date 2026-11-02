@@ -203,7 +203,7 @@ class VulkanShaderCompiler {
 		target_desc.format = SLANG_SPIRV;
 		target_desc.profile = global_session.findProfile(K_SPIRV_PROFILE);
 
-		const std::string engine_shaders = Foundation::EnginePaths::shaders_dir();
+		const std::string &engine_shaders = Foundation::EnginePaths::shaders_dir();
 		std::vector<const char *> paths = { engine_shaders.c_str() };
 		for (const std::string &path : search_paths) {
 			paths.push_back(path.c_str());

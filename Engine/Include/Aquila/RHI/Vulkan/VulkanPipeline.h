@@ -57,7 +57,7 @@ class VulkanPipeline final : public IRHIPipeline {
 
   private:
 	void create_pipeline_from_stages(const std::vector<VkPipelineShaderStageCreateInfo> &stages,
-								  const VulkanPipelineConfig &config_info);
+									 const VulkanPipelineConfig &config_info);
 
 	VulkanDevice &m_device;
 	VkPipeline m_graphics_pipeline = VK_NULL_HANDLE;

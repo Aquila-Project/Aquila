@@ -257,7 +257,7 @@ void Renderer2D::register_shader_hot_reload() {
 }
 
 void Renderer2D::begin(GFX::GfxCommandList &cmd, RHI::TextureFormat color_format, RHI::SampleCount sample_count,
-						const Mat4 &view_projection, RHI::TextureFormat depth_format) {
+					   const Mat4 &view_projection, RHI::TextureFormat depth_format) {
 	AQUILA_ASSERT(!m_active_cmd, "Renderer2D::Begin called while already recording");
 	m_active_cmd = &cmd;
 	m_active_color_format = color_format;
@@ -360,9 +360,9 @@ void Renderer2D::execute_replay(GFX::GfxCommandList &cmd) {
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_pipeline(PipelineCache &cache, std::string_view shader_file,
-													  GFX::GfxDescriptorSetLayout *set_layout,
-													  RHI::VertexBindingDesc (*vertex_layout)(),
-													  RHI::PrimitiveTopology topology, const PipelineKey &key) {
+													 GFX::GfxDescriptorSetLayout *set_layout,
+													 RHI::VertexBindingDesc (*vertex_layout)(),
+													 RHI::PrimitiveTopology topology, const PipelineKey &key) {
 	auto it = cache.find(key);
 	if (it != cache.end()) {
 		return *it->second;
@@ -378,38 +378,44 @@ GFX::GfxPipeline &Renderer2D::get_or_create_pipeline(PipelineCache &cache, std::
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_flat_pipeline(RHI::TextureFormat format, RHI::SampleCount samples,
-														   RHI::TextureFormat depth_format) {
-	return get_or_create_pipeline(m_flat_pipelines, K_FLAT_SHADER, nullptr, quad_vertex_layout, RHI::PrimitiveTopology::TriangleList,
+														  RHI::TextureFormat depth_format) {
+	return get_or_create_pipeline(m_flat_pipelines, K_FLAT_SHADER, nullptr, quad_vertex_layout,
+								  RHI::PrimitiveTopology::TriangleList,
 								  { .color_format = format, .sample_count = samples, .depth_format = depth_format });
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_texture_pipeline(RHI::TextureFormat format, RHI::SampleCount samples,
-															  RHI::TextureFormat depth_format) {
-	return get_or_create_pipeline(m_texture_pipelines, K_TEXTURE_SHADER, m_texture_layout.get(), quad_vertex_layout, RHI::PrimitiveTopology::TriangleList,
+															 RHI::TextureFormat depth_format) {
+	return get_or_create_pipeline(m_texture_pipelines, K_TEXTURE_SHADER, m_texture_layout.get(), quad_vertex_layout,
+								  RHI::PrimitiveTopology::TriangleList,
 								  { .color_format = format, .sample_count = samples, .depth_format = depth_format });
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_gui_pipeline(RHI::TextureFormat format, RHI::SampleCount samples,
-														  RHI::TextureFormat depth_format) {
-	return get_or_create_pipeline(m_gui_pipelines, K_GUI_SHADER, nullptr, quad_vertex_layout, RHI::PrimitiveTopology::TriangleList,
+														 RHI::TextureFormat depth_format) {
+	return get_or_create_pipeline(m_gui_pipelines, K_GUI_SHADER, nullptr, quad_vertex_layout,
+								  RHI::PrimitiveTopology::TriangleList,
 								  { .color_format = format, .sample_count = samples, .depth_format = depth_format });
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_point_pipeline(RHI::TextureFormat format, RHI::SampleCount samples,
-															RHI::TextureFormat depth_format) {
+														   RHI::TextureFormat depth_format) {
 	return get_or_create_pipeline(m_point_pipelines, K_POINT_SHADER, nullptr, vertex_layout,
-								  RHI::PrimitiveTopology::PointList, { .color_format = format, .sample_count = samples, .depth_format = depth_format });
+								  RHI::PrimitiveTopology::PointList,
+								  { .color_format = format, .sample_count = samples, .depth_format = depth_format });
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_text_pipeline(RHI::TextureFormat format, RHI::SampleCount samples,
-														   RHI::TextureFormat depth_format) {
-	return get_or_create_pipeline(m_text_pipelines, K_TEXT_SHADER, m_text_data_layout.get(), text_vertex_layout, RHI::PrimitiveTopology::TriangleList,
+														  RHI::TextureFormat depth_format) {
+	return get_or_create_pipeline(m_text_pipelines, K_TEXT_SHADER, m_text_data_layout.get(), text_vertex_layout,
+								  RHI::PrimitiveTopology::TriangleList,
 								  { .color_format = format, .sample_count = samples, .depth_format = depth_format });
 }
 
 GFX::GfxPipeline &Renderer2D::get_or_create_shadow_pipeline(RHI::TextureFormat format, RHI::SampleCount samples,
-															 RHI::TextureFormat depth_format) {
-	return get_or_create_pipeline(m_shadow_pipelines, K_SHADOW_SHADER, nullptr, quad_vertex_layout, RHI::PrimitiveTopology::TriangleList,
+															RHI::TextureFormat depth_format) {
+	return get_or_create_pipeline(m_shadow_pipelines, K_SHADOW_SHADER, nullptr, quad_vertex_layout,
+								  RHI::PrimitiveTopology::TriangleList,
 								  { .color_format = format, .sample_count = samples, .depth_format = depth_format });
 }
 
@@ -826,7 +832,7 @@ GFX::GfxDescriptorSet &Renderer2D::get_or_create_texture_set(GFX::GfxTexture &te
 }
 
 GFX::GfxDescriptorSet &Renderer2D::get_or_create_text_data_set(GFX::GfxTexture &curve_texture,
-																GFX::GfxTexture &band_texture) {
+															   GFX::GfxTexture &band_texture) {
 	auto it = m_text_data_set_cache.find(&curve_texture);
 	if (it != m_text_data_set_cache.end()) {
 		if (it->second.texture_id == curve_texture.get_id()) {

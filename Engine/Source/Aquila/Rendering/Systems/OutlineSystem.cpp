@@ -103,9 +103,9 @@ void OutlineSystem::on_init(GFX::GfxContext &ctx) {
 			pipeline_descriptor.depth_format = RHI::TextureFormat::None;
 
 			pipeline_descriptor.set_layouts = { &SceneFrameData::get()->get_layout().get_rhi() };
-			pipeline_descriptor.push_constants = { { .stages = RHI::ShaderStageFlags::Vertex,
-													 .offset = 0,
-													 .size = sizeof(MaskPushConstants) } };
+			pipeline_descriptor.push_constants = {
+				{ .stages = RHI::ShaderStageFlags::Vertex, .offset = 0, .size = sizeof(MaskPushConstants) },
+			};
 			return build_ctx.create_graphics_pipeline(pipeline_descriptor);
 		});
 
@@ -137,9 +137,9 @@ void OutlineSystem::on_init(GFX::GfxContext &ctx) {
 			pipeline_descriptor.depth_format = RHI::TextureFormat::None;
 
 			pipeline_descriptor.set_layouts = { &m_outline_layout->get_rhi() };
-			pipeline_descriptor.push_constants = { { .stages = RHI::ShaderStageFlags::Fragment,
-													 .offset = 0,
-													 .size = sizeof(OutlinePushConstants) } };
+			pipeline_descriptor.push_constants = {
+				{ .stages = RHI::ShaderStageFlags::Fragment, .offset = 0, .size = sizeof(OutlinePushConstants) }
+			};
 			return build_ctx.create_graphics_pipeline(pipeline_descriptor);
 		});
 }
@@ -178,7 +178,8 @@ void OutlineSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		if (!style) {
 			style = view.get<OutlineComponent>(entity);
 		}
-		draw_calls.push_back({ .gpu_mesh = gpu_mesh, .model = view.get<TransformComponent>(entity).get_world_matrix() });
+		draw_calls.push_back(
+			{ .gpu_mesh = gpu_mesh, .model = view.get<TransformComponent>(entity).get_world_matrix() });
 	}
 
 	if (draw_calls.empty()) {
@@ -204,8 +205,7 @@ void OutlineSystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 												  { Foundation::Color::RGBA::BLACK });
 		},
 
-		[draw_calls = std::move(draw_calls), frame_data, frame_slot, this](GFX::GfxCommandList &cmd,
-																		   RG::RGRegistry &) {
+		[draw_calls = std::move(draw_calls), frame_data, frame_slot, this](GFX::GfxCommandList &cmd, RG::RGRegistry &) {
 			cmd.bind_pipeline(m_mask_pipeline->get());
 			cmd.bind_descriptor_set(0, frame_data->get_descriptor_set(frame_slot));
 

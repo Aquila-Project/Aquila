@@ -195,7 +195,7 @@ RHI::ShaderStageDesc ShaderProgram::get_stage_desc(RHI::ShaderStageFlags stage) 
 }
 
 bool ShaderProgram::slang_type_to_descriptor(slang::TypeLayoutReflection *type_layout, RHI::DescriptorType &out_type,
-										  ReflectedBindingType &out_reflected_type) {
+											 ReflectedBindingType &out_reflected_type) {
 	if (type_layout == nullptr) {
 		return false;
 	}
@@ -213,7 +213,7 @@ bool ShaderProgram::slang_type_to_descriptor(slang::TypeLayoutReflection *type_l
 		return true;
 
 	case Kind::Resource: {
-		SlangResourceShape base = (SlangResourceShape)(type->getResourceShape() & SLANG_RESOURCE_BASE_SHAPE_MASK);
+		auto base = static_cast<SlangResourceShape>(type->getResourceShape() & SLANG_RESOURCE_BASE_SHAPE_MASK);
 
 		if (base == SLANG_TEXTURE_1D || base == SLANG_TEXTURE_2D || base == SLANG_TEXTURE_3D ||
 			base == SLANG_TEXTURE_CUBE) {
@@ -244,8 +244,8 @@ void ShaderProgram::process_binding(slang::VariableLayoutReflection *var, RHI::S
 		return;
 	}
 
-	Uint32 binding_index = (Uint32)var->getBindingIndex();
-	Uint32 set = (Uint32)var->getBindingSpace();
+	Uint32 binding_index = static_cast<Uint32>(var->getBindingIndex());
+	Uint32 set = static_cast<Uint32>(var->getBindingSpace());
 
 	slang::TypeLayoutReflection *type_layout = var->getTypeLayout();
 	if (type_layout == nullptr) {
@@ -275,7 +275,8 @@ void ShaderProgram::process_binding(slang::VariableLayoutReflection *var, RHI::S
 				if ((field == nullptr) || (field->getName() == nullptr)) {
 					continue;
 				}
-				slang::TypeReflection *ft = (field->getTypeLayout() != nullptr) ? field->getTypeLayout()->getType() : nullptr;
+				slang::TypeReflection *ft =
+					(field->getTypeLayout() != nullptr) ? field->getTypeLayout()->getType() : nullptr;
 				if (ft == nullptr) {
 					continue;
 				}
@@ -305,7 +306,7 @@ std::vector<ShaderProgram::ReflectedBinding> ShaderProgram::reflect_stages(const
 		return out;
 	}
 
-	for (Uint32 i = 0; i < (Uint32)pl->getParameterCount(); ++i) {
+	for (Uint32 i = 0; i < static_cast<Uint32>(pl->getParameterCount()); ++i) {
 		process_binding(pl->getParameterByIndex(i), primary.stage, out);
 	}
 
@@ -323,8 +324,8 @@ std::vector<ShaderProgram::ReflectedBinding> ShaderProgram::reflect_stages(const
 			if (var == nullptr) {
 				continue;
 			}
-			Uint32 b = (Uint32)var->getBindingIndex();
-			Uint32 s = (Uint32)var->getBindingSpace();
+			Uint32 b = static_cast<Uint32>(var->getBindingIndex());
+			Uint32 s = static_cast<Uint32>(var->getBindingSpace());
 			for (ReflectedBinding &binding : out) {
 				if (binding.set == s && binding.binding_index == b) {
 					binding.stage_flags = binding.stage_flags | stage.stage;

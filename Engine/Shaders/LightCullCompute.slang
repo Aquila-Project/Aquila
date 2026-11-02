@@ -7,10 +7,14 @@ import Utility.ClusterTypes;
 
 using namespace Aquila::Shading;
 
-[vk::binding(0, 1)] StructuredBuffer<AABB> clusterAABBs;
-[vk::binding(1, 1)] RWStructuredBuffer<uint> lightIndexList;
-[vk::binding(2, 1)] RWStructuredBuffer<ClusterLightInfo> clusterLightInfo;
-[vk::binding(3, 1)] RWStructuredBuffer<uint> globalCounter;
+[vk::binding(0, 1)]
+StructuredBuffer<AABB> clusterAABBs;
+[vk::binding(1, 1)]
+RWStructuredBuffer<uint> lightIndexList;
+[vk::binding(2, 1)]
+RWStructuredBuffer<ClusterLightInfo> clusterLightInfo;
+[vk::binding(3, 1)]
+RWStructuredBuffer<uint> globalCounter;
 
 bool SphereIntersectsAABB(float3 center, float radius, float3 aabbMin, float3 aabbMax) {
 	float3 closest = clamp(center, aabbMin, aabbMax);
@@ -18,7 +22,8 @@ bool SphereIntersectsAABB(float3 center, float radius, float3 aabbMin, float3 aa
 	return dot(d, d) <= radius * radius;
 }
 
-[numthreads(4, 4, 4)] void main(uint3 id : SV_DispatchThreadID) {
+[numthreads(4, 4, 4)]
+void main(uint3 id: SV_DispatchThreadID) {
 	if (id.x >= kClusterGridX || id.y >= kClusterGridY || id.z >= kClusterGridZ) {
 		return;
 	}

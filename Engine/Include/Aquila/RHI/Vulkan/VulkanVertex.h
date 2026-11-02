@@ -1,8 +1,6 @@
 #ifndef AQUILA_VULKAN_VERTEX_H
 #define AQUILA_VULKAN_VERTEX_H
 
-#include "GraphicsPCH.h"
-#include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Math/MathTypes.h"
 
 namespace Aquila::RHI {
@@ -20,7 +18,7 @@ struct Vertex {
 	}
 
 	static std::vector<VkVertexInputBindingDescription> get_binding_descriptions() {
-		return { { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX } };
+		return { { .binding = 0, .stride = sizeof(Vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX } };
 	}
 
 	static std::vector<VkVertexInputAttributeDescription> get_attribute_descriptions() {

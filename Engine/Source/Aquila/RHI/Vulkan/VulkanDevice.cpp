@@ -123,9 +123,9 @@ void VulkanDevice::create_pipeline_cache() {
 				std::memcpy(&vendor_id, blob.data() + 8, sizeof(Uint32));
 				std::memcpy(&device_id, blob.data() + 12, sizeof(Uint32));
 
-				bool matches = header_version == VK_PIPELINE_CACHE_HEADER_VERSION_ONE &&
-							   vendor_id == props.vendorID && device_id == props.deviceID &&
-							   std::memcmp(blob.data() + 16, props.pipelineCacheUUID, VK_UUID_SIZE) == 0;
+				bool matches = header_version == VK_PIPELINE_CACHE_HEADER_VERSION_ONE && vendor_id == props.vendorID &&
+					device_id == props.deviceID &&
+					std::memcmp(blob.data() + 16, props.pipelineCacheUUID, VK_UUID_SIZE) == 0;
 				if (matches) {
 					initial_data = std::move(blob);
 				} else {
@@ -495,12 +495,21 @@ Unique<IRHIPipeline> VulkanDevice::create_graphics_pipeline(const GraphicsPipeli
 		desc.fragment_shader.spirv.empty() ? VK_NULL_HANDLE : make_module(desc.fragment_shader);
 
 	std::vector<VkPipelineShaderStageCreateInfo> stages;
-	stages.push_back({ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_VERTEX_BIT,
-					   vert_module, desc.vertex_shader.entry_point.c_str(), nullptr });
+	stages.push_back({ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+					   .pNext = nullptr,
+					   .flags = 0,
+					   .stage = VK_SHADER_STAGE_VERTEX_BIT,
+					   .module = vert_module,
+					   .pName = desc.vertex_shader.entry_point.c_str(),
+					   .pSpecializationInfo = nullptr });
 	if (frag_module != VK_NULL_HANDLE) {
-		stages.push_back({ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-						   VK_SHADER_STAGE_FRAGMENT_BIT, frag_module, desc.fragment_shader.entry_point.c_str(),
-						   nullptr });
+		stages.push_back({ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+						   .pNext = nullptr,
+						   .flags = 0,
+						   .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+						   .module = frag_module,
+						   .pName = desc.fragment_shader.entry_point.c_str(),
+						   .pSpecializationInfo = nullptr });
 	}
 
 	VulkanPipelineConfig config{};
@@ -558,11 +567,14 @@ Unique<IRHIPipeline> VulkanDevice::create_graphics_pipeline(const GraphicsPipeli
 		config.binding_descriptions.clear();
 		config.attribute_descriptions.clear();
 	} else if (desc.custom_vertex_layout.has_value()) {
-		auto &layout = desc.custom_vertex_layout.value();
-		config.binding_descriptions = { { 0, layout.stride, VK_VERTEX_INPUT_RATE_VERTEX } };
+		const auto &layout = desc.custom_vertex_layout.value();
+		config.binding_descriptions = {
+			{ .binding = 0, .stride = layout.stride, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },
+		};
 		config.attribute_descriptions.clear();
-		for (auto &a : layout.attributes) {
-			config.attribute_descriptions.push_back({ a.location, a.binding, to_vk_format(a.format), a.offset });
+		for (const auto &a : layout.attributes) {
+			config.attribute_descriptions.push_back(
+				{ .location = a.location, .binding = a.binding, .format = to_vk_format(a.format), .offset = a.offset });
 		}
 	} else {
 		config.binding_descriptions = Vertex::get_binding_descriptions();
@@ -1029,10 +1041,10 @@ void VulkanDevice::create_logical_device() {
 	device_features.independentBlend = VK_TRUE;
 	device_features.sampleRateShading = VK_TRUE;
 
-  VkPhysicalDeviceVulkan11Features vulkan11_features{};
-  vulkan11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-  vulkan11_features.shaderDrawParameters = VK_TRUE;
-  vulkan11_features.pNext = &dynamic_rendering_features;
+	VkPhysicalDeviceVulkan11Features vulkan11_features{};
+	vulkan11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+	vulkan11_features.shaderDrawParameters = VK_TRUE;
+	vulkan11_features.pNext = &dynamic_rendering_features;
 
 	VkPhysicalDeviceFeatures2 device_features2{};
 	device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
