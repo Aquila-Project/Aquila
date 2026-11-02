@@ -1,0 +1,6 @@
+<Component name="Card" props="title">
+    <View class="card">
+        <Label class="card-title">$title</Label>
+        <Slot/>
+    </View>
+</Component>

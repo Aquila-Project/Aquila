@@ -16,6 +16,7 @@
 #include "UI/Components/HierarchyRow.h"
 #include "UI/Components/SettingsSection.h"
 #include "UI/Components/SettingsShortcutRow.h"
+#include "UI/Components/TodoRow.h"
 
 #include <charconv>
 
@@ -79,6 +80,8 @@ void EditorWindows::attach(DockSpace &dock_space) {
 	m_component_behaviours.push_back(m_context.layouts().behaviours().add<BuildTemplateInfo>("BuildTemplateInfo"));
 	m_component_behaviours.push_back(m_context.layouts().behaviours().add<SettingsSection>("SettingsSection"));
 	m_component_behaviours.push_back(m_context.layouts().behaviours().add<SettingsShortcutRow>("SettingsShortcutRow"));
+	m_component_behaviours.push_back(m_context.layouts().behaviours().add<TodoRow>("TodoRow"));
+
 	dock_space.set_closable_tabs(true, m_context.icon("x"));
 	dock_space.set_panel_factory([this](const std::string &panel_id) { return create_panel(panel_id); });
 	dock_space.set_tab_bar_decorator([this](DockNode *node, View *actions) { decorate(node, actions); });

@@ -21,6 +21,7 @@
 #include "UI/EditorWindows/GameWindow.h"
 #include "UI/EditorWindows/HierarchyWindow.h"
 #include "UI/EditorWindows/InspectorWindow.h"
+#include "UI/EditorWindows/TodoWindow.h"
 #include "UI/EditorWindows/ViewportWindow.h"
 #include "UI/Windows/BuildWindow.h"
 #include "UI/Windows/ProjectLauncher.h"
@@ -568,6 +569,7 @@ void EditorModule::register_windows() {
 	m_windows->add<ConsoleWindow>({ .id = "console", .title = "Console", .icon = "terminal", .group = "Diagnostics" });
 	m_windows->add<GameWindow>(
 		{ .id = std::string(GameWindow::K_TYPE_ID), .title = "Game", .icon = "gamepad-2", .group = "Scene" });
+	m_windows->add<TodoWindow>({ .id = "todo", .title = "Todo", .icon = "pencil" });
 }
 
 void EditorModule::add_window_type(EditorWindowType type) {
