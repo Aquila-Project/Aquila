@@ -2,6 +2,7 @@
 #include "Aquila/RHI/Vulkan/VulkanQueryPool.h"
 #include "Aquila/RHI/Vulkan/VulkanDeletionQueue.h"
 #include "Aquila/Foundation/Profiler.h"
+#include "Aquila/RHI/SpirvInspection.h"
 
 #include "Aquila/RHI/Vulkan/VulkanBuffer.h"
 #include "Aquila/RHI/Vulkan/VulkanCommandList.h"
@@ -579,6 +580,11 @@ Unique<IRHIPipeline> VulkanDevice::create_graphics_pipeline(const GraphicsPipeli
 	} else {
 		config.binding_descriptions = Vertex::get_binding_descriptions();
 		config.attribute_descriptions = Vertex::get_attribute_descriptions();
+	}
+	if (const auto consumed = spirv_vertex_input_locations(desc.vertex_shader.spirv, desc.vertex_shader.entry_point)) {
+		std::erase_if(config.attribute_descriptions, [&](const VkVertexInputAttributeDescription &attribute) {
+			return !std::ranges::binary_search(*consumed, attribute.location);
+		});
 	}
 	auto pipeline = std::make_unique<VulkanPipeline>(*this, stages, config);
 
