@@ -88,6 +88,42 @@ template <> struct aquiLua::Converter<Aquila::Platform::Events::MouseButton> {
 	static MouseButton get(lua_State *state, int index) { return check(state, index); }
 };
 
+template <> struct aquiLua::Converter<std::vector<Aquila::Scripting::ScriptEntity>> {
+	using ScriptEntity = Aquila::Scripting::ScriptEntity;
+
+	static constexpr const char *luau_type = "{Entity}";
+
+	static void push(lua_State *state, const std::vector<ScriptEntity> &entities) {
+		lua_createtable(state, static_cast<int>(entities.size()), 0);
+		for (Usize i = 0; i < entities.size(); ++i) {
+			aquiLua::push(state, entities[i]);
+			lua_rawseti(state, -2, static_cast<int>(i + 1));
+		}
+	}
+
+	static std::vector<ScriptEntity> check(lua_State *state, int index) {
+		luaL_checktype(state, index, LUA_TTABLE);
+		return get(state, index);
+	}
+
+	static std::vector<ScriptEntity> get(lua_State *state, int index) {
+		std::vector<ScriptEntity> entities;
+		const int table = lua_absindex(state, index);
+		if (!lua_istable(state, table)) {
+			return entities;
+		}
+		const int count = lua_objlen(state, table);
+		for (int i = 1; i <= count; ++i) {
+			lua_rawgeti(state, table, i);
+			if (lua_isuserdata(state, -1)) {
+				entities.push_back(aquiLua::check<ScriptEntity>(state, -1));
+			}
+			lua_pop(state, 1);
+		}
+		return entities;
+	}
+};
+
 namespace Aquila::Scripting {
 
 namespace {
@@ -229,6 +265,16 @@ Option<ScriptEntity> find(ScriptEnvironment &environment, const std::string &nam
 		return to_script(entity->get_handle());
 	}
 	return std::nullopt;
+}
+
+std::vector<ScriptEntity> find_all(ScriptEnvironment &environment, const std::string &name) {
+	std::vector<ScriptEntity> found;
+	for (auto [handle, metadata] : environment.scene->get_registry().view<MetadataComponent>().each()) {
+		if (metadata.get_name() == name) {
+			found.push_back(to_script(handle));
+		}
+	}
+	return found;
 }
 
 ScriptEntity create(ScriptEnvironment &environment, const std::string &name) {
@@ -684,6 +730,28 @@ void rotate(SceneManagement::Entity entity, Vec3 axis, F32 degrees) {
 	set_world_rotation(entity, turn * rotation_of(world_matrix(entity)));
 }
 
+Option<ScriptEntity> find_child(SceneManagement::Entity entity, const std::string &name) {
+	std::deque<SceneManagement::Entity> pending{ entity };
+	while (!pending.empty()) {
+		const SceneManagement::Entity at = pending.front();
+		pending.pop_front();
+		const auto *node = at.try_get_component<SceneNodeComponent>();
+		if (node == nullptr) {
+			continue;
+		}
+		for (const SceneManagement::Entity &child : node->children) {
+			if (!child.is_valid()) {
+				continue;
+			}
+			if (child.get_name() == name) {
+				return to_script(child.get_handle());
+			}
+			pending.push_back(child);
+		}
+	}
+	return std::nullopt;
+}
+
 std::string uuid(MetadataComponent &metadata) {
 	return metadata.get_id().to_string();
 }
@@ -796,6 +864,7 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 
 	runtime.bind<find>("scene.find", &environment, "The first entity with that name.");
 	runtime.bind<create>("scene.create", &environment, "A new entity with a transform.");
+	runtime.bind<find_all>("scene.find_all", &environment, "Every entity with that name.");
 	runtime.bind<find_by_uuid>("scene.find_by_uuid", &environment, "The entity with that UUID.");
 	runtime.bind<destroy>("scene.destroy", &environment, "Destroys it at the end of the frame.");
 
@@ -859,6 +928,8 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 								"get_forward() to turn around its own axes."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
 			aquiLua::Method("get_children", entity_children, children_signature, "Its direct children."),
+			free_method<find_child>(
+				"find_child", "The first entity with that name below it, nearer ones first. Nil when there's none."),
 			aquiLua::Method("set_parent", entity_set_parent, set_parent_signature,
 							"Moves it under another entity, or to the root with nil, staying where it is in the "
 							"world. Errors when the parent is itself or one of its children."),

@@ -1370,3 +1370,36 @@ TEST_SUITE("Aquila.Events") {
 		CHECK(log.str().find("handler went wrong") != std::string::npos);
 	}
 }
+
+TEST_SUITE("Script spawning") {
+	TEST_CASE("find_all finds every entity with a name, find_child searches below an entity") {
+		std::string path = write_script("finders.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_start(self)
+				assert(#Scene.find_all("Coin") == 3, "three coins")
+				assert(#Scene.find_all("Nope") == 0, "no nope")
+				local gem = self:find_child("Gem")
+				assert(gem ~= nil and gem:get_parent():get_name() == "Lid", "gem under the lid")
+				assert(self:find_child("Nope") == nil, "no nope child")
+				assert(self:find_child(self:get_name()) == nil, "not itself")
+				self:set_name("found")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity chest = scripted_entity(scene, path);
+		Entity lid = entities.create_entity("Lid");
+		Entity gem = entities.create_entity("Gem");
+		entities.add_child(chest, lid);
+		entities.add_child(lid, gem);
+		for (int i = 0; i < 3; ++i) {
+			entities.create_entity("Coin").get_component<MetadataComponent>().set_name("Coin");
+		}
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(chest.get_component<MetadataComponent>().get_name() == "found");
+	}
+}

@@ -10,6 +10,11 @@ function Scene.find(name: string): Entity?
 	return native.find(name)
 end
 
+--- Every entity with that name, in no particular order.
+function Scene.find_all(name: string): { Entity }
+	return native.find_all(name)
+end
+
 --- The entity with that UUID (entity:get_uuid()), nil when there's none.
 function Scene.find_by_uuid(uuid: string): Entity?
 	return native.find_by_uuid(uuid)
