@@ -623,12 +623,65 @@ Mat4 world_matrix(SceneManagement::Entity entity) {
 	return world;
 }
 
+Mat4 parent_world_matrix(SceneManagement::Entity entity) {
+	const auto *node = entity.try_get_component<SceneNodeComponent>();
+	return node != nullptr && node->parent.is_valid() ? world_matrix(node->parent) : Mat4(1.F);
+}
+
+Quaternion rotation_of(const Mat4 &matrix) {
+	return glm::quat_cast(
+		Mat3(Math::normalize(Vec3(matrix[0])), Math::normalize(Vec3(matrix[1])), Math::normalize(Vec3(matrix[2]))));
+}
+
+void set_world_rotation(SceneManagement::Entity entity, const Quaternion &rotation) {
+	if (auto *transform = entity.try_get_component<TransformComponent>()) {
+		transform->set_local_rotation(
+			Math::normalize(Math::inverse(rotation_of(parent_world_matrix(entity))) * rotation));
+	}
+}
+
 Vec3 world_position(SceneManagement::Entity entity) {
 	return Vec3(world_matrix(entity)[3]);
 }
 
+void set_world_position(SceneManagement::Entity entity, Vec3 position) {
+	if (auto *transform = entity.try_get_component<TransformComponent>()) {
+		transform->set_local_position(Vec3(Math::inverse(parent_world_matrix(entity)) * Vec4(position, 1.F)));
+	}
+}
+
 Vec3 forward(SceneManagement::Entity entity) {
 	return Math::normalize(Vec3(world_matrix(entity)[2]));
+}
+
+Vec3 up(SceneManagement::Entity entity) {
+	return Math::normalize(Vec3(world_matrix(entity)[1]));
+}
+
+Vec3 right(SceneManagement::Entity entity) {
+	return Math::normalize(Vec3(world_matrix(entity)[0]));
+}
+
+void look_at(SceneManagement::Entity entity, Vec3 target, Option<Vec3> up) {
+	const Vec3 direction = target - world_position(entity);
+	if (Math::length(direction) < 1e-6F) {
+		return;
+	}
+	const Vec3 ahead = Math::normalize(direction);
+	Vec3 above = up.value_or(Vec3(0.F, 1.F, 0.F));
+	if (Math::length(Math::cross(above, ahead)) < 1e-4F) {
+		above = Math::abs(ahead.z) < 0.9F ? Vec3(0.F, 0.F, 1.F) : Vec3(1.F, 0.F, 0.F);
+	}
+	const Vec3 side = Math::normalize(Math::cross(above, ahead));
+	set_world_rotation(entity, glm::quat_cast(Mat3(side, Math::cross(ahead, side), ahead)));
+}
+
+void rotate(SceneManagement::Entity entity, Vec3 axis, F32 degrees) {
+	if (Math::length(axis) < 1e-6F) {
+		return;
+	}
+	const Quaternion turn = Math::angle_axis(Math::radians(degrees), Math::normalize(axis));
+	set_world_rotation(entity, turn * rotation_of(world_matrix(entity)));
 }
 
 std::string uuid(MetadataComponent &metadata) {
@@ -735,7 +788,16 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 			aquiLua::make_method<check_component<TransformComponent>, &TransformComponent::set_local_scale>(
 				"set_scale", "Sets the scale, relative to the parent."),
 			free_method<world_position>("get_world_position", "Position in the world."),
+			free_method<set_world_position>("set_world_position", "Moves it to a world position, whatever its parent."),
 			free_method<forward>("get_forward", "The direction its +Z axis points in the world."),
+			free_method<up>("get_up", "The direction its +Y axis points in the world."),
+			free_method<right>("get_right", "The direction its +X axis points in the world."),
+			free_method<look_at>("look_at",
+								 "Turns it so +Z points at a world position, with +Y as close to `up` as it gets "
+								 "(world up when left out)."),
+			free_method<rotate>("rotate",
+								"Turns it around a world axis through its own origin, in degrees. Pass get_up() or "
+								"get_forward() to turn around its own axes."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
 			free_method<uuid>("get_uuid", "The id saved in scenes. Stays the same across saves, loads and Play."),
 			aquiLua::Method("has", entity_has, has_signature,

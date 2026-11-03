@@ -965,15 +965,44 @@ TEST_SUITE("Script components") {
 }
 
 TEST_SUITE("Script transforms") {
-	TEST_CASE("world position and forward include moves made this frame") {
+	TEST_CASE("set_world_position puts it there under a moved parent and reads back at once") {
+		std::string path = write_script("world-position.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:get_parent():set_position(vector.create(1, 0, 0))
+				self:set_world_position(vector.create(3, 4, 5))
+				local at = self:get_world_position()
+				assert(vector.magnitude(at - vector.create(3, 4, 5)) < 0.001, tostring(at))
+				self:set_name("there")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity parent = entities.create_entity("Parent");
+		Entity entity = scripted_entity(scene, path);
+		entities.add_child(parent, entity);
+		auto &parent_transform = parent.get_component<TransformComponent>();
+		parent_transform.set_local_rotation_euler(Vec3(0.F, 90.F, 0.F));
+		parent_transform.set_local_scale(Vec3(2.F));
+		scene.update_transform_hierarchy();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		scene.update_transform_hierarchy();
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "there");
+		check_near(entity.get_component<TransformComponent>().get_world_position(), Vec3(3.F, 4.F, 5.F));
+	}
+
+	TEST_CASE("forward, up and right follow a rotation made this frame") {
 		std::string path = write_script("axes.luau", R"(
 			local M = {}
 			function M.on_start(self)
 				self:set_rotation(vector.create(0, 90, 0))
-				self:set_position(vector.create(1, 2, 3))
 				local out = require("@aquila").Scene.find("Out")
 				out:set_position(self:get_forward())
-				out:set_scale(self:get_world_position())
+				out:set_rotation(self:get_up())
+				out:set_scale(self:get_right())
 			end
 			return M
 		)");
@@ -985,6 +1014,52 @@ TEST_SUITE("Script transforms") {
 		system.update(0.F);
 		const auto &result = out.get_component<TransformComponent>();
 		check_near(result.get_local_position(), Vec3(1.F, 0.F, 0.F));
-		check_near(result.get_local_scale(), Vec3(1.F, 2.F, 3.F));
+		check_near(result.get_local_rotation_euler(), Vec3(0.F, 1.F, 0.F));
+		check_near(result.get_local_scale(), Vec3(0.F, 0.F, -1.F));
+	}
+
+	TEST_CASE("look_at turns +Z toward the target and keeps +Y up, under a turned parent") {
+		std::string path = write_script("look-at.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:look_at(vector.create(0, 0, -10))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity parent = entities.create_entity("Parent");
+		Entity entity = scripted_entity(scene, path);
+		entities.add_child(parent, entity);
+		parent.get_component<TransformComponent>().set_local_rotation_euler(Vec3(0.F, 30.F, 0.F));
+		scene.update_transform_hierarchy();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		scene.update_transform_hierarchy();
+		check_near(world_axis(entity, Vec3(0.F, 0.F, 1.F)), Vec3(0.F, 0.F, -1.F));
+		check_near(world_axis(entity, Vec3(0.F, 1.F, 0.F)), Vec3(0.F, 1.F, 0.F));
+	}
+
+	TEST_CASE("rotate turns around a world axis, whatever the parent's rotation") {
+		std::string path = write_script("rotate.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:rotate(vector.create(0, 1, 0), 90)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity parent = entities.create_entity("Parent");
+		Entity entity = scripted_entity(scene, path);
+		entities.add_child(parent, entity);
+		parent.get_component<TransformComponent>().set_local_rotation_euler(Vec3(90.F, 0.F, 0.F));
+		scene.update_transform_hierarchy();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		scene.update_transform_hierarchy();
+		check_near(world_axis(entity, Vec3(0.F, 1.F, 0.F)), Vec3(1.F, 0.F, 0.F));
 	}
 }
