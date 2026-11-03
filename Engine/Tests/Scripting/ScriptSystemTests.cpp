@@ -18,7 +18,9 @@
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/Scripting/ScriptApi.h"
+#include "Aquila/Scripting/LuauConfig.h"
 #include "Aquila/Scripting/ScriptFields.h"
+#include "json.hpp"
 #include "Aquila/Scripting/ScriptSystem.h"
 
 using namespace Aquila;
@@ -1603,5 +1605,90 @@ TEST_SUITE("Scene.raycast") {
 		CHECK(result("inside").get_component<MetadataComponent>().get_name() == "inside Far");
 		CHECK(result("inside").get_component<TransformComponent>().get_local_scale().x == doctest::Approx(9.5F));
 		CHECK(result("miss").get_component<MetadataComponent>().get_name() == "miss");
+	}
+}
+
+namespace {
+
+std::filesystem::path fresh_dir(const std::string &name) {
+	const auto dir = std::filesystem::temp_directory_path() / "aquila-luau-config" / name;
+	std::filesystem::remove_all(dir);
+	std::filesystem::create_directories(dir);
+	return dir;
+}
+
+std::string read_file(const std::filesystem::path &path) {
+	std::stringstream text;
+	text << std::ifstream(path).rdbuf();
+	return text.str();
+}
+
+}
+
+TEST_SUITE("Luau config") {
+	TEST_CASE("the engine aliases point at the API and at every native module's types") {
+		const auto types = fresh_dir("types");
+		for (const char *file : { "globals.d.luau", "scene.luau", "native.luau", "notes.txt" }) {
+			std::ofstream(types / file) << "";
+		}
+		const std::map<std::string, std::string> aliases = engine_luau_aliases("/engine/API", types.string());
+		CHECK(aliases ==
+			  std::map<std::string, std::string>{
+				  { "aquila", "/engine/API" },
+				  { "native", (types / "native").generic_string() },
+				  { "scene", (types / "scene").generic_string() },
+			  });
+	}
+
+	TEST_CASE("update_luaurc writes a new file, keeps what an old one has and only writes when something changed") {
+		const auto dir = fresh_dir("luaurc");
+		const std::map<std::string, std::string> aliases{ { "aquila", "/engine/API" }, { "scene", "/types/scene" } };
+		REQUIRE(update_luaurc(dir.string(), aliases));
+		nlohmann::json written = nlohmann::json::parse(read_file(dir / ".luaurc"));
+		CHECK(written["languageMode"] == "strict");
+		CHECK(written["aliases"]["aquila"] == "/engine/API");
+
+		std::ofstream(dir / ".luaurc")
+			<< R"({ "languageMode": "nonstrict", "aliases": { "mine": "lib", "scene": "old" }, "lint": { "*": true } })";
+		REQUIRE(update_luaurc(dir.string(), aliases));
+		written = nlohmann::json::parse(read_file(dir / ".luaurc"));
+		CHECK(written["languageMode"] == "nonstrict");
+		CHECK(written["aliases"]["mine"] == "lib");
+		CHECK(written["aliases"]["scene"] == "/types/scene");
+		CHECK(written["aliases"]["aquila"] == "/engine/API");
+		CHECK(written["lint"]["*"] == true);
+
+		const auto old_time = std::filesystem::file_time_type::clock::now() - std::chrono::hours(24);
+		std::filesystem::last_write_time(dir / ".luaurc", old_time);
+		REQUIRE(update_luaurc(dir.string(), aliases));
+		CHECK(std::filesystem::last_write_time(dir / ".luaurc") == old_time);
+	}
+
+	TEST_CASE("files with comments or broken JSON are left alone") {
+		const auto dir = fresh_dir("hands-off");
+		const std::string commented = "{\n\t// mine\n\t\"aliases\": {}\n}\n";
+		std::ofstream(dir / ".luaurc") << commented;
+		CHECK_FALSE(update_luaurc(dir.string(), { { "aquila", "/engine/API" } }));
+		CHECK(read_file(dir / ".luaurc") == commented);
+
+		std::filesystem::create_directories(dir / ".vscode");
+		std::ofstream(dir / ".vscode" / "settings.json") << "{ broken";
+		CHECK_FALSE(update_vscode_settings(dir.string(), "/types/globals.d.luau"));
+		CHECK(read_file(dir / ".vscode" / "settings.json") == "{ broken");
+	}
+
+	TEST_CASE("update_vscode_settings points luau-lsp at the definitions and keeps the other settings") {
+		const auto dir = fresh_dir("vscode");
+		REQUIRE(update_vscode_settings(dir.string(), "/types/globals.d.luau"));
+		nlohmann::json written = nlohmann::json::parse(read_file(dir / ".vscode" / "settings.json"));
+		CHECK(written["luau-lsp.types.definitionFiles"]["@aquila"] == "/types/globals.d.luau");
+
+		std::ofstream(dir / ".vscode" / "settings.json")
+			<< R"({ "editor.tabSize": 4, "luau-lsp.types.definitionFiles": { "@mine": "/mine.d.luau" } })";
+		REQUIRE(update_vscode_settings(dir.string(), "/types/globals.d.luau"));
+		written = nlohmann::json::parse(read_file(dir / ".vscode" / "settings.json"));
+		CHECK(written["editor.tabSize"] == 4);
+		CHECK(written["luau-lsp.types.definitionFiles"]["@mine"] == "/mine.d.luau");
+		CHECK(written["luau-lsp.types.definitionFiles"]["@aquila"] == "/types/globals.d.luau");
 	}
 }
