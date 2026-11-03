@@ -12,6 +12,7 @@ Aquila.Time = require("@aquila/Time")
 Aquila.Scene = require("@aquila/Scene")
 Aquila.Screen = require("@aquila/Screen")
 Aquila.Camera = require("@aquila/Camera")
+Aquila.Color = require("@aquila/Color")
 Aquila.Field = require("@aquila/Field")
 Aquila.Log = require("@aquila/Log")
 

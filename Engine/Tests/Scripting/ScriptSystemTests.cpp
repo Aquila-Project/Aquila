@@ -858,6 +858,29 @@ TEST_SUITE("Script components") {
 		CHECK(entity.get_component<MetadataComponent>().get_name() == "0.75");
 	}
 
+	TEST_CASE("Aquila.Color makes colors with alpha, opaque unless told otherwise") {
+		register_tint_component();
+		std::string path = write_script("color.luau", R"(
+			local Color = require("@aquila").Color
+			local M = {}
+			function M.on_start(self)
+				self:add("Test Tint")
+				self:set("Test Tint", "Tint", Color.new(1, 0.5, 0.25))
+				local opaque = Color.alpha(self:get("Test Tint", "Tint"))
+				local faded = Color.alpha(Color.new(1, 1, 1, 0.25))
+				self:set_name(tostring(opaque) .. " " .. tostring(faded))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<TintComponent>().tint == Vec4(1.F, 0.5F, 0.25F, 1.F));
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "1 0.25");
+	}
+
 	TEST_CASE("has, add and remove follow what the editor allows") {
 		std::string path = write_script("add-remove.luau", R"(
 			local M = {}
