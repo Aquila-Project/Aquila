@@ -1108,3 +1108,66 @@ TEST_SUITE("Script transforms") {
 		check_near(world_axis(entity, Vec3(0.F, 0.F, 1.F)), Vec3(0.F, 0.F, 1.F));
 	}
 }
+
+TEST_SUITE("Aquila.Math") {
+	TEST_CASE("Aquila.Math fills in what Luau's math and vector libraries don't have") {
+		std::string path = write_script("math.luau", R"(
+			local Math = require("@aquila").Math
+			local function near(a: number, b: number, label: string)
+				assert(math.abs(a - b) < 1e-4, label .. ": " .. tostring(a) .. " ~= " .. tostring(b))
+			end
+			local function near_vector(a: vector, b: vector, label: string)
+				assert(vector.magnitude(a - b) < 1e-4, label .. ": " .. tostring(a) .. " ~= " .. tostring(b))
+			end
+
+			local M = {}
+			function M.on_start(self)
+				near(Math.smooth_step(0, 1, 0.5), 0.5, "smooth_step middle")
+				near(Math.smooth_step(0, 1, 0.25), 0.15625, "smooth_step curve")
+				near(Math.smooth_step(0, 1, 2), 1, "smooth_step clamps")
+				near(Math.inverse_lerp(10, 20, 15), 0.5, "inverse_lerp")
+				assert(Math.approx_equal(0.1 + 0.2, 0.3), "approx_equal")
+				assert(not Math.approx_equal(1, 1.01), "approx_equal tolerance")
+				near(Math.move_towards(0, 10, 3), 3, "move_towards step")
+				near(Math.move_towards(9, 10, 3), 10, "move_towards no overshoot")
+				near(Math.move_towards(5, -5, 2), 3, "move_towards down")
+				near(Math.damp(Math.damp(0, 10, 4, 0.25), 10, 4, 0.25), Math.damp(0, 10, 4, 0.5), "damp frame rate")
+				near(Math.angle_difference(350, 10), 20, "angle_difference wraps")
+				near(Math.angle_difference(10, 350), -20, "angle_difference sign")
+
+				local a = vector.create(0, 0, 0)
+				local b = vector.create(3, 4, 0)
+				near(Math.distance(a, b), 5, "distance")
+				near_vector(Math.move_towards_vector(a, b, 1), vector.create(0.6, 0.8, 0), "move_towards_vector")
+				near_vector(Math.move_towards_vector(a, b, 10), b, "move_towards_vector no overshoot")
+				near_vector(Math.damp_vector(a, b, 1000, 1), b, "damp_vector settles")
+				near_vector(Math.reflect(vector.create(1, -1, 0), vector.create(0, 1, 0)), vector.create(1, 1, 0), "reflect")
+				near_vector(Math.project(vector.create(2, 3, 0), vector.create(5, 0, 0)), vector.create(2, 0, 0), "project")
+				near_vector(Math.project_on_plane(vector.create(2, 3, 0), vector.create(0, 1, 0)), vector.create(2, 0, 0),
+					"project_on_plane")
+
+				local axis = vector.normalize(vector.create(1, 2, 3))
+				self:rotate(axis, 70)
+				near_vector(Math.rotate_vector(vector.create(0, 0, 1), axis, 70), self:get_forward(),
+					"rotate_vector turns like Entity:rotate")
+
+				near(Math.fbm(vector.create(1.3, 2.7, 0.4), 1), math.noise(1.3, 2.7, 0.4), "fbm with one octave")
+				for i = 1, 50 do
+					local value = Math.fbm(vector.create(i * 0.37, i * 0.11, 0))
+					assert(value >= -1 and value <= 1, "fbm range " .. tostring(value))
+					local roll = Math.random_range(-2, 3)
+					assert(roll >= -2 and roll < 3, "random_range " .. tostring(roll))
+					near(vector.magnitude(Math.random_unit_vector()), 1, "random_unit_vector")
+				end
+				self:set_name("math ok")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "math ok");
+	}
+}
