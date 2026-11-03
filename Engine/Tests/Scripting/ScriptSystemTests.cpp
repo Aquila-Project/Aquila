@@ -1431,6 +1431,7 @@ TEST_SUITE("Aquila.Events") {
 
 TEST_SUITE("Script spawning") {
 	TEST_CASE("clone copies an entity with its components, children and script, next to the original") {
+		register_script_component();
 		std::string enemy = write_script("enemy.luau", R"(
 			local M = {}
 			function M.on_start(self)
