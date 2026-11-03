@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
 
+#include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Platform/Filesystem/NativeFileSystem.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Platform/InputState.h"
@@ -9,6 +10,7 @@
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/FogComponent.h"
 #include "Aquila/Scene/Components/LightComponent.h"
+#include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
@@ -1525,5 +1527,78 @@ TEST_SUITE("Aquila.Game") {
 		system.update(0.F);
 		CHECK(system.wants_quit());
 		CHECK(entity.get_component<MetadataComponent>().get_name() == "still finished the frame");
+	}
+}
+
+TEST_SUITE("Scene.raycast") {
+	TEST_CASE("raycast finds the nearest visible mesh box along the ray") {
+		std::string path = write_script("raycast.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			local function report(name: string, hit: Scene.RaycastHit?)
+				local out = Scene.create(name)
+				if hit then
+					out:set_name(name .. " " .. hit.entity:get_name())
+					out:set_position(hit.position)
+					out:set_rotation(hit.normal)
+					out:set_scale(vector.create(hit.distance, 0, 0))
+				end
+			end
+			function M.on_start(self)
+				local forward = vector.create(0, 0, 1)
+				report("hit", Scene.raycast(vector.zero, forward))
+				report("long", Scene.raycast(vector.zero, vector.create(0, 0, 2)))
+				report("short", Scene.raycast(vector.zero, forward, 5))
+				report("ignored", Scene.raycast(vector.zero, forward, nil, Scene.find("Crate")))
+				report("inside", Scene.raycast(vector.create(0, 0, 10), forward))
+				report("miss", Scene.raycast(vector.zero, vector.create(0, 1, 0)))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		const auto cube =
+			Graphics::Resources::MeshLibrary::instance().load(Graphics::Resources::MeshSource::procedural("cube"));
+		REQUIRE(cube != nullptr);
+		auto crate = [&](const char *name, Vec3 position) {
+			Entity entity = entities.create_entity(name);
+			entity.get_component<MetadataComponent>().set_name(name);
+			entity.get_component<TransformComponent>().set_local_position(position);
+			entity.add_component<MeshComponent>().set_mesh(cube);
+			return entity;
+		};
+		Entity near = crate("Crate", Vec3(0.F, 0.F, 10.F));
+		near.get_component<TransformComponent>().set_local_rotation_euler(Vec3(0.F, 30.F, 0.F));
+		near.get_component<TransformComponent>().set_local_scale(Vec3(2.F));
+		crate("Far", Vec3(0.F, 0.F, 20.F));
+		crate("Hidden", Vec3(0.F, 0.F, 5.F)).get_component<MetadataComponent>().set_visible(false);
+		scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		auto result = [&](const char *name) {
+			Option<Entity> found;
+			for (auto [handle, metadata] : scene.get_registry().view<MetadataComponent>().each()) {
+				if (metadata.get_name().starts_with(std::string(name) + " ") || metadata.get_name() == name) {
+					found = Entity(handle, &scene);
+				}
+			}
+			REQUIRE(found.has_value());
+			return *found;
+		};
+		const F32 entry = 10.F - 1.F / std::cos(Math::radians(30.F));
+		Entity hit = result("hit");
+		CHECK(hit.get_component<MetadataComponent>().get_name() == "hit Crate");
+		const auto &at = hit.get_component<TransformComponent>();
+		check_near(at.get_local_position(), Vec3(0.F, 0.F, entry));
+		check_near(at.get_local_rotation_euler(), Vec3(-0.5F, 0.F, -std::cos(Math::radians(30.F))));
+		CHECK(at.get_local_scale().x == doctest::Approx(entry));
+		CHECK(result("long").get_component<TransformComponent>().get_local_scale().x == doctest::Approx(entry));
+		CHECK(result("short").get_component<MetadataComponent>().get_name() == "short");
+		CHECK(result("ignored").get_component<MetadataComponent>().get_name() == "ignored Far");
+		CHECK(result("ignored").get_component<TransformComponent>().get_local_scale().x == doctest::Approx(19.5F));
+		CHECK(result("inside").get_component<MetadataComponent>().get_name() == "inside Far");
+		CHECK(result("inside").get_component<TransformComponent>().get_local_scale().x == doctest::Approx(9.5F));
+		CHECK(result("miss").get_component<MetadataComponent>().get_name() == "miss");
 	}
 }

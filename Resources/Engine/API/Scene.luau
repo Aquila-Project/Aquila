@@ -5,6 +5,14 @@ local native = require("@scene")
 --- The entities of the scene the game plays. In the editor everything done here is undone on Stop.
 local Scene = {}
 
+--- What Scene.raycast hit. `normal` is the face of the box it went in through, `distance` is in meters.
+export type RaycastHit = {
+	entity: Entity,
+	position: vector,
+	normal: vector,
+	distance: number,
+}
+
 --- The first entity with that name, nil when there's none.
 function Scene.find(name: string): Entity?
 	return native.find(name)
@@ -18,6 +26,13 @@ end
 --- The entity with that UUID (entity:get_uuid()), nil when there's none.
 function Scene.find_by_uuid(uuid: string): Entity?
 	return native.find_by_uuid(uuid)
+end
+
+--- The nearest mesh the ray from `origin` along `direction` hits, nil when there's none. It tests each mesh's
+--- bounding box, turned and scaled with its entity, not the exact triangles. Hidden entities, boxes the ray starts
+--- inside, and `ignore` with its children are left out. `max_distance` is in meters, no limit when left out.
+function Scene.raycast(origin: vector, direction: vector, max_distance: number?, ignore: Entity?): RaycastHit?
+	return native.raycast(origin, direction, max_distance or math.huge, ignore)
 end
 
 --- A new entity at the origin with a transform. A taken name gets a number added, check get_name().
