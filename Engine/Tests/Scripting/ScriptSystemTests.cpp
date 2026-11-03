@@ -83,6 +83,16 @@ void register_tint_component() {
 	(void)registered;
 }
 
+Vec3 world_axis(Entity entity, Vec3 axis) {
+	return Math::normalize(Mat3(entity.get_component<TransformComponent>().get_world_matrix()) * axis);
+}
+
+void check_near(Vec3 actual, Vec3 expected) {
+	CAPTURE(actual);
+	CAPTURE(expected);
+	CHECK(Math::length(actual - expected) < 0.001F);
+}
+
 Foundation::Registration add_plugin(ScriptApi &api, PluginState &state) {
 	return api.add([&state](aquiLua::Runtime &runtime, ScriptEnvironment &) {
 		runtime.bind<plugin_answer>("plugintest_native.answer", &state, "Always 42.");
@@ -951,5 +961,30 @@ TEST_SUITE("Script components") {
 		system.update(0.F);
 		CHECK(changes == 1);
 		CHECK_FALSE(entity.get_component<MetadataComponent>().is_visible());
+	}
+}
+
+TEST_SUITE("Script transforms") {
+	TEST_CASE("world position and forward include moves made this frame") {
+		std::string path = write_script("axes.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set_rotation(vector.create(0, 90, 0))
+				self:set_position(vector.create(1, 2, 3))
+				local out = require("@aquila").Scene.find("Out")
+				out:set_position(self:get_forward())
+				out:set_scale(self:get_world_position())
+			end
+			return M
+		)");
+		Scene scene("Test");
+		scripted_entity(scene, path);
+		Entity out = scene.get_entity_manager()->create_entity("Out");
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		const auto &result = out.get_component<TransformComponent>();
+		check_near(result.get_local_position(), Vec3(1.F, 0.F, 0.F));
+		check_near(result.get_local_scale(), Vec3(1.F, 2.F, 3.F));
 	}
 }

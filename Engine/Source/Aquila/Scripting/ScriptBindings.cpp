@@ -611,8 +611,24 @@ void set_visible(SceneManagement::Entity entity, bool visible) {
 		[visible](MetadataComponent &metadata) { metadata.set_visible(visible); });
 }
 
-Vec3 forward(TransformComponent &transform) {
-	return Math::normalize(transform.get_world_rotation() * Vec3(0.F, 0.F, 1.F));
+Mat4 world_matrix(SceneManagement::Entity entity) {
+	Mat4 world(1.F);
+	for (SceneManagement::Entity at = entity; at.is_valid();) {
+		if (const auto *transform = at.try_get_component<TransformComponent>()) {
+			world = transform->get_local_transform_matrix() * world;
+		}
+		const auto *node = at.try_get_component<SceneNodeComponent>();
+		at = node != nullptr ? node->parent : SceneManagement::Entity::null();
+	}
+	return world;
+}
+
+Vec3 world_position(SceneManagement::Entity entity) {
+	return Vec3(world_matrix(entity)[3]);
+}
+
+Vec3 forward(SceneManagement::Entity entity) {
+	return Math::normalize(Vec3(world_matrix(entity)[2]));
 }
 
 std::string uuid(MetadataComponent &metadata) {
@@ -718,11 +734,8 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 				"get_scale", "Returns the scale, relative to the parent."),
 			aquiLua::make_method<check_component<TransformComponent>, &TransformComponent::set_local_scale>(
 				"set_scale", "Sets the scale, relative to the parent."),
-			aquiLua::make_method<check_component<TransformComponent>, &TransformComponent::get_world_position>(
-				"get_world_position",
-				"Position in the world, as of the last frame (moves made this frame show "
-				"up next frame)."),
-			free_method<forward>("get_forward", "The direction its +Z axis points in the world, as of the last frame."),
+			free_method<world_position>("get_world_position", "Position in the world."),
+			free_method<forward>("get_forward", "The direction its +Z axis points in the world."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
 			free_method<uuid>("get_uuid", "The id saved in scenes. Stays the same across saves, loads and Play."),
 			aquiLua::Method("has", entity_has, has_signature,
