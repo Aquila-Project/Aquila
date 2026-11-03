@@ -26,7 +26,7 @@ struct ComponentEditor {
 	Delegate<Unique<Aquila::UI::Core::IInspectorContent>(Aquila::SceneManagement::Entity, EditorContext &)> content{};
 };
 
-/// One inspector tab and one Add Component submenu.
+/// One inspector tab, its Add Component only offers the group's components.
 struct ComponentGroup {
 	std::string name;
 	std::string icon = "box";
