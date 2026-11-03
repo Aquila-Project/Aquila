@@ -24,8 +24,9 @@ class ScriptSystem {
 	AQUILA_NONCOPYABLE(ScriptSystem);
 	AQUILA_NONMOVEABLE(ScriptSystem);
 
-	/// Advances Aquila.Time, starts scripts on new or changed paths, stops removed ones, then calls on_update.
-	/// A script that errors stops being called until its path changes.
+	/// Advances Aquila.Time, starts scripts on new or changed paths, stops removed ones, calls on_update, then runs
+	/// the Aquila.Time timers and sequences that are due. A script that errors stops being called until its path
+	/// changes.
 	void update(F32 delta_time);
 	/// Calls on_stop on every running script and unloads them all. The next update() starts them again.
 	void stop();
@@ -48,6 +49,7 @@ class ScriptSystem {
 	SceneManagement::Scene &m_scene;
 	ScriptEnvironment m_environment;
 	aquiLua::Runtime m_runtime;
+	aquiLua::ScriptId m_scheduler;
 	std::unordered_map<entt::entity, Instance> m_instances;
 };
 

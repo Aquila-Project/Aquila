@@ -1171,3 +1171,119 @@ TEST_SUITE("Aquila.Math") {
 		CHECK(entity.get_component<MetadataComponent>().get_name() == "math ok");
 	}
 }
+
+TEST_SUITE("Aquila.Time timers") {
+	TEST_CASE("after and every run on game time, cancel stops them") {
+		std::string path = write_script("timers.luau", R"(
+			local Time = require("@aquila").Time
+			local fired = "none"
+			local ticks = 0
+			local M = {}
+			function M.on_start(self)
+				Time.after(1, function()
+					fired = "after"
+				end)
+				local every
+				every = Time.every(0.5, function()
+					ticks += 1
+					if ticks == 3 then
+						every:cancel()
+					end
+				end)
+				Time.after(0.2, function()
+					error("a cancelled timer ran")
+				end):cancel()
+			end
+			function M.on_update(self, dt)
+				self:set_name(fired .. " " .. tostring(ticks))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		auto name = [&] { return entity.get_component<MetadataComponent>().get_name(); };
+
+		std::ostringstream log;
+		Foundation::Logger::set_sink(&log);
+		for (int i = 0; i < 3; ++i) {
+			system.update(0.25F);
+		}
+		system.update(0.F);
+		CHECK(name() == "none 1");
+		for (int i = 0; i < 6; ++i) {
+			system.update(0.25F);
+		}
+		system.update(0.F);
+		Foundation::Logger::set_sink(nullptr);
+		CHECK(name() == "after 3");
+		CHECK(log.str().find("cancelled timer") == std::string::npos);
+	}
+
+	TEST_CASE("spawn runs a sequence that waits between steps") {
+		std::string path = write_script("sequence.luau", R"(
+			local Time = require("@aquila").Time
+			local M = {}
+			function M.on_start(self)
+				assert(not pcall(Time.wait, 1), "wait outside spawn")
+				Time.spawn(function(label: string)
+					self:set_name(label .. " 1")
+					Time.wait(1)
+					self:set_name(label .. " 2")
+					Time.wait(0.5)
+					self:set_name(label .. " 3")
+				end, "step")
+				Time.spawn(function()
+					Time.wait(0.1)
+					error("a cancelled sequence went on")
+				end):cancel()
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		auto name = [&] { return entity.get_component<MetadataComponent>().get_name(); };
+
+		std::ostringstream log;
+		Foundation::Logger::set_sink(&log);
+		system.update(0.F);
+		CHECK(name() == "step 1");
+		system.update(0.5F);
+		CHECK(name() == "step 1");
+		system.update(0.5F);
+		CHECK(name() == "step 2");
+		system.update(0.5F);
+		Foundation::Logger::set_sink(nullptr);
+		CHECK(name() == "step 3");
+		CHECK(log.str().find("cancelled sequence") == std::string::npos);
+	}
+
+	TEST_CASE("an error in a timer is logged with its traceback and the others still run") {
+		std::string path = write_script("timer-error.luau", R"(
+			local Time = require("@aquila").Time
+			local M = {}
+			function M.on_start(self)
+				Time.after(0.1, function()
+					error("timer went wrong")
+				end)
+				Time.after(0.1, function()
+					self:set_name("still ran")
+				end)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		std::ostringstream log;
+		Foundation::Logger::set_sink(&log);
+		system.update(0.2F);
+		Foundation::Logger::set_sink(nullptr);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "still ran");
+		const std::string text = log.str();
+		CHECK(text.find("timer went wrong") != std::string::npos);
+		CHECK(text.find("/script-tests/timer-error.luau:6") != std::string::npos);
+	}
+}

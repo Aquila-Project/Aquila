@@ -14,6 +14,15 @@ ScriptEntity to_script(entt::entity entity) {
 	return ScriptEntity{ entt::to_integral(entity) };
 }
 
+constexpr std::string_view K_SCHEDULER_SOURCE = R"(
+local Scheduler = require("@aquila/Internal/Scheduler")
+return {
+	step = function(dt: number)
+		Scheduler.step(dt)
+	end,
+}
+)";
+
 } // namespace
 
 ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input, const ScriptApi *api)
@@ -24,6 +33,7 @@ ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputS
 	} else {
 		register_engine_api(m_runtime, m_environment);
 	}
+	m_scheduler = m_runtime.load_source("Aquila scheduler", K_SCHEDULER_SOURCE);
 }
 
 ScriptSystem::~ScriptSystem() = default;
@@ -63,6 +73,10 @@ void ScriptSystem::update(F32 delta_time) {
 		if (instance.has_update && !instance.failed) {
 			instance.failed = !m_runtime.call(instance.script, "on_update", to_script(entity), delta_time);
 		}
+	}
+
+	if (m_scheduler.is_valid()) {
+		m_runtime.call(m_scheduler, "step", delta_time);
 	}
 }
 
