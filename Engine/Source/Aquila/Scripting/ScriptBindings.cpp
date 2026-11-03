@@ -8,6 +8,7 @@
 #include "Aquila/Platform/InputState.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/Rendering/ViewMath.h"
+#include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
@@ -406,6 +407,172 @@ template <typename T> T *check_component(lua_State *state) {
 	return component;
 }
 
+const SceneManagement::ComponentDescriptor &check_descriptor(lua_State *state) {
+	const char *name = luaL_checkstring(state, 2);
+	const SceneManagement::ComponentDescriptor *descriptor = SceneManagement::ComponentRegistry::instance().find(name);
+	if (descriptor == nullptr) {
+		luaL_error(state, "unknown component '%s'", name);
+	}
+	return *descriptor;
+}
+
+void *check_instance(lua_State *state, SceneManagement::Entity entity,
+					 const SceneManagement::ComponentDescriptor &descriptor) {
+	void *instance = descriptor.get(entity);
+	if (instance == nullptr) {
+		luaL_error(state, "entity %u has no %s component", aquiLua::check<ScriptEntity>(state, 1).id,
+				   descriptor.get_name().c_str());
+	}
+	return instance;
+}
+
+const Reflection::Property &check_property(lua_State *state, const SceneManagement::ComponentDescriptor &descriptor,
+										   const void *instance) {
+	const std::string_view name = luaL_checkstring(state, 3);
+	const Reflection::Property *hidden = nullptr;
+	for (const Reflection::Property &property : descriptor.get_type().get_properties()) {
+		if (property.name != name) {
+			continue;
+		}
+		if (property.is_visible(instance)) {
+			return property;
+		}
+		if (hidden == nullptr) {
+			hidden = &property;
+		}
+	}
+	if (hidden == nullptr) {
+		luaL_error(state, "%s has no property '%s'", descriptor.get_name().c_str(), name.data());
+	}
+	return *hidden;
+}
+
+void push_property_value(lua_State *state, const Reflection::Property &property,
+						 const Reflection::PropertyValue &value) {
+	if (property.kind == Reflection::PropertyKind::Enum) {
+		const Int32 raw = std::get<Int32>(value);
+		const auto option = std::ranges::find(property.options, raw, &Reflection::EnumOption::value);
+		if (option != property.options.end()) {
+			aquiLua::push(state, option->name);
+		} else {
+			aquiLua::push(state, raw);
+		}
+		return;
+	}
+	std::visit(
+		[state](const auto &stored) {
+			if constexpr (std::is_same_v<std::decay_t<decltype(stored)>, Vec2>) {
+				aquiLua::push(state, Vec3(stored, 0.F));
+			} else {
+				aquiLua::push(state, stored);
+			}
+		},
+		value);
+}
+
+Reflection::PropertyValue check_property_value(lua_State *state, const SceneManagement::ComponentDescriptor &descriptor,
+											   const Reflection::Property &property) {
+	constexpr int K_VALUE = 4;
+	using Reflection::PropertyKind;
+	const auto number = [&](F64 low, F64 high) {
+		return std::clamp(luaL_checknumber(state, K_VALUE), std::max(low, static_cast<F64>(property.hints.min)),
+						  std::min(high, static_cast<F64>(property.hints.max)));
+	};
+	switch (property.kind) {
+	case PropertyKind::Bool:
+		return luaL_checkboolean(state, K_VALUE) != 0;
+	case PropertyKind::Int:
+		return static_cast<Int32>(
+			std::lround(number(std::numeric_limits<Int32>::min(), std::numeric_limits<Int32>::max())));
+	case PropertyKind::Float:
+		return static_cast<F32>(number(std::numeric_limits<F64>::lowest(), std::numeric_limits<F64>::max()));
+	case PropertyKind::Vec2:
+		return Vec2(aquiLua::check<Vec3>(state, K_VALUE));
+	case PropertyKind::Vec3:
+		return aquiLua::check<Vec3>(state, K_VALUE);
+	case PropertyKind::Vec4:
+		return aquiLua::check<Vec4>(state, K_VALUE);
+	case PropertyKind::String:
+		return std::string(luaL_checkstring(state, K_VALUE));
+	case PropertyKind::Enum:
+		break;
+	}
+	if (lua_type(state, K_VALUE) == LUA_TNUMBER) {
+		return static_cast<Int32>(std::lround(lua_tonumber(state, K_VALUE)));
+	}
+	const std::string_view name = luaL_checkstring(state, K_VALUE);
+	const auto option = std::ranges::find(property.options, name, &Reflection::EnumOption::name);
+	if (option == property.options.end()) {
+		luaL_error(state, "%s %s has no option '%s'", descriptor.get_name().c_str(), property.name.c_str(),
+				   name.data());
+	}
+	return option->value;
+}
+
+int entity_has(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	aquiLua::push(state, check_descriptor(state).has(entity));
+	return 1;
+}
+
+int entity_get(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	const void *instance = check_instance(state, entity, descriptor);
+	const Reflection::Property &property = check_property(state, descriptor, instance);
+	push_property_value(state, property, property.get(instance));
+	return 1;
+}
+
+int entity_set(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	void *instance = check_instance(state, entity, descriptor);
+	const Reflection::Property &property = check_property(state, descriptor, instance);
+	if (!property.set || property.hints.read_only) {
+		luaL_error(state, "%s %s is read-only", descriptor.get_name().c_str(), property.name.c_str());
+	}
+	property.set(instance, check_property_value(state, descriptor, property));
+	descriptor.notify_changed(entity);
+	return 0;
+}
+
+int entity_add(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	if (!descriptor.can_add() || !descriptor.is_removable()) {
+		luaL_error(state, "%s can't be added", descriptor.get_name().c_str());
+	}
+	descriptor.add(entity);
+	return 0;
+}
+
+int entity_remove(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	if (!descriptor.is_removable()) {
+		luaL_error(state, "%s can't be removed", descriptor.get_name().c_str());
+	}
+	descriptor.remove(entity);
+	return 0;
+}
+
+aquiLua::LuauSignature component_signature() {
+	return { .params = { "string" }, .result = "()" };
+}
+
+aquiLua::LuauSignature has_signature() {
+	return { .params = { "string" }, .result = "boolean" };
+}
+
+aquiLua::LuauSignature get_signature() {
+	return { .params = { "string", "string" }, .result = "any" };
+}
+
+aquiLua::LuauSignature set_signature() {
+	return { .params = { "string", "string", "boolean | number | string | vector" }, .result = "()" };
+}
+
 template <typename Self> decltype(auto) resolve_self(lua_State *state) {
 	if constexpr (std::is_same_v<Self, SceneManagement::Entity>) {
 		return check_entity(state);
@@ -558,6 +725,19 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 			free_method<forward>("get_forward", "The direction its +Z axis points in the world, as of the last frame."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
 			free_method<uuid>("get_uuid", "The id saved in scenes. Stays the same across saves, loads and Play."),
+			aquiLua::Method("has", entity_has, has_signature,
+							"Whether it has the component, by the name the inspector shows. Unknown names error."),
+			aquiLua::Method("get", entity_get, get_signature,
+							"A component property by the names the inspector shows, like get(\"Light\", \"Range\"). "
+							"Options come back as their names, colors as vectors (w is alpha). When several share a "
+							"name (Light's Intensity in lx, lm or cd), it's the one the inspector shows."),
+			aquiLua::Method("set", entity_set, set_signature,
+							"Writes a component property like the inspector does: numbers stay in its range, options "
+							"go by name. Read-only properties error."),
+			aquiLua::Method("add", entity_add, component_signature,
+							"Adds the component with its defaults, like Add Component. Does nothing when it's there."),
+			aquiLua::Method("remove", entity_remove, component_signature,
+							"Removes the component. Transform, Metadata and Scene Node can't be removed."),
 		},
 		environment.scene, "An entity in the scene. A script gets the entity it is attached to as self.");
 }

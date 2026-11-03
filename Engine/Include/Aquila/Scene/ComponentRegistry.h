@@ -28,6 +28,13 @@ class ComponentDescriptor {
 	[[nodiscard]] void *get(Entity entity) const { return m_get(entity); }
 	/// The component's `on_changed`, null when it has none. The inspector fires it after every edit.
 	[[nodiscard]] Signal<void()> *get_changed_signal(Entity entity) const { return m_get_changed(entity); }
+	/// After writing through get(): runs EnTT's update observers (the hierarchy listens there), then `on_changed`.
+	void notify_changed(Entity entity) const {
+		m_patch(entity);
+		if (Signal<void()> *changed = m_get_changed(entity)) {
+			(*changed)();
+		}
+	}
 
   private:
 	friend class ComponentRegistry;
@@ -39,6 +46,7 @@ class ComponentDescriptor {
 	Delegate<void(Entity)> m_add;
 	Delegate<void *(Entity)> m_get;
 	Delegate<Signal<void()> *(Entity)> m_get_changed;
+	Delegate<void(Entity)> m_patch;
 };
 
 /// Built-in components register in ComponentRegistry.cpp on first use.
@@ -63,6 +71,7 @@ class ComponentRegistry {
 			descriptor->m_add = [](Entity entity) { entity.get_or_emplace<T>(); };
 		}
 		descriptor->m_get = [](Entity entity) -> void * { return entity.try_get_component<T>(); };
+		descriptor->m_patch = [](Entity entity) { entity.patch_component<T>(); };
 		descriptor->m_get_changed = [](Entity entity) -> Signal<void()> * {
 			if constexpr (requires(T &component) {
 							  { component.on_changed } -> std::convertible_to<Signal<void()> &>;

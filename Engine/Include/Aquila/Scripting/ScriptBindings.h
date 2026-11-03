@@ -61,6 +61,23 @@ template <> struct aquiLua::Converter<Vec3> {
 	}
 };
 
+/// Colors with alpha: w is the fourth component.
+template <> struct aquiLua::Converter<Vec4> {
+	static constexpr const char *luau_type = "vector";
+
+	static void push(lua_State *state, const Vec4 &value) { lua_pushvector(state, value.x, value.y, value.z, value.w); }
+
+	static Vec4 check(lua_State *state, int index) {
+		const float *value = luaL_checkvector(state, index);
+		return Vec4{ value[0], value[1], value[2], value[3] };
+	}
+
+	static Vec4 get(lua_State *state, int index) {
+		const float *value = lua_tovector(state, index);
+		return value != nullptr ? Vec4{ value[0], value[1], value[2], value[3] } : Vec4{ 0.F };
+	}
+};
+
 /// `vector?`: nil or a vector.
 template <> struct aquiLua::Converter<Option<Vec3>> {
 	static constexpr const char *luau_type = "vector?";

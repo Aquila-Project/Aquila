@@ -7,6 +7,8 @@
 #include "Aquila/Foundation/Log.h"
 #include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/FogComponent.h"
+#include "Aquila/Scene/Components/LightComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
@@ -65,6 +67,20 @@ std::string plugin_api_dir() {
 		return path;
 	}();
 	return dir.string();
+}
+
+struct TintComponent {
+	Vec4 tint{ 1.F };
+};
+
+void register_tint_component() {
+	static const bool registered = [] {
+		ComponentRegistry::instance()
+			.register_component<TintComponent>("Test Tint")
+			.property("Tint", &TintComponent::tint, { .color = true });
+		return true;
+	}();
+	(void)registered;
 }
 
 Foundation::Registration add_plugin(ScriptApi &api, PluginState &state) {
@@ -755,5 +771,162 @@ TEST_SUITE("ScriptApi") {
 		std::stringstream text;
 		text << std::ifstream(directory / "plugintest_native.luau").rdbuf();
 		CHECK(text.str().find("answer") != std::string::npos);
+	}
+}
+
+TEST_SUITE("Script components") {
+	TEST_CASE("components are read and written by name through their properties") {
+		std::string path = write_script("components.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set("Light", "Type", "Point")
+				self:set("Light", "Color", vector.create(1, 0.5, 0))
+				self:set("Light", "Range", 7)
+				self:set("Light", "Cast Shadows", false)
+				self:set_name(self:get("Light", "Type") .. " " .. tostring(self:get("Light", "Range")))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		entity.add_component<LightComponent>();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		const auto &light = entity.get_component<LightComponent>();
+		CHECK(light.get_type() == LightComponent::Type::Point);
+		CHECK(light.get_color() == Vec3(1.F, 0.5F, 0.F));
+		CHECK(light.get_range() == doctest::Approx(7.F));
+		CHECK_FALSE(light.get_cast_shadows());
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "Point 7");
+	}
+
+	TEST_CASE("of properties sharing a name, the one the inspector shows wins") {
+		std::string path = write_script("candela.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set("Light", "Intensity", 100)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		auto &light = entity.add_component<LightComponent>();
+		light.set_type(LightComponent::Type::Point);
+		light.set_intensity_unit(LightComponent::IntensityUnit::Candela);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(light.get_candela() == doctest::Approx(100.F));
+	}
+
+	TEST_CASE("numbers are kept inside the property's range") {
+		std::string path = write_script("fov.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set("Camera", "FOV", 500)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		entity.add_component<CameraComponent>();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<CameraComponent>().fov == doctest::Approx(179.F));
+	}
+
+	TEST_CASE("colors with alpha travel as four wide vectors") {
+		register_tint_component();
+		std::string path = write_script("tint.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:add("Test Tint")
+				self:set("Test Tint", "Tint", vector.create(1, 0.5, 0.25, 0.75))
+				self:set_name(tostring(self:get("Test Tint", "Tint").w))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		REQUIRE(entity.has_component<TintComponent>());
+		CHECK(entity.get_component<TintComponent>().tint == Vec4(1.F, 0.5F, 0.25F, 0.75F));
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "0.75");
+	}
+
+	TEST_CASE("has, add and remove follow what the editor allows") {
+		std::string path = write_script("add-remove.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				assert(not self:has("Fog"))
+				self:add("Fog")
+				assert(self:has("Fog"))
+				self:set("Fog", "Density", 0.1)
+				self:remove("Camera")
+				assert(not pcall(function() self:remove("Transform") end))
+				self:set_name("done")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		entity.add_component<CameraComponent>();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "done");
+		REQUIRE(entity.has_component<FogComponent>());
+		CHECK(entity.get_component<FogComponent>().density == doctest::Approx(0.1F));
+		CHECK_FALSE(entity.has_component<CameraComponent>());
+		CHECK(entity.has_component<TransformComponent>());
+	}
+
+	TEST_CASE("unknown names, wrong types and read-only properties are script errors") {
+		std::string path = write_script("component-errors.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				local function fails(f)
+					return not pcall(f)
+				end
+				assert(fails(function() return self:get("Lihgt", "Color") end), "unknown component")
+				assert(fails(function() return self:get("Light", "Colour") end), "unknown property")
+				assert(fails(function() return self:get("Light", "Color") end), "missing component")
+				self:add("Light")
+				assert(fails(function() self:set("Light", "Range", "far") end), "wrong type")
+				assert(fails(function() self:set("Light", "Type", "Laser") end), "unknown option")
+				assert(fails(function() self:set("Metadata", "UUID", "x") end), "read-only")
+				self:set_name("all failed")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "all failed");
+	}
+
+	TEST_CASE("writes tell the scene, so the hierarchy follows") {
+		std::string path = write_script("component-notify.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				self:set("Metadata", "Visible", false)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		int changes = 0;
+		scene.on_entities_changed.connect([&changes] { ++changes; });
+
+		system.update(0.F);
+		CHECK(changes == 1);
+		CHECK_FALSE(entity.get_component<MetadataComponent>().is_visible());
 	}
 }
