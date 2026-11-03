@@ -30,13 +30,18 @@ bool open_in_script_editor(const std::string &path) {
 		vfs->to_native_path(std::string(Aquila::SharedConstants::PROJECT_MOUNT)).value_or(std::string{});
 	std::vector<std::string> arguments = Aquila::Foundation::split_arguments(preferences.arguments);
 	bool has_file = false;
+	bool has_project = false;
 	for (std::string &argument : arguments) {
 		has_file = has_file || argument.find("{file}") != std::string::npos;
+		has_project = has_project || argument.find("{project}") != std::string::npos;
 		Aquila::Foundation::replace_all(argument, "{project}", project);
 		Aquila::Foundation::replace_all(argument, "{file}", *file);
 	}
 	if (!has_file) {
 		arguments.push_back(*file);
+	}
+	if (preferences.open_project && !has_project && !project.empty()) {
+		arguments.insert(arguments.begin(), project);
 	}
 	if (!Aquila::Platform::launch_detached(program, arguments)) {
 		AQUILA_LOG_ERROR("Script editor: couldn't start '{}', check Settings > Script Editor", program);

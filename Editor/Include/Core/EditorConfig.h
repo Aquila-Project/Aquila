@@ -84,6 +84,9 @@ struct ScriptEditorPreferences {
 	/// Split like a command line. {file} is the script, {project} the project folder. Without {file} the script
 	/// goes last.
 	std::string arguments = "{file}";
+	/// The project folder goes first when the arguments don't place {project} themselves, so editors like VS Code
+	/// open the whole project with the script in it. Only with a program set.
+	bool open_project = true;
 
 	bool operator==(const ScriptEditorPreferences &) const = default;
 };

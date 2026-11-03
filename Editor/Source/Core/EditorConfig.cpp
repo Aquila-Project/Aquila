@@ -54,6 +54,7 @@ template <typename Visit> void visit(ContentBrowserPreferences &p, Visit &&field
 template <typename Visit> void visit(ScriptEditorPreferences &p, Visit &&field) {
 	field("program", p.program);
 	field("arguments", p.arguments);
+	field("open_project", p.open_project);
 }
 
 template <typename Visit> void visit(StartupPreferences &p, Visit &&field) {

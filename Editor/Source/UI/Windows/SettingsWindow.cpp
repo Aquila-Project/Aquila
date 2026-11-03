@@ -191,11 +191,13 @@ void SettingsWindow::add_editor_pages() {
 	Page &script_editor = add_page(
 		Scope::Editor, "Script Editor", "file-code",
 		"What opens scripts from the content browser and the inspector. Program is the editor's executable "
-		"(browse for it) or a command, empty uses the system's default app. In Arguments, {file} is the script "
-		"and {project} the project folder.");
+		"(browse for it) or a command, empty uses the system's default app. Open Project puts the project folder "
+		"first, so editors like VS Code open the whole project with the script in it. In Arguments, {file} is the "
+		"script and {project} the project folder.");
 	script_editor.instance = &prefs.script_editor;
 	TypeBuilder<ScriptEditor>(*script_editor.type)
 		.property("Program", &ScriptEditor::program)
+		.property("Open Project", &ScriptEditor::open_project, PropertyHints{ .toggle = true })
 		.property("Arguments", &ScriptEditor::arguments);
 	script_editor.reset = [&prefs] { prefs.script_editor = {}; };
 	script_editor.extra = [this](SettingsSection &section, ReflectedPropertyGrid &reflected) {
