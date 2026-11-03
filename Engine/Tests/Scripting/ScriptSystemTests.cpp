@@ -1062,4 +1062,49 @@ TEST_SUITE("Script transforms") {
 		scene.update_transform_hierarchy();
 		check_near(world_axis(entity, Vec3(0.F, 1.F, 0.F)), Vec3(1.F, 0.F, 0.F));
 	}
+
+	TEST_CASE("set_parent keeps the world transform, get_children lists the children") {
+		std::string path = write_script("reparent.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_start(self)
+				local holder = Scene.find("Holder")
+				self:set_parent(holder)
+				local children = holder:get_children()
+				assert(#children == 1 and children[1]:get_id() == self:get_id())
+				assert(self:get_parent():get_id() == holder:get_id())
+				local below = Scene.find("Below")
+				assert(not pcall(function() self:set_parent(self) end), "itself")
+				assert(not pcall(function() self:set_parent(below) end), "its own child")
+				self:set_parent(nil)
+				assert(self:get_parent() == nil and #holder:get_children() == 0)
+				self:set_parent(holder)
+				self:set_name("moved")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity holder = entities.create_entity("Holder");
+		Entity entity = scripted_entity(scene, path);
+		Entity below = entities.create_entity("Below");
+		entities.add_child(entity, below);
+		auto &holder_transform = holder.get_component<TransformComponent>();
+		holder_transform.set_local_position(Vec3(5.F, 0.F, 0.F));
+		holder_transform.set_local_rotation_euler(Vec3(0.F, 90.F, 0.F));
+		holder_transform.set_local_scale(Vec3(2.F));
+		entity.get_component<TransformComponent>().set_local_position(Vec3(1.F, 2.F, 3.F));
+		scene.update_transform_hierarchy();
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		scene.update_transform_hierarchy();
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "moved");
+		REQUIRE(entities.get_parent(entity).has_value());
+		CHECK(*entities.get_parent(entity) == holder);
+		const auto &transform = entity.get_component<TransformComponent>();
+		check_near(transform.get_world_position(), Vec3(1.F, 2.F, 3.F));
+		check_near(transform.get_world_scale(), Vec3(1.F));
+		check_near(world_axis(entity, Vec3(0.F, 0.F, 1.F)), Vec3(0.F, 0.F, 1.F));
+	}
 }

@@ -692,6 +692,65 @@ Option<ScriptEntity> parent(SceneNodeComponent &node) {
 	return node.parent.is_null() ? std::nullopt : Option<ScriptEntity>(to_script(node.parent.get_handle()));
 }
 
+int entity_children(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const auto *node = entity.try_get_component<SceneNodeComponent>();
+	lua_createtable(state, node != nullptr ? static_cast<int>(node->children.size()) : 0, 0);
+	if (node == nullptr) {
+		return 1;
+	}
+	int index = 1;
+	for (const SceneManagement::Entity &child : node->children) {
+		if (child.is_valid()) {
+			aquiLua::push(state, to_script(child.get_handle()));
+			lua_rawseti(state, -2, index++);
+		}
+	}
+	return 1;
+}
+
+int entity_set_parent(lua_State *state) {
+	SceneManagement::Entity entity = check_entity(state);
+	SceneManagement::EntityManager &entities = *entity.get_scene()->get_entity_manager();
+	SceneManagement::Entity parent = SceneManagement::Entity::null();
+	if (const Option<ScriptEntity> handle = aquiLua::check<Option<ScriptEntity>>(state, 2)) {
+		parent = SceneManagement::Entity(from_script(*handle), entity.get_scene());
+		if (!parent.is_valid()) {
+			luaL_error(state, "entity %u was destroyed", handle->id);
+		}
+		if (parent == entity || entities.is_descendant(entity, parent)) {
+			luaL_error(state, "entity %u can't go under itself or its own children", handle->id);
+		}
+	}
+	auto *node = entity.try_get_component<SceneNodeComponent>();
+	auto *transform = entity.try_get_component<TransformComponent>();
+	if (node == nullptr || transform == nullptr) {
+		luaL_error(state, "entity %u has no Scene Node or Transform", aquiLua::check<ScriptEntity>(state, 1).id);
+	}
+
+	const Mat4 world = world_matrix(entity);
+	if (node->parent.is_valid()) {
+		entities.remove_child(node->parent, entity);
+	}
+	if (parent.is_valid()) {
+		entities.add_child(parent, entity);
+	}
+	const Mat4 local = Math::inverse(parent.is_valid() ? world_matrix(parent) : Mat4(1.F)) * world;
+	transform->set_local_position(Vec3(local[3]));
+	transform->set_local_rotation(rotation_of(local));
+	transform->set_local_scale(
+		Vec3(Math::length(Vec3(local[0])), Math::length(Vec3(local[1])), Math::length(Vec3(local[2]))));
+	return 0;
+}
+
+aquiLua::LuauSignature children_signature() {
+	return { .params = {}, .result = "{Entity}" };
+}
+
+aquiLua::LuauSignature set_parent_signature() {
+	return { .params = { "Entity?" }, .result = "()" };
+}
+
 int entity_id(lua_State *state) {
 	aquiLua::push(state, aquiLua::check<ScriptEntity>(state, 1).id);
 	return 1;
@@ -799,6 +858,10 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 								"Turns it around a world axis through its own origin, in degrees. Pass get_up() or "
 								"get_forward() to turn around its own axes."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
+			aquiLua::Method("get_children", entity_children, children_signature, "Its direct children."),
+			aquiLua::Method("set_parent", entity_set_parent, set_parent_signature,
+							"Moves it under another entity, or to the root with nil, staying where it is in the "
+							"world. Errors when the parent is itself or one of its children."),
 			free_method<uuid>("get_uuid", "The id saved in scenes. Stays the same across saves, loads and Play."),
 			aquiLua::Method("has", entity_has, has_signature,
 							"Whether it has the component, by the name the inspector shows. Unknown names error."),
