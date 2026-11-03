@@ -3,13 +3,16 @@
 
 #include "Aquila/Application/IModule.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/Foundation/Registration.h"
+#include "Aquila/Scripting/ScriptApi.h"
 
 namespace Aquila::Scripting {
 
 class ScriptSystem;
 
 /// Runs every ScriptComponent in the scene while the game plays, never at edit time. Every play starts the
-/// scripts fresh, in a new Luau VM. Writes the Luau type definitions on attach.
+/// scripts fresh, in a new Luau VM. Provides the ScriptApi service. Writes the Luau type definitions on the first
+/// frame and again whenever the ScriptApi changes.
 class ScriptModule final : public Application::IModule {
   public:
 	ScriptModule();
@@ -23,6 +26,9 @@ class ScriptModule final : public Application::IModule {
 
   private:
 	Application::EngineContext *m_engine = nullptr;
+	ScriptApi m_api;
+	Foundation::Registration m_api_service;
+	Option<Uint64> m_types_revision;
 	Unique<ScriptSystem> m_system;
 };
 

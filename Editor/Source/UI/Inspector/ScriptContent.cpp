@@ -1,6 +1,8 @@
 #include "UI/Inspector/ScriptContent.h"
 
+#include "Aquila/Foundation/ServiceRegistry.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
+#include "Aquila/Scripting/ScriptApi.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Core/EditorContext.h"
@@ -142,8 +144,9 @@ void ScriptContent::show_fields() {
 		return;
 	}
 	auto *component = m_entity.exists() ? m_entity.try_get_component<ScriptComponent>() : nullptr;
+	const auto *api = m_context.engine().get_services().find<Scripting::ScriptApi>();
 	std::vector<ScriptField> declared =
-		component != nullptr ? Scripting::read_script_fields(component->path) : std::vector<ScriptField>{};
+		component != nullptr ? Scripting::read_script_fields(component->path, api) : std::vector<ScriptField>{};
 
 	if (m_fields == nullptr || declared != m_declared) {
 		m_fields.reset();

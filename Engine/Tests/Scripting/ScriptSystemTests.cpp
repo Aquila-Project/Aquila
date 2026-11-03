@@ -13,6 +13,7 @@
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scripting/ScriptApi.h"
 #include "Aquila/Scripting/ScriptFields.h"
 #include "Aquila/Scripting/ScriptSystem.h"
 
@@ -23,7 +24,7 @@ using namespace Aquila::Scripting;
 
 namespace {
 
-std::string write_script(const std::string &name, const std::string &source) {
+const std::filesystem::path &script_dir() {
 	static const std::filesystem::path dir = [] {
 		auto path = std::filesystem::temp_directory_path() / "aquila-script-tests";
 		std::filesystem::create_directories(path);
@@ -32,8 +33,45 @@ std::string write_script(const std::string &name, const std::string &source) {
 			"/script-tests", std::make_shared<Platform::Filesystem::NativeFileSystem>(path.string()));
 		return path;
 	}();
-	std::ofstream(dir / name) << source;
+	return dir;
+}
+
+std::string write_script(const std::string &name, const std::string &source) {
+	std::ofstream(script_dir() / name) << source;
 	return "/script-tests/" + name;
+}
+
+struct PluginState {
+	int calls = 0;
+};
+
+int plugin_answer(PluginState &state) {
+	++state.calls;
+	return 42;
+}
+
+std::string plugin_api_dir() {
+	static const std::filesystem::path dir = [] {
+		auto path = script_dir() / "plugin-api";
+		std::filesystem::create_directories(path);
+		std::ofstream(path / "init.luau") << R"(
+			local native = require("@plugintest_native")
+			local Plugin = {}
+			function Plugin.answer(): number
+				return native.answer()
+			end
+			return Plugin
+		)";
+		return path;
+	}();
+	return dir.string();
+}
+
+Foundation::Registration add_plugin(ScriptApi &api, PluginState &state) {
+	return api.add([&state](aquiLua::Runtime &runtime, ScriptEnvironment &) {
+		runtime.bind<plugin_answer>("plugintest_native.answer", &state, "Always 42.");
+		runtime.add_alias("plugintest", plugin_api_dir());
+	});
 }
 
 Entity scripted_entity(Scene &scene, const std::string &path) {
@@ -626,5 +664,78 @@ TEST_SUITE("ScriptSystem") {
 		system.update(0.F);
 		const auto &metadata = entity.get_component<MetadataComponent>();
 		CHECK(metadata.get_name() == metadata.get_id().to_string());
+	}
+}
+
+TEST_SUITE("ScriptApi") {
+	TEST_CASE("an added binder reaches scripts through its own Luau module, next to the engine's") {
+		PluginState state;
+		ScriptApi api;
+		Foundation::Registration plugin = add_plugin(api, state);
+		std::string path = write_script("plugin.luau", R"(
+			local Plugin = require("@plugintest")
+			local M = {}
+			function M.on_start(self)
+				self:set_name(tostring(Plugin.answer()))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene, nullptr, &api);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "42");
+		CHECK(state.calls == 1);
+	}
+
+	TEST_CASE("binders run in the order they were added") {
+		ScriptApi api;
+		std::vector<int> order;
+		Foundation::Registration first =
+			api.add([&order](aquiLua::Runtime &, ScriptEnvironment &) { order.push_back(1); });
+		Foundation::Registration second =
+			api.add([&order](aquiLua::Runtime &, ScriptEnvironment &) { order.push_back(2); });
+		Scene scene("Test");
+		ScriptSystem system(scene, nullptr, &api);
+		CHECK(order == std::vector<int>{ 1, 2 });
+	}
+
+	TEST_CASE("a removed binder is gone from the next runtime, and the revision moves") {
+		ScriptApi api;
+		int runs = 0;
+		const Uint64 empty = api.get_revision();
+		Foundation::Registration added = api.add([&runs](aquiLua::Runtime &, ScriptEnvironment &) { ++runs; });
+		const Uint64 with = api.get_revision();
+		CHECK(with != empty);
+		added.reset();
+		CHECK(api.get_revision() != with);
+
+		Scene scene("Test");
+		ScriptSystem system(scene, nullptr, &api);
+		CHECK(runs == 0);
+	}
+
+	TEST_CASE("the field reader and the type files see added modules") {
+		PluginState state;
+		ScriptApi api;
+		Foundation::Registration plugin = add_plugin(api, state);
+		std::string path = write_script("plugin-fields.luau", R"(
+			local Plugin = require("@plugintest")
+			local Field = require("@aquila/Field")
+			Field.number("answer", Plugin.answer())
+			return {}
+		)");
+
+		const std::vector<ScriptField> fields = read_script_fields(path, &api);
+		REQUIRE(fields.size() == 1);
+		CHECK(std::get<F64>(fields[0].default_value) == doctest::Approx(42.0));
+
+		const auto directory = std::filesystem::temp_directory_path() / "aquila-plugin-types";
+		Scene scene("Test");
+		REQUIRE(ScriptSystem(scene, nullptr, &api).write_types(directory.string()));
+		std::stringstream text;
+		text << std::ifstream(directory / "plugintest_native.luau").rdbuf();
+		CHECK(text.str().find("answer") != std::string::npos);
 	}
 }

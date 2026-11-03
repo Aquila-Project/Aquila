@@ -11,11 +11,15 @@
 
 namespace Aquila::Scripting {
 
+class ScriptApi;
+
 class ScriptSystem {
   public:
-	/// `input` is what Aquila.Input reads, null for no input. It must outlive the system.
+	/// `input` is what Aquila.Input reads, null for no input. It must outlive the system. `api` adds other modules'
+	/// Luau modules, null is the engine's alone.
 	/// Script errors, with a Luau traceback, go to the engine log (so the editor's console).
-	explicit ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input = nullptr);
+	explicit ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input = nullptr,
+						  const ScriptApi *api = nullptr);
 	~ScriptSystem();
 	AQUILA_NONCOPYABLE(ScriptSystem);
 	AQUILA_NONMOVEABLE(ScriptSystem);
@@ -26,7 +30,7 @@ class ScriptSystem {
 	/// Calls on_stop on every running script and unloads them all. The next update() starts them again.
 	void stop();
 
-	/// Luau type definitions of the engine API, for autocomplete in an editor.
+	/// Luau type definitions of everything bound, for autocomplete in an editor.
 	bool write_types(const std::string &directory) const;
 
   private:

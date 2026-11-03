@@ -2,6 +2,7 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+#include "Aquila/Scripting/ScriptApi.h"
 #include "Aquila/Scripting/ScriptBindings.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 
@@ -15,10 +16,14 @@ ScriptEntity to_script(entt::entity entity) {
 
 } // namespace
 
-ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input)
+ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input, const ScriptApi *api)
 	: m_scene(scene), m_environment{ .scene = &scene, .input = input } {
 	m_runtime.set_error_handler([](std::string_view message) { AQUILA_LOG_ERROR("[Luau] {}", message); });
-	register_engine_api(m_runtime, m_environment);
+	if (api != nullptr) {
+		api->bind(m_runtime, m_environment);
+	} else {
+		register_engine_api(m_runtime, m_environment);
+	}
 }
 
 ScriptSystem::~ScriptSystem() = default;
