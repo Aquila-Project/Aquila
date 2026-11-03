@@ -364,8 +364,14 @@ const ComponentDescriptor *ComponentRegistry::find(std::string_view name) const 
 }
 
 void ComponentRegistry::copy_components(Entity from, Entity to) const {
-	for (const auto &copy : m_copiers) {
-		copy(from, to);
+	copy_components(from, to, {});
+}
+
+void ComponentRegistry::copy_components(Entity from, Entity to, std::initializer_list<entt::id_type> skip) const {
+	for (const auto &[type, copy] : m_copiers) {
+		if (std::ranges::find(skip, type) == skip.end()) {
+			copy(from, to);
+		}
 	}
 }
 

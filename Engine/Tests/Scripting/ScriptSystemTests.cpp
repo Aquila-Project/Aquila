@@ -1372,6 +1372,65 @@ TEST_SUITE("Aquila.Events") {
 }
 
 TEST_SUITE("Script spawning") {
+	TEST_CASE("clone copies an entity with its components, children and script, next to the original") {
+		std::string enemy = write_script("enemy.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				if self:is_visible() then
+					self:set_name("spawned")
+				end
+			end
+			return M
+		)");
+		std::string spawner = write_script("spawner.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_start(self)
+				local copy = Scene.find("Enemy"):clone()
+				copy:set_visible(true)
+				copy:set_position(vector.create(4, 0, 0))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity group = entities.create_entity("Group");
+		Entity original = scripted_entity(scene, enemy);
+		original.get_component<MetadataComponent>().set_name("Enemy");
+		original.get_component<MetadataComponent>().set_visible(false);
+		original.add_component<LightComponent>().set_range(3.F);
+		entities.add_child(group, original);
+		Entity eye = entities.create_entity("Eye");
+		eye.get_component<TransformComponent>().set_local_position(Vec3(0.F, 1.F, 0.F));
+		entities.add_child(original, eye);
+		scripted_entity(scene, spawner);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		system.update(0.F);
+		Option<Entity> copy;
+		for (auto [handle, light] : scene.get_registry().view<LightComponent>().each()) {
+			if (handle != original.get_handle()) {
+				copy = Entity(handle, &scene);
+			}
+		}
+		REQUIRE(copy.has_value());
+		const auto &metadata = copy->get_component<MetadataComponent>();
+		CHECK(metadata.get_name() == "spawned");
+		CHECK(metadata.get_id() != original.get_component<MetadataComponent>().get_id());
+		CHECK(copy->get_component<LightComponent>().get_range() == doctest::Approx(3.F));
+		CHECK(copy->get_component<TransformComponent>().get_local_position() == Vec3(4.F, 0.F, 0.F));
+		REQUIRE(entities.get_parent(*copy).has_value());
+		CHECK(*entities.get_parent(*copy) == group);
+		const auto &children = copy->get_component<SceneNodeComponent>().children;
+		REQUIRE(children.size() == 1);
+		CHECK(children[0] != eye);
+		CHECK(children[0].get_component<MetadataComponent>().get_name() != "");
+		CHECK(children[0].get_component<TransformComponent>().get_local_position() == Vec3(0.F, 1.F, 0.F));
+		CHECK(original.get_component<MetadataComponent>().get_name() == "Enemy");
+		CHECK(original.get_component<SceneNodeComponent>().children.size() == 1);
+	}
+
 	TEST_CASE("find_all finds every entity with a name, find_child searches below an entity") {
 		std::string path = write_script("finders.luau", R"(
 			local Scene = require("@aquila").Scene

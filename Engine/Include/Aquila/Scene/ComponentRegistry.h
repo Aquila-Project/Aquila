@@ -84,7 +84,7 @@ class ComponentRegistry {
 		};
 
 		if constexpr (std::is_copy_constructible_v<T>) {
-			m_copiers.emplace_back([](Entity from, Entity to) {
+			m_copiers.emplace_back(entt::type_hash<T>::value(), [](Entity from, Entity to) {
 				if (const T *component = from.try_get_component<T>()) {
 					to.add_or_replace_component<T>(*component);
 				}
@@ -102,12 +102,15 @@ class ComponentRegistry {
 	/// Copies every registered, copy constructible component `from` has onto `to`. Entity fields inside the
 	/// components still point at `from`'s scene.
 	void copy_components(Entity from, Entity to) const;
+	/// Same, leaving out the types in `skip` (entt::type_hash ids). Copying onto a component `to` already has
+	/// replaces it whole, callbacks the scene installed on construct included.
+	void copy_components(Entity from, Entity to, std::initializer_list<entt::id_type> skip) const;
 
   private:
 	ComponentRegistry();
 
 	std::vector<Unique<ComponentDescriptor>> m_descriptors;
-	std::vector<Delegate<void(Entity, Entity)>> m_copiers;
+	std::vector<std::pair<entt::id_type, Delegate<void(Entity, Entity)>>> m_copiers;
 };
 
 }

@@ -752,6 +752,38 @@ Option<ScriptEntity> find_child(SceneManagement::Entity entity, const std::strin
 	return std::nullopt;
 }
 
+SceneManagement::Entity clone_entity(SceneManagement::Entity source, SceneManagement::Entity parent) {
+	SceneManagement::EntityManager &entities = *source.get_scene()->get_entity_manager();
+	SceneManagement::Entity copy = entities.create_entity(source.get_name());
+	SceneManagement::ComponentRegistry::instance().copy_components(source, copy,
+																   { entt::type_hash<MetadataComponent>::value(),
+																	 entt::type_hash<SceneNodeComponent>::value(),
+																	 entt::type_hash<TransformComponent>::value() });
+	copy.get_component<MetadataComponent>().set_visible(source.get_component<MetadataComponent>().is_visible());
+	if (const auto *from = source.try_get_component<TransformComponent>()) {
+		auto &to = copy.get_component<TransformComponent>();
+		to.set_local_position(from->get_local_position());
+		to.set_local_rotation(from->get_local_rotation());
+		to.set_local_scale(from->get_local_scale());
+	}
+	if (parent.is_valid()) {
+		entities.add_child(parent, copy);
+	}
+	const std::vector<SceneManagement::Entity> children = source.get_component<SceneNodeComponent>().children;
+	for (const SceneManagement::Entity &child : children) {
+		if (child.is_valid()) {
+			clone_entity(child, copy);
+		}
+	}
+	return copy;
+}
+
+ScriptEntity clone(SceneManagement::Entity entity) {
+	const auto *node = entity.try_get_component<SceneNodeComponent>();
+	return to_script(
+		clone_entity(entity, node != nullptr ? node->parent : SceneManagement::Entity::null()).get_handle());
+}
+
 std::string uuid(MetadataComponent &metadata) {
 	return metadata.get_id().to_string();
 }
@@ -930,6 +962,10 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 			aquiLua::Method("get_children", entity_children, children_signature, "Its direct children."),
 			free_method<find_child>(
 				"find_child", "The first entity with that name below it, nearer ones first. Nil when there's none."),
+			free_method<clone>(
+				"clone",
+				"A copy with every component, script and child, next to it under the same parent. Hidden "
+				"templates make hidden copies, set_visible(true) shows them."),
 			aquiLua::Method("set_parent", entity_set_parent, set_parent_signature,
 							"Moves it under another entity, or to the root with nil, staying where it is in the "
 							"world. Errors when the parent is itself or one of its children."),
