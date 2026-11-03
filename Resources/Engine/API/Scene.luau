@@ -25,8 +25,9 @@ function Scene.create(name: string): Entity
 	return native.create(name)
 end
 
---- Destroys it and its children at the end of the frame. is_valid() is false after that, every other method
---- errors. Destroying a destroyed entity does nothing.
+--- Destroys it and its children at the end of the frame. Their scripts' on_stop runs right away, before this
+--- returns, and their on_update doesn't run again. is_valid() is false after the frame, every other method errors
+--- then. Destroying a destroyed entity does nothing.
 function Scene.destroy(entity: Entity)
 	native.destroy(entity)
 end

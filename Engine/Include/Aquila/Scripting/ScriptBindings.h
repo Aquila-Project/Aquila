@@ -32,6 +32,8 @@ struct ScriptEnvironment {
 	Uint64 frame = 0;
 	/// Set only while a script's top level runs, Aquila.Field reads and records through it.
 	ScriptFieldContext *loading = nullptr;
+	/// Scene.destroy calls it before queueing the kill, while the entity and its children still exist.
+	Delegate<void(ScriptEntity)> destroying{};
 };
 
 /// Binds the internal native modules (`@native`, `@input`, `@time`, `@scene`, `@screen`, `@camera`, `@fields`) that

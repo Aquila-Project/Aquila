@@ -4,6 +4,7 @@
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Scripting/ScriptApi.h"
 #include "Aquila/Scripting/ScriptBindings.h"
+#include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 
 namespace Aquila::Scripting {
@@ -28,6 +29,7 @@ return {
 ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input, const ScriptApi *api)
 	: m_scene(scene), m_environment{ .scene = &scene, .input = input } {
 	m_runtime.set_error_handler([](std::string_view message) { AQUILA_LOG_ERROR("[Luau] {}", message); });
+	m_environment.destroying = [this](ScriptEntity entity) { finish_tree(static_cast<entt::entity>(entity.id)); };
 	if (api != nullptr) {
 		api->bind(m_runtime, m_environment);
 	} else {
@@ -94,6 +96,28 @@ void ScriptSystem::stop() {
 void ScriptSystem::finish(entt::entity entity, Instance &instance) {
 	if (instance.has_stop && !instance.failed) {
 		m_runtime.call(instance.script, "on_stop", to_script(entity));
+	}
+}
+
+void ScriptSystem::finish_tree(entt::entity root) {
+	auto &registry = m_scene.get_registry();
+	std::vector<entt::entity> pending{ root };
+	while (!pending.empty()) {
+		const entt::entity entity = pending.back();
+		pending.pop_back();
+		if (const auto *node = registry.try_get<SceneManagement::Components::SceneNodeComponent>(entity)) {
+			for (const SceneManagement::Entity &child : node->children) {
+				if (child.is_valid()) {
+					pending.push_back(child.get_handle());
+				}
+			}
+		}
+		if (const auto it = m_instances.find(entity); it != m_instances.end()) {
+			Instance &instance = it->second;
+			finish(entity, instance);
+			instance.has_update = false;
+			instance.has_stop = false;
+		}
 	}
 }
 

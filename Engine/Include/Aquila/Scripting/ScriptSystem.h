@@ -45,6 +45,7 @@ class ScriptSystem {
 
 	void start(entt::entity entity, Instance &instance, const SceneManagement::Components::ScriptComponent &component);
 	void finish(entt::entity entity, Instance &instance);
+	void finish_tree(entt::entity root);
 
 	SceneManagement::Scene &m_scene;
 	ScriptEnvironment m_environment;

@@ -296,6 +296,49 @@ TEST_SUITE("ScriptSystem") {
 		CHECK(entity.get_component<MetadataComponent>().get_name() == "started");
 	}
 
+	TEST_CASE("destroying an entity from a script runs on_stop for it and its children, once") {
+		std::string bullet = write_script("bullet.luau", R"(
+			local Scene = require("@aquila").Scene
+			local log
+			local M = {}
+			function M.on_start(self)
+				log = Scene.find("Log")
+			end
+			function M.on_stop(self)
+				log:set_name(log:get_name() .. "|" .. self:get_name())
+			end
+			return M
+		)");
+		std::string killer = write_script("killer.luau", R"(
+			local Scene = require("@aquila").Scene
+			local M = {}
+			function M.on_update(self, dt)
+				local bullet = Scene.find("Bullet")
+				if bullet then
+					Scene.destroy(bullet)
+				end
+			end
+			return M
+		)");
+		Scene scene("Test");
+		EntityManager &entities = *scene.get_entity_manager();
+		Entity log = entities.create_entity("Log");
+		Entity shot = scripted_entity(scene, bullet);
+		shot.get_component<MetadataComponent>().set_name("Bullet");
+		Entity spark = scripted_entity(scene, bullet);
+		spark.get_component<MetadataComponent>().set_name("Spark");
+		entities.add_child(shot, spark);
+		scripted_entity(scene, killer);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		entities.flush_deletion_queue();
+		system.update(0.F);
+		system.stop();
+		const std::string &text = log.get_component<MetadataComponent>().get_name();
+		CHECK((text == "Log|Bullet|Spark" || text == "Log|Spark|Bullet"));
+	}
+
 	TEST_CASE("on_stop runs when the script is removed or replaced, not when its entity is destroyed") {
 		std::string path = write_script("stop-moves.luau", R"(
 			local M = {}

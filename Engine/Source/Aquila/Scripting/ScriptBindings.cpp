@@ -362,9 +362,13 @@ Option<ScriptEntity> entity_field(ScriptEnvironment &environment, const std::str
 
 void destroy(ScriptEnvironment &environment, ScriptEntity entity) {
 	const SceneManagement::Entity target(from_script(entity), environment.scene);
-	if (target.is_valid()) {
-		environment.scene->get_entity_manager()->queue_for_kill(target);
+	if (!target.is_valid()) {
+		return;
 	}
+	if (environment.destroying) {
+		environment.destroying(entity);
+	}
+	environment.scene->get_entity_manager()->queue_for_kill(target);
 }
 
 CameraComponent &lens(ScriptCamera &camera) {
