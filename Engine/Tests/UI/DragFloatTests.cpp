@@ -46,6 +46,11 @@ struct Fixture {
 	}
 };
 
+Vec2 at(const DragFloat &field, F32 x) {
+	const Rect rect = field.get_absolute_rect();
+	return { rect.left() + x, rect.position.y + rect.size.y * 0.5F };
+}
+
 bool same_color(Vec4 a, Vec4 b) {
 	return glm::all(glm::epsilonEqual(a, b, 0.01F));
 }
@@ -84,6 +89,25 @@ TEST_SUITE("DragFloat") {
 		REQUIRE(background.has_value());
 		REQUIRE(fill.has_value());
 		CHECK(*fill > *background);
+	}
+
+	TEST_CASE("a slider drag keeps the end of the fill under the mouse") {
+		Fixture fixture("center");
+		DragFloat &field = *fixture.field;
+		field.set_range(0.F, 1.F);
+		field.set_slider(true);
+		field.set_speed(0.01F);
+		field.set_value(0.2F);
+		fixture.draw();
+
+		field.on_mouse_press(Platform::MouseButton::Left, at(field, 40.F));
+		field.on_mouse_move(at(field, 140.F));
+		CHECK(field.get_value() == doctest::Approx(0.7F));
+		field.on_mouse_move(at(field, 260.F));
+		CHECK(field.get_value() == doctest::Approx(1.F));
+		field.on_mouse_move(at(field, 100.F));
+		CHECK(field.get_value() == doctest::Approx(0.5F));
+		field.on_mouse_release(Platform::MouseButton::Left, at(field, 100.F));
 	}
 
 	TEST_CASE("the value sits where text-align puts it, inside the padding") {

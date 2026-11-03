@@ -73,6 +73,21 @@ std::string DragFloat::format_value() const {
 	return m_prefix + ss.str();
 }
 
+bool DragFloat::has_range() const {
+	return m_min > -1e17F && m_max < 1e17F && m_max > m_min;
+}
+
+float DragFloat::units_per_pixel() const {
+	float per_pixel = m_speed;
+	if (m_slider && has_range()) {
+		const float width = get_absolute_rect().size.x - (get_display_style().border_width * 2.F);
+		if (width > 1.F) {
+			per_pixel = (m_max - m_min) / width;
+		}
+	}
+	return per_pixel;
+}
+
 Text::FontAtlas *DragFloat::resolve_font() const {
 	return get_resolved_font();
 }
@@ -110,8 +125,9 @@ void DragFloat::on_mouse_press(Platform::MouseButton btn, Vec2 pos) {
 	if (m_mode == Mode::Edit) {
 		return;
 	}
-	m_drag_start_value = m_value;
-	m_drag_start_x = pos.x;
+	m_press_x = pos.x;
+	m_drag_last_x = pos.x;
+	m_drag_value = m_value;
 	m_has_dragged = false;
 }
 
@@ -128,15 +144,17 @@ void DragFloat::on_mouse_move(Vec2 pos) {
 	if (m_mode != Mode::Drag || !m_is_pressed) {
 		return;
 	}
-	const float delta = (pos.x - m_drag_start_x) * m_speed;
-	if (!m_has_dragged && Math::abs(pos.x - m_drag_start_x) > K_DRAG_THRESHOLD) {
+	if (!m_has_dragged && Math::abs(pos.x - m_press_x) > K_DRAG_THRESHOLD) {
 		m_has_dragged = true;
 	}
-	if (m_has_dragged) {
-		set_value(m_drag_start_value + delta);
-		on_value_committed();
-		on_changed(m_value);
+	if (!m_has_dragged) {
+		return;
 	}
+	m_drag_value += (pos.x - m_drag_last_x) * units_per_pixel();
+	m_drag_last_x = pos.x;
+	set_value(m_drag_value);
+	on_value_committed();
+	on_changed(m_value);
 }
 
 void DragFloat::on_key_press(Platform::KeyCode key, int mods) {
@@ -219,8 +237,7 @@ void DragFloat::on_draw_self(Rendering::DrawList &draw_list) {
 	} else {
 		// Drag mode: show the formatted value, optionally a subtle drag indicator.
 		const std::string display = m_suffix.empty() ? format_value() : format_value() + " " + m_suffix;
-		const bool has_range = m_min > -1e17F && m_max < 1e17F && m_max > m_min;
-		if (m_slider && has_range) {
+		if (m_slider && has_range()) {
 			const float fraction = Math::clamp((m_value - m_min) / (m_max - m_min), 0.F, 1.F);
 			const float inset = style.border_width;
 			const Rect fill = {
