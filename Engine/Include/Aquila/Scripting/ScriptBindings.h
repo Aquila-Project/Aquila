@@ -34,11 +34,13 @@ struct ScriptEnvironment {
 	ScriptFieldContext *loading = nullptr;
 	/// Scene.destroy calls it before queueing the kill, while the entity and its children still exist.
 	Delegate<void(ScriptEntity)> destroying{};
+	/// Game.quit sets it, ScriptModule stops the game after the frame's scripts.
+	bool quit_requested = false;
 };
 
-/// Binds the internal native modules (`@native`, `@input`, `@time`, `@scene`, `@screen`, `@camera`, `@fields`) that
-/// Resources/Engine/API wraps as `@aquila` (Aquila.Input, Aquila.Time, Aquila.Scene, Aquila.Screen, Aquila.Camera,
-/// Aquila.Field, Aquila.Log), and the Entity methods.
+/// Binds the internal native modules (`@native`, `@input`, `@time`, `@scene`, `@screen`, `@camera`, `@fields`,
+/// `@game`) that Resources/Engine/API wraps as `@aquila` (Aquila.Input, Aquila.Time, Aquila.Scene, Aquila.Screen,
+/// Aquila.Camera, Aquila.Field, Aquila.Game, Aquila.Log...), and the Entity methods.
 void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environment);
 
 } // namespace Aquila::Scripting

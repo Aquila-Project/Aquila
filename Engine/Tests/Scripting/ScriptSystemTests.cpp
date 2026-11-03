@@ -1505,3 +1505,25 @@ TEST_SUITE("Script spawning") {
 		CHECK(chest.get_component<MetadataComponent>().get_name() == "found");
 	}
 }
+
+TEST_SUITE("Aquila.Game") {
+	TEST_CASE("Game.quit asks for the game to stop once the frame's scripts have run") {
+		std::string path = write_script("quit.luau", R"(
+			local Game = require("@aquila").Game
+			local M = {}
+			function M.on_update(self, dt)
+				Game.quit()
+				self:set_name("still finished the frame")
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+		CHECK_FALSE(system.wants_quit());
+
+		system.update(0.F);
+		CHECK(system.wants_quit());
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "still finished the frame");
+	}
+}

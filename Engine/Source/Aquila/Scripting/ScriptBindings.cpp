@@ -371,6 +371,10 @@ void destroy(ScriptEnvironment &environment, ScriptEntity entity) {
 	environment.scene->get_entity_manager()->queue_for_kill(target);
 }
 
+void quit(ScriptEnvironment &environment) {
+	environment.quit_requested = true;
+}
+
 CameraComponent &lens(ScriptCamera &camera) {
 	return camera.entity.get_component<CameraComponent>();
 }
@@ -911,6 +915,8 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 	runtime.bind<entity_field>("fields.entity", &environment, "Declares an entity field, returns the entity.");
 
 	runtime.bind<screen_size>("screen.get_size", &environment, "Pixels the game is shown in.");
+
+	runtime.bind<quit>("game.quit", &environment, "Stops the game once this frame's scripts have run.");
 
 	runtime.bind<active_camera>("camera.get_active", &environment, "The camera the game renders through.");
 	runtime.bind<set_active_camera>("camera.set_active", &environment, "Renders through this camera.");

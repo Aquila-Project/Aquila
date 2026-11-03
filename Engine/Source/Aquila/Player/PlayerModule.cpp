@@ -79,6 +79,10 @@ void PlayerModule::on_attach(Application::EngineContext &engine) {
 	engine.play();
 }
 
+void PlayerModule::on_stop() {
+	m_engine->request_close();
+}
+
 void PlayerModule::on_event(Platform::Events::Event &event) {
 	if (m_engine != nullptr) {
 		m_engine->get_game_input().on_event(event);

@@ -33,6 +33,9 @@ void ScriptModule::on_pre_render(F32 delta_time) {
 	}
 	if (m_system && m_engine->get_play_state() == Application::PlayState::Playing) {
 		m_system->update(delta_time);
+		if (m_system->wants_quit()) {
+			m_engine->stop();
+		}
 	}
 }
 

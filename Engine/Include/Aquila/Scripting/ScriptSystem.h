@@ -31,6 +31,9 @@ class ScriptSystem {
 	/// Calls on_stop on every running script and unloads them all. The next update() starts them again.
 	void stop();
 
+	/// A script called Game.quit.
+	[[nodiscard]] bool wants_quit() const { return m_environment.quit_requested; }
+
 	/// Luau type definitions of everything bound, for autocomplete in an editor.
 	bool write_types(const std::string &directory) const;
 

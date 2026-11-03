@@ -15,6 +15,7 @@ Aquila.Camera = require("@aquila/Camera")
 Aquila.Color = require("@aquila/Color")
 Aquila.Math = require("@aquila/Math")
 Aquila.Events = require("@aquila/Events")
+Aquila.Game = require("@aquila/Game")
 Aquila.Field = require("@aquila/Field")
 Aquila.Log = require("@aquila/Log")
 
