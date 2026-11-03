@@ -188,15 +188,28 @@ void SettingsWindow::add_editor_pages() {
 	browser.reset = [&prefs] { prefs.content_browser = {}; };
 
 	using ScriptEditor = Config::ScriptEditorPreferences;
-	Page &script_editor =
-		add_page(Scope::Editor, "Script Editor", "file-code",
-				 "What opens scripts from the content browser and the inspector. Leave Program empty for the system's "
-				 "default app. In Arguments, {file} is the script and {project} the project folder.");
+	Page &script_editor = add_page(
+		Scope::Editor, "Script Editor", "file-code",
+		"What opens scripts from the content browser and the inspector. Program is the editor's executable "
+		"(browse for it) or a command, empty uses the system's default app. In Arguments, {file} is the script "
+		"and {project} the project folder.");
 	script_editor.instance = &prefs.script_editor;
 	TypeBuilder<ScriptEditor>(*script_editor.type)
 		.property("Program", &ScriptEditor::program)
 		.property("Arguments", &ScriptEditor::arguments);
 	script_editor.reset = [&prefs] { prefs.script_editor = {}; };
+	script_editor.extra = [this](SettingsSection &section, ReflectedPropertyGrid &reflected) {
+		PropertyGrid *grid = section.get_grid();
+		View *program = reflected.get_widget("Program");
+		Unique<View> button = create_detached("SettingsBrowseButton",
+											  { .attributes = { { "tooltip", "Pick the editor's executable" } } });
+		if (grid == nullptr || program == nullptr || button == nullptr) {
+			return;
+		}
+		if (auto *added = dynamic_cast<Button *>(grid->add_action(*program, std::move(button)))) {
+			added->on_click.connect([this, &reflected] { browse_script_editor(reflected); });
+		}
+	};
 
 	Page &shortcuts = add_page(Scope::Editor, "Shortcuts", "keyboard",
 							   "Click a shortcut and press the new keys. Backspace removes it, Escape cancels.");
@@ -310,6 +323,26 @@ void SettingsWindow::add_font() {
 	m_fonts_changed = true;
 	m_footer_note->set_text("Added " + *family + ". Pick it in Main Font or Mono Font.");
 	request_rebuild();
+}
+
+void SettingsWindow::browse_script_editor(ReflectedPropertyGrid &reflected) {
+#ifdef AQUILA_PLATFORM_WINDOWS
+	const std::array filters{ FileDialog::Filter{ .name = "Programs", .extensions = "exe" } };
+#else
+	const std::array<FileDialog::Filter, 0> filters{};
+#endif
+	std::string &program = Config::get_preferences().script_editor.program;
+	const std::string start =
+		std::filesystem::path(program).is_absolute() ? std::filesystem::path(program).parent_path().string() : "";
+	const Option<std::string> picked = FileDialog::open_file(filters, start);
+	if (!picked) {
+		return;
+	}
+	program = *picked;
+	reflected.refresh();
+	if (on_preferences_changed) {
+		on_preferences_changed();
+	}
 }
 
 void SettingsWindow::define_behaviour() {

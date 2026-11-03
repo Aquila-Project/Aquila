@@ -321,3 +321,7 @@
 .settings-btn:pressed {
     background-color: var(--bg-surface);
 }
+
+.settings-browse {
+    padding: 4px 6px;
+}

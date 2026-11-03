@@ -50,6 +50,7 @@ class SettingsWindow final : public Aquila::UI::Core::WindowBehaviour {
 	void fill_interface_type(Page &page);
 	void refresh_font_families();
 	void add_font();
+	void browse_script_editor(Aquila::UI::Core::ReflectedPropertyGrid &reflected);
 
 	void select_scope(Scope scope);
 	void select_page(Usize index);
