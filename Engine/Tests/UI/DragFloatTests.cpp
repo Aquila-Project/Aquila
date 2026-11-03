@@ -1,5 +1,7 @@
 #include <doctest.h>
 
+#include "Aquila/Platform/Events/InputEvent.h"
+#include "Aquila/Platform/Input.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Rendering/DrawList.h"
 #include "Aquila/UI/Style/StyleParser.h"
@@ -45,6 +47,13 @@ struct Fixture {
 		return list.take_commands();
 	}
 };
+
+int s_window_tag = 0;
+
+void feed(Platform::Events::Event &&event) {
+	event.set_source(&s_window_tag);
+	Platform::Input::on_event(event);
+}
 
 Vec2 at(const DragFloat &field, F32 x) {
 	const Rect rect = field.get_absolute_rect();
@@ -108,6 +117,25 @@ TEST_SUITE("DragFloat") {
 		field.on_mouse_move(at(field, 100.F));
 		CHECK(field.get_value() == doctest::Approx(0.5F));
 		field.on_mouse_release(Platform::MouseButton::Left, at(field, 100.F));
+	}
+
+	TEST_CASE("holding shift drags ten times finer without jumping") {
+		Fixture fixture("center");
+		DragFloat &field = *fixture.field;
+		field.set_speed(0.1F);
+		field.set_value(0.F);
+		fixture.draw();
+
+		field.on_mouse_press(Platform::MouseButton::Left, at(field, 50.F));
+		field.on_mouse_move(at(field, 60.F));
+		CHECK(field.get_value() == doctest::Approx(1.F));
+		feed(Platform::Events::KeyPressedEvent(Platform::KeyCode::LeftShift, 0));
+		field.on_mouse_move(at(field, 70.F));
+		CHECK(field.get_value() == doctest::Approx(1.1F));
+		feed(Platform::Events::KeyReleasedEvent(Platform::KeyCode::LeftShift));
+		field.on_mouse_move(at(field, 80.F));
+		CHECK(field.get_value() == doctest::Approx(2.1F));
+		field.on_mouse_release(Platform::MouseButton::Left, at(field, 80.F));
 	}
 
 	TEST_CASE("the value sits where text-align puts it, inside the padding") {

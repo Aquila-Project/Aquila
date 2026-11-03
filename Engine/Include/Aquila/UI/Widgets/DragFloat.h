@@ -6,7 +6,8 @@
 
 namespace Aquila::UI::Core {
 
-/// A number you drag sideways, or click to type in. on_changed only fires for user edits.
+/// A number you drag sideways, or click to type in. on_changed only fires for user edits. Shift drags ten times
+/// finer.
 class DragFloat : public Control {
   public:
 	struct Config {
@@ -82,6 +83,7 @@ class DragFloat : public Control {
 	bool m_has_dragged = false;
 
 	static constexpr float K_DRAG_THRESHOLD = 3.F;
+	static constexpr float K_FINE_SPEED = 0.1F;
 };
 
 } // namespace Aquila::UI::Core

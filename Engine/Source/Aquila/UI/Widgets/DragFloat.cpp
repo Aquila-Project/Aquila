@@ -1,5 +1,6 @@
 #include "Aquila/UI/Widgets/DragFloat.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Platform/Input.h"
 #include "Aquila/UI/Rendering/DrawCmd.h"
 
 namespace Aquila::UI::Core {
@@ -85,7 +86,9 @@ float DragFloat::units_per_pixel() const {
 			per_pixel = (m_max - m_min) / width;
 		}
 	}
-	return per_pixel;
+	const bool fine = Platform::Input::is_key_pressed(Platform::KeyCode::LeftShift) ||
+		Platform::Input::is_key_pressed(Platform::KeyCode::RightShift);
+	return fine ? per_pixel * K_FINE_SPEED : per_pixel;
 }
 
 Text::FontAtlas *DragFloat::resolve_font() const {
