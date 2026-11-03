@@ -99,7 +99,7 @@ const std::array<Vec4, 16> &temperature_gradient() {
 }
 
 void register_builtin_components(ComponentRegistry &registry) {
-	registry.register_component<TransformComponent>("Transform", false, ComponentCategory::Object)
+	registry.register_component<TransformComponent>("Transform", false)
 		.property("Position", &TransformComponent::get_local_position, &TransformComponent::set_local_position,
 				  PropertyHints{ .speed = 0.05F, .precision = 3, .unit = "m" })
 		.property("Scale", &TransformComponent::get_local_scale, &TransformComponent::set_local_scale,
@@ -108,11 +108,11 @@ void register_builtin_components(ComponentRegistry &registry) {
 				  &TransformComponent::set_local_rotation_euler,
 				  PropertyHints{ .speed = 0.5F, .precision = 1, .unit = "°" });
 
-	registry.register_component<MetadataComponent>("Metadata", false, ComponentCategory::Object)
+	registry.register_component<MetadataComponent>("Metadata", false)
 		.read_only("UUID", [](const MetadataComponent &metadata) { return metadata.get_id().to_string(); })
 		.property("Visible", &MetadataComponent::is_visible, &MetadataComponent::set_visible);
 
-	registry.register_component<SceneNodeComponent>("Scene Node", false, ComponentCategory::Object)
+	registry.register_component<SceneNodeComponent>("Scene Node", false)
 		.read_only("Parent",
 				   [](const SceneNodeComponent &node) {
 					   return node.parent.is_null() || !node.parent.exists() ? std::string("None")

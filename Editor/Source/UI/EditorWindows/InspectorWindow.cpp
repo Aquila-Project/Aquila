@@ -16,7 +16,8 @@ void InspectorWindow::define_behaviour() {
 	m_entities = std::make_unique<EntityInspector>(context());
 	m_view = std::make_unique<Aquila::UI::Core::InspectorView>(
 		root(), [this](std::string_view name) { return context().icon(name); }, &context().engine().get_context());
-	m_view->select_tab("Components");
+	m_view->select_tab("Rendering");
+	m_entities->on_component_added = [this](std::string_view tab) { m_view->select_tab(tab); };
 
 	EditorSelection &selection = context().selection;
 	listen(selection.on_changed, [this](Entity entity) { show_entity(entity); });

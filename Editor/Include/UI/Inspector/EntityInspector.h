@@ -31,6 +31,9 @@ class EntityInspector {
 	/// `position` is in canvas pixels. `from_keyboard` keeps the opening key out of the search field.
 	void open_add_menu(Vec2 position, bool from_keyboard);
 
+	/// Gets the tab the new component went to, before the inspector shows the entity again.
+	Delegate<void(std::string_view tab)> on_component_added;
+
   private:
 	[[nodiscard]] Aquila::UI::Core::InspectorSection
 	make_section(Aquila::SceneManagement::Entity entity, const Aquila::SceneManagement::ComponentDescriptor &d);

@@ -10,32 +10,13 @@
 
 namespace Editor {
 
-using Aquila::SceneManagement::ComponentCategory;
 using Aquila::SceneManagement::ComponentDescriptor;
 using Aquila::SceneManagement::Entity;
 using Aquila::UI::Core::Inspectable;
+using Aquila::UI::Core::InspectorAction;
 using Aquila::UI::Core::InspectorSection;
+using Aquila::UI::Core::InspectorTab;
 using Aquila::UI::Core::PopupMenu;
-
-namespace {
-
-constexpr Usize K_OBJECT_TAB = 0;
-constexpr Usize K_COMPONENTS_TAB = 1;
-constexpr Usize K_RENDERING_TAB = 2;
-
-Usize tab_of(ComponentCategory category) {
-	switch (category) {
-	case ComponentCategory::Object:
-		return K_OBJECT_TAB;
-	case ComponentCategory::Rendering:
-		return K_RENDERING_TAB;
-	case ComponentCategory::General:
-		break;
-	}
-	return K_COMPONENTS_TAB;
-}
-
-}
 
 EntityInspector::EntityInspector(EditorContext &context) : m_context(context) {
 	Aquila::UI::Core::View *overlay = m_context.overlay_root();
@@ -70,20 +51,29 @@ Inspectable EntityInspector::inspect(Entity entity) {
 	inspectable.subtitle = uuid.substr(0, 8);
 	inspectable.subtitle_tooltip = uuid;
 
-	inspectable.tabs.resize(3);
-	inspectable.tabs[K_OBJECT_TAB] = { .title = "Object", .icon = "square", .always_visible = true };
-	inspectable.tabs[K_COMPONENTS_TAB] = { .title = "Components", .icon = "layers", .always_visible = true };
-	inspectable.tabs[K_RENDERING_TAB] = { .title = "Rendering", .icon = "camera" };
+	const std::vector<ComponentGroup> &groups = editors.get_groups();
+	std::vector<InspectorTab> tabs;
+	for (const ComponentGroup &group : groups) {
+		tabs.push_back({ .title = group.name, .icon = group.icon });
+	}
 	for (const ComponentDescriptor *descriptor : editors.ordered()) {
 		if (descriptor->has(entity)) {
-			inspectable.tabs[tab_of(descriptor->get_category())].sections.push_back(make_section(entity, *descriptor));
+			const auto group =
+				std::ranges::find(groups, editors.group_of(descriptor->get_name()), &ComponentGroup::name);
+			tabs[static_cast<Usize>(group - groups.begin())].sections.push_back(make_section(entity, *descriptor));
 		}
 	}
-	inspectable.tabs[K_COMPONENTS_TAB].actions.push_back({
+	const InspectorAction add_action{
 		.text = "Add Component",
 		.icon = "plus",
 		.run = [this] { open_add_menu(Aquila::Platform::Input::get_mouse_position(), false); },
-	});
+	};
+	for (InspectorTab &tab : tabs) {
+		if (!tab.sections.empty()) {
+			tab.actions.push_back(add_action);
+			inspectable.tabs.push_back(std::move(tab));
+		}
+	}
 	return inspectable;
 }
 
@@ -128,6 +118,9 @@ void EntityInspector::add_component(Entity entity, const ComponentDescriptor &d)
 		d.add(entity);
 	}
 	AQUILA_LOG_INFO("Added {} component to '{}'", d.get_name(), entity.get_name());
+	if (on_component_added) {
+		on_component_added(m_context.component_editors.group_of(d.get_name()));
+	}
 	m_context.selection.on_entity_modified(entity);
 	m_context.selection.on_components_changed(entity);
 }
@@ -191,21 +184,11 @@ void EntityInspector::populate_add_menu(const std::string &query) {
 		return;
 	}
 
-	std::vector<ComponentGroup> groups = editors.get_groups();
-	groups.push_back({ .name = std::string(ComponentEditors::K_OTHER_GROUP) });
-	const auto group_of = [&editors, &groups](const ComponentDescriptor *descriptor) -> std::string_view {
-		const ComponentEditor *editor = editors.find(descriptor->get_name());
-		if (editor == nullptr || std::ranges::find(groups, editor->group, &ComponentGroup::name) == groups.end()) {
-			return ComponentEditors::K_OTHER_GROUP;
-		}
-		return editor->group;
-	};
-
 	m_add_menu->add_separator();
-	for (const ComponentGroup &group : groups) {
+	for (const ComponentGroup &group : editors.get_groups()) {
 		PopupMenu *submenu = nullptr;
 		for (const ComponentDescriptor *descriptor : addable) {
-			if (group_of(descriptor) != group.name) {
+			if (editors.group_of(descriptor->get_name()) != group.name) {
 				continue;
 			}
 			if (submenu == nullptr) {

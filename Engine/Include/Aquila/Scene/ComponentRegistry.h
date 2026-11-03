@@ -7,8 +7,6 @@
 
 namespace Aquila::SceneManagement {
 
-enum class ComponentCategory : Uint8 { Object, General, Rendering };
-
 /// What the editor knows about one component type, without knowing the type.
 class ComponentDescriptor {
   public:
@@ -19,7 +17,6 @@ class ComponentDescriptor {
 
 	[[nodiscard]] bool has(Entity entity) const { return m_has(entity); }
 	[[nodiscard]] bool is_removable() const { return m_removable; }
-	[[nodiscard]] ComponentCategory get_category() const { return m_category; }
 	void remove(Entity entity) const { m_remove(entity); }
 	[[nodiscard]] bool can_add() const { return static_cast<bool>(m_add); }
 	void add(Entity entity) const {
@@ -37,7 +34,6 @@ class ComponentDescriptor {
 
 	Reflection::TypeInfo m_type;
 	bool m_removable = true;
-	ComponentCategory m_category = ComponentCategory::General;
 	Delegate<bool(Entity)> m_has;
 	Delegate<void(Entity)> m_remove;
 	Delegate<void(Entity)> m_add;
@@ -49,21 +45,18 @@ class ComponentDescriptor {
 ///
 /// @code
 /// ComponentRegistry::instance()
-///     .register_component<FogComponent>("Fog", true, ComponentCategory::Rendering)
+///     .register_component<FogComponent>("Fog")
 ///     .property("Density", &FogComponent::density, { .min = 0.F, .max = 1.F, .slider = true });
 /// @endcode
 class ComponentRegistry {
   public:
 	[[nodiscard]] static ComponentRegistry &instance();
 
-	/// `category` picks the inspector tab. Add Component only offers default constructible types.
-	/// A `Signal<void()> on_changed` member is found on its own.
-	template <typename T>
-	Reflection::TypeBuilder<T> register_component(std::string name, bool removable = true,
-												  ComponentCategory category = ComponentCategory::General) {
+	/// Add Component only offers default constructible types. A `Signal<void()> on_changed` member is found on
+	/// its own.
+	template <typename T> Reflection::TypeBuilder<T> register_component(std::string name, bool removable = true) {
 		auto descriptor = std::make_unique<ComponentDescriptor>(std::move(name));
 		descriptor->m_removable = removable;
-		descriptor->m_category = category;
 		descriptor->m_has = [](Entity entity) { return entity.has_component<T>(); };
 		descriptor->m_remove = [](Entity entity) { entity.try_remove_component<T>(); };
 		if constexpr (std::is_default_constructible_v<T>) {

@@ -146,14 +146,13 @@ TEST_SUITE("ComponentRegistry") {
 		CHECK_FALSE(registry.find("Transform")->is_removable());
 	}
 
-	TEST_CASE("each descriptor says which part of an entity it belongs to") {
+	TEST_CASE("the components every entity has can't be removed") {
 		const auto &registry = ComponentRegistry::instance();
 		for (const char *name : { "Transform", "Metadata", "Scene Node" }) {
-			CHECK_MESSAGE(registry.find(name)->get_category() == ComponentCategory::Object, name);
-			CHECK_FALSE(registry.find(name)->is_removable());
+			CHECK_FALSE_MESSAGE(registry.find(name)->is_removable(), name);
 		}
 		for (const char *name : { "Mesh", "Material", "Light", "Sky Light", "Camera" }) {
-			CHECK_MESSAGE(registry.find(name)->get_category() == ComponentCategory::General, name);
+			CHECK_MESSAGE(registry.find(name)->is_removable(), name);
 		}
 	}
 
