@@ -1,9 +1,13 @@
 #include "Core/EditorModule.h"
+#include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/Math/Math.h"
+#include "Aquila/Foundation/ServiceRegistry.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/Graphics/Shader/ShaderHotReload.h"
 #include "Aquila/Graphics/Texture/TextureLibrary.h"
+#include "Aquila/Scripting/LuauConfig.h"
+#include "Aquila/Scripting/ScriptApi.h"
 #include "Core/AssetThumbnails.h"
 #include "Core/DefaultShortcuts.h"
 #include "Core/EditorContext.h"
@@ -246,6 +250,7 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		enter_editor(project);
 	}
 	save_settings_if_due(false);
+	update_luau_config();
 
 	if (m_restore_pending) {
 		restore_edit_scene();
@@ -888,6 +893,27 @@ void EditorModule::write_project_settings(ProjectSettings settings) {
 	}
 	m_project_save_due = Aquila::Foundation::now() + K_SETTINGS_SAVE_DELAY;
 	Aquila::Foundation::FrameScheduler::get()->request_frame_in(K_SETTINGS_SAVE_SECONDS);
+}
+
+void EditorModule::update_luau_config() {
+	if (!m_editor_entered || m_project.native_directory.empty()) {
+		return;
+	}
+	const auto *api = m_engine->get_services().find<Aquila::Scripting::ScriptApi>();
+	const std::pair<std::string, Uint64> current{ m_project.native_directory,
+												  api != nullptr ? api->get_revision() : 0 };
+	if (m_luau_config == current) {
+		return;
+	}
+	m_luau_config = current;
+
+	const std::filesystem::path resources = Aquila::Foundation::EnginePaths::resources_dir();
+	const std::filesystem::path types = resources / "Engine" / "Types";
+	const std::map<std::string, std::string> aliases =
+		Aquila::Scripting::engine_luau_aliases((resources / "Engine" / "API").generic_string(), types.generic_string());
+	Aquila::Scripting::update_luaurc(resources.string(), aliases);
+	Aquila::Scripting::update_luaurc(m_project.native_directory, aliases);
+	Aquila::Scripting::update_vscode_settings(m_project.native_directory, (types / "globals.d.luau").generic_string());
 }
 
 void EditorModule::save_settings_if_due(bool now) {
