@@ -43,10 +43,12 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 
 AQUILUA_USERTYPE(Aquila::Scripting::ScriptEntity, "Entity");
 
+static_assert(LUA_VECTOR_SIZE == 4, "Aquila builds Luau with four wide vectors, see Engine/CMakeLists.txt");
+
 template <> struct aquiLua::Converter<Vec3> {
 	static constexpr const char *luau_type = "vector";
 
-	static void push(lua_State *state, const Vec3 &value) { lua_pushvector(state, value.x, value.y, value.z); }
+	static void push(lua_State *state, const Vec3 &value) { lua_pushvector(state, value.x, value.y, value.z, 0.F); }
 
 	static Vec3 check(lua_State *state, int index) {
 		const float *value = luaL_checkvector(state, index);

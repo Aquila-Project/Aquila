@@ -548,6 +548,24 @@ TEST_SUITE("ScriptSystem") {
 		CHECK(scene.get_active_camera_entity() == other);
 	}
 
+	TEST_CASE("vectors have a fourth component, for colors with alpha") {
+		std::string path = write_script("vector4.luau", R"(
+			local M = {}
+			function M.on_start(self)
+				local color = vector.create(1, 0.5, 0.25, 0.75)
+				local plain = vector.create(1, 2, 3)
+				self:set_name(tostring(color.w) .. " " .. tostring(plain.w))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "0.75 0");
+	}
+
 	TEST_CASE("renaming and hiding from a script tell the scene, so the hierarchy follows") {
 		std::string path = write_script("rename.luau", R"(
 			local M = {}
