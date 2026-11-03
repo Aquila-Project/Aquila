@@ -187,6 +187,17 @@ void SettingsWindow::add_editor_pages() {
 		.property("File Extensions", &Browser::show_extensions, PropertyHints{ .toggle = true });
 	browser.reset = [&prefs] { prefs.content_browser = {}; };
 
+	using ScriptEditor = Config::ScriptEditorPreferences;
+	Page &script_editor =
+		add_page(Scope::Editor, "Script Editor", "file-code",
+				 "What opens scripts from the content browser and the inspector. Leave Program empty for the system's "
+				 "default app. In Arguments, {file} is the script and {project} the project folder.");
+	script_editor.instance = &prefs.script_editor;
+	TypeBuilder<ScriptEditor>(*script_editor.type)
+		.property("Program", &ScriptEditor::program)
+		.property("Arguments", &ScriptEditor::arguments);
+	script_editor.reset = [&prefs] { prefs.script_editor = {}; };
+
 	Page &shortcuts = add_page(Scope::Editor, "Shortcuts", "keyboard",
 							   "Click a shortcut and press the new keys. Backspace removes it, Escape cancels.");
 	shortcuts.shortcuts = true;

@@ -3,9 +3,11 @@
 #include "Aquila/Foundation/ServiceRegistry.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scripting/ScriptApi.h"
+#include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Core/EditorContext.h"
+#include "Core/ScriptEditor.h"
 #include "UI/Inspector/InspectorLabels.h"
 
 namespace Editor {
@@ -123,6 +125,12 @@ ScriptContent::ScriptContent(Entity entity, EditorContext &context) : m_entity(e
 ScriptContent::~ScriptContent() = default;
 
 void ScriptContent::build_below(UI::Core::PropertyGrid &grid) {
+	m_open_button = grid.add_row<UI::Core::Button>("", std::string("Open in Script Editor"));
+	if (m_open_button != nullptr) {
+		m_open_button->set_icon(m_context.icon("file-code"));
+		m_open_button->set_tooltip("Settings > Script Editor picks the program");
+		m_open_button->on_click.connect([this] { open_script(); });
+	}
 	m_fields_grid = grid.add_grid();
 	m_fields_grid->set_split(grid.is_split());
 	m_fields_grid->set_hidden(true);
@@ -139,11 +147,21 @@ void ScriptContent::on_property_edited() {
 	show_fields();
 }
 
+void ScriptContent::open_script() const {
+	const auto *component = m_entity.exists() ? m_entity.try_get_component<ScriptComponent>() : nullptr;
+	if (component != nullptr && !component->path.empty()) {
+		open_in_script_editor(component->path);
+	}
+}
+
 void ScriptContent::show_fields() {
 	if (m_fields_grid == nullptr) {
 		return;
 	}
 	auto *component = m_entity.exists() ? m_entity.try_get_component<ScriptComponent>() : nullptr;
+	if (m_open_button != nullptr) {
+		m_open_button->set_enabled(component != nullptr && !component->path.empty());
+	}
 	const auto *api = m_context.engine().get_services().find<Scripting::ScriptApi>();
 	std::vector<ScriptField> declared =
 		component != nullptr ? Scripting::read_script_fields(component->path, api) : std::vector<ScriptField>{};

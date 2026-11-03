@@ -78,6 +78,16 @@ struct ContentBrowserPreferences {
 	bool operator==(const ContentBrowserPreferences &) const = default;
 };
 
+struct ScriptEditorPreferences {
+	/// A command in PATH or a full path. Empty opens scripts with the system's default app.
+	std::string program{};
+	/// Split like a command line. {file} is the script, {project} the project folder. Without {file} the script
+	/// goes last.
+	std::string arguments = "{file}";
+
+	bool operator==(const ScriptEditorPreferences &) const = default;
+};
+
 struct StartupPreferences {
 	/// Skip the launcher and open the most recently opened project.
 	bool reopen_last_project = false;
@@ -106,6 +116,7 @@ struct EditorPreferences {
 	GizmoPreferences gizmos;
 	PlayPreferences play;
 	ContentBrowserPreferences content_browser;
+	ScriptEditorPreferences script_editor;
 	StartupPreferences startup;
 	AdvancedPreferences advanced;
 

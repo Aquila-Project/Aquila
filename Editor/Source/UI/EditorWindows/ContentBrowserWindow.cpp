@@ -259,6 +259,10 @@ void ContentBrowserWindow::create(const ContentCreator &creator) {
 void ContentBrowserWindow::open_item_menu(const std::string &path, Vec2 position) {
 	press(path);
 	m_menu->clear_items();
+	if (const AssetType *type = context().asset_types.find_for_path(path); type != nullptr && type->open) {
+		m_menu->add_item("Open", {}, context().icon(type->icon), [open = type->open, path] { open(path); });
+		m_menu->add_separator();
+	}
 	m_menu->add_item("Rename", "F2", context().icon("pencil"), [this, path] { begin_rename(path); });
 	m_menu->add_item("Delete", "Del", context().icon("trash"),
 					 [this, path, position] { defer([this, path, position] { confirm_delete(path, position); }); });

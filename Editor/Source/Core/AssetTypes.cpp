@@ -1,23 +1,12 @@
 #include "Core/AssetTypes.h"
 
+#include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Graphics/Material/MaterialData.h"
-#include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
-#include "Aquila/Platform/Process.h"
+#include "Core/ScriptEditor.h"
 #include "UI/Inspector/MaterialAssetContent.h"
 
 namespace Editor {
-
-namespace {
-
-void open_in_code_editor(const std::string &path) {
-	if (const Option<std::string> native =
-			Aquila::Platform::Filesystem::VirtualFileSystem::get()->to_native_path(path)) {
-		Aquila::Platform::launch_detached("vscodium", { *native });
-	}
-}
-
-}
 
 void AssetTypes::add(AssetType type) {
 	if (const auto it = std::ranges::find(m_types, type.id, &AssetType::id); it != m_types.end()) {
@@ -71,9 +60,15 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.title = "Script",
 		.icon = "file-code",
 		.extensions = { ".luau", ".lua" },
-		.open = open_in_code_editor,
+		.open = open_in_script_editor,
 	});
-	types.add({ .id = "definitions", .title = "Script Definitions", .icon = "file-code", .extensions = { ".d.luau" } });
+	types.add({
+		.id = "definitions",
+		.title = "Script Definitions",
+		.icon = "file-code",
+		.extensions = { ".d.luau" },
+		.open = open_in_script_editor,
+	});
 	types.add({ .id = "scene", .title = "Scene", .extensions = { ".aqscene" } });
 	types.add({ .id = "ui", .title = "UI Markup", .icon = "panel-left", .extensions = { ".aqlayout", ".aqstyle" } });
 }
