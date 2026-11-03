@@ -1287,3 +1287,86 @@ TEST_SUITE("Aquila.Time timers") {
 		CHECK(text.find("/script-tests/timer-error.luau:6") != std::string::npos);
 	}
 }
+
+TEST_SUITE("Aquila.Events") {
+	TEST_CASE("one script's emit reaches the handlers other scripts added") {
+		std::string receiver = write_script("events-receiver.luau", R"(
+			local Events = require("@aquila").Events
+			local health = 100
+			local M = {}
+			function M.on_start(self)
+				Events.on("damage", function(target: Entity, amount: number)
+					if target:get_id() == self:get_id() then
+						health -= amount
+						self:set_name("health " .. tostring(health))
+					end
+				end)
+			end
+			return M
+		)");
+		std::string sender = write_script("events-sender.luau", R"(
+			local Aquila = require("@aquila")
+			local target
+			local M = {}
+			function M.on_start(self)
+				target = Aquila.Scene.find("Target")
+			end
+			function M.on_update(self, dt)
+				Aquila.Events.emit("damage", target, 5)
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity target = scripted_entity(scene, receiver);
+		target.get_component<MetadataComponent>().set_name("Target");
+		scripted_entity(scene, sender);
+		ScriptSystem system(scene);
+
+		system.update(0.F);
+		system.update(0.F);
+		CHECK(target.get_component<MetadataComponent>().get_name() == "health 90");
+	}
+
+	TEST_CASE("once, disconnect and a failing handler") {
+		std::string path = write_script("events-rules.luau", R"(
+			local Events = require("@aquila").Events
+			local M = {}
+			function M.on_start(self)
+				local counts = { on = 0, once = 0, gone = 0, late = 0 }
+				Events.on("ping", function()
+					counts.on += 1
+				end)
+				Events.once("ping", function()
+					counts.once += 1
+				end)
+				local gone = Events.on("ping", function()
+					counts.gone += 1
+				end)
+				Events.on("ping", function()
+					error("handler went wrong")
+				end)
+				Events.on("ping", function()
+					Events.on("ping", function()
+						counts.late += 1
+					end)
+				end)
+				Events.emit("ping")
+				gone:disconnect()
+				Events.emit("ping")
+				Events.emit("nobody listens")
+				self:set_name(string.format("%d %d %d %d", counts.on, counts.once, counts.gone, counts.late))
+			end
+			return M
+		)");
+		Scene scene("Test");
+		Entity entity = scripted_entity(scene, path);
+		ScriptSystem system(scene);
+
+		std::ostringstream log;
+		Foundation::Logger::set_sink(&log);
+		system.update(0.F);
+		Foundation::Logger::set_sink(nullptr);
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "2 1 1 1");
+		CHECK(log.str().find("handler went wrong") != std::string::npos);
+	}
+}
