@@ -123,7 +123,9 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 		if (field == nullptr) {
 			break;
 		}
+		field->set_range(property.hints.min, property.hints.max);
 		field->set_speed(property.hints.speed);
+		field->set_slider(property.hints.slider);
 		field->on_changed.connect(
 			[edited](float value) { edited(PropertyValue{ static_cast<Int32>(std::lround(value)) }); });
 		row.widget = field;

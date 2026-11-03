@@ -109,6 +109,22 @@ TEST_SUITE("ReflectedPropertyGrid") {
 		CHECK(reflected.get_widget("Nope") == nullptr);
 	}
 
+	TEST_CASE("int properties take their range and slider from the hints") {
+		struct Level {
+			int level = 2;
+		};
+		TypeInfo type("Level");
+		TypeBuilder<Level>(type).property("Level", &Level::level, { .min = 0.F, .max = 10.F, .slider = true });
+		CanvasGrid in_canvas;
+		ReflectedPropertyGrid reflected(in_canvas.grid, type, nullptr);
+
+		auto &field = widget<DragInt>(reflected, "Level");
+		field.set_int_value(99);
+		CHECK(field.get_int_value() == 10);
+		const auto &classes = field.get_classes();
+		CHECK(std::find(classes.begin(), classes.end(), "drag-float-slider") != classes.end());
+	}
+
 	TEST_CASE("bind pulls the instance's values into the widgets") {
 		const TypeInfo type = make_type();
 		CanvasGrid in_canvas;
