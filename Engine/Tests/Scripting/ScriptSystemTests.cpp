@@ -108,6 +108,11 @@ Entity scripted_entity(Scene &scene, const std::string &path) {
 	return entity;
 }
 
+void refer(Entity scripted, const std::string &field, Entity target) {
+	scripted.get_component<ScriptComponent>().fields[field] =
+		EntityReference{ target.get_component<MetadataComponent>().get_id() };
+}
+
 } // namespace
 
 TEST_SUITE("ScriptSystem") {
@@ -300,24 +305,21 @@ TEST_SUITE("ScriptSystem") {
 
 	TEST_CASE("destroying an entity from a script runs on_stop for it and its children, once") {
 		std::string bullet = write_script("bullet.luau", R"(
-			local Scene = require("@aquila").Scene
-			local log
+			local log = require("@aquila").Field.entity("log")
 			local M = {}
-			function M.on_start(self)
-				log = Scene.find("Log")
-			end
 			function M.on_stop(self)
 				log:set_name(log:get_name() .. "|" .. self:get_name())
 			end
 			return M
 		)");
 		std::string killer = write_script("killer.luau", R"(
-			local Scene = require("@aquila").Scene
+			local Aquila = require("@aquila")
+			local bullet = Aquila.Field.entity("bullet")
 			local M = {}
 			function M.on_update(self, dt)
-				local bullet = Scene.find("Bullet")
 				if bullet then
-					Scene.destroy(bullet)
+					Aquila.Scene.destroy(bullet)
+					bullet = nil
 				end
 			end
 			return M
@@ -330,7 +332,9 @@ TEST_SUITE("ScriptSystem") {
 		Entity spark = scripted_entity(scene, bullet);
 		spark.get_component<MetadataComponent>().set_name("Spark");
 		entities.add_child(shot, spark);
-		scripted_entity(scene, killer);
+		refer(shot, "log", log);
+		refer(spark, "log", log);
+		refer(scripted_entity(scene, killer), "bullet", shot);
 		ScriptSystem system(scene);
 
 		system.update(0.F);
@@ -474,13 +478,14 @@ TEST_SUITE("ScriptSystem") {
 		CHECK(position.z == doctest::Approx(0.25F));
 	}
 
-	TEST_CASE("Aquila.Scene finds, creates and destroys entities") {
+	TEST_CASE("Aquila.Scene creates and destroys entities") {
 		std::string path = write_script("scene.luau", R"(
-			local Scene = require("@aquila").Scene
+			local Aquila = require("@aquila")
+			local Scene = Aquila.Scene
+			local target = Aquila.Field.entity("target")
 			local M = {}
 			function M.on_start(self)
-				local target = Scene.find("Target")
-				assert(target ~= nil and Scene.find("Nobody") == nil)
+				assert(target ~= nil)
 				Scene.destroy(target)
 				local made = Scene.create("Made")
 				made:set_position(vector.create(1, 2, 3))
@@ -491,6 +496,7 @@ TEST_SUITE("ScriptSystem") {
 		Scene scene("Test");
 		Entity entity = scripted_entity(scene, path);
 		Entity target = scene.get_entity_manager()->create_entity("Target");
+		refer(entity, "target", target);
 		ScriptSystem system(scene);
 
 		system.update(0.F);
@@ -505,14 +511,15 @@ TEST_SUITE("ScriptSystem") {
 
 	TEST_CASE("Entity methods: ids, parent, world position, forward and visibility") {
 		std::string path = write_script("entity.luau", R"(
-			local Scene = require("@aquila").Scene
+			local Field = require("@aquila").Field
+			local expected_parent = Field.entity("expected_parent")
+			local out = Field.entity("out")
 			local M = {}
 			function M.on_start(self)
 				local parent = self:get_parent()
 				assert(parent ~= nil and parent:get_parent() == nil)
-				assert(parent:get_id() == Scene.find("Parent"):get_id())
+				assert(parent:get_id() == expected_parent:get_id())
 				assert(parent:get_id() ~= self:get_id())
-				local out = Scene.find("Out")
 				out:set_position(self:get_forward())
 				out:set_scale(self:get_world_position())
 				self:set_visible(false)
@@ -526,6 +533,8 @@ TEST_SUITE("ScriptSystem") {
 		Entity entity = scripted_entity(scene, path);
 		Entity out = entities.create_entity("Out");
 		entities.add_child(parent, entity);
+		refer(entity, "expected_parent", parent);
+		refer(entity, "out", out);
 		parent.get_component<TransformComponent>().set_local_position(Vec3(1.F, 0.F, 0.F));
 		entity.get_component<TransformComponent>().set_local_position(Vec3(0.F, 2.F, 0.F));
 		entity.get_component<TransformComponent>().set_local_rotation_euler(Vec3(0.F, 90.F, 0.F));
@@ -570,10 +579,12 @@ TEST_SUITE("ScriptSystem") {
 		std::string path = write_script("camera.luau", R"(
 			local Aquila = require("@aquila")
 			local Camera = Aquila.Camera
+			local eye = Aquila.Field.entity("eye")
+			local other = Aquila.Field.entity("other")
 			local M = {}
 			function M.on_start(self)
 				local camera = Camera.get_active()
-				assert(camera ~= nil and camera:get_id() == Aquila.Scene.find("Eye"):get_id())
+				assert(camera ~= nil and camera:get_id() == eye:get_id())
 				Camera.set_fov(500)
 				assert(Camera.get_fov() == 179)
 				Camera.set_fov(60, camera)
@@ -586,7 +597,7 @@ TEST_SUITE("ScriptSystem") {
 				self:set_position(ahead)
 				self:set_scale(direction)
 				self:set_name(if pcall(Camera.get_fov, self) then "no error" else "error")
-				Camera.set_active(Aquila.Scene.find("Other"))
+				Camera.set_active(other)
 			end
 			return M
 		)");
@@ -600,6 +611,8 @@ TEST_SUITE("ScriptSystem") {
 		};
 		Entity eye = make_camera("Eye");
 		Entity other = make_camera("Other");
+		refer(entity, "eye", eye);
+		refer(entity, "other", other);
 		scene.set_active_camera(eye);
 		scene.update_transform_hierarchy();
 		Platform::InputState input;
@@ -1041,10 +1054,10 @@ TEST_SUITE("Script transforms") {
 
 	TEST_CASE("forward, up and right follow a rotation made this frame") {
 		std::string path = write_script("axes.luau", R"(
+			local out = require("@aquila").Field.entity("out")
 			local M = {}
 			function M.on_start(self)
 				self:set_rotation(vector.create(0, 90, 0))
-				local out = require("@aquila").Scene.find("Out")
 				out:set_position(self:get_forward())
 				out:set_rotation(self:get_up())
 				out:set_scale(self:get_right())
@@ -1052,8 +1065,8 @@ TEST_SUITE("Script transforms") {
 			return M
 		)");
 		Scene scene("Test");
-		scripted_entity(scene, path);
 		Entity out = scene.get_entity_manager()->create_entity("Out");
+		refer(scripted_entity(scene, path), "out", out);
 		ScriptSystem system(scene);
 
 		system.update(0.F);
@@ -1110,15 +1123,15 @@ TEST_SUITE("Script transforms") {
 
 	TEST_CASE("set_parent keeps the world transform, get_children lists the children") {
 		std::string path = write_script("reparent.luau", R"(
-			local Scene = require("@aquila").Scene
+			local Field = require("@aquila").Field
+			local holder = Field.entity("holder")
+			local below = Field.entity("below")
 			local M = {}
 			function M.on_start(self)
-				local holder = Scene.find("Holder")
 				self:set_parent(holder)
 				local children = holder:get_children()
 				assert(#children == 1 and children[1]:get_id() == self:get_id())
 				assert(self:get_parent():get_id() == holder:get_id())
-				local below = Scene.find("Below")
 				assert(not pcall(function() self:set_parent(self) end), "itself")
 				assert(not pcall(function() self:set_parent(below) end), "its own child")
 				self:set_parent(nil)
@@ -1134,6 +1147,8 @@ TEST_SUITE("Script transforms") {
 		Entity entity = scripted_entity(scene, path);
 		Entity below = entities.create_entity("Below");
 		entities.add_child(entity, below);
+		refer(entity, "holder", holder);
+		refer(entity, "below", below);
 		auto &holder_transform = holder.get_component<TransformComponent>();
 		holder_transform.set_local_position(Vec3(5.F, 0.F, 0.F));
 		holder_transform.set_local_rotation_euler(Vec3(0.F, 90.F, 0.F));
@@ -1351,11 +1366,8 @@ TEST_SUITE("Aquila.Events") {
 		)");
 		std::string sender = write_script("events-sender.luau", R"(
 			local Aquila = require("@aquila")
-			local target
+			local target = Aquila.Field.entity("target")
 			local M = {}
-			function M.on_start(self)
-				target = Aquila.Scene.find("Target")
-			end
 			function M.on_update(self, dt)
 				Aquila.Events.emit("damage", target, 5)
 			end
@@ -1363,8 +1375,7 @@ TEST_SUITE("Aquila.Events") {
 		)");
 		Scene scene("Test");
 		Entity target = scripted_entity(scene, receiver);
-		target.get_component<MetadataComponent>().set_name("Target");
-		scripted_entity(scene, sender);
+		refer(scripted_entity(scene, sender), "target", target);
 		ScriptSystem system(scene);
 
 		system.update(0.F);
@@ -1428,10 +1439,10 @@ TEST_SUITE("Script spawning") {
 			return M
 		)");
 		std::string spawner = write_script("spawner.luau", R"(
-			local Scene = require("@aquila").Scene
+			local template = require("@aquila").Field.entity("template")
 			local M = {}
 			function M.on_start(self)
-				local copy = Scene.find("Enemy"):clone()
+				local copy = template:clone()
 				copy:set_visible(true)
 				copy:set_position(vector.create(4, 0, 0))
 			end
@@ -1448,7 +1459,7 @@ TEST_SUITE("Script spawning") {
 		Entity eye = entities.create_entity("Eye");
 		eye.get_component<TransformComponent>().set_local_position(Vec3(0.F, 1.F, 0.F));
 		entities.add_child(original, eye);
-		scripted_entity(scene, spawner);
+		refer(scripted_entity(scene, spawner), "template", original);
 		ScriptSystem system(scene);
 
 		system.update(0.F);
@@ -1476,35 +1487,25 @@ TEST_SUITE("Script spawning") {
 		CHECK(original.get_component<SceneNodeComponent>().children.size() == 1);
 	}
 
-	TEST_CASE("find_all finds every entity with a name, find_child searches below an entity") {
-		std::string path = write_script("finders.luau", R"(
+	TEST_CASE("scripts reach entities through references, never by name") {
+		std::string path = write_script("no-names.luau", R"(
 			local Scene = require("@aquila").Scene
 			local M = {}
 			function M.on_start(self)
-				assert(#Scene.find_all("Coin") == 3, "three coins")
-				assert(#Scene.find_all("Nope") == 0, "no nope")
-				local gem = self:find_child("Gem")
-				assert(gem ~= nil and gem:get_parent():get_name() == "Lid", "gem under the lid")
-				assert(self:find_child("Nope") == nil, "no nope child")
-				assert(self:find_child(self:get_name()) == nil, "not itself")
-				self:set_name("found")
+				assert(Scene.find == nil and Scene.find_all == nil, "no Scene lookups by name")
+				assert(not pcall(function()
+					return (self :: any):find_child("Lid")
+				end), "no child lookups by name")
+				self:set_name("references only")
 			end
 			return M
 		)");
 		Scene scene("Test");
-		EntityManager &entities = *scene.get_entity_manager();
-		Entity chest = scripted_entity(scene, path);
-		Entity lid = entities.create_entity("Lid");
-		Entity gem = entities.create_entity("Gem");
-		entities.add_child(chest, lid);
-		entities.add_child(lid, gem);
-		for (int i = 0; i < 3; ++i) {
-			entities.create_entity("Coin").get_component<MetadataComponent>().set_name("Coin");
-		}
+		Entity entity = scripted_entity(scene, path);
 		ScriptSystem system(scene);
 
 		system.update(0.F);
-		CHECK(chest.get_component<MetadataComponent>().get_name() == "found");
+		CHECK(entity.get_component<MetadataComponent>().get_name() == "references only");
 	}
 }
 
@@ -1533,7 +1534,9 @@ TEST_SUITE("Aquila.Game") {
 TEST_SUITE("Scene.raycast") {
 	TEST_CASE("raycast finds the nearest visible mesh box along the ray") {
 		std::string path = write_script("raycast.luau", R"(
-			local Scene = require("@aquila").Scene
+			local Aquila = require("@aquila")
+			local Scene = Aquila.Scene
+			local crate = Aquila.Field.entity("crate")
 			local M = {}
 			local function report(name: string, hit: Scene.RaycastHit?)
 				local out = Scene.create(name)
@@ -1549,7 +1552,7 @@ TEST_SUITE("Scene.raycast") {
 				report("hit", Scene.raycast(vector.zero, forward))
 				report("long", Scene.raycast(vector.zero, vector.create(0, 0, 2)))
 				report("short", Scene.raycast(vector.zero, forward, 5))
-				report("ignored", Scene.raycast(vector.zero, forward, nil, Scene.find("Crate")))
+				report("ignored", Scene.raycast(vector.zero, forward, nil, crate))
 				report("inside", Scene.raycast(vector.create(0, 0, 10), forward))
 				report("miss", Scene.raycast(vector.zero, vector.create(0, 1, 0)))
 			end
@@ -1572,7 +1575,7 @@ TEST_SUITE("Scene.raycast") {
 		near.get_component<TransformComponent>().set_local_scale(Vec3(2.F));
 		crate("Far", Vec3(0.F, 0.F, 20.F));
 		crate("Hidden", Vec3(0.F, 0.F, 5.F)).get_component<MetadataComponent>().set_visible(false);
-		scripted_entity(scene, path);
+		refer(scripted_entity(scene, path), "crate", near);
 		ScriptSystem system(scene);
 
 		system.update(0.F);

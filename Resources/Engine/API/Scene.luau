@@ -3,6 +3,9 @@
 local native = require("@scene")
 
 --- The entities of the scene the game plays. In the editor everything done here is undone on Stop.
+---
+--- Scripts never look entities up by name. They get them through references: an entity field set in the inspector
+--- (Aquila.Field.entity), get_parent / get_children, and whatever create, clone and raycast return.
 local Scene = {}
 
 --- What Scene.raycast hit. `normal` is the face of the box it went in through, `distance` is in meters.
@@ -12,16 +15,6 @@ export type RaycastHit = {
 	normal: vector,
 	distance: number,
 }
-
---- The first entity with that name, nil when there's none.
-function Scene.find(name: string): Entity?
-	return native.find(name)
-end
-
---- Every entity with that name, in no particular order.
-function Scene.find_all(name: string): { Entity }
-	return native.find_all(name)
-end
 
 --- The entity with that UUID (entity:get_uuid()), nil when there's none.
 function Scene.find_by_uuid(uuid: string): Entity?
