@@ -19,6 +19,8 @@ struct MeshData {
 /// a scaled copy's area can be worked out without going over the triangles again.
 struct MeshSurface {
 	Vec3 center = Vec3(0.F);
+	/// Half the bounding box's size, so the box is center +- half_size.
+	Vec3 half_size = Vec3(0.F);
 	Vec3 axis_area = Vec3(0.F);
 
 	[[nodiscard]] F32 get_area() const { return axis_area.x + axis_area.y + axis_area.z; }

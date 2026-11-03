@@ -154,6 +154,7 @@ TEST_SUITE("Procedural meshes") {
 		CHECK(box.axis_area.z == doctest::Approx(2.F));
 		CHECK(box.get_scaled_area(Vec3(2.F, 1.F, 1.F)) == doctest::Approx(10.F));
 		CHECK(Math::length(box.center) < 1e-5F);
+		CHECK(Math::length(box.half_size - Vec3(0.5F)) < 1e-5F);
 
 		Option<MeshData> sphere_data = MeshGenerators::instance().generate(MeshSource::procedural("sphere"));
 		REQUIRE(sphere_data.has_value());
@@ -162,6 +163,7 @@ TEST_SUITE("Procedural meshes") {
 		const MeshSurface &ball = sphere.get_surface();
 		CHECK(ball.get_area() == doctest::Approx(Math::PI).epsilon(0.03));
 		CHECK(ball.get_scaled_area(Vec3(2.F)) == doctest::Approx(4.F * ball.get_area()));
+		CHECK(Math::length(ball.half_size - Vec3(0.5F)) < 1e-4F);
 	}
 
 	TEST_CASE("the reflected params edit a MeshParams") {
