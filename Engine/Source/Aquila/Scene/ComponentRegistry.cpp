@@ -300,26 +300,25 @@ void register_builtin_components(ComponentRegistry &registry) {
 				  PropertyHints{ .min = 0.F, .max = 10000.F, .speed = 0.1F, .precision = 1, .unit = "m" })
 		.property("Active", &FogComponent::active, PropertyHints{ .toggle = true });
 
-	registry.register_component<MeshComponent>("Mesh").property(
-		"Model",
-		[](const MeshComponent &mesh) {
-			using Graphics::Resources::MeshSourceKind;
-			const bool is_model = mesh.data && mesh.data->get_source().kind == MeshSourceKind::Asset;
-			return is_model ? mesh.data->get_source().path : std::string();
-		},
-		[](MeshComponent &mesh, const std::string &path) {
-			if (path.empty()) {
-				mesh.set_mesh(nullptr);
-				return;
-			}
-			if (Ref<Graphics::Resources::Mesh> model =
-					Graphics::Resources::MeshLibrary::instance().load(Graphics::Resources::MeshSource::asset(path))) {
-				mesh.set_mesh(model);
-			}
-		},
-		PropertyHints{ .asset_type = "model" });
-
-	registry.register_component<MeshComponent>("Shadows", false, ComponentCategory::Rendering)
+	registry.register_component<MeshComponent>("Mesh")
+		.property(
+			"Model",
+			[](const MeshComponent &mesh) {
+				using Graphics::Resources::MeshSourceKind;
+				const bool is_model = mesh.data && mesh.data->get_source().kind == MeshSourceKind::Asset;
+				return is_model ? mesh.data->get_source().path : std::string();
+			},
+			[](MeshComponent &mesh, const std::string &path) {
+				if (path.empty()) {
+					mesh.set_mesh(nullptr);
+					return;
+				}
+				if (Ref<Graphics::Resources::Mesh> model = Graphics::Resources::MeshLibrary::instance().load(
+						Graphics::Resources::MeshSource::asset(path))) {
+					mesh.set_mesh(model);
+				}
+			},
+			PropertyHints{ .asset_type = "model" })
 		.property("Cast Shadows", &MeshComponent::cast_shadows)
 		.property("Receive Shadows", &MeshComponent::receive_shadows);
 
@@ -365,15 +364,8 @@ const ComponentDescriptor *ComponentRegistry::find(std::string_view name) const 
 }
 
 void ComponentRegistry::copy_components(Entity from, Entity to) const {
-	for (const auto &[type, copy] : m_copiers) {
+	for (const auto &copy : m_copiers) {
 		copy(from, to);
-	}
-}
-
-void ComponentRegistry::add_copier(entt::id_type type, Delegate<void(Entity, Entity)> copy) {
-	const bool known = std::ranges::any_of(m_copiers, [type](const auto &copier) { return copier.first == type; });
-	if (!known) {
-		m_copiers.emplace_back(type, std::move(copy));
 	}
 }
 

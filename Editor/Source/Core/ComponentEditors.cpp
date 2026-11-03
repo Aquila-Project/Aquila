@@ -123,7 +123,6 @@ void add_builtin_component_editors(ComponentEditors &editors) {
 	editors.add({ .component = "Sky Light", .icon = "sun", .order = 70, .group = "Lighting", .icon_rank = 40 });
 	editors.add({ .component = "Fog", .icon = "cloud-fog", .order = 80, .group = "Lighting", .icon_rank = 30 });
 	editors.add({ .component = "Camera", .icon = "video", .order = 90, .group = "Camera", .icon_rank = 50 });
-	editors.add({ .component = "Shadows", .icon = "moon", .order = 100 });
 	editors.add({ .component = "Fullscreen Effect", .icon = "sparkles", .order = 110, .group = "Rendering" });
 	editors.add({ .component = "Script", .order = 200, .content = make_content<ScriptContent> });
 }

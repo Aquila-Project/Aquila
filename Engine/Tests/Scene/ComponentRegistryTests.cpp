@@ -155,18 +155,26 @@ TEST_SUITE("ComponentRegistry") {
 		for (const char *name : { "Mesh", "Material", "Light", "Sky Light", "Camera" }) {
 			CHECK_MESSAGE(registry.find(name)->get_category() == ComponentCategory::General, name);
 		}
-		CHECK(registry.find("Shadows")->get_category() == ComponentCategory::Rendering);
 	}
 
-	TEST_CASE("the shadows view edits the mesh's own flags") {
+	TEST_CASE("the mesh edits its own shadow flags") {
 		Scene scene("Test");
 		Entity entity = scene.get_entity_manager()->create_entity("Thing");
-		const ComponentDescriptor &shadows = *ComponentRegistry::instance().find("Shadows");
-		CHECK_FALSE(shadows.has(entity));
-
+		const ComponentDescriptor &descriptor = *ComponentRegistry::instance().find("Mesh");
 		auto &mesh = entity.add_component<MeshComponent>();
-		shadows.get_type().find("Cast Shadows")->set(shadows.get(entity), Reflection::PropertyValue{ false });
+
+		const Reflection::Property *cast = descriptor.get_type().find("Cast Shadows");
+		const Reflection::Property *receive = descriptor.get_type().find("Receive Shadows");
+		REQUIRE(cast != nullptr);
+		REQUIRE(receive != nullptr);
+		cast->set(descriptor.get(entity), Reflection::PropertyValue{ false });
+		receive->set(descriptor.get(entity), Reflection::PropertyValue{ false });
 		CHECK_FALSE(mesh.cast_shadows);
+		CHECK_FALSE(mesh.receive_shadows);
+	}
+
+	TEST_CASE("every component type has one descriptor") {
+		CHECK(ComponentRegistry::instance().find("Shadows") == nullptr);
 	}
 
 	TEST_CASE("metadata exposes the uuid read-only and visibility editable") {
