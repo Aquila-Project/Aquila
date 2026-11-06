@@ -193,13 +193,14 @@ TEST_SUITE("Inspector render") {
 		const auto width = static_cast<Uint32>(static_cast<F32>(K_WIDTH) * K_SCALE);
 		const auto height = static_cast<Uint32>(static_cast<F32>(K_HEIGHT) * K_SCALE);
 
-		TextureCache textures(ctx);
+		TextureCache textures(ctx, "/resources");
 		GFX::GfxTexture *thumbnail = textures.load("/resources/Engine/aquila-logo.png");
 		REQUIRE(thumbnail != nullptr);
 		AssetSlot::set_adapter("texture", { .thumbnail = [thumbnail](const std::string &) { return thumbnail; } });
 
 		{
 			LoaderCanvas fixture(width, height);
+			fixture.loader.register_texture_cache(&textures);
 			View *box = fixture.host().add_child<View>();
 			StyleProperties style;
 			style.width = StyleLength::percent(100.F);
