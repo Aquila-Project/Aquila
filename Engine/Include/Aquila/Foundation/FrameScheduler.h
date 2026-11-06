@@ -1,5 +1,6 @@
 #pragma once
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/Foundation/Registration.h"
 #include "Aquila/Foundation/Singleton.h"
 #include "Aquila/Foundation/Timer.h"
 
@@ -110,6 +111,50 @@ class FrameScheduler : public Singleton<FrameScheduler> {
 	/// Application passes `Window::wake`. It's a delegate so Foundation doesn't need GLFW.
 	void set_wake(Delegate<void()> wake) { m_wake = std::move(wake); }
 
+	/// Runs `poll` every K_POLL_INTERVAL between frames, also while the app is idle, for checks like "is this file
+	/// still there". It doesn't render anything: a poll that changes something asks for a frame itself.
+	/// Main thread only.
+	[[nodiscard]] Registration add_poll(Delegate<void()> poll) {
+		const Uint64 id = ++m_last_poll_id;
+		m_polls.push_back({ .id = id, .run = std::move(poll) });
+		return m_registrations.make([this, id] { std::erase_if(m_polls, [id](const Poll &p) { return p.id == id; }); });
+	}
+
+	/// The loop calls it on every pass, the polls only run when they're due. Polls due within K_POLL_SLACK run early,
+	/// so they share a wake-up with the loop's other timers instead of waking it again microseconds later.
+	/// Polls may add or remove polls.
+	void run_polls() {
+		const TimePoint current = now();
+		if (m_polls.empty() || current + K_POLL_SLACK < m_next_poll) {
+			return;
+		}
+		m_next_poll = current + K_POLL_INTERVAL;
+		std::vector<Uint64> ids;
+		ids.reserve(m_polls.size());
+		for (const Poll &poll : m_polls) {
+			ids.push_back(poll.id);
+		}
+		for (const Uint64 id : ids) {
+			const auto it = std::ranges::find(m_polls, id, &Poll::id);
+			if (it != m_polls.end()) {
+				const Delegate<void()> run = it->run;
+				run();
+			}
+		}
+	}
+
+	/// The loop waits for events at most this long so polls keep running while idle.
+	/// @return 0 if the polls are due, nullopt when nothing polls
+	[[nodiscard]] Option<F64> seconds_until_poll() const {
+		if (m_polls.empty()) {
+			return std::nullopt;
+		}
+		return std::max(elapsed_seconds(now(), m_next_poll), 0.0);
+	}
+
+	static constexpr std::chrono::milliseconds K_POLL_INTERVAL{ 500 };
+	static constexpr std::chrono::milliseconds K_POLL_SLACK{ 5 };
+
   private:
 	friend class Singleton<FrameScheduler>;
 	FrameScheduler() = default;
@@ -117,6 +162,11 @@ class FrameScheduler : public Singleton<FrameScheduler> {
 	struct Deadline {
 		Target target = nullptr;
 		TimePoint at;
+	};
+
+	struct Poll {
+		Uint64 id = 0;
+		Delegate<void()> run;
 	};
 
 	void promote_due_deadlines() {
@@ -139,6 +189,10 @@ class FrameScheduler : public Singleton<FrameScheduler> {
 	std::vector<Deadline> m_deadlines;
 	Delegate<void()> m_wake;
 	std::thread::id m_owner = std::this_thread::get_id();
+	std::vector<Poll> m_polls;
+	Uint64 m_last_poll_id = 0;
+	TimePoint m_next_poll{};
+	RegistrationOwner m_registrations;
 };
 
 } // namespace Aquila::Foundation

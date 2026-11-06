@@ -3,6 +3,7 @@
 #include "Aquila/Foundation/FrameScheduler.h"
 
 using Aquila::Foundation::FrameScheduler;
+using Aquila::Foundation::Registration;
 
 namespace {
 
@@ -132,5 +133,49 @@ TEST_SUITE("FrameScheduler") {
 		std::thread second([scheduler] { scheduler->request_frame(); });
 		second.join();
 		CHECK(wakes == 2);
+	}
+
+	TEST_CASE("polls run right away, then once per interval, without asking for frames") {
+		SchedulerScope scope;
+		FrameScheduler *scheduler = FrameScheduler::get();
+		CHECK_FALSE(scheduler->seconds_until_poll().has_value());
+
+		int runs = 0;
+		Registration poll = scheduler->add_poll([&runs] { ++runs; });
+		REQUIRE(scheduler->seconds_until_poll().has_value());
+		CHECK(*scheduler->seconds_until_poll() == 0.0);
+
+		scheduler->run_polls();
+		CHECK(runs == 1);
+		scheduler->run_polls();
+		CHECK(runs == 1);
+		CHECK(*scheduler->seconds_until_poll() > 0.4);
+		CHECK_FALSE(scheduler->is_pending());
+
+		poll.reset();
+		CHECK_FALSE(scheduler->seconds_until_poll().has_value());
+	}
+
+	TEST_CASE("a poll can remove another poll while they run") {
+		SchedulerScope scope;
+		FrameScheduler *scheduler = FrameScheduler::get();
+		Registration second;
+		int second_runs = 0;
+		const Registration first = scheduler->add_poll([&second] { second.reset(); });
+		second = scheduler->add_poll([&second_runs] { ++second_runs; });
+
+		scheduler->run_polls();
+		CHECK(second_runs == 0);
+		CHECK_FALSE(second.is_active());
+	}
+
+	TEST_CASE("a poll registration outliving the scheduler does nothing") {
+		Registration poll;
+		{
+			SchedulerScope scope;
+			poll = FrameScheduler::get()->add_poll([] {});
+		}
+		poll.reset();
+		CHECK_FALSE(poll.is_active());
 	}
 }
