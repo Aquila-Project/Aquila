@@ -1,0 +1,24 @@
+<Component name="MessageBox" props="kind text">
+    <View class="message-box message-box-$kind">
+        <Slot class="message-box-icon"/>
+        <Label class="message-box-text">$text</Label>
+    </View>
+</Component>
+
+<Component name="InfoBox" props="text">
+    <MessageBox kind="info" text="$text">
+        <Image src="Engine/UI/Icons/info.svg"/>
+    </MessageBox>
+</Component>
+
+<Component name="WarningBox" props="text">
+    <MessageBox kind="warning" text="$text">
+        <Image src="Engine/UI/Icons/triangle-alert.svg"/>
+    </MessageBox>
+</Component>
+
+<Component name="ErrorBox" props="text">
+    <MessageBox kind="error" text="$text">
+        <Image src="Engine/UI/Icons/circle-x.svg"/>
+    </MessageBox>
+</Component>

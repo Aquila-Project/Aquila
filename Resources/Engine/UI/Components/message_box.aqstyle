@@ -1,0 +1,38 @@
+.message-box {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: var(--control-gap);
+    padding: 5px var(--control-padding-x-compact);
+    border-width: 1px;
+    border-style: solid;
+    border-radius: var(--control-radius);
+    border-color: var(--border-ui);
+    background-color: var(--bg-muted);
+    color: var(--text-dim);
+}
+
+.message-box-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.message-box-text {
+    width: grow;
+    min-width: 0px;
+    font-family: regular;
+    font-size: var(--font-size-compact);
+    color: var(--text);
+}
+
+.message-box-warning {
+    border-color: rgba(212, 171, 74, 0.45);
+    background-color: var(--row-warning);
+    color: rgb(0.83, 0.67, 0.29);
+}
+
+.message-box-error {
+    border-color: rgba(224, 90, 64, 0.45);
+    background-color: var(--row-error);
+    color: var(--danger);
+}
