@@ -1,4 +1,4 @@
-#include "UI/Inspector/EntityInspector.h"
+#include "UI/Inspector/Entity/EntityInspector.h"
 
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Platform/Input.h"

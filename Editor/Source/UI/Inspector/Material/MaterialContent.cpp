@@ -1,4 +1,4 @@
-#include "UI/Inspector/MaterialContent.h"
+#include "UI/Inspector/Material/MaterialContent.h"
 
 #include "Aquila/Foundation/SharedConstants.h"
 #include "Aquila/Foundation/Text/StringUtils.h"
@@ -10,7 +10,7 @@
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Core/EditorContext.h"
-#include "UI/Inspector/MaterialEditorRows.h"
+#include "UI/Inspector/Material/MaterialEditorRows.h"
 
 namespace Editor {
 

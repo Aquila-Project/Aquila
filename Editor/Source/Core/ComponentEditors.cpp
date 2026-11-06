@@ -5,9 +5,9 @@
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/DefaultScenes.h"
 #include "Core/EditorContext.h"
-#include "UI/Inspector/MaterialContent.h"
-#include "UI/Inspector/MeshContent.h"
-#include "UI/Inspector/ScriptContent.h"
+#include "UI/Inspector/Material/MaterialContent.h"
+#include "UI/Inspector/Mesh/MeshContent.h"
+#include "UI/Inspector/Script/ScriptContent.h"
 
 namespace Editor {
 

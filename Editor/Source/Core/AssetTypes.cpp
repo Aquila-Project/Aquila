@@ -4,7 +4,7 @@
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Graphics/Material/MaterialData.h"
 #include "Core/ScriptEditor.h"
-#include "UI/Inspector/MaterialAssetContent.h"
+#include "UI/Inspector/Material/MaterialAssetContent.h"
 
 namespace Editor {
 

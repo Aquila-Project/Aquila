@@ -1,10 +1,10 @@
-#include "UI/Inspector/MaterialAssetContent.h"
+#include "UI/Inspector/Material/MaterialAssetContent.h"
 
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Core/EditorContext.h"
-#include "UI/Inspector/ThumbnailContent.h"
-#include "UI/Inspector/MaterialEditorRows.h"
+#include "UI/Inspector/Common/ThumbnailContent.h"
+#include "UI/Inspector/Material/MaterialEditorRows.h"
 
 namespace Editor {
 

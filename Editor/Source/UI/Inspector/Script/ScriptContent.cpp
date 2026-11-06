@@ -1,4 +1,4 @@
-#include "UI/Inspector/ScriptContent.h"
+#include "UI/Inspector/Script/ScriptContent.h"
 
 #include "Aquila/Foundation/ServiceRegistry.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
@@ -8,7 +8,7 @@
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Core/EditorContext.h"
 #include "Core/ScriptEditor.h"
-#include "UI/Inspector/InspectorLabels.h"
+#include "UI/Inspector/Common/InspectorLabels.h"
 
 namespace Editor {
 

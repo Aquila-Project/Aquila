@@ -1,9 +1,9 @@
-#include "UI/Inspector/MaterialEditorRows.h"
+#include "UI/Inspector/Material/MaterialEditorRows.h"
 
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
-#include "UI/Inspector/InspectorLabels.h"
+#include "UI/Inspector/Common/InspectorLabels.h"
 
 namespace Editor {
 

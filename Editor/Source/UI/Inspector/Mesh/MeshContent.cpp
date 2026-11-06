@@ -1,4 +1,4 @@
-#include "UI/Inspector/MeshContent.h"
+#include "UI/Inspector/Mesh/MeshContent.h"
 
 #include "Aquila/Graphics/Resources/MeshLibrary.h"
 #include "Aquila/Graphics/Resources/ProceduralMeshes.h"
