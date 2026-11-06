@@ -40,6 +40,7 @@ class ReflectedPropertyGrid {
   private:
 	struct Row {
 		const Reflection::Property *property = nullptr;
+		PropertyGrid *grid = nullptr;
 		View *widget = nullptr;
 		Delegate<void(const Reflection::PropertyValue &)> show;
 	};

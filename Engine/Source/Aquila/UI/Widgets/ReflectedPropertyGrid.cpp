@@ -22,6 +22,8 @@ using Reflection::PropertyValue;
 
 namespace {
 
+constexpr std::string_view K_MISSING_REFERENCE = "Missing reference";
+
 DragFloat::Config drag_config(const Reflection::PropertyHints &hints) {
 	return { .min = hints.min, .max = hints.max, .speed = hints.speed, .precision = hints.precision };
 }
@@ -56,7 +58,9 @@ void ReflectedPropertyGrid::refresh() {
 	m_refreshing = true;
 	for (Row &row : m_rows) {
 		row.show(row.property->get(m_instance));
-		row.widget->get_parent()->set_hidden(!row.property->is_visible(m_instance));
+		const bool hidden = !row.property->is_visible(m_instance);
+		row.widget->get_parent()->set_hidden(hidden);
+		row.grid->set_message_hidden(*row.widget, hidden);
 	}
 	m_refreshing = false;
 }
@@ -86,7 +90,9 @@ void ReflectedPropertyGrid::on_widget_edited(size_t row_index, const PropertyVal
 		if (i != row_index) {
 			row.show(row.property->get(m_instance));
 		}
-		row.widget->get_parent()->set_hidden(!row.property->is_visible(m_instance));
+		const bool hidden = !row.property->is_visible(m_instance);
+		row.widget->get_parent()->set_hidden(hidden);
+		row.grid->set_message_hidden(*row.widget, hidden);
 	}
 	m_refreshing = false;
 }
@@ -95,6 +101,7 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 	const size_t index = m_rows.size();
 	Row row;
 	row.property = &property;
+	row.grid = &grid;
 
 	auto edited = [this, index](const PropertyValue &value) { on_widget_edited(index, value); };
 	const bool split = grid.is_split();
@@ -246,6 +253,13 @@ void ReflectedPropertyGrid::add_row(PropertyGrid &grid, const Property &property
 			}
 			slot->on_changed.connect([edited](const Option<AssetPayload> &asset) {
 				edited(PropertyValue{ asset ? asset->asset_path : std::string{} });
+			});
+			slot->on_missing_changed.connect([&grid, slot](bool missing) {
+				if (missing) {
+					grid.set_message(*slot, MessageKind::Error, std::string(K_MISSING_REFERENCE));
+				} else {
+					grid.clear_message(*slot);
+				}
 			});
 			row.widget = slot;
 			row.show = [slot, type](const PropertyValue &value) {
