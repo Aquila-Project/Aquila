@@ -65,6 +65,16 @@ bool is_hidden(const View *view) {
 	return std::find(classes.begin(), classes.end(), "hidden") != classes.end();
 }
 
+const Label &label_of(const AssetSlot &slot) {
+	for (const auto &child : slot.get_children()) {
+		if (const auto *label = dynamic_cast<const Label *>(child.get())) {
+			return *label;
+		}
+	}
+	FAIL("the slot has no label");
+	throw std::logic_error("unreachable");
+}
+
 template <typename W> W &widget(ReflectedPropertyGrid &grid, const char *name) {
 	auto *found = dynamic_cast<W *>(grid.get_widget(name));
 	REQUIRE(found != nullptr);
@@ -293,7 +303,7 @@ TEST_SUITE("ReflectedPropertyGrid") {
 
 	TEST_CASE("asset slots say what they accept") {
 		AssetSlot slot("script");
-		const auto &label = dynamic_cast<const Label &>(*slot.get_children().front());
+		const auto &label = label_of(slot);
 		CHECK(label.get_text() == "Drop a script here");
 
 		DragState drag{};
@@ -337,7 +347,7 @@ TEST_SUITE("ReflectedPropertyGrid") {
 		reflected.bind(&thing);
 
 		auto &slot = widget<AssetSlot>(reflected, "Target");
-		const auto &label = dynamic_cast<const Label &>(*slot.get_children().front());
+		const auto &label = label_of(slot);
 		CHECK(label.get_text() == "Thing 7");
 
 		DragState drag{};
