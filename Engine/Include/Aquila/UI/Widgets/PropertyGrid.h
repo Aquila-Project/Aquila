@@ -2,6 +2,7 @@
 
 #include "Aquila/UI/Core/View.h"
 #include "Aquila/UI/Widgets/Label.h"
+#include "Aquila/UI/Widgets/MessageBox.h"
 
 namespace Aquila::UI::Core {
 
@@ -46,6 +47,12 @@ class PropertyGrid : public View {
 	PropertyGrid *add_grid();
 	View *add_action(View &widget, Unique<View> action);
 
+	/// A message box right above the row holding `widget`, as wide as the grid. Replaces that row's message.
+	void set_message(View &widget, MessageKind kind, std::string text);
+	void clear_message(View &widget);
+	/// Hiding a row doesn't hide its message, whoever hides the row calls this too.
+	void set_message_hidden(View &widget, bool hidden);
+
 	/// Right aligned label column, widgets tagged split-<TypeName> so styles can size them.
 	void set_split(bool split);
 	[[nodiscard]] bool is_split() const { return m_split; }
@@ -55,6 +62,8 @@ class PropertyGrid : public View {
   private:
 	View *add_component_row(std::string_view component, std::string label, Unique<View> widget);
 	[[nodiscard]] LayoutLoader *loader_for(std::string_view what) const;
+	[[nodiscard]] View *row_of(View &widget) const;
+	[[nodiscard]] View *message_of(View &widget) const;
 
 	float m_label_width;
 	bool m_split = false;
