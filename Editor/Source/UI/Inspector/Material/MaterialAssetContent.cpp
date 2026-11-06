@@ -3,6 +3,7 @@
 #include "Aquila/Graphics/Material/MaterialAssets.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Core/EditorContext.h"
+#include "UI/Inspector/Common/AssetInspectable.h"
 #include "UI/Inspector/Common/ThumbnailContent.h"
 #include "UI/Inspector/Material/MaterialEditorRows.h"
 
@@ -49,20 +50,13 @@ Option<Aquila::UI::Core::Inspectable> inspect_material_asset(const std::string &
 	Aquila::UI::Core::InspectorSection material;
 	material.id = "material";
 	material.title = "Material";
-	material.icon = "eclipse";
+	material.icon = asset_icon(path, context);
 	material.content = std::make_unique<MaterialAssetContent>(path, context);
 
-	Aquila::UI::Core::Inspectable inspectable;
-	inspectable.id = path;
-	inspectable.icon = "eclipse";
-	inspectable.title = std::filesystem::path(path).stem().string();
-	inspectable.subtitle = path;
-	inspectable.subtitle_tooltip = path;
-	inspectable.tabs.emplace_back();
-	inspectable.tabs.back().title = "Material";
-	inspectable.tabs.back().sections.push_back(std::move(preview));
-	inspectable.tabs.back().sections.push_back(std::move(material));
-	return inspectable;
+	std::vector<Aquila::UI::Core::InspectorSection> sections;
+	sections.push_back(std::move(preview));
+	sections.push_back(std::move(material));
+	return make_asset_inspectable(path, context, std::move(sections));
 }
 
 }
