@@ -293,6 +293,7 @@ TEST_SUITE("Text wrapping") {
 	}
 
 	TEST_CASE("a filled asset slot with a long name is as tall as a number field") {
+		AssetSlot::set_adapter("texture", { .exists = [](const std::string &) { return true; } });
 		Fixture narrow(160.F);
 		auto *slot = narrow.box->add_child<AssetSlot>(std::string("texture"));
 		slot->add_class("split-AssetSlot");
@@ -302,6 +303,7 @@ TEST_SUITE("Text wrapping") {
 		narrow.layout();
 		CHECK(slot->get_layout_rect().size.y == doctest::Approx(field->get_layout_rect().size.y));
 		CHECK(slot->get_tooltip() == std::string("/project/Content/") + K_FILE_NAME);
+		AssetSlot::set_adapter("texture", {});
 	}
 
 	TEST_CASE("an asset slot never draws its name over its clear button") {
@@ -311,7 +313,10 @@ TEST_SUITE("Text wrapping") {
 		REQUIRE(thumbnail != nullptr);
 		bool loaded = false;
 		AssetSlot::set_adapter("texture",
-							   { .thumbnail = [&](const std::string &) { return loaded ? thumbnail : nullptr; } });
+							   {
+								   .thumbnail = [&](const std::string &) { return loaded ? thumbnail : nullptr; },
+								   .exists = [](const std::string &) { return true; },
+							   });
 
 		for (F32 width = 90.F; width <= 420.F; width += 11.F) {
 			CAPTURE(width);

@@ -1,9 +1,11 @@
 #include "Aquila/UI/Core/UIHost.h"
 
+#include "Aquila/Foundation/FrameScheduler.h"
 #include "Aquila/Platform/Events/Event.h"
 #include "Aquila/Rendering/Renderers/OverlayRenderer.h"
 #include "Aquila/UI/Core/Clipboard.h"
 #include "Aquila/UI/Rendering/ViewRenderingSystem.h"
+#include "Aquila/UI/Widgets/AssetSlot.h"
 
 namespace Aquila::UI::Core {
 
@@ -15,6 +17,9 @@ UIHost::UIHost(const UIHostDesc &desc) {
 	}
 	desc.overlay_renderer.add_system<Rendering::ViewRenderingSystem>();
 	Clipboard::init(desc.clipboard_get, desc.clipboard_set);
+	if (Foundation::FrameScheduler::is_initialized()) {
+		m_missing_poll = Foundation::FrameScheduler::get()->add_poll([] { AssetSlot::check_missing(); });
+	}
 }
 
 UIHost::~UIHost() {

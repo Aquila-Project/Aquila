@@ -37,6 +37,9 @@ template <class T> class Singleton {
 		return static_cast<T *>(instance);
 	}
 
+	/// For code that can run without it, like widgets built in tests. get() asserts instead.
+	[[nodiscard]] static bool is_initialized() { return slot() != nullptr; }
+
 	static void shutdown() {
 		void *&instance = slot();
 		AQUILA_ASSERT(instance, (std::string(typeid(T).name()) + ": Singleton not initialized").c_str());

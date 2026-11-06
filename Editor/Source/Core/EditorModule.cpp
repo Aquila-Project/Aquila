@@ -763,6 +763,13 @@ void EditorModule::register_entity_slots() {
 						Aquila::Foundation::UUID::from_string(uuid));
 					return entity ? entity->get_name() : std::string("Missing entity");
 				},
+			.exists =
+				[this](const std::string &uuid) {
+					return m_engine->get_scene()
+						.get_entity_manager()
+						->find_entity_by_uuid(Aquila::Foundation::UUID::from_string(uuid))
+						.has_value();
+				},
 		});
 }
 
