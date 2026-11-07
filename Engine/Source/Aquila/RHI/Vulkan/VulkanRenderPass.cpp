@@ -18,7 +18,7 @@ static VkImageAspectFlags depth_aspect(TextureFormat fmt) {
 }
 
 static VkImageMemoryBarrier make_barrier(VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout,
-										VkImageLayout new_layout, VkAccessFlags src_access, VkAccessFlags dst_access) {
+										 VkImageLayout new_layout, VkAccessFlags src_access, VkAccessFlags dst_access) {
 	VkImageMemoryBarrier b{};
 	b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	b.oldLayout = old_layout;
@@ -35,7 +35,7 @@ static VkImageMemoryBarrier make_barrier(VkImage image, VkImageAspectFlags aspec
 VulkanRenderPass::VulkanRenderPass(VulkanDevice &device, const RenderPassDesc &desc) : m_device(device), m_desc(desc) {}
 
 void VulkanRenderPass::issue_pre_barriers(VulkanCommandList &cmd, const VulkanSwapchain *swapchain,
-										Uint32 image_index) const {
+										  Uint32 image_index) const {
 	std::vector<VkImageMemoryBarrier> barriers;
 	barriers.reserve(4);
 
@@ -47,8 +47,8 @@ void VulkanRenderPass::issue_pre_barriers(VulkanCommandList &cmd, const VulkanSw
 	if (m_desc.use_swapchain) {
 		AQUILA_ASSERT(swapchain, "useSwapchain=true but no swapchain passed to Begin()");
 		barriers.push_back(make_barrier(swapchain->get_image(image_index), VK_IMAGE_ASPECT_COLOR_BIT,
-									   VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
-									   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
+										VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
+										VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
 	} else {
 		for (const auto &att : m_desc.color_attachments) {
 			if (att.texture == nullptr) {
@@ -57,26 +57,27 @@ void VulkanRenderPass::issue_pre_barriers(VulkanCommandList &cmd, const VulkanSw
 			if (att.resolve_texture != nullptr) {
 				auto &vk_resolve = static_cast<VulkanTexture &>(*att.resolve_texture);
 				barriers.push_back(make_barrier(vk_resolve.get_image(), VK_IMAGE_ASPECT_COLOR_BIT,
-											   VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
-											   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
+												VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
+												VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
 			}
 
 			auto &vk_tex = static_cast<VulkanTexture &>(*att.texture);
 
-			VkImageLayout old_layout = (att.load_op == AttachmentLoadOp::Load) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-																			 : VK_IMAGE_LAYOUT_UNDEFINED;
+			VkImageLayout old_layout = (att.load_op == AttachmentLoadOp::Load)
+				? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+				: VK_IMAGE_LAYOUT_UNDEFINED;
 			VkAccessFlags src_access = (att.load_op == AttachmentLoadOp::Load) ? VK_ACCESS_SHADER_READ_BIT : 0;
 
-			barriers.push_back(make_barrier(vk_tex.get_image(), VK_IMAGE_ASPECT_COLOR_BIT, old_layout,
-										   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, src_access,
-										   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT));
+			barriers.push_back(make_barrier(
+				vk_tex.get_image(), VK_IMAGE_ASPECT_COLOR_BIT, old_layout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				src_access, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT));
 		}
 
 		if (m_desc.use_swapchain_as_resolve) {
 			AQUILA_ASSERT(swapchain, "useSwapchainAsResolve=true but no swapchain passed to Begin()");
 			barriers.push_back(make_barrier(swapchain->get_image(image_index), VK_IMAGE_ASPECT_COLOR_BIT,
-										   VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
-										   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
+											VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0,
+											VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT));
 		}
 	}
 
@@ -99,8 +100,8 @@ void VulkanRenderPass::issue_pre_barriers(VulkanCommandList &cmd, const VulkanSw
 				? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
 				: VK_IMAGE_LAYOUT_UNDEFINED;
 			VkAccessFlags src_access = (d.depth_load_op == AttachmentLoadOp::Load) ? VK_ACCESS_SHADER_READ_BIT : 0;
-			VkImageLayout new_layout =
-				d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			VkImageLayout new_layout = d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+												   : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 			VkAccessFlags dst_access = d.read_only
 				? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
 				: (VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
@@ -125,9 +126,9 @@ void VulkanRenderPass::issue_post_barriers(VulkanCommandList &cmd) const {
 
 	if (m_desc.use_swapchain || m_desc.use_swapchain_as_resolve) {
 		AQUILA_ASSERT(m_active_swapchain, "useSwapchain/useSwapchainAsResolve but swapchain is null during End()");
-		barriers.push_back(make_barrier(m_active_swapchain->get_image(m_swapchain_image_index), VK_IMAGE_ASPECT_COLOR_BIT,
-									   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-									   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0));
+		barriers.push_back(make_barrier(m_active_swapchain->get_image(m_swapchain_image_index),
+										VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+										VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0));
 	}
 
 	if (!m_desc.use_swapchain) {
@@ -138,9 +139,9 @@ void VulkanRenderPass::issue_post_barriers(VulkanCommandList &cmd) const {
 			if (att.resolve_texture != nullptr) {
 				auto &vk_resolve = static_cast<VulkanTexture &>(*att.resolve_texture);
 				barriers.push_back(make_barrier(vk_resolve.get_image(), VK_IMAGE_ASPECT_COLOR_BIT,
-											   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-											   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-											   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT));
+												VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+												VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+												VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT));
 			}
 
 			auto &vk_tex = static_cast<VulkanTexture &>(*att.texture);
@@ -150,9 +151,9 @@ void VulkanRenderPass::issue_post_barriers(VulkanCommandList &cmd) const {
 			}
 
 			barriers.push_back(make_barrier(vk_tex.get_image(), VK_IMAGE_ASPECT_COLOR_BIT,
-										   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-										   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-										   VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT));
+											VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+											VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+											VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT));
 		}
 	}
 
@@ -161,11 +162,11 @@ void VulkanRenderPass::issue_post_barriers(VulkanCommandList &cmd) const {
 		if ((d.texture != nullptr) && d.depth_store_op == AttachmentStoreOp::Store) {
 			auto &vk_depth = static_cast<VulkanTexture &>(*d.texture);
 			VkImageAspectFlags aspect = depth_aspect(vk_depth.get_format());
-			VkImageLayout old_layout =
-				d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-			barriers.push_back(
-				make_barrier(vk_depth.get_image(), aspect, old_layout, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-							d.read_only ? 0 : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT));
+			VkImageLayout old_layout = d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+												   : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			barriers.push_back(make_barrier(
+				vk_depth.get_image(), aspect, old_layout, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+				d.read_only ? 0 : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT));
 		}
 	}
 
@@ -179,8 +180,8 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 	AQUILA_ASSERT(!m_recording, "RenderPass already recording");
 	m_recording = true;
 
-	auto &vk_cmd = static_cast<VulkanCommandList &>(cmd);
-	m_active_swapchain = (swapchain != nullptr) ? &static_cast<VulkanSwapchain &>(*swapchain) : nullptr;
+	auto &vk_cmd = dynamic_cast<VulkanCommandList &>(cmd);
+	m_active_swapchain = (swapchain != nullptr) ? &dynamic_cast<VulkanSwapchain &>(*swapchain) : nullptr;
 	m_swapchain_image_index = image_index;
 
 	if (!m_desc.external_barriers) {
@@ -215,11 +216,11 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 
 		for (const auto &att : m_desc.color_attachments) {
 			AQUILA_ASSERT(att.texture, "Offscreen color attachment has null texture");
-			auto &vk_tex = static_cast<VulkanTexture &>(*att.texture);
+			auto &vk_tex = dynamic_cast<VulkanTexture &>(*att.texture);
 
 			VkImageView resolve_view = VK_NULL_HANDLE;
 			if (att.resolve_texture != nullptr) {
-				resolve_view = static_cast<VulkanTexture &>(*att.resolve_texture).get_image_view();
+				resolve_view = dynamic_cast<VulkanTexture &>(*att.resolve_texture).get_image_view();
 			} else if (m_desc.use_swapchain_as_resolve && (m_active_swapchain != nullptr)) {
 				resolve_view = m_active_swapchain->get_image_view(image_index);
 			}
@@ -236,13 +237,13 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 		}
 	}
 
-	std::optional<VulkanDynamicRendering::DepthAttachmentDesc> depth_desc;
+	Option<VulkanDynamicRendering::DepthAttachmentDesc> depth_desc;
 	if (m_desc.depth_attachment.has_value()) {
 		const auto &d = *m_desc.depth_attachment;
 
 		VkImageView depth_view = VK_NULL_HANDLE;
 		if (d.texture != nullptr) {
-			depth_view = static_cast<VulkanTexture &>(*d.texture).get_image_view();
+			depth_view = dynamic_cast<VulkanTexture &>(*d.texture).get_image_view();
 		} else if (m_desc.use_swapchain && (m_active_swapchain != nullptr)) {
 			depth_view = m_active_swapchain->get_depth_image_view(image_index);
 		}
@@ -251,7 +252,7 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 			depth_desc = VulkanDynamicRendering::DepthAttachmentDesc{
 				.view = depth_view,
 				.layout = d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-									 : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+									  : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 				.clear = (d.depth_load_op == AttachmentLoadOp::Clear),
 				.clear_depth = d.clear_depth,
 				.read_only = d.read_only,
@@ -272,10 +273,17 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 
 	// Default full-attachment viewport and scissor — caller can override via
 	// cmd.SetViewport / cmd.SetScissor after Begin() returns.
-	VkViewport viewport{ 0.0F, 0.0F, static_cast<float>(width), static_cast<float>(height), 0.0F, 1.0F };
+	VkViewport viewport{
+		.x = 0.0F,
+		.y = 0.0F,
+		.width = static_cast<float>(width),
+		.height = static_cast<float>(height),
+		.minDepth = 0.0F,
+		.maxDepth = 1.0F,
+	};
 	vkCmdSetViewport(vk_cmd.get_handle(), 0, 1, &viewport);
 
-	VkRect2D scissor{ { 0, 0 }, { width, height } };
+	VkRect2D scissor{ .offset = { .x = 0, .y = 0 }, .extent = { .width = width, .height = height } };
 	vkCmdSetScissor(vk_cmd.get_handle(), 0, 1, &scissor);
 }
 

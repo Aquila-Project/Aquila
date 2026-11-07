@@ -8,18 +8,18 @@ namespace Aquila::RHI {
 
 VulkanTexture::VulkanTexture(VulkanDevice &device, const TextureDesc &desc) : m_device(device), m_desc(desc) {
 	m_image_allocation = m_device.create_image<MemoryDomain::GpuOnly>(
-		desc.width, desc.height, to_vk_format(desc.format), to_vk_image_usage(desc.usage), desc.mip_levels, desc.array_layers,
-		to_vk_sample_count(desc.samples), desc.debug_name.c_str());
+		desc.width, desc.height, to_vk_format(desc.format), to_vk_image_usage(desc.usage), desc.mip_levels,
+		desc.array_layers, to_vk_sample_count(desc.samples), desc.debug_name.c_str());
 
 	create_image_view();
 	create_sampler();
 
 	m_device.set_object_debug_name(VK_OBJECT_TYPE_IMAGE, reinterpret_cast<Uint64>(m_image_allocation.image),
-								(desc.debug_name + "_Image").c_str());
+								   (desc.debug_name + "_Image").c_str());
 	m_device.set_object_debug_name(VK_OBJECT_TYPE_IMAGE_VIEW, reinterpret_cast<Uint64>(m_image_view),
-								(desc.debug_name + "_ImageView").c_str());
+								   (desc.debug_name + "_ImageView").c_str());
 	m_device.set_object_debug_name(VK_OBJECT_TYPE_SAMPLER, reinterpret_cast<Uint64>(m_sampler),
-								(desc.debug_name + "_Sampler").c_str());
+								   (desc.debug_name + "_Sampler").c_str());
 }
 
 VulkanTexture::~VulkanTexture() {
@@ -30,8 +30,8 @@ VulkanTexture::~VulkanTexture() {
 	}
 
 	if (m_image_allocation.image != VK_NULL_HANDLE) {
-		queue.queue_deletion(
-			Deletion::VmaImageDeletion{ .image = m_image_allocation.image, .allocation = m_image_allocation.allocation });
+		queue.queue_deletion(Deletion::VmaImageDeletion{ .image = m_image_allocation.image,
+														 .allocation = m_image_allocation.allocation });
 	}
 }
 
@@ -48,7 +48,7 @@ void VulkanTexture::destroy_immediate() {
 VkDescriptorImageInfo VulkanTexture::get_descriptor_image_info() const {
 	VkDescriptorImageInfo info{};
 	info.imageLayout = is_depth_format(m_desc.format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-													: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+													  : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	info.imageView = m_image_view;
 	info.sampler = m_sampler;
 	return info;

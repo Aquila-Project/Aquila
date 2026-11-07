@@ -40,7 +40,7 @@ class VulkanDevice final : public IRHIDevice {
 	[[nodiscard]] Unique<IRHIBuffer> create_buffer(const BufferDesc &desc) override;
 	[[nodiscard]] Unique<IRHITexture> create_texture(const TextureDesc &desc) override;
 	[[nodiscard]] Unique<IRHICommandList> create_command_list(CommandListType type,
-															const std::string &name = "") override;
+															  const std::string &name = "") override;
 	[[nodiscard]] Unique<IRHICommandList> create_frame_command_list(Uint32 slot) override;
 	[[nodiscard]] Unique<IRHISwapchain> create_swapchain(const SwapchainDesc &desc) override;
 	[[nodiscard]] Unique<IRHIPipeline> create_graphics_pipeline(const GraphicsPipelineDesc &desc) override;
@@ -52,12 +52,12 @@ class VulkanDevice final : public IRHIDevice {
 	create_descriptor_set_layout(const DescriptorSetLayoutDesc &desc) override;
 	[[nodiscard]] Unique<IRHIDescriptorSet> allocate_descriptor_set(IRHIDescriptorSetLayout &layout) override;
 	void copy_buffer(IRHICommandList &cmd, IRHIBuffer &src, IRHIBuffer &dst, Uint64 size, Uint64 src_offset = 0,
-					Uint64 dst_offset = 0) override;
+					 Uint64 dst_offset = 0) override;
 	void submit(IRHICommandList &cmd) override;
 	void submit_and_wait(IRHICommandList &cmd) override;
 	void submit_frame(IRHICommandList &cmd, IRHISwapchain *swapchain, Uint32 image_index) override;
 	void present_frame(IRHISwapchain &swapchain, Uint32 image_index,
-					  Vec4 clear_color = { 0.0F, 0.0F, 0.0F, 1.0F }) override;
+					   Vec4 clear_color = { 0.0F, 0.0F, 0.0F, 1.0F }) override;
 	void wait_idle() override { vkDeviceWaitIdle(m_device); }
 
 	void submit_to_graphics_queue(const VkSubmitInfo *submit_info, VkFence fence);
@@ -82,7 +82,7 @@ class VulkanDevice final : public IRHIDevice {
 	/// Records `func(VkCommandBuffer)` on the transfer queue and waits for it.
 	template <typename Func> void execute_transfer_commands(Func &&func) {
 		execute_single_time_commands(m_transfer_command_pool, m_transfer_queue, m_transfer_queue_mutex,
-								  std::forward<Func>(func));
+									 std::forward<Func>(func));
 	}
 
 	VkFence create_fence(bool signaled = false);
@@ -90,12 +90,16 @@ class VulkanDevice final : public IRHIDevice {
 	void destroy_fence(VkFence fence);
 
 	VkFormat find_supported_format(const std::vector<VkFormat> &candidates, VkImageTiling tiling,
-								 VkFormatFeatureFlags features);
+								   VkFormatFeatureFlags features);
 
 	void set_object_debug_name(VkObjectType object_type, Uint64 handle, const char *name) const;
 
-	[[nodiscard]] PFN_vkCmdBeginDebugUtilsLabelEXT get_debug_begin_label() const { return m_vk_cmd_begin_debug_utils_label_ext; }
-	[[nodiscard]] PFN_vkCmdEndDebugUtilsLabelEXT get_debug_end_label() const { return m_vk_cmd_end_debug_utils_label_ext; }
+	[[nodiscard]] PFN_vkCmdBeginDebugUtilsLabelEXT get_debug_begin_label() const {
+		return m_vk_cmd_begin_debug_utils_label_ext;
+	}
+	[[nodiscard]] PFN_vkCmdEndDebugUtilsLabelEXT get_debug_end_label() const {
+		return m_vk_cmd_end_debug_utils_label_ext;
+	}
 
 	void create_graphics_command_pool();
 	void create_compute_command_pool();
@@ -120,13 +124,15 @@ class VulkanDevice final : public IRHIDevice {
 			alloc_info.flags = 0;
 		} else if constexpr (Domain == MemoryDomain::CpuToGpu) {
 			alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-			alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			alloc_info.flags =
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		} else if constexpr (Domain == MemoryDomain::GpuToCpu) {
 			alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
 			alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		} else if constexpr (Domain == MemoryDomain::CpuOnly) {
 			alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-			alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			alloc_info.flags =
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		}
 
 		BufferAllocation buffer_allocation{};
@@ -138,7 +144,8 @@ class VulkanDevice final : public IRHIDevice {
 
 #ifdef AQUILA_DEBUG
 		if (debug_name && enableValidationLayers) {
-			set_object_debug_name(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(buffer_allocation.buffer), debug_name);
+			set_object_debug_name(VK_OBJECT_TYPE_BUFFER, reinterpret_cast<uint64_t>(buffer_allocation.buffer),
+								  debug_name);
 		}
 #endif
 		return buffer_allocation;
@@ -147,9 +154,9 @@ class VulkanDevice final : public IRHIDevice {
 	/// CPU visible domains use linear tiling, so no mips, no MSAA and one layer.
 	template <MemoryDomain Domain>
 	ImageAllocation create_image(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage,
-								uint32_t mip_levels = 1, uint32_t array_layers = 1,
-								VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
-								const char *debug_name = nullptr) {
+								 uint32_t mip_levels = 1, uint32_t array_layers = 1,
+								 VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
+								 const char *debug_name = nullptr) {
 		AQUILA_ASSERT(m_allocator != VK_NULL_HANDLE, "VMA allocator is null");
 		AQUILA_ASSERT(width > 0 && height > 0, "extent must be > 0");
 
@@ -182,14 +189,16 @@ class VulkanDevice final : public IRHIDevice {
 			alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		} else if constexpr (Domain == MemoryDomain::CpuToGpu) {
 			alloc_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
-			alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			alloc_info.flags =
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		} else if constexpr (Domain == MemoryDomain::GpuToCpu) {
 			alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
 			alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 			alloc_info.preferredFlags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 		} else if constexpr (Domain == MemoryDomain::CpuOnly) {
 			alloc_info.usage = VMA_MEMORY_USAGE_AUTO;
-			alloc_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			alloc_info.flags =
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
 		}
 
 		ImageAllocation image_allocation{};
@@ -204,7 +213,7 @@ class VulkanDevice final : public IRHIDevice {
 		image_allocation.array_layers = array_layers;
 
 		if constexpr (is_cpu_accessible) {
-			VkImageSubresource sub{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+			VkImageSubresource sub{ .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .arrayLayer = 0 };
 			VkSubresourceLayout layout{};
 			vkGetImageSubresourceLayout(m_device, image_allocation.image, &sub, &layout);
 			image_allocation.info.size = layout.size;
@@ -302,16 +311,17 @@ class VulkanDevice final : public IRHIDevice {
 		vkFreeCommandBuffers(m_device, pool, 1, &cmd);
 	}
 
-	static VkResult create_debug_messenger_ext(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *p_create_info,
-											const VkAllocationCallbacks *p_allocator,
-											VkDebugUtilsMessengerEXT *p_debug_messenger);
+	static VkResult create_debug_messenger_ext(VkInstance instance,
+											   const VkDebugUtilsMessengerCreateInfoEXT *p_create_info,
+											   const VkAllocationCallbacks *p_allocator,
+											   VkDebugUtilsMessengerEXT *p_debug_messenger);
 	static void destroy_debug_messenger_ext(VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger,
-										 const VkAllocationCallbacks *p_allocator);
+											const VkAllocationCallbacks *p_allocator);
 	static void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT &create_info);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-														VkDebugUtilsMessageTypeFlagsEXT message_type,
-														const VkDebugUtilsMessengerCallbackDataEXT *p_callback_data,
-														void *p_user_data);
+														 VkDebugUtilsMessageTypeFlagsEXT message_type,
+														 const VkDebugUtilsMessengerCallbackDataEXT *p_callback_data,
+														 void *p_user_data);
 	static const char *get_object_type_name(VkObjectType object_type);
 
 	// Vulkan handles
@@ -381,8 +391,8 @@ class VulkanDevice final : public IRHIDevice {
 
 	const std::vector<const char *> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };
 	const std::vector<const char *> DEVICE_EXTENSIONS = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-														 VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-														 VK_KHR_MAINTENANCE1_EXTENSION_NAME };
+														  VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+														  VK_KHR_MAINTENANCE1_EXTENSION_NAME };
 };
 
 } // namespace Aquila::RHI
