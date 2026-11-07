@@ -15,6 +15,8 @@ class PropertyGrid;
 
 namespace Editor {
 
+class MaterialParameterRows;
+
 /// Shader, Double Sided and Blend Mode report `needs_rebuild`: the owner makes a new material and calls show()
 /// again, which is safe from inside the callback. Other edits go straight into the material.
 class MaterialEditorRows {
@@ -30,18 +32,14 @@ class MaterialEditorRows {
 
   private:
 	void build_settings();
-	void build_parameters();
 	void notify(bool needs_rebuild);
 
 	Aquila::GFX::GfxContext *m_context = nullptr;
 	Aquila::UI::Core::PropertyGrid *m_settings_grid = nullptr;
-	Aquila::UI::Core::PropertyGrid *m_params_grid = nullptr;
 	Aquila::UI::Core::Label *m_kind_label = nullptr;
 	Unique<Aquila::Reflection::TypeInfo> m_settings_type;
 	Unique<Aquila::UI::Core::ReflectedPropertyGrid> m_settings;
-	Unique<Aquila::Reflection::TypeInfo> m_params_type;
-	Unique<Aquila::UI::Core::ReflectedPropertyGrid> m_params;
-	std::vector<std::pair<std::string, Aquila::Graphics::ParameterType>> m_shown_parameters;
+	Unique<MaterialParameterRows> m_params;
 	Ref<Aquila::Graphics::Material> m_material;
 	Aquila::Graphics::MaterialData m_data;
 	bool m_custom = false;

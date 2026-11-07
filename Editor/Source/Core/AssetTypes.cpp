@@ -7,6 +7,7 @@
 #include "UI/Inspector/Material/MaterialAssetContent.h"
 #include "UI/Inspector/Mesh/MeshAssetContent.h"
 #include "UI/Inspector/Script/ScriptAssetContent.h"
+#include "UI/Inspector/Shader/ShaderAssetContent.h"
 
 namespace Editor {
 
@@ -62,7 +63,13 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.thumbnail = AssetThumbnail::Material,
 		.inspect = inspect_material_asset,
 	});
-	types.add({ .id = "shader", .title = "Shader", .icon = "file-code", .extensions = { ".slang", ".hlsl", ".glsl" } });
+	types.add({
+		.id = "shader",
+		.title = "Shader",
+		.icon = "file-code",
+		.extensions = { ".slang", ".hlsl", ".glsl" },
+		.inspect = inspect_shader_asset,
+	});
 	types.add({
 		.id = "script",
 		.title = "Script",
