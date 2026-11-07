@@ -3,7 +3,6 @@
 #include "Aquila/RHI/Vulkan/VulkanCommandList.h"
 #include "Aquila/RHI/Vulkan/VulkanSwapchain.h"
 #include "Aquila/RHI/Vulkan/VulkanTexture.h"
-#include "Aquila/RHI/Vulkan/VulkanDynamicRendering.h"
 #include "Aquila/RHI/Vulkan/VulkanFormatUtils.h"
 #include "Aquila/Foundation/Macros.h"
 
@@ -183,7 +182,23 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 	Uint32 width = m_desc.width;
 	Uint32 height = m_desc.height;
 
-	std::vector<VulkanDynamicRendering::ColorAttachmentDesc> color_descs;
+	std::vector<VkRenderingAttachmentInfo> color_infos;
+	const auto add_color = [&color_infos](VkImageView view, VkImageView resolve_view,
+										  const RenderPassColorAttachmentDesc &att) {
+		VkRenderingAttachmentInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		info.imageView = view;
+		info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		info.loadOp = att.load_op == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+		info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		info.clearValue.color = { { att.clear_color.r, att.clear_color.g, att.clear_color.b, att.clear_color.a } };
+		if (resolve_view != VK_NULL_HANDLE) {
+			info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+			info.resolveImageView = resolve_view;
+			info.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		}
+		color_infos.push_back(info);
+	};
 
 	if (m_desc.use_swapchain) {
 		AQUILA_ASSERT(m_active_swapchain, "useSwapchain=true but no swapchain passed");
@@ -192,13 +207,7 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 
 		const RenderPassColorAttachmentDesc &src =
 			m_desc.color_attachments.empty() ? RenderPassColorAttachmentDesc{} : m_desc.color_attachments[0];
-		color_descs.push_back({
-			.view = m_active_swapchain->get_image_view(image_index),
-			.resolve_view = VK_NULL_HANDLE,
-			.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.clear = (src.load_op == AttachmentLoadOp::Clear),
-			.clear_color = src.clear_color,
-		});
+		add_color(m_active_swapchain->get_image_view(image_index), VK_NULL_HANDLE, src);
 		m_color_format = TextureFormat::BGRA8;
 	} else {
 		if (m_desc.use_swapchain_as_resolve && (m_active_swapchain != nullptr)) {
@@ -217,19 +226,14 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 				resolve_view = m_active_swapchain->get_image_view(image_index);
 			}
 
-			color_descs.push_back({
-				.view = vk_tex.get_image_view(),
-				.resolve_view = resolve_view,
-				.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.clear = (att.load_op == AttachmentLoadOp::Clear),
-				.clear_color = att.clear_color,
-			});
+			add_color(vk_tex.get_image_view(), resolve_view, att);
 			m_color_format = m_desc.use_swapchain_as_resolve ? TextureFormat::BGRA8 : vk_tex.get_format();
 			m_sample_count = vk_tex.get_sample_count();
 		}
 	}
 
-	Option<VulkanDynamicRendering::DepthAttachmentDesc> depth_desc;
+	VkRenderingAttachmentInfo depth_info{};
+	bool has_depth = false;
 	if (m_desc.depth_attachment.has_value()) {
 		const auto &d = *m_desc.depth_attachment;
 
@@ -241,24 +245,26 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 		}
 
 		if (depth_view != VK_NULL_HANDLE) {
-			depth_desc = VulkanDynamicRendering::DepthAttachmentDesc{
-				.view = depth_view,
-				.layout = d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-									  : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-				.clear = (d.depth_load_op == AttachmentLoadOp::Clear),
-				.clear_depth = d.clear_depth,
-				.read_only = d.read_only,
-			};
+			has_depth = true;
+			depth_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			depth_info.imageView = depth_view;
+			depth_info.imageLayout = d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+												 : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			depth_info.loadOp =
+				d.depth_load_op == AttachmentLoadOp::Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+			depth_info.storeOp = d.read_only ? VK_ATTACHMENT_STORE_OP_NONE : VK_ATTACHMENT_STORE_OP_STORE;
+			depth_info.clearValue.depthStencil = { .depth = d.clear_depth, .stencil = 0 };
 		}
 	}
 
-	VulkanDynamicRendering::begin(vk_cmd,
-								  {
-									  .width = width,
-									  .height = height,
-									  .color_attachments = color_descs,
-									  .depth_attachment = depth_desc,
-								  });
+	VkRenderingInfo rendering_info{};
+	rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	rendering_info.renderArea.extent = { .width = width, .height = height };
+	rendering_info.layerCount = 1;
+	rendering_info.colorAttachmentCount = static_cast<Uint32>(color_infos.size());
+	rendering_info.pColorAttachments = color_infos.empty() ? nullptr : color_infos.data();
+	rendering_info.pDepthAttachment = has_depth ? &depth_info : nullptr;
+	vkCmdBeginRendering(vk_cmd.get_handle(), &rendering_info);
 
 	m_width = width;
 	m_height = height;
@@ -283,7 +289,7 @@ void VulkanRenderPass::end(IRHICommandList &cmd) {
 	AQUILA_ASSERT(m_recording, "RenderPass not recording");
 	auto &vk_cmd = static_cast<VulkanCommandList &>(cmd);
 
-	VulkanDynamicRendering::end(vk_cmd);
+	vkCmdEndRendering(vk_cmd.get_handle());
 	if (!m_desc.external_barriers) {
 		issue_post_barriers(vk_cmd);
 	}
