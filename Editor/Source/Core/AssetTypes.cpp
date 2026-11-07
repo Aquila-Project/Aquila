@@ -68,6 +68,7 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.title = "Shader",
 		.icon = "file-code",
 		.extensions = { ".slang", ".hlsl", ".glsl" },
+		.open = open_in_script_editor,
 		.inspect = inspect_shader_asset,
 	});
 	types.add({
@@ -85,8 +86,17 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.extensions = { ".d.luau" },
 		.open = open_in_script_editor,
 	});
-	types.add({ .id = "scene", .title = "Scene", .extensions = { ".aqscene" } });
-	types.add({ .id = "ui", .title = "UI Markup", .icon = "panel-left", .extensions = { ".aqlayout", ".aqstyle" } });
+	types.add({
+		.id = "scene",
+		.title = "Scene",
+		.extensions = { ".aqscene" },
+	});
+	types.add({
+		.id = "ui",
+		.title = "UI Markup",
+		.icon = "panel-left",
+		.extensions = { ".aqlayout", ".aqstyle" },
+	});
 }
 
 }
