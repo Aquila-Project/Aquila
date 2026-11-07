@@ -94,48 +94,5 @@ class VulkanDynamicRendering {
 	static void end(VulkanCommandList &cmd) { vkCmdEndRendering(cmd.get_handle()); }
 };
 
-struct PipelineRenderingFormats {
-	std::vector<VkFormat> color_formats;
-	VkFormat depth_format = VK_FORMAT_UNDEFINED;
-
-	static PipelineRenderingFormats g_buffer() {
-		return { .color_formats = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT,
-									VK_FORMAT_R8G8B8A8_UNORM },
-				 .depth_format = VK_FORMAT_D32_SFLOAT };
-	}
-	static PipelineRenderingFormats sky_box() {
-		return { .color_formats = { VK_FORMAT_R32G32B32A32_SFLOAT }, .depth_format = VK_FORMAT_D32_SFLOAT };
-	}
-	static PipelineRenderingFormats single_color(VkFormat format = VK_FORMAT_R8G8B8A8_UNORM) {
-		return { .color_formats = { format }, .depth_format = VK_FORMAT_UNDEFINED };
-	}
-	static PipelineRenderingFormats depth_only(VkFormat depth_format = VK_FORMAT_D32_SFLOAT) {
-		return { .color_formats = {}, .depth_format = depth_format };
-	}
-	static PipelineRenderingFormats lighting() {
-		return { .color_formats = { VK_FORMAT_R16G16B16A16_SFLOAT }, .depth_format = VK_FORMAT_UNDEFINED };
-	}
-	static PipelineRenderingFormats composite() {
-		return { .color_formats = { VK_FORMAT_R16G16B16A16_SFLOAT }, .depth_format = VK_FORMAT_UNDEFINED };
-	}
-	static PipelineRenderingFormats shadow() { return depth_only(); }
-	static PipelineRenderingFormats gizmo() {
-		return { .color_formats = { VK_FORMAT_R16G16B16A16_SFLOAT }, .depth_format = VK_FORMAT_D32_SFLOAT };
-	}
-	static PipelineRenderingFormats custom(const std::vector<VkFormat> &color_formats,
-										   VkFormat depth_format = VK_FORMAT_UNDEFINED) {
-		return { .color_formats = color_formats, .depth_format = depth_format };
-	}
-
-	[[nodiscard]] VkPipelineRenderingCreateInfo get_create_info() const {
-		VkPipelineRenderingCreateInfo info{};
-		info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-		info.colorAttachmentCount = static_cast<Uint32>(color_formats.size());
-		info.pColorAttachmentFormats = color_formats.empty() ? nullptr : color_formats.data();
-		info.depthAttachmentFormat = depth_format;
-		return info;
-	}
-};
-
 } // namespace Aquila::RHI
 #endif
