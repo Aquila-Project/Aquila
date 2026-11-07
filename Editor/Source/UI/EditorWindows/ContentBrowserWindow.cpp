@@ -257,7 +257,8 @@ void ContentBrowserWindow::create(const ContentCreator &creator) {
 }
 
 void ContentBrowserWindow::open_item_menu(const std::string &path, Vec2 position) {
-	press(path);
+	m_last_press = {};
+	select(path);
 	m_menu->clear_items();
 	if (const AssetType *type = context().asset_types.find_for_path(path); type != nullptr && type->open) {
 		m_menu->add_item("Open", {}, context().icon(type->icon), [open = type->open, path] { open(path); });
@@ -325,20 +326,23 @@ void ContentBrowserWindow::press(const std::string &path) {
 	const auto now = std::chrono::steady_clock::now();
 	const bool double_click = path == m_selected && now - m_last_press < K_DOUBLE_CLICK;
 	m_last_press = now;
-	m_selected = path;
+	select(path);
 
+	const auto tile = std::ranges::find(m_tiles, path, &Tile::path);
+	if (!double_click || tile == m_tiles.end()) {
+		return;
+	}
+	if (tile->is_directory) {
+		navigate(path);
+	} else if (const AssetType *asset = context().asset_types.find_for_path(path); asset != nullptr && asset->open) {
+		asset->open(path);
+	}
+}
+
+void ContentBrowserWindow::select(const std::string &path) {
+	m_selected = path;
 	for (const Tile &tile : m_tiles) {
 		tile.view->set_class("content-tile-selected", tile.path == path);
-		if (double_click && tile.path == path && tile.is_directory) {
-			navigate(path);
-		}
-
-		if (double_click && tile.path == path && !tile.is_directory) {
-			if (const AssetType *asset = context().asset_types.find_for_path(tile.path);
-				asset != nullptr && asset->open) {
-				asset->open(tile.path);
-			}
-		}
 	}
 }
 
