@@ -32,8 +32,10 @@ class Logger {
 	static void set_log_level(LogLevel level);
 	static LogLevel get_log_level();
 
-	/// nullptr goes back to the default: errors to stderr, the rest to stdout. Thread safe.
-	static void set_sink(std::ostream *buf);
+	/// nullptr goes back to the default: errors to stderr, the rest to stdout. Lines below `min_level` skip the sink
+	/// and go to the default, so an in-app console can leave Debug and Trace (engine internals) to the terminal.
+	/// Thread safe.
+	static void set_sink(std::ostream *buf, LogLevel min_level = LogLevel::Trace);
 
 	static void enable_timestamp(bool enable = true);
 	static void enable_location(bool enable = true);
@@ -41,6 +43,7 @@ class Logger {
 
   private:
 	static std::ostream *s_sink;
+	static LogLevel s_sink_level;
 	static std::string get_timestamp();
 	static std::string get_level_string(LogLevel level);
 	static std::string format_location(const std::source_location &location);

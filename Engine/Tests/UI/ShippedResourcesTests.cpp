@@ -122,8 +122,6 @@ TEST_SUITE("Shipped UI resources") {
 		REQUIRE(Aquila::UI::StyleParser::load_files(paths, sheet));
 		const std::vector<std::pair<std::string, Vec4>> expected{
 			{ "console-tag-info", { 0.35F, 0.87F, 0.35F, 1.F } },
-			{ "console-tag-debug", { 0.F, 0.8F, 0.8F, 1.F } },
-			{ "console-tag-trace", { 0.55F, 0.55F, 0.55F, 1.F } },
 			{ "console-tag-warning", { 0.83F, 0.67F, 0.29F, 1.F } },
 			{ "console-tag-error", { 0.87F, 0.45F, 0.45F, 1.F } },
 			{ "console-tag-critical", { 1.F, 0.32F, 0.32F, 1.F } },

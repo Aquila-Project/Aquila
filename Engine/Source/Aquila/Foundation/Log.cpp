@@ -20,6 +20,7 @@ bool Logger::s_showTimestamp = true;
 bool Logger::s_showLocation = false;
 bool Logger::s_useColors = true;
 std::ostream *Logger::s_sink = nullptr;
+LogLevel Logger::s_sink_level = LogLevel::Trace;
 
 void Logger::set_log_level(LogLevel level) {
 	s_currentLevel = level;
@@ -29,9 +30,10 @@ LogLevel Logger::get_log_level() {
 	return s_currentLevel;
 }
 
-void Logger::set_sink(std::ostream *buf) {
+void Logger::set_sink(std::ostream *buf, LogLevel min_level) {
 	const std::scoped_lock lock(write_mutex());
 	s_sink = buf;
+	s_sink_level = min_level;
 }
 
 void Logger::enable_timestamp(bool enable) {
@@ -92,7 +94,8 @@ void Logger::write(LogLevel level, std::string_view message, const std::source_l
 
 	const std::string line = std::format("{} {}\n", prefix, message);
 	const std::scoped_lock lock(write_mutex());
-	auto &stream = s_sink ? *s_sink : (level >= LogLevel::Error) ? std::cerr : std::cout;
+	const bool to_sink = s_sink != nullptr && level >= s_sink_level;
+	auto &stream = to_sink ? *s_sink : (level >= LogLevel::Error) ? std::cerr : std::cout;
 	stream << line;
 	stream.flush();
 }

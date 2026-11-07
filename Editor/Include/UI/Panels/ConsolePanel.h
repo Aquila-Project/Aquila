@@ -27,7 +27,7 @@ class LogCaptureBuf : public std::streambuf {
 	LineCallback m_callback;
 };
 
-enum class LogLevel { Trace, Debug, Info, Warning, Error, Critical };
+enum class LogLevel { Info, Warning, Error, Critical };
 
 class ConsolePanel : public IEditorPanel {
   public:
