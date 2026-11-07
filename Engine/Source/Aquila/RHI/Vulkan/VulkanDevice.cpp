@@ -52,7 +52,7 @@ VulkanDevice::VulkanDevice(GLFWwindow &native_window) : m_window_handle(native_w
 }
 
 VulkanDevice::~VulkanDevice() {
-	wait(); // before killing device wait for it, be gentle
+	wait_idle(); // before killing device wait for it, be gentle
 
 	for (Uint32 i = 0; i < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++i) {
 		for (auto &p : m_offscreen_pending_cmd_bufs[i]) {

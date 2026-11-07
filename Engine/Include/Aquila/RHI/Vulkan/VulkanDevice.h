@@ -68,8 +68,6 @@ class VulkanDevice final : public IRHIDevice {
 	void wait_transfer_queue_idle();
 
 	void reset_frame_command_pool(Uint32 slot);
-	/// Same as wait_idle().
-	void wait() const { vkDeviceWaitIdle(m_device); }
 
 	/// Command pools aren't thread safe, so every thread gets its own.
 	VkCommandPool get_or_create_thread_local_graphics_pool();

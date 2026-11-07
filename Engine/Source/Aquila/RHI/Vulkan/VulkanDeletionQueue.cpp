@@ -32,7 +32,7 @@ void DeletionQueue::flush(Uint32 slot) {
 
 void DeletionQueue::flush_all() {
 	AQUILA_ASSERT(m_device.get_device() != VK_NULL_HANDLE, "DeletionQueue::FlushAll — device is null");
-	m_device.wait();
+	m_device.wait_idle();
 	for (Uint32 i = 0; i < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++i) {
 		flush(i);
 	}
