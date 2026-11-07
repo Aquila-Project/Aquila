@@ -380,12 +380,8 @@ class VulkanDevice final : public IRHIDevice {
 
 	GLFWwindow &m_window_handle;
 
-	struct OffscreenPendingCmdBuf {
-		VkCommandBuffer cmd;
-		VkCommandPool pool;
-	};
 	std::array<VkFence, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_offscreen_fences{};
-	std::array<std::vector<OffscreenPendingCmdBuf>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_offscreen_pending_cmd_bufs;
+	std::array<std::vector<PendingCommandBuffer>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_offscreen_pending_cmd_bufs;
 	Uint32 m_offscreen_frame_index = 0;
 
 	const std::vector<const char *> VALIDATION_LAYERS = { "VK_LAYER_KHRONOS_validation" };

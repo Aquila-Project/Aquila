@@ -33,6 +33,12 @@ struct ImageAllocation {
 	uint32_t array_layers = 1;
 };
 
+/// A one-off command buffer, freed when its frame slot comes back around.
+struct PendingCommandBuffer {
+	VkCommandBuffer cmd = VK_NULL_HANDLE;
+	VkCommandPool pool = VK_NULL_HANDLE;
+};
+
 struct VkQueueFamilyIndices {
 	std::optional<Uint32> m_graphics_family;
 	std::optional<Uint32> m_present_family;

@@ -99,15 +99,10 @@ class VulkanSwapchain final : public IRHISwapchain {
 	std::vector<ImageAllocation> m_depth_allocations;
 	std::vector<VkImageView> m_depth_image_views;
 
-	struct PendingCmdBuf {
-		VkCommandBuffer cmd;
-		VkCommandPool pool;
-	};
-
 	std::vector<VkSemaphore> m_image_available_semaphores;
 	std::vector<VkSemaphore> m_render_finished_semaphores;
 	std::vector<VkFence> m_in_flight_fences;
-	std::array<std::vector<PendingCmdBuf>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_pending_cmd_bufs;
+	std::array<std::vector<PendingCommandBuffer>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_pending_cmd_bufs;
 
 	std::array<bool, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_acquire_pending{};
 
