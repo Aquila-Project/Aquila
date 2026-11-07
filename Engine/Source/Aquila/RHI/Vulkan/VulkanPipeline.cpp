@@ -29,10 +29,6 @@ void VulkanPipeline::bind(IRHICommandList &cmd) {
 					  m_graphics_pipeline);
 }
 
-void VulkanPipeline::Bind(VulkanCommandList &cmd) const {
-	vkCmdBindPipeline(cmd.get_handle(), VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics_pipeline);
-}
-
 void VulkanPipeline::create_pipeline_from_stages(const std::vector<VkPipelineShaderStageCreateInfo> &stages,
 											  const VulkanPipelineConfig &config_info) {
 	AQUILA_ASSERT(config_info.pipeline_layout != VK_NULL_HANDLE, "Pipeline layout must be set in VulkanPipelineConfig");

@@ -49,7 +49,6 @@ class VulkanPipeline final : public IRHIPipeline {
 	[[nodiscard]] PipelineBindPoint get_bind_point() const override { return PipelineBindPoint::Graphics; }
 
 	// Vulkan-specific
-	void Bind(VulkanCommandList &cmd) const;
 	[[nodiscard]] VkPipeline get_pipeline() const { return m_graphics_pipeline; }
 	[[nodiscard]] VkPipelineLayout get_layout() const { return m_layout; }
 
