@@ -5,6 +5,7 @@
 #include "Aquila/Graphics/Material/MaterialData.h"
 #include "Core/ScriptEditor.h"
 #include "UI/Inspector/Material/MaterialAssetContent.h"
+#include "UI/Inspector/Script/ScriptAssetContent.h"
 
 namespace Editor {
 
@@ -61,6 +62,7 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.icon = "file-code",
 		.extensions = { ".luau", ".lua" },
 		.open = open_in_script_editor,
+		.inspect = inspect_script_asset,
 	});
 	types.add({
 		.id = "definitions",

@@ -1,18 +1,16 @@
 #pragma once
 
-#include "Aquila/Foundation/Reflection/TypeInfo.h"
 #include "Aquila/Scene/Entity.h"
-#include "Aquila/Scripting/ScriptFields.h"
 #include "Aquila/UI/Widgets/Inspectable.h"
 
 namespace Aquila::UI::Core {
 class Button;
-class ReflectedPropertyGrid;
 }
 
 namespace Editor {
 
 class EditorContext;
+class ScriptFieldRows;
 
 /// Fields are read again when the section is built or the path changes, not when the file changes on disk.
 class ScriptContent final : public Aquila::UI::Core::IInspectorContent {
@@ -31,10 +29,7 @@ class ScriptContent final : public Aquila::UI::Core::IInspectorContent {
 	Aquila::SceneManagement::Entity m_entity;
 	EditorContext &m_context;
 	Aquila::UI::Core::Button *m_open_button = nullptr;
-	Aquila::UI::Core::PropertyGrid *m_fields_grid = nullptr;
-	Unique<Aquila::UI::Core::ReflectedPropertyGrid> m_fields;
-	Unique<Aquila::Reflection::TypeInfo> m_fields_type;
-	std::vector<Aquila::Scripting::ScriptField> m_declared;
+	Unique<ScriptFieldRows> m_rows;
 };
 
 }
