@@ -51,6 +51,12 @@ template <typename Visit> void visit(ContentBrowserPreferences &p, Visit &&field
 	field("show_extensions", p.show_extensions);
 }
 
+template <typename Visit> void visit(ScriptEditorPreferences &p, Visit &&field) {
+	field("program", p.program);
+	field("arguments", p.arguments);
+	field("open_project", p.open_project);
+}
+
 template <typename Visit> void visit(StartupPreferences &p, Visit &&field) {
 	field("reopen_last_project", p.reopen_last_project);
 }
@@ -137,6 +143,7 @@ void EditorPreferences::load_from_file() {
 	read_group(root, "gizmos", gizmos);
 	read_group(root, "play", play);
 	read_group(root, "content_browser", content_browser);
+	read_group(root, "script_editor", script_editor);
 	read_group(root, "startup", startup);
 	read_group(root, "advanced", advanced);
 
@@ -169,6 +176,7 @@ void EditorPreferences::save_to_file() const {
 	write_group(root, "gizmos", gizmos);
 	write_group(root, "play", play);
 	write_group(root, "content_browser", content_browser);
+	write_group(root, "script_editor", script_editor);
 	write_group(root, "startup", startup);
 	write_group(root, "advanced", advanced);
 	if (!shortcuts.empty()) {

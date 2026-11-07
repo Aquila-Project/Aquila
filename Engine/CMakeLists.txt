@@ -67,6 +67,7 @@ set(USE_SYSTEM_PLUTOVG OFF CACHE BOOL "" FORCE)
 add_subdirectory(${VENDOR_DIR}/lunasvg)
 
 add_subdirectory(${VENDOR_DIR}/aquiLua)
+target_compile_definitions(Luau.VM PUBLIC LUA_VECTOR_SIZE=4)
 
 
 add_subdirectory(Source/Aquila/Foundation)

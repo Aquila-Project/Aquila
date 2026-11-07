@@ -32,21 +32,27 @@ struct ScriptEnvironment {
 	Uint64 frame = 0;
 	/// Set only while a script's top level runs, Aquila.Field reads and records through it.
 	ScriptFieldContext *loading = nullptr;
+	/// Scene.destroy calls it before queueing the kill, while the entity and its children still exist.
+	Delegate<void(ScriptEntity)> destroying{};
+	/// Game.quit sets it, ScriptModule stops the game after the frame's scripts.
+	bool quit_requested = false;
 };
 
-/// Binds the internal native modules (`@native`, `@input`, `@time`, `@scene`, `@screen`, `@camera`, `@fields`) that
-/// Resources/Engine/API wraps as `@aquila` (Aquila.Input, Aquila.Time, Aquila.Scene, Aquila.Screen, Aquila.Camera,
-/// Aquila.Field, Aquila.Log), and the Entity methods.
+/// Binds the internal native modules (`@native`, `@input`, `@time`, `@scene`, `@screen`, `@camera`, `@fields`,
+/// `@game`) that Resources/Engine/API wraps as `@aquila` (Aquila.Input, Aquila.Time, Aquila.Scene, Aquila.Screen,
+/// Aquila.Camera, Aquila.Field, Aquila.Game, Aquila.Log...), and the Entity methods.
 void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environment);
 
 } // namespace Aquila::Scripting
 
 AQUILUA_USERTYPE(Aquila::Scripting::ScriptEntity, "Entity");
 
+static_assert(LUA_VECTOR_SIZE == 4, "Aquila builds Luau with four wide vectors, see Engine/CMakeLists.txt");
+
 template <> struct aquiLua::Converter<Vec3> {
 	static constexpr const char *luau_type = "vector";
 
-	static void push(lua_State *state, const Vec3 &value) { lua_pushvector(state, value.x, value.y, value.z); }
+	static void push(lua_State *state, const Vec3 &value) { lua_pushvector(state, value.x, value.y, value.z, 0.F); }
 
 	static Vec3 check(lua_State *state, int index) {
 		const float *value = luaL_checkvector(state, index);
@@ -56,6 +62,23 @@ template <> struct aquiLua::Converter<Vec3> {
 	static Vec3 get(lua_State *state, int index) {
 		const float *value = lua_tovector(state, index);
 		return value != nullptr ? Vec3{ value[0], value[1], value[2] } : Vec3{ 0.F };
+	}
+};
+
+/// Colors with alpha: w is the fourth component.
+template <> struct aquiLua::Converter<Vec4> {
+	static constexpr const char *luau_type = "vector";
+
+	static void push(lua_State *state, const Vec4 &value) { lua_pushvector(state, value.x, value.y, value.z, value.w); }
+
+	static Vec4 check(lua_State *state, int index) {
+		const float *value = luaL_checkvector(state, index);
+		return Vec4{ value[0], value[1], value[2], value[3] };
+	}
+
+	static Vec4 get(lua_State *state, int index) {
+		const float *value = lua_tovector(state, index);
+		return value != nullptr ? Vec4{ value[0], value[1], value[2], value[3] } : Vec4{ 0.F };
 	}
 };
 

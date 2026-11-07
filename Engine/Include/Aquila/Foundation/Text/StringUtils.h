@@ -57,6 +57,50 @@ inline std::string to_lower(std::string_view text) {
 	return pieces;
 }
 
+/// Splits a command line on spaces. Double or single quotes keep spaces in, and are dropped. An unclosed quote runs
+/// to the end. No escapes.
+[[nodiscard]] inline std::vector<std::string> split_arguments(std::string_view text) {
+	std::vector<std::string> arguments;
+	std::string current;
+	bool started = false;
+	char quote = 0;
+	for (const char c : text) {
+		if (quote != 0) {
+			if (c == quote) {
+				quote = 0;
+			} else {
+				current += c;
+			}
+		} else if (c == '"' || c == '\'') {
+			quote = c;
+			started = true;
+		} else if (std::isspace(static_cast<unsigned char>(c)) != 0) {
+			if (started) {
+				arguments.push_back(std::move(current));
+				current.clear();
+				started = false;
+			}
+		} else {
+			current += c;
+			started = true;
+		}
+	}
+	if (started) {
+		arguments.push_back(std::move(current));
+	}
+	return arguments;
+}
+
+/// Replaces every `from` in `text`, left to right. What it puts in isn't searched again.
+inline void replace_all(std::string &text, std::string_view from, std::string_view to) {
+	if (from.empty()) {
+		return;
+	}
+	for (Usize at = text.find(from); at != std::string::npos; at = text.find(from, at + to.size())) {
+		text.replace(at, from.size(), to);
+	}
+}
+
 /// Letters, digits, '-' and '_' stay, spaces become '_', the rest is dropped. Can come back empty.
 [[nodiscard]] inline std::string to_file_name(std::string_view name) {
 	std::string out;

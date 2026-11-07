@@ -18,6 +18,7 @@ MeshSurface measure_surface(const std::vector<RHI::Vertex> &vertices, const std:
 		high = Math::max(high, vertex.pos);
 	}
 	surface.center = (low + high) * 0.5F;
+	surface.half_size = (high - low) * 0.5F;
 
 	const Usize corner_count = indices.empty() ? vertices.size() : indices.size();
 	const auto corner = [&](Usize i) -> const Vec3 & {

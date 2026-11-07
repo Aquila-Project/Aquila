@@ -1,6 +1,7 @@
 #ifndef AQUILA_VULKAN_VERTEX_H
 #define AQUILA_VULKAN_VERTEX_H
 
+#include "GraphicsPCH.h"
 #include "Aquila/Foundation/Math/MathTypes.h"
 
 namespace Aquila::RHI {

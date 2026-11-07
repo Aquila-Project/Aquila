@@ -3,6 +3,7 @@
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scripting/ScriptApi.h"
 #include "Aquila/Scripting/ScriptBindings.h"
 
 namespace Aquila::Scripting {
@@ -16,7 +17,7 @@ SceneManagement::Components::ScriptFieldValue field_value(const ScriptField &fie
 	return field.default_value;
 }
 
-std::vector<ScriptField> read_script_fields(const std::string &path) {
+std::vector<ScriptField> read_script_fields(const std::string &path, const ScriptApi *api) {
 	std::vector<ScriptField> declared;
 	auto *vfs = Platform::Filesystem::VirtualFileSystem::get();
 	if (path.empty() || vfs == nullptr || !vfs->exists(path)) {
@@ -28,9 +29,12 @@ std::vector<ScriptField> read_script_fields(const std::string &path) {
 	ScriptEnvironment environment{ .scene = &scratch, .loading = &context };
 	aquiLua::Runtime runtime;
 	runtime.set_error_handler([](std::string_view message) { AQUILA_LOG_ERROR("[Luau] {}", message); });
-	register_engine_api(runtime, environment);
+	if (api != nullptr) {
+		api->bind(runtime, environment);
+	} else {
+		register_engine_api(runtime, environment);
+	}
 	runtime.unload(runtime.load_source(path, vfs->read_text_file(path)));
 	return declared;
 }
-
 }

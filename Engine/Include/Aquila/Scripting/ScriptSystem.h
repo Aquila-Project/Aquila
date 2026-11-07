@@ -11,22 +11,30 @@
 
 namespace Aquila::Scripting {
 
+class ScriptApi;
+
 class ScriptSystem {
   public:
-	/// `input` is what Aquila.Input reads, null for no input. It must outlive the system.
+	/// `input` is what Aquila.Input reads, null for no input. It must outlive the system. `api` adds other modules'
+	/// Luau modules, null is the engine's alone.
 	/// Script errors, with a Luau traceback, go to the engine log (so the editor's console).
-	explicit ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input = nullptr);
+	explicit ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input = nullptr,
+						  const ScriptApi *api = nullptr);
 	~ScriptSystem();
 	AQUILA_NONCOPYABLE(ScriptSystem);
 	AQUILA_NONMOVEABLE(ScriptSystem);
 
-	/// Advances Aquila.Time, starts scripts on new or changed paths, stops removed ones, then calls on_update.
-	/// A script that errors stops being called until its path changes.
+	/// Advances Aquila.Time, starts scripts on new or changed paths, stops removed ones, calls on_update, then runs
+	/// the Aquila.Time timers and sequences that are due. A script that errors stops being called until its path
+	/// changes.
 	void update(F32 delta_time);
 	/// Calls on_stop on every running script and unloads them all. The next update() starts them again.
 	void stop();
 
-	/// Luau type definitions of the engine API, for autocomplete in an editor.
+	/// A script called Game.quit.
+	[[nodiscard]] bool wants_quit() const { return m_environment.quit_requested; }
+
+	/// Luau type definitions of everything bound, for autocomplete in an editor.
 	bool write_types(const std::string &directory) const;
 
   private:
@@ -40,10 +48,12 @@ class ScriptSystem {
 
 	void start(entt::entity entity, Instance &instance, const SceneManagement::Components::ScriptComponent &component);
 	void finish(entt::entity entity, Instance &instance);
+	void finish_tree(entt::entity root);
 
 	SceneManagement::Scene &m_scene;
 	ScriptEnvironment m_environment;
 	aquiLua::Runtime m_runtime;
+	aquiLua::ScriptId m_scheduler;
 	std::unordered_map<entt::entity, Instance> m_instances;
 };
 

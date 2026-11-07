@@ -2,7 +2,9 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+#include "Aquila/Scripting/ScriptApi.h"
 #include "Aquila/Scripting/ScriptBindings.h"
+#include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 
 namespace Aquila::Scripting {
@@ -13,12 +15,27 @@ ScriptEntity to_script(entt::entity entity) {
 	return ScriptEntity{ entt::to_integral(entity) };
 }
 
+constexpr std::string_view K_SCHEDULER_SOURCE = R"(
+local Scheduler = require("@aquila/Internal/Scheduler")
+return {
+	step = function(dt: number)
+		Scheduler.step(dt)
+	end,
+}
+)";
+
 } // namespace
 
-ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input)
+ScriptSystem::ScriptSystem(SceneManagement::Scene &scene, const Platform::InputState *input, const ScriptApi *api)
 	: m_scene(scene), m_environment{ .scene = &scene, .input = input } {
 	m_runtime.set_error_handler([](std::string_view message) { AQUILA_LOG_ERROR("[Luau] {}", message); });
-	register_engine_api(m_runtime, m_environment);
+	m_environment.destroying = [this](ScriptEntity entity) { finish_tree(static_cast<entt::entity>(entity.id)); };
+	if (api != nullptr) {
+		api->bind(m_runtime, m_environment);
+	} else {
+		register_engine_api(m_runtime, m_environment);
+	}
+	m_scheduler = m_runtime.load_source("Aquila scheduler", K_SCHEDULER_SOURCE);
 }
 
 ScriptSystem::~ScriptSystem() = default;
@@ -59,6 +76,10 @@ void ScriptSystem::update(F32 delta_time) {
 			instance.failed = !m_runtime.call(instance.script, "on_update", to_script(entity), delta_time);
 		}
 	}
+
+	if (m_scheduler.is_valid()) {
+		m_runtime.call(m_scheduler, "step", delta_time);
+	}
 }
 
 void ScriptSystem::stop() {
@@ -75,6 +96,28 @@ void ScriptSystem::stop() {
 void ScriptSystem::finish(entt::entity entity, Instance &instance) {
 	if (instance.has_stop && !instance.failed) {
 		m_runtime.call(instance.script, "on_stop", to_script(entity));
+	}
+}
+
+void ScriptSystem::finish_tree(entt::entity root) {
+	auto &registry = m_scene.get_registry();
+	std::vector<entt::entity> pending{ root };
+	while (!pending.empty()) {
+		const entt::entity entity = pending.back();
+		pending.pop_back();
+		if (const auto *node = registry.try_get<SceneManagement::Components::SceneNodeComponent>(entity)) {
+			for (const SceneManagement::Entity &child : node->children) {
+				if (child.is_valid()) {
+					pending.push_back(child.get_handle());
+				}
+			}
+		}
+		if (const auto it = m_instances.find(entity); it != m_instances.end()) {
+			Instance &instance = it->second;
+			finish(entity, instance);
+			instance.has_update = false;
+			instance.has_stop = false;
+		}
 	}
 }
 

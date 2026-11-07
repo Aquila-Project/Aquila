@@ -28,8 +28,14 @@ class EntityInspector {
 
 	[[nodiscard]] Aquila::UI::Core::Inspectable inspect(Aquila::SceneManagement::Entity entity);
 
-	/// `position` is in canvas pixels. `from_keyboard` keeps the opening key out of the search field.
-	void open_add_menu(Vec2 position, bool from_keyboard);
+	/// False when there's no entity or it already has everything `group` offers.
+	[[nodiscard]] bool can_add(std::string_view group) const;
+	/// Only offers `group`'s components. `position` is in canvas pixels. `from_keyboard` keeps the opening key out
+	/// of the search field.
+	void open_add_menu(std::string_view group, Vec2 position, bool from_keyboard);
+
+	/// Gets the tab the new component went to, before the inspector shows the entity again.
+	Delegate<void(std::string_view tab)> on_component_added;
 
   private:
 	[[nodiscard]] Aquila::UI::Core::InspectorSection
@@ -38,11 +44,14 @@ class EntityInspector {
 	void remove_component(Aquila::SceneManagement::Entity entity,
 						  const Aquila::SceneManagement::ComponentDescriptor &d);
 	void populate_add_menu(const std::string &query);
+	[[nodiscard]] std::vector<const Aquila::SceneManagement::ComponentDescriptor *>
+	addable(std::string_view group) const;
 
 	EditorContext &m_context;
 	Aquila::UI::Core::PopupMenu *m_add_menu = nullptr;
 	Aquila::UI::Core::TextInput *m_add_search = nullptr;
 	Aquila::SceneManagement::Entity m_entity;
+	std::string m_add_group;
 };
 
 }

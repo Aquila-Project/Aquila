@@ -99,6 +99,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	void preferences_edited();
 	void write_project_settings(ProjectSettings settings);
 	void save_settings_if_due(bool now);
+	void update_luau_config();
 	void save_scene();
 	void save_scene_as();
 	void open_scene();
@@ -156,6 +157,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Config::EditorPreferences m_applied_preferences;
 	Option<Aquila::Foundation::TimePoint> m_preferences_save_due;
 	Option<Aquila::Foundation::TimePoint> m_project_save_due;
+	Option<std::pair<std::string, Uint64>> m_luau_config;
 	/// Applied at the start of the next frame, so no panel is destroyed while one of its buttons is being clicked.
 	Option<std::string> m_pending_workspace;
 

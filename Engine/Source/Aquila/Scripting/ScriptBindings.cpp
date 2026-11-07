@@ -8,13 +8,16 @@
 #include "Aquila/Platform/InputState.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/Rendering/ViewMath.h"
+#include "Aquila/Scene/ComponentRegistry.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
+#include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/Scene/Components/MetadataComponent.h"
 #include "Aquila/Scene/Components/SceneNodeComponent.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scene/Components/TransformComponent.h"
 #include "Aquila/Scene/EntityManager.h"
 #include "Aquila/Scene/Scene.h"
+#include "Aquila/Scene/Visibility.h"
 
 template <> struct aquiLua::Converter<Aquila::Platform::Events::KeyCode> {
 	using KeyCode = Aquila::Platform::Events::KeyCode;
@@ -99,6 +102,13 @@ struct ScriptCamera {
 	SceneManagement::Entity entity;
 };
 
+struct RaycastHit {
+	ScriptEntity entity;
+	Vec3 position;
+	Vec3 normal;
+	F32 distance = 0.F;
+};
+
 } // namespace
 
 } // namespace Aquila::Scripting
@@ -133,6 +143,32 @@ template <> struct aquiLua::Converter<Aquila::Scripting::ScriptCamera> {
 	}
 
 	static ScriptCamera get(lua_State *state, int index) { return check(state, index); }
+};
+
+template <> struct aquiLua::Converter<Option<Aquila::Scripting::RaycastHit>> {
+	using RaycastHit = Aquila::Scripting::RaycastHit;
+
+	static constexpr const char *luau_type = "{ entity: Entity, position: vector, normal: vector, distance: number }?";
+
+	static void push(lua_State *state, const Option<RaycastHit> &hit) {
+		if (!hit) {
+			lua_pushnil(state);
+			return;
+		}
+		lua_createtable(state, 0, 4);
+		aquiLua::push(state, hit->entity);
+		lua_setfield(state, -2, "entity");
+		aquiLua::push(state, hit->position);
+		lua_setfield(state, -2, "position");
+		aquiLua::push(state, hit->normal);
+		lua_setfield(state, -2, "normal");
+		aquiLua::push(state, hit->distance);
+		lua_setfield(state, -2, "distance");
+	}
+
+	static Option<RaycastHit> check(lua_State *state, int) { luaL_error(state, "raycast hits only go to scripts"); }
+
+	static Option<RaycastHit> get(lua_State *, int) { return std::nullopt; }
 };
 
 namespace Aquila::Scripting {
@@ -223,13 +259,6 @@ Uint64 frame(ScriptEnvironment &environment) {
 	return environment.frame;
 }
 
-Option<ScriptEntity> find(ScriptEnvironment &environment, const std::string &name) {
-	if (const auto entity = environment.scene->get_entity_manager()->find_entity_by_name(name)) {
-		return to_script(entity->get_handle());
-	}
-	return std::nullopt;
-}
-
 ScriptEntity create(ScriptEnvironment &environment, const std::string &name) {
 	return to_script(environment.scene->get_entity_manager()->create_entity(name).get_handle());
 }
@@ -315,9 +344,17 @@ Option<ScriptEntity> entity_field(ScriptEnvironment &environment, const std::str
 
 void destroy(ScriptEnvironment &environment, ScriptEntity entity) {
 	const SceneManagement::Entity target(from_script(entity), environment.scene);
-	if (target.is_valid()) {
-		environment.scene->get_entity_manager()->queue_for_kill(target);
+	if (!target.is_valid()) {
+		return;
 	}
+	if (environment.destroying) {
+		environment.destroying(entity);
+	}
+	environment.scene->get_entity_manager()->queue_for_kill(target);
+}
+
+void quit(ScriptEnvironment &environment) {
+	environment.quit_requested = true;
 }
 
 CameraComponent &lens(ScriptCamera &camera) {
@@ -406,6 +443,172 @@ template <typename T> T *check_component(lua_State *state) {
 	return component;
 }
 
+const SceneManagement::ComponentDescriptor &check_descriptor(lua_State *state) {
+	const char *name = luaL_checkstring(state, 2);
+	const SceneManagement::ComponentDescriptor *descriptor = SceneManagement::ComponentRegistry::instance().find(name);
+	if (descriptor == nullptr) {
+		luaL_error(state, "unknown component '%s'", name);
+	}
+	return *descriptor;
+}
+
+void *check_instance(lua_State *state, SceneManagement::Entity entity,
+					 const SceneManagement::ComponentDescriptor &descriptor) {
+	void *instance = descriptor.get(entity);
+	if (instance == nullptr) {
+		luaL_error(state, "entity %u has no %s component", aquiLua::check<ScriptEntity>(state, 1).id,
+				   descriptor.get_name().c_str());
+	}
+	return instance;
+}
+
+const Reflection::Property &check_property(lua_State *state, const SceneManagement::ComponentDescriptor &descriptor,
+										   const void *instance) {
+	const std::string_view name = luaL_checkstring(state, 3);
+	const Reflection::Property *hidden = nullptr;
+	for (const Reflection::Property &property : descriptor.get_type().get_properties()) {
+		if (property.name != name) {
+			continue;
+		}
+		if (property.is_visible(instance)) {
+			return property;
+		}
+		if (hidden == nullptr) {
+			hidden = &property;
+		}
+	}
+	if (hidden == nullptr) {
+		luaL_error(state, "%s has no property '%s'", descriptor.get_name().c_str(), name.data());
+	}
+	return *hidden;
+}
+
+void push_property_value(lua_State *state, const Reflection::Property &property,
+						 const Reflection::PropertyValue &value) {
+	if (property.kind == Reflection::PropertyKind::Enum) {
+		const Int32 raw = std::get<Int32>(value);
+		const auto option = std::ranges::find(property.options, raw, &Reflection::EnumOption::value);
+		if (option != property.options.end()) {
+			aquiLua::push(state, option->name);
+		} else {
+			aquiLua::push(state, raw);
+		}
+		return;
+	}
+	std::visit(
+		[state](const auto &stored) {
+			if constexpr (std::is_same_v<std::decay_t<decltype(stored)>, Vec2>) {
+				aquiLua::push(state, Vec3(stored, 0.F));
+			} else {
+				aquiLua::push(state, stored);
+			}
+		},
+		value);
+}
+
+Reflection::PropertyValue check_property_value(lua_State *state, const SceneManagement::ComponentDescriptor &descriptor,
+											   const Reflection::Property &property) {
+	constexpr int K_VALUE = 4;
+	using Reflection::PropertyKind;
+	const auto number = [&](F64 low, F64 high) {
+		return std::clamp(luaL_checknumber(state, K_VALUE), std::max(low, static_cast<F64>(property.hints.min)),
+						  std::min(high, static_cast<F64>(property.hints.max)));
+	};
+	switch (property.kind) {
+	case PropertyKind::Bool:
+		return luaL_checkboolean(state, K_VALUE) != 0;
+	case PropertyKind::Int:
+		return static_cast<Int32>(
+			std::lround(number(std::numeric_limits<Int32>::min(), std::numeric_limits<Int32>::max())));
+	case PropertyKind::Float:
+		return static_cast<F32>(number(std::numeric_limits<F64>::lowest(), std::numeric_limits<F64>::max()));
+	case PropertyKind::Vec2:
+		return Vec2(aquiLua::check<Vec3>(state, K_VALUE));
+	case PropertyKind::Vec3:
+		return aquiLua::check<Vec3>(state, K_VALUE);
+	case PropertyKind::Vec4:
+		return aquiLua::check<Vec4>(state, K_VALUE);
+	case PropertyKind::String:
+		return std::string(luaL_checkstring(state, K_VALUE));
+	case PropertyKind::Enum:
+		break;
+	}
+	if (lua_type(state, K_VALUE) == LUA_TNUMBER) {
+		return static_cast<Int32>(std::lround(lua_tonumber(state, K_VALUE)));
+	}
+	const std::string_view name = luaL_checkstring(state, K_VALUE);
+	const auto option = std::ranges::find(property.options, name, &Reflection::EnumOption::name);
+	if (option == property.options.end()) {
+		luaL_error(state, "%s %s has no option '%s'", descriptor.get_name().c_str(), property.name.c_str(),
+				   name.data());
+	}
+	return option->value;
+}
+
+int entity_has(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	aquiLua::push(state, check_descriptor(state).has(entity));
+	return 1;
+}
+
+int entity_get(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	const void *instance = check_instance(state, entity, descriptor);
+	const Reflection::Property &property = check_property(state, descriptor, instance);
+	push_property_value(state, property, property.get(instance));
+	return 1;
+}
+
+int entity_set(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	void *instance = check_instance(state, entity, descriptor);
+	const Reflection::Property &property = check_property(state, descriptor, instance);
+	if (!property.set || property.hints.read_only) {
+		luaL_error(state, "%s %s is read-only", descriptor.get_name().c_str(), property.name.c_str());
+	}
+	property.set(instance, check_property_value(state, descriptor, property));
+	descriptor.notify_changed(entity);
+	return 0;
+}
+
+int entity_add(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	if (!descriptor.can_add() || !descriptor.is_removable()) {
+		luaL_error(state, "%s can't be added", descriptor.get_name().c_str());
+	}
+	descriptor.add(entity);
+	return 0;
+}
+
+int entity_remove(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const SceneManagement::ComponentDescriptor &descriptor = check_descriptor(state);
+	if (!descriptor.is_removable()) {
+		luaL_error(state, "%s can't be removed", descriptor.get_name().c_str());
+	}
+	descriptor.remove(entity);
+	return 0;
+}
+
+aquiLua::LuauSignature component_signature() {
+	return { .params = { "string" }, .result = "()" };
+}
+
+aquiLua::LuauSignature has_signature() {
+	return { .params = { "string" }, .result = "boolean" };
+}
+
+aquiLua::LuauSignature get_signature() {
+	return { .params = { "string", "string" }, .result = "any" };
+}
+
+aquiLua::LuauSignature set_signature() {
+	return { .params = { "string", "string", "boolean | number | string | vector" }, .result = "()" };
+}
+
 template <typename Self> decltype(auto) resolve_self(lua_State *state) {
 	if constexpr (std::is_same_v<Self, SceneManagement::Entity>) {
 		return check_entity(state);
@@ -444,8 +647,182 @@ void set_visible(SceneManagement::Entity entity, bool visible) {
 		[visible](MetadataComponent &metadata) { metadata.set_visible(visible); });
 }
 
-Vec3 forward(TransformComponent &transform) {
-	return Math::normalize(transform.get_world_rotation() * Vec3(0.F, 0.F, 1.F));
+Mat4 world_matrix(SceneManagement::Entity entity) {
+	Mat4 world(1.F);
+	for (SceneManagement::Entity at = entity; at.is_valid();) {
+		if (const auto *transform = at.try_get_component<TransformComponent>()) {
+			world = transform->get_local_transform_matrix() * world;
+		}
+		const auto *node = at.try_get_component<SceneNodeComponent>();
+		at = node != nullptr ? node->parent : SceneManagement::Entity::null();
+	}
+	return world;
+}
+
+Mat4 parent_world_matrix(SceneManagement::Entity entity) {
+	const auto *node = entity.try_get_component<SceneNodeComponent>();
+	return node != nullptr && node->parent.is_valid() ? world_matrix(node->parent) : Mat4(1.F);
+}
+
+Quaternion rotation_of(const Mat4 &matrix) {
+	return glm::quat_cast(
+		Mat3(Math::normalize(Vec3(matrix[0])), Math::normalize(Vec3(matrix[1])), Math::normalize(Vec3(matrix[2]))));
+}
+
+void set_world_rotation(SceneManagement::Entity entity, const Quaternion &rotation) {
+	if (auto *transform = entity.try_get_component<TransformComponent>()) {
+		transform->set_local_rotation(
+			Math::normalize(Math::inverse(rotation_of(parent_world_matrix(entity))) * rotation));
+	}
+}
+
+Vec3 world_position(SceneManagement::Entity entity) {
+	return Vec3(world_matrix(entity)[3]);
+}
+
+void set_world_position(SceneManagement::Entity entity, Vec3 position) {
+	if (auto *transform = entity.try_get_component<TransformComponent>()) {
+		transform->set_local_position(Vec3(Math::inverse(parent_world_matrix(entity)) * Vec4(position, 1.F)));
+	}
+}
+
+Vec3 forward(SceneManagement::Entity entity) {
+	return Math::normalize(Vec3(world_matrix(entity)[2]));
+}
+
+Vec3 up(SceneManagement::Entity entity) {
+	return Math::normalize(Vec3(world_matrix(entity)[1]));
+}
+
+Vec3 right(SceneManagement::Entity entity) {
+	return Math::normalize(Vec3(world_matrix(entity)[0]));
+}
+
+void look_at(SceneManagement::Entity entity, Vec3 target, Option<Vec3> up) {
+	const Vec3 direction = target - world_position(entity);
+	if (Math::length(direction) < 1e-6F) {
+		return;
+	}
+	const Vec3 ahead = Math::normalize(direction);
+	Vec3 above = up.value_or(Vec3(0.F, 1.F, 0.F));
+	if (Math::length(Math::cross(above, ahead)) < 1e-4F) {
+		above = Math::abs(ahead.z) < 0.9F ? Vec3(0.F, 0.F, 1.F) : Vec3(1.F, 0.F, 0.F);
+	}
+	const Vec3 side = Math::normalize(Math::cross(above, ahead));
+	set_world_rotation(entity, glm::quat_cast(Mat3(side, Math::cross(ahead, side), ahead)));
+}
+
+void rotate(SceneManagement::Entity entity, Vec3 axis, F32 degrees) {
+	if (Math::length(axis) < 1e-6F) {
+		return;
+	}
+	const Quaternion turn = Math::angle_axis(Math::radians(degrees), Math::normalize(axis));
+	set_world_rotation(entity, turn * rotation_of(world_matrix(entity)));
+}
+
+SceneManagement::Entity clone_entity(SceneManagement::Entity source, SceneManagement::Entity parent) {
+	SceneManagement::EntityManager &entities = *source.get_scene()->get_entity_manager();
+	SceneManagement::Entity copy = entities.create_entity(source.get_name());
+	SceneManagement::ComponentRegistry::instance().copy_components(source, copy,
+																   { entt::type_hash<MetadataComponent>::value(),
+																	 entt::type_hash<SceneNodeComponent>::value(),
+																	 entt::type_hash<TransformComponent>::value() });
+	copy.get_component<MetadataComponent>().set_visible(source.get_component<MetadataComponent>().is_visible());
+	if (const auto *from = source.try_get_component<TransformComponent>()) {
+		auto &to = copy.get_component<TransformComponent>();
+		to.set_local_position(from->get_local_position());
+		to.set_local_rotation(from->get_local_rotation());
+		to.set_local_scale(from->get_local_scale());
+	}
+	if (parent.is_valid()) {
+		entities.add_child(parent, copy);
+	}
+	const std::vector<SceneManagement::Entity> children = source.get_component<SceneNodeComponent>().children;
+	for (const SceneManagement::Entity &child : children) {
+		if (child.is_valid()) {
+			clone_entity(child, copy);
+		}
+	}
+	return copy;
+}
+
+Option<F32> box_entry(Vec3 origin, Vec3 direction, Vec3 low, Vec3 high, Vec3 &normal) {
+	F32 enter = -std::numeric_limits<F32>::infinity();
+	F32 exit = std::numeric_limits<F32>::infinity();
+	for (int axis = 0; axis < 3; ++axis) {
+		if (Math::abs(direction[axis]) < 1e-9F) {
+			if (origin[axis] < low[axis] || origin[axis] > high[axis]) {
+				return std::nullopt;
+			}
+			continue;
+		}
+		F32 near = (low[axis] - origin[axis]) / direction[axis];
+		F32 far = (high[axis] - origin[axis]) / direction[axis];
+		F32 face = -1.F;
+		if (near > far) {
+			std::swap(near, far);
+			face = 1.F;
+		}
+		if (near > enter) {
+			enter = near;
+			normal = Vec3(0.F);
+			normal[axis] = face;
+		}
+		exit = Math::min(exit, far);
+		if (enter > exit) {
+			return std::nullopt;
+		}
+	}
+	return enter >= 0.F ? Option<F32>(enter) : std::nullopt;
+}
+
+Option<RaycastHit> raycast(ScriptEnvironment &environment, Vec3 origin, Vec3 direction, F32 max_distance,
+						   Option<ScriptEntity> ignore) {
+	const F32 length = Math::length(direction);
+	if (length < 1e-6F) {
+		return std::nullopt;
+	}
+	const Vec3 heading = direction / length;
+	SceneManagement::Scene &scene = *environment.scene;
+	SceneManagement::EntityManager &entities = *scene.get_entity_manager();
+	const auto &registry = scene.get_registry();
+	const SceneManagement::Entity ignored =
+		ignore ? SceneManagement::Entity(from_script(*ignore), &scene) : SceneManagement::Entity::null();
+
+	Option<RaycastHit> nearest;
+	F32 best = max_distance;
+	for (auto [handle, mesh] : registry.view<SceneManagement::Components::MeshComponent>().each()) {
+		if (!mesh.data || !SceneManagement::is_visible_in_hierarchy(registry, handle)) {
+			continue;
+		}
+		const SceneManagement::Entity entity(handle, &scene);
+		if (ignored.is_valid() && (entity == ignored || entities.is_descendant(ignored, entity))) {
+			continue;
+		}
+		const Mat4 to_local = Math::inverse(world_matrix(entity));
+		const Graphics::Resources::MeshSurface &surface = mesh.data->get_surface();
+		Vec3 local_normal(0.F);
+		const Option<F32> entry =
+			box_entry(Vec3(to_local * Vec4(origin, 1.F)), Vec3(to_local * Vec4(heading, 0.F)),
+					  surface.center - surface.half_size, surface.center + surface.half_size, local_normal);
+		if (!entry || *entry > best) {
+			continue;
+		}
+		best = *entry;
+		nearest = RaycastHit{
+			.entity = to_script(handle),
+			.position = origin + heading * *entry,
+			.normal = Math::normalize(Mat3(Math::transpose(to_local)) * local_normal),
+			.distance = *entry,
+		};
+	}
+	return nearest;
+}
+
+ScriptEntity clone(SceneManagement::Entity entity) {
+	const auto *node = entity.try_get_component<SceneNodeComponent>();
+	return to_script(
+		clone_entity(entity, node != nullptr ? node->parent : SceneManagement::Entity::null()).get_handle());
 }
 
 std::string uuid(MetadataComponent &metadata) {
@@ -454,6 +831,65 @@ std::string uuid(MetadataComponent &metadata) {
 
 Option<ScriptEntity> parent(SceneNodeComponent &node) {
 	return node.parent.is_null() ? std::nullopt : Option<ScriptEntity>(to_script(node.parent.get_handle()));
+}
+
+int entity_children(lua_State *state) {
+	const SceneManagement::Entity entity = check_entity(state);
+	const auto *node = entity.try_get_component<SceneNodeComponent>();
+	lua_createtable(state, node != nullptr ? static_cast<int>(node->children.size()) : 0, 0);
+	if (node == nullptr) {
+		return 1;
+	}
+	int index = 1;
+	for (const SceneManagement::Entity &child : node->children) {
+		if (child.is_valid()) {
+			aquiLua::push(state, to_script(child.get_handle()));
+			lua_rawseti(state, -2, index++);
+		}
+	}
+	return 1;
+}
+
+int entity_set_parent(lua_State *state) {
+	SceneManagement::Entity entity = check_entity(state);
+	SceneManagement::EntityManager &entities = *entity.get_scene()->get_entity_manager();
+	SceneManagement::Entity parent = SceneManagement::Entity::null();
+	if (const Option<ScriptEntity> handle = aquiLua::check<Option<ScriptEntity>>(state, 2)) {
+		parent = SceneManagement::Entity(from_script(*handle), entity.get_scene());
+		if (!parent.is_valid()) {
+			luaL_error(state, "entity %u was destroyed", handle->id);
+		}
+		if (parent == entity || entities.is_descendant(entity, parent)) {
+			luaL_error(state, "entity %u can't go under itself or its own children", handle->id);
+		}
+	}
+	auto *node = entity.try_get_component<SceneNodeComponent>();
+	auto *transform = entity.try_get_component<TransformComponent>();
+	if (node == nullptr || transform == nullptr) {
+		luaL_error(state, "entity %u has no Scene Node or Transform", aquiLua::check<ScriptEntity>(state, 1).id);
+	}
+
+	const Mat4 world = world_matrix(entity);
+	if (node->parent.is_valid()) {
+		entities.remove_child(node->parent, entity);
+	}
+	if (parent.is_valid()) {
+		entities.add_child(parent, entity);
+	}
+	const Mat4 local = Math::inverse(parent.is_valid() ? world_matrix(parent) : Mat4(1.F)) * world;
+	transform->set_local_position(Vec3(local[3]));
+	transform->set_local_rotation(rotation_of(local));
+	transform->set_local_scale(
+		Vec3(Math::length(Vec3(local[0])), Math::length(Vec3(local[1])), Math::length(Vec3(local[2]))));
+	return 0;
+}
+
+aquiLua::LuauSignature children_signature() {
+	return { .params = {}, .result = "{Entity}" };
+}
+
+aquiLua::LuauSignature set_parent_signature() {
+	return { .params = { "Entity?" }, .result = "()" };
 }
 
 int entity_id(lua_State *state) {
@@ -499,8 +935,8 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 	runtime.bind<elapsed>("time.get_elapsed", &environment, "Seconds played.");
 	runtime.bind<frame>("time.get_frame", &environment, "Frames played.");
 
-	runtime.bind<find>("scene.find", &environment, "The first entity with that name.");
 	runtime.bind<create>("scene.create", &environment, "A new entity with a transform.");
+	runtime.bind<raycast>("scene.raycast", &environment, "The nearest mesh box along a ray.");
 	runtime.bind<find_by_uuid>("scene.find_by_uuid", &environment, "The entity with that UUID.");
 	runtime.bind<destroy>("scene.destroy", &environment, "Destroys it at the end of the frame.");
 
@@ -511,6 +947,8 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 	runtime.bind<entity_field>("fields.entity", &environment, "Declares an entity field, returns the entity.");
 
 	runtime.bind<screen_size>("screen.get_size", &environment, "Pixels the game is shown in.");
+
+	runtime.bind<quit>("game.quit", &environment, "Stops the game once this frame's scripts have run.");
 
 	runtime.bind<active_camera>("camera.get_active", &environment, "The camera the game renders through.");
 	runtime.bind<set_active_camera>("camera.set_active", &environment, "Renders through this camera.");
@@ -551,13 +989,40 @@ void register_engine_api(aquiLua::Runtime &runtime, ScriptEnvironment &environme
 				"get_scale", "Returns the scale, relative to the parent."),
 			aquiLua::make_method<check_component<TransformComponent>, &TransformComponent::set_local_scale>(
 				"set_scale", "Sets the scale, relative to the parent."),
-			aquiLua::make_method<check_component<TransformComponent>, &TransformComponent::get_world_position>(
-				"get_world_position",
-				"Position in the world, as of the last frame (moves made this frame show "
-				"up next frame)."),
-			free_method<forward>("get_forward", "The direction its +Z axis points in the world, as of the last frame."),
+			free_method<world_position>("get_world_position", "Position in the world."),
+			free_method<set_world_position>("set_world_position", "Moves it to a world position, whatever its parent."),
+			free_method<forward>("get_forward", "The direction its +Z axis points in the world."),
+			free_method<up>("get_up", "The direction its +Y axis points in the world."),
+			free_method<right>("get_right", "The direction its +X axis points in the world."),
+			free_method<look_at>("look_at",
+								 "Turns it so +Z points at a world position, with +Y as close to `up` as it gets "
+								 "(world up when left out)."),
+			free_method<rotate>("rotate",
+								"Turns it around a world axis through its own origin, in degrees. Pass get_up() or "
+								"get_forward() to turn around its own axes."),
 			free_method<parent>("get_parent", "Its parent, nil at the root."),
+			aquiLua::Method("get_children", entity_children, children_signature, "Its direct children."),
+			free_method<clone>(
+				"clone",
+				"A copy with every component, script and child, next to it under the same parent. Hidden "
+				"templates make hidden copies, set_visible(true) shows them."),
+			aquiLua::Method("set_parent", entity_set_parent, set_parent_signature,
+							"Moves it under another entity, or to the root with nil, staying where it is in the "
+							"world. Errors when the parent is itself or one of its children."),
 			free_method<uuid>("get_uuid", "The id saved in scenes. Stays the same across saves, loads and Play."),
+			aquiLua::Method("has", entity_has, has_signature,
+							"Whether it has the component, by the name the inspector shows. Unknown names error."),
+			aquiLua::Method("get", entity_get, get_signature,
+							"A component property by the names the inspector shows, like get(\"Light\", \"Range\"). "
+							"Options come back as their names, colors as vectors (w is alpha). When several share a "
+							"name (Light's Intensity in lx, lm or cd), it's the one the inspector shows."),
+			aquiLua::Method("set", entity_set, set_signature,
+							"Writes a component property like the inspector does: numbers stay in its range, options "
+							"go by name. Read-only properties error."),
+			aquiLua::Method("add", entity_add, component_signature,
+							"Adds the component with its defaults, like Add Component. Does nothing when it's there."),
+			aquiLua::Method("remove", entity_remove, component_signature,
+							"Removes the component. Transform, Metadata and Scene Node can't be removed."),
 		},
 		environment.scene, "An entity in the scene. A script gets the entity it is attached to as self.");
 }

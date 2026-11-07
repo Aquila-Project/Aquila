@@ -11,6 +11,10 @@
     </View>
 </Component>
 
+<Component name="SettingsBrowseButton" props="tooltip">
+    <Button class="settings-btn settings-browse" tooltip="$tooltip" src="Engine/UI/Icons/folder-open.svg"/>
+</Component>
+
 <Component name="SettingsShortcutGroup" props="title">
     <Label class="settings-shortcut-group">$title</Label>
 </Component>

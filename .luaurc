@@ -8,6 +8,7 @@
 		"input": "Resources/Engine/Types/input",
 		"screen": "Resources/Engine/Types/screen",
 		"fields": "Resources/Engine/Types/fields",
-		"camera": "Resources/Engine/Types/camera"
+		"camera": "Resources/Engine/Types/camera",
+		"game": "Resources/Engine/Types/game"
 	}
 }

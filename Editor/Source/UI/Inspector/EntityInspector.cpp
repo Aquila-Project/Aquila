@@ -10,32 +10,12 @@
 
 namespace Editor {
 
-using Aquila::SceneManagement::ComponentCategory;
 using Aquila::SceneManagement::ComponentDescriptor;
 using Aquila::SceneManagement::Entity;
 using Aquila::UI::Core::Inspectable;
 using Aquila::UI::Core::InspectorSection;
+using Aquila::UI::Core::InspectorTab;
 using Aquila::UI::Core::PopupMenu;
-
-namespace {
-
-constexpr Usize K_OBJECT_TAB = 0;
-constexpr Usize K_COMPONENTS_TAB = 1;
-constexpr Usize K_RENDERING_TAB = 2;
-
-Usize tab_of(ComponentCategory category) {
-	switch (category) {
-	case ComponentCategory::Object:
-		return K_OBJECT_TAB;
-	case ComponentCategory::Rendering:
-		return K_RENDERING_TAB;
-	case ComponentCategory::General:
-		break;
-	}
-	return K_COMPONENTS_TAB;
-}
-
-}
 
 EntityInspector::EntityInspector(EditorContext &context) : m_context(context) {
 	Aquila::UI::Core::View *overlay = m_context.overlay_root();
@@ -43,7 +23,6 @@ EntityInspector::EntityInspector(EditorContext &context) : m_context(context) {
 		return;
 	}
 	m_add_menu = overlay->add_child(std::make_unique<PopupMenu>());
-	m_add_menu->set_submenu_icon(m_context.icon("chevron-right"));
 	m_add_search = m_add_menu->enable_search("Search components...");
 	m_add_search->on_changed.connect([this](const std::string &query) { populate_add_menu(query); });
 }
@@ -70,20 +49,36 @@ Inspectable EntityInspector::inspect(Entity entity) {
 	inspectable.subtitle = uuid.substr(0, 8);
 	inspectable.subtitle_tooltip = uuid;
 
-	inspectable.tabs.resize(3);
-	inspectable.tabs[K_OBJECT_TAB] = { .title = "Object", .icon = "square", .always_visible = true };
-	inspectable.tabs[K_COMPONENTS_TAB] = { .title = "Components", .icon = "layers", .always_visible = true };
-	inspectable.tabs[K_RENDERING_TAB] = { .title = "Rendering", .icon = "camera" };
+	const std::vector<ComponentGroup> &groups = editors.get_groups();
+	std::vector<InspectorTab> tabs;
+	for (const ComponentGroup &group : groups) {
+		tabs.push_back({ .title = group.name, .icon = group.icon });
+	}
 	for (const ComponentDescriptor *descriptor : editors.ordered()) {
 		if (descriptor->has(entity)) {
-			inspectable.tabs[tab_of(descriptor->get_category())].sections.push_back(make_section(entity, *descriptor));
+			const auto group =
+				std::ranges::find(groups, editors.group_of(descriptor->get_name()), &ComponentGroup::name);
+			tabs[static_cast<Usize>(group - groups.begin())].sections.push_back(make_section(entity, *descriptor));
 		}
 	}
-	inspectable.tabs[K_COMPONENTS_TAB].actions.push_back({
-		.text = "Add Component",
-		.icon = "plus",
-		.run = [this] { open_add_menu(Aquila::Platform::Input::get_mouse_position(), false); },
-	});
+	for (Usize i = 0; i < tabs.size(); ++i) {
+		const bool addable = can_add(groups[i].name);
+		if (tabs[i].sections.empty() && !addable) {
+			continue;
+		}
+		tabs[i].always_visible = true;
+		if (addable) {
+			tabs[i].actions.push_back({
+				.text = "Add Component",
+				.icon = "plus",
+				.run =
+					[this, group = groups[i].name] {
+						open_add_menu(group, Aquila::Platform::Input::get_mouse_position(), false);
+					},
+			});
+		}
+		inspectable.tabs.push_back(std::move(tabs[i]));
+	}
 	return inspectable;
 }
 
@@ -128,6 +123,9 @@ void EntityInspector::add_component(Entity entity, const ComponentDescriptor &d)
 		d.add(entity);
 	}
 	AQUILA_LOG_INFO("Added {} component to '{}'", d.get_name(), entity.get_name());
+	if (on_component_added) {
+		on_component_added(m_context.component_editors.group_of(d.get_name()));
+	}
 	m_context.selection.on_entity_modified(entity);
 	m_context.selection.on_components_changed(entity);
 }
@@ -141,10 +139,15 @@ void EntityInspector::remove_component(Entity entity, const ComponentDescriptor 
 	m_context.selection.on_components_changed(entity);
 }
 
-void EntityInspector::open_add_menu(Vec2 position, bool from_keyboard) {
-	if (m_add_menu == nullptr || !m_entity.exists()) {
+bool EntityInspector::can_add(std::string_view group) const {
+	return !addable(group).empty();
+}
+
+void EntityInspector::open_add_menu(std::string_view group, Vec2 position, bool from_keyboard) {
+	if (m_add_menu == nullptr || !can_add(group)) {
 		return;
 	}
+	m_add_group = group;
 	if (m_add_search != nullptr) {
 		m_add_search->set_text("");
 	}
@@ -168,53 +171,33 @@ void EntityInspector::populate_add_menu(const std::string &query) {
 		return;
 	}
 
-	const ComponentEditors &editors = m_context.component_editors;
-	std::vector<const ComponentDescriptor *> addable;
-	for (const ComponentDescriptor *descriptor : editors.ordered()) {
-		if (descriptor->can_add() && descriptor->is_removable() && !descriptor->has(m_entity)) {
-			addable.push_back(descriptor);
-		}
-	}
-	const auto add_item = [this, &editors](PopupMenu *menu, const ComponentDescriptor *descriptor) {
-		menu->add_item(descriptor->get_name(), {}, m_context.icon(editors.icon(descriptor->get_name())),
-					   [this, descriptor] { add_component(m_entity, *descriptor); });
-	};
-
 	const std::string needle = Aquila::Foundation::to_lower(query);
-	if (!needle.empty()) {
-		for (const ComponentDescriptor *descriptor : addable) {
-			if (Aquila::Foundation::to_lower(descriptor->get_name()).find(needle) != std::string::npos) {
-				add_item(m_add_menu, descriptor);
-			}
-		}
-		m_add_menu->refresh();
-		return;
+	if (needle.empty()) {
+		m_add_menu->add_separator();
 	}
-
-	std::vector<ComponentGroup> groups = editors.get_groups();
-	groups.push_back({ .name = std::string(ComponentEditors::K_OTHER_GROUP) });
-	const auto group_of = [&editors, &groups](const ComponentDescriptor *descriptor) -> std::string_view {
-		const ComponentEditor *editor = editors.find(descriptor->get_name());
-		if (editor == nullptr || std::ranges::find(groups, editor->group, &ComponentGroup::name) == groups.end()) {
-			return ComponentEditors::K_OTHER_GROUP;
+	for (const ComponentDescriptor *descriptor : addable(m_add_group)) {
+		if (!needle.empty() && Aquila::Foundation::to_lower(descriptor->get_name()).find(needle) == std::string::npos) {
+			continue;
 		}
-		return editor->group;
-	};
-
-	m_add_menu->add_separator();
-	for (const ComponentGroup &group : groups) {
-		PopupMenu *submenu = nullptr;
-		for (const ComponentDescriptor *descriptor : addable) {
-			if (group_of(descriptor) != group.name) {
-				continue;
-			}
-			if (submenu == nullptr) {
-				submenu = m_add_menu->add_submenu(group.name, m_context.icon(group.icon));
-			}
-			add_item(submenu, descriptor);
-		}
+		m_add_menu->add_item(descriptor->get_name(), {},
+							 m_context.icon(m_context.component_editors.icon(descriptor->get_name())),
+							 [this, descriptor] { add_component(m_entity, *descriptor); });
 	}
 	m_add_menu->refresh();
 }
 
+std::vector<const ComponentDescriptor *> EntityInspector::addable(std::string_view group) const {
+	std::vector<const ComponentDescriptor *> descriptors;
+	if (!m_entity.exists()) {
+		return descriptors;
+	}
+	const ComponentEditors &editors = m_context.component_editors;
+	for (const ComponentDescriptor *descriptor : editors.ordered()) {
+		if (descriptor->can_add() && descriptor->is_removable() && !descriptor->has(m_entity) &&
+			editors.group_of(descriptor->get_name()) == group) {
+			descriptors.push_back(descriptor);
+		}
+	}
+	return descriptors;
+}
 }

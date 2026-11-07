@@ -16,7 +16,8 @@ void InspectorWindow::define_behaviour() {
 	m_entities = std::make_unique<EntityInspector>(context());
 	m_view = std::make_unique<Aquila::UI::Core::InspectorView>(
 		root(), [this](std::string_view name) { return context().icon(name); }, &context().engine().get_context());
-	m_view->select_tab("Components");
+	m_view->select_tab("Rendering");
+	m_entities->on_component_added = [this](std::string_view tab) { m_view->select_tab(tab); };
 
 	EditorSelection &selection = context().selection;
 	listen(selection.on_changed, [this](Entity entity) { show_entity(entity); });
@@ -42,10 +43,11 @@ void InspectorWindow::define_behaviour() {
 		.title = "Add component",
 		.run = [this] { open_add_search(Aquila::Platform::Input::get_mouse_position()); },
 		.enabled =
-			[] {
+			[this] {
 				using Aquila::Platform::Input;
 				using Aquila::Platform::Events::MouseButton;
-				return !Input::is_mouse_button_pressed(MouseButton::Left) &&
+				return m_asset.empty() && m_entities->can_add(m_view->get_active_tab()) &&
+					!Input::is_mouse_button_pressed(MouseButton::Left) &&
 					!Input::is_mouse_button_pressed(MouseButton::Right);
 			},
 	});
@@ -65,7 +67,7 @@ void InspectorWindow::update(F32 delta_time) {
 
 void InspectorWindow::open_add_search(Vec2 canvas_pos) {
 	if (m_asset.empty()) {
-		m_entities->open_add_menu(canvas_pos, true);
+		m_entities->open_add_menu(m_view->get_active_tab(), canvas_pos, true);
 	}
 }
 

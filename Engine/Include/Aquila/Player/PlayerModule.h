@@ -9,7 +9,7 @@ namespace Aquila::Player {
 
 /// Runs a built game: mounts its project, opens the startup scene through the primary camera and starts playing.
 /// Every event of the window goes to the game input.
-/// Any failure in on_attach() is logged and closes the game.
+/// Any failure in on_attach() is logged and closes the game, and so does the game stopping (a script's Game.quit).
 class PlayerModule final : public Application::IModule {
   public:
 	PlayerModule(BuildLayout layout, BuildManifest manifest);
@@ -17,6 +17,7 @@ class PlayerModule final : public Application::IModule {
 	void on_attach(Application::EngineContext &engine) override;
 	void on_event(Platform::Events::Event &event) override;
 	void on_render_resize(Uint32 width, Uint32 height) override;
+	void on_stop() override;
 
   private:
 	void fit_camera(Uint32 width, Uint32 height) const;

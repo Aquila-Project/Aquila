@@ -30,3 +30,4 @@ Resources/Engine/Types/
 
 # Rust stuff
 Tools/*/target/
+Resources/.luaurc

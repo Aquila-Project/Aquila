@@ -6,6 +6,8 @@
 
 namespace Aquila::Scripting {
 
+class ScriptApi;
+
 enum class ScriptFieldType : Uint8 { Number, Boolean, String, Vector, Entity };
 
 /// One field a script declares with Aquila.Field, as the inspector shows it.
@@ -39,9 +41,9 @@ field_value(const ScriptField &field, const SceneManagement::Components::ScriptC
 
 /// Runs the script's top level in a throwaway runtime over an empty scene, so its hooks never run and whatever the
 /// top level does to the scene is lost, and returns the fields it declares, in order. Errors go to the log, then
-/// it returns what was declared before the error. Main thread.
-[[nodiscard]] std::vector<ScriptField> read_script_fields(const std::string &path);
-
+/// it returns what was declared before the error. `api` adds other modules' Luau modules, null is the engine's
+/// alone. Main thread.
+[[nodiscard]] std::vector<ScriptField> read_script_fields(const std::string &path, const ScriptApi *api = nullptr);
 }
 
 #endif
