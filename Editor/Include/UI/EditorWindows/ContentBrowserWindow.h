@@ -4,6 +4,7 @@
 #include "Core/EditorWindow.h"
 
 namespace Aquila::UI::Core {
+class Clickable;
 class PopupMenu;
 class TextInput;
 class View;
@@ -47,6 +48,9 @@ class ContentBrowserWindow final : public EditorWindow {
 	void rename(const std::string &path, const std::string &name);
 	void confirm_delete(const std::string &path, Vec2 position);
 	void remove(const std::string &path);
+	/// Files from this project's Content dropped on `target` move into `folder`.
+	void accept_drop(Aquila::UI::Core::Clickable &target, std::string folder);
+	void move(const std::string &path, const std::string &folder);
 	/// Runs `action` at the start of the next update, for actions that rebuild the view that triggered them.
 	void defer(Delegate<void()> action);
 
