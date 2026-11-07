@@ -30,6 +30,18 @@ void Clickable::on_drag_start(DragState &state) {
 	on_drag_start_requested(state);
 }
 
+void Clickable::on_drag_enter(DragState &state) {
+	on_drag_entered(state);
+}
+
+void Clickable::on_drag_leave(DragState &state) {
+	on_drag_left(state);
+}
+
+void Clickable::on_drop(DragState &state) {
+	on_dropped(state);
+}
+
 void Clickable::on_key_press(Platform::KeyCode key, int mods) {
 	on_key_pressed(key, mods);
 }
