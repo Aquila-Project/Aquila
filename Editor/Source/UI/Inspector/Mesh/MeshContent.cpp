@@ -4,10 +4,10 @@
 #include "Aquila/Graphics/Resources/ProceduralMeshes.h"
 #include "Aquila/Scene/Components/MeshComponent.h"
 #include "Aquila/UI/Widgets/Dropdown.h"
-#include "Aquila/UI/Widgets/Label.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Core/EditorContext.h"
+#include "UI/Inspector/Mesh/MeshStatsRows.h"
 
 namespace Editor {
 
@@ -56,8 +56,7 @@ void MeshContent::build_above(Aquila::UI::Core::PropertyGrid &grid) {
 }
 
 void MeshContent::build_below(Aquila::UI::Core::PropertyGrid &grid) {
-	m_vertices = grid.add_row<Aquila::UI::Core::Label>("Vertices", std::string("0"));
-	m_triangles = grid.add_row<Aquila::UI::Core::Label>("Triangles", std::string("0"));
+	m_stats = std::make_unique<MeshStatsRows>(grid);
 	sync();
 }
 
@@ -135,11 +134,10 @@ void MeshContent::set_source(const MeshSource &source) {
 
 void MeshContent::update_stats() {
 	const auto *mesh = m_entity.exists() ? m_entity.try_get_component<MeshComponent>() : nullptr;
-	if (mesh == nullptr || m_vertices == nullptr || m_triangles == nullptr) {
+	if (mesh == nullptr || m_stats == nullptr) {
 		return;
 	}
-	m_vertices->set_text(std::to_string(mesh->is_valid() ? mesh->data->get_vertex_count() : 0));
-	m_triangles->set_text(std::to_string(mesh->is_valid() ? mesh->data->get_index_count() / 3 : 0));
+	m_stats->show(mesh->is_valid() ? mesh->data.get() : nullptr);
 }
 
 }

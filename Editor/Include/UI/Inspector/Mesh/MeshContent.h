@@ -6,13 +6,13 @@
 
 namespace Aquila::UI::Core {
 class Dropdown;
-class Label;
 class ReflectedPropertyGrid;
 } // namespace Aquila::UI::Core
 
 namespace Editor {
 
 class EditorContext;
+class MeshStatsRows;
 
 class MeshContent final : public Aquila::UI::Core::IInspectorContent {
   public:
@@ -37,8 +37,7 @@ class MeshContent final : public Aquila::UI::Core::IInspectorContent {
 	Unique<Aquila::UI::Core::ReflectedPropertyGrid> m_params_fields;
 	std::string m_params_generator;
 	Aquila::Graphics::Resources::MeshParams m_params;
-	Aquila::UI::Core::Label *m_vertices = nullptr;
-	Aquila::UI::Core::Label *m_triangles = nullptr;
+	Unique<MeshStatsRows> m_stats;
 };
 
 }

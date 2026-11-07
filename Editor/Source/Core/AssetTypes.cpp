@@ -5,6 +5,7 @@
 #include "Aquila/Graphics/Material/MaterialData.h"
 #include "Core/ScriptEditor.h"
 #include "UI/Inspector/Material/MaterialAssetContent.h"
+#include "UI/Inspector/Mesh/MeshAssetContent.h"
 #include "UI/Inspector/Script/ScriptAssetContent.h"
 
 namespace Editor {
@@ -46,7 +47,13 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.extensions = { ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".hdr", ".svg" },
 		.thumbnail = AssetThumbnail::Image,
 	});
-	types.add({ .id = "model", .title = "Model", .icon = "box", .extensions = { ".gltf", ".glb", ".obj", ".fbx" } });
+	types.add({
+		.id = "model",
+		.title = "Model",
+		.icon = "box",
+		.extensions = { ".gltf", ".glb", ".obj", ".fbx" },
+		.inspect = inspect_mesh_asset,
+	});
 	types.add({
 		.id = "material",
 		.title = "Material",
