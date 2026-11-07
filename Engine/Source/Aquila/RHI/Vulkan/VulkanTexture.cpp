@@ -7,8 +7,13 @@
 namespace Aquila::RHI {
 
 VulkanTexture::VulkanTexture(VulkanDevice &device, const TextureDesc &desc) : m_device(device), m_desc(desc) {
+	VkImageCreateFlags flags = 0;
+	if (desc.view_type == TextureViewType::Cube || desc.view_type == TextureViewType::CubeArray) {
+		flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	}
+
 	m_image_allocation = m_device.create_image<MemoryDomain::GpuOnly>(
-		desc.width, desc.height, to_vk_format(desc.format), to_vk_image_usage(desc.usage), desc.mip_levels,
+		desc.width, desc.height, to_vk_format(desc.format), to_vk_image_usage(desc.usage), flags, desc.mip_levels,
 		desc.array_layers, to_vk_sample_count(desc.samples), desc.debug_name.c_str());
 
 	create_image_view();

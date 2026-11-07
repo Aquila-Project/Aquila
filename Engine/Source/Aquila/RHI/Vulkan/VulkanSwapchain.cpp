@@ -173,7 +173,7 @@ void VulkanSwapchain::create_depth_resources() {
 
 	for (size_t i = 0; i < m_images.size(); i++) {
 		m_depth_allocations[i] = m_device.create_image<MemoryDomain::GpuOnly>(
-			m_extent.width, m_extent.height, m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 1, 1,
+			m_extent.width, m_extent.height, m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0, 1, 1,
 			VK_SAMPLE_COUNT_1_BIT, ("SwapchainDepth_" + std::to_string(i)).c_str());
 
 		VkImageViewCreateInfo view_info{};

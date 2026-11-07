@@ -154,7 +154,7 @@ class VulkanDevice final : public IRHIDevice {
 	/// CPU visible domains use linear tiling, so no mips, no MSAA and one layer.
 	template <MemoryDomain Domain>
 	ImageAllocation create_image(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage,
-								 uint32_t mip_levels = 1, uint32_t array_layers = 1,
+								 VkImageCreateFlags flags, uint32_t mip_levels = 1, uint32_t array_layers = 1,
 								 VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
 								 const char *debug_name = nullptr) {
 		AQUILA_ASSERT(m_allocator != VK_NULL_HANDLE, "VMA allocator is null");
@@ -176,6 +176,7 @@ class VulkanDevice final : public IRHIDevice {
 		image_info.extent = { .width = width, .height = height, .depth = 1 };
 		image_info.mipLevels = mip_levels;
 		image_info.arrayLayers = array_layers;
+		image_info.flags = flags;
 		image_info.samples = samples;
 		image_info.tiling = tiling;
 		image_info.usage = usage;
