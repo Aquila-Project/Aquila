@@ -129,6 +129,17 @@ AQUILA_FORCE_INLINE VkSampleCountFlagBits to_vk_sample_count(SampleCount samples
 	}
 }
 
+/// Every aspect the format has, what barriers want. A view you sample from takes the depth aspect alone.
+AQUILA_FORCE_INLINE VkImageAspectFlags to_vk_image_aspect(TextureFormat format) {
+	if (is_stencil_format(format)) {
+		return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	}
+	if (is_depth_format(format)) {
+		return VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+	return VK_IMAGE_ASPECT_COLOR_BIT;
+}
+
 AQUILA_FORCE_INLINE VkImageUsageFlags to_vk_image_usage(TextureUsage usage) {
 	VkImageUsageFlags flags = 0;
 	if ((usage & TextureUsage::ColorAttachment) != TextureUsage::None) {

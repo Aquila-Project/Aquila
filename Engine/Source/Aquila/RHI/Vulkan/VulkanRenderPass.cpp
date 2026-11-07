@@ -9,14 +9,6 @@
 
 namespace Aquila::RHI {
 
-static bool has_stencil(TextureFormat fmt) {
-	return fmt == TextureFormat::Depth24Stencil8 || fmt == TextureFormat::Depth32Stencil8;
-}
-
-static VkImageAspectFlags depth_aspect(TextureFormat fmt) {
-	return has_stencil(fmt) ? (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) : VK_IMAGE_ASPECT_DEPTH_BIT;
-}
-
 static VkImageMemoryBarrier make_barrier(VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout,
 										 VkImageLayout new_layout, VkAccessFlags src_access, VkAccessFlags dst_access) {
 	VkImageMemoryBarrier b{};
@@ -90,7 +82,7 @@ void VulkanRenderPass::issue_pre_barriers(VulkanCommandList &cmd, const VulkanSw
 		if (d.texture != nullptr) {
 			auto &vk_depth = static_cast<VulkanTexture &>(*d.texture);
 			depth_image = vk_depth.get_image();
-			aspect = depth_aspect(vk_depth.get_format());
+			aspect = to_vk_image_aspect(vk_depth.get_format());
 		} else if (m_desc.use_swapchain && (swapchain != nullptr)) {
 			depth_image = swapchain->get_depth_image(image_index);
 		}
@@ -161,7 +153,7 @@ void VulkanRenderPass::issue_post_barriers(VulkanCommandList &cmd) const {
 		const auto &d = *m_desc.depth_attachment;
 		if ((d.texture != nullptr) && d.depth_store_op == AttachmentStoreOp::Store) {
 			auto &vk_depth = static_cast<VulkanTexture &>(*d.texture);
-			VkImageAspectFlags aspect = depth_aspect(vk_depth.get_format());
+			VkImageAspectFlags aspect = to_vk_image_aspect(vk_depth.get_format());
 			VkImageLayout old_layout = d.read_only ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
 												   : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 			barriers.push_back(make_barrier(
