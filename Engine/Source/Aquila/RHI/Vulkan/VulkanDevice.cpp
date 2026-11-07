@@ -106,9 +106,6 @@ std::string VulkanDevice::pipeline_cache_path() const {
 }
 
 void VulkanDevice::create_pipeline_cache() {
-	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(m_physical_device, &props);
-
 	std::vector<char> initial_data;
 	std::ifstream file(pipeline_cache_path(), std::ios::binary | std::ios::ate);
 	if (file.is_open()) {
@@ -124,9 +121,9 @@ void VulkanDevice::create_pipeline_cache() {
 				std::memcpy(&vendor_id, blob.data() + 8, sizeof(Uint32));
 				std::memcpy(&device_id, blob.data() + 12, sizeof(Uint32));
 
-				bool matches = header_version == VK_PIPELINE_CACHE_HEADER_VERSION_ONE && vendor_id == props.vendorID &&
-					device_id == props.deviceID &&
-					std::memcmp(blob.data() + 16, props.pipelineCacheUUID, VK_UUID_SIZE) == 0;
+				bool matches = header_version == VK_PIPELINE_CACHE_HEADER_VERSION_ONE &&
+					vendor_id == m_properties.vendorID && device_id == m_properties.deviceID &&
+					std::memcmp(blob.data() + 16, m_properties.pipelineCacheUUID, VK_UUID_SIZE) == 0;
 				if (matches) {
 					initial_data = std::move(blob);
 				} else {
@@ -234,12 +231,11 @@ void VulkanDevice::destroy_surface_handle(VkSurfaceKHR surface) const {
 }
 
 Unique<IRHIQueryPool> VulkanDevice::create_timestamp_pool(Uint32 count) {
-	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(m_physical_device, &properties);
-	if (properties.limits.timestampComputeAndGraphics == VK_FALSE || count == 0) {
+	if (m_properties.limits.timestampComputeAndGraphics == VK_FALSE || count == 0) {
 		return nullptr;
 	}
-	auto pool = std::make_unique<VulkanQueryPool>(m_device, count, static_cast<F64>(properties.limits.timestampPeriod));
+	auto pool =
+		std::make_unique<VulkanQueryPool>(m_device, count, static_cast<F64>(m_properties.limits.timestampPeriod));
 	if (pool->get_count() == 0) {
 		return nullptr;
 	}
@@ -767,10 +763,7 @@ VkSampler VulkanDevice::get_or_create_sampler(const SamplerDesc &desc) {
 		return it->second;
 	}
 
-	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(m_physical_device, &props);
-
-	VkSamplerCreateInfo info = to_vk_sampler_create_info(desc, props.limits.maxSamplerAnisotropy);
+	VkSamplerCreateInfo info = to_vk_sampler_create_info(desc, m_properties.limits.maxSamplerAnisotropy);
 
 	VkSampler sampler = nullptr;
 	AQUILA_VULKAN_CHECK(vkCreateSampler(m_device, &info, nullptr, &sampler));
@@ -857,8 +850,7 @@ void VulkanDevice::set_object_debug_name(VkObjectType object_type, Uint64 handle
 }
 
 void VulkanDevice::log_device_info() const {
-	VkPhysicalDeviceProperties properties;
-	vkGetPhysicalDeviceProperties(m_physical_device, &properties);
+	const VkPhysicalDeviceProperties &properties = m_properties;
 
 	AQUILA_LOG_INFO("Graphics Device Information");
 	AQUILA_LOG_INFO("Device Name: {}", properties.deviceName);
@@ -1113,6 +1105,8 @@ void VulkanDevice::pick_physical_device() {
 		AQUILA_LOG_CRITICAL("Failed to find a suitable GPU!");
 		abort();
 	}
+
+	vkGetPhysicalDeviceProperties(m_physical_device, &m_properties);
 }
 
 bool VulkanDevice::is_suitable(const VkPhysicalDevice vk_physical_device) {
