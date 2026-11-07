@@ -15,7 +15,7 @@
 #include "Aquila/RHI/Vulkan/VulkanShader.h"
 #include "Aquila/RHI/Vulkan/VulkanSwapchain.h"
 #include "Aquila/RHI/Vulkan/VulkanTexture.h"
-#include "Aquila/RHI/Vulkan/VulkanVertex.h"
+#include "Aquila/RHI/Vertex.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 
 #include <vulkan/vulkan_core.h>
@@ -560,22 +560,15 @@ Unique<IRHIPipeline> VulkanDevice::create_graphics_pipeline(const GraphicsPipeli
 		config.color_blend_attachments.clear();
 	}
 
-	if (desc.no_vertex_input) {
-		config.binding_descriptions.clear();
-		config.attribute_descriptions.clear();
-	} else if (desc.custom_vertex_layout.has_value()) {
-		const auto &layout = desc.custom_vertex_layout.value();
+	if (!desc.no_vertex_input) {
+		const VertexBindingDesc layout = desc.custom_vertex_layout.value_or(Vertex::layout());
 		config.binding_descriptions = {
 			{ .binding = 0, .stride = layout.stride, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },
 		};
-		config.attribute_descriptions.clear();
 		for (const auto &a : layout.attributes) {
 			config.attribute_descriptions.push_back(
 				{ .location = a.location, .binding = a.binding, .format = to_vk_format(a.format), .offset = a.offset });
 		}
-	} else {
-		config.binding_descriptions = Vertex::get_binding_descriptions();
-		config.attribute_descriptions = Vertex::get_attribute_descriptions();
 	}
 	if (const auto consumed = spirv_vertex_input_locations(desc.vertex_shader.spirv, desc.vertex_shader.entry_point)) {
 		std::erase_if(config.attribute_descriptions, [&](const VkVertexInputAttributeDescription &attribute) {

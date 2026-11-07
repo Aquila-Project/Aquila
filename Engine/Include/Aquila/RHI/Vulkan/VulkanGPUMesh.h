@@ -5,7 +5,7 @@
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/RHI/Backend/IRHIGPUMesh.h"
 #include "Aquila/RHI/Vulkan/VulkanTypes.h"
-#include "Aquila/RHI/Vulkan/VulkanVertex.h"
+#include "Aquila/RHI/Vertex.h"
 
 namespace Aquila::RHI {
 class VulkanDevice;

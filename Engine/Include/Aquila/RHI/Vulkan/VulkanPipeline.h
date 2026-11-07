@@ -5,7 +5,6 @@
 #include "Aquila/Foundation/Defines.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/RHI/Backend/IRHIPipeline.h"
-#include "Aquila/RHI/Vulkan/VulkanVertex.h"
 
 namespace Aquila::RHI {
 
@@ -28,7 +27,6 @@ struct VulkanPipelineConfig {
 	std::vector<VkDynamicState> dynamic_state_enables{};
 	VkPipelineDynamicStateCreateInfo dynamic_state_create_info{};
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-	std::optional<VertexBindingDesc> custom_vertex_layout;
 	const void *p_next = nullptr;
 	VkRenderPass render_pass = VK_NULL_HANDLE;
 	std::vector<VkFormat> color_formats;

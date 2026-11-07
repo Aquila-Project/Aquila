@@ -151,18 +151,6 @@ void VulkanPipeline::default_pipeline_config(VulkanPipelineConfig &config_info) 
 	config_info.dynamic_state_create_info.pDynamicStates = config_info.dynamic_state_enables.data();
 	config_info.dynamic_state_create_info.dynamicStateCount = static_cast<uint32_t>(config_info.dynamic_state_enables.size());
 	config_info.dynamic_state_create_info.flags = 0;
-
-	if (config_info.custom_vertex_layout.has_value()) {
-		auto &layout = config_info.custom_vertex_layout.value();
-		config_info.binding_descriptions = { { 0, layout.stride, VK_VERTEX_INPUT_RATE_VERTEX } };
-		config_info.attribute_descriptions.clear();
-		for (auto &a : layout.attributes) {
-			config_info.attribute_descriptions.push_back({ a.location, a.binding, to_vk_format(a.format), a.offset });
-		}
-	} else {
-		config_info.binding_descriptions = Vertex::get_binding_descriptions();
-		config_info.attribute_descriptions = Vertex::get_attribute_descriptions();
-	}
 }
 
 } // namespace Aquila::RHI
