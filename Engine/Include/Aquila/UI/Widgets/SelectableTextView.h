@@ -6,6 +6,13 @@
 
 namespace Aquila::UI::Core {
 
+/// Byte range of a line drawn in the color of `style_class` instead of the line's.
+struct TextSpan {
+	Int32 begin = 0;
+	Int32 length = 0;
+	std::string style_class;
+};
+
 /// Read-only lines you can select with the mouse and copy, the console uses it.
 class SelectableTextView : public View {
   public:
@@ -13,8 +20,8 @@ class SelectableTextView : public View {
 
 	[[nodiscard]] std::string_view get_type_name() const override { return "SelectableTextView"; }
 
-	void add_line(std::string text, std::string line_class = {}, Int32 tag_begin = 0, Int32 tag_length = 0,
-				  std::string tag_class = {});
+	/// `spans` in order and not overlapping, anything past the end of the text is cut.
+	void add_line(std::string text, std::string line_class = {}, std::vector<TextSpan> spans = {});
 	void clear();
 	void remove_front(Int32 count);
 
@@ -47,12 +54,7 @@ class SelectableTextView : public View {
 
 	std::vector<std::string> m_lines;
 	std::vector<std::string> m_line_classes;
-	struct Tag {
-		Int32 begin = 0;
-		Int32 length = 0;
-		std::string style_class;
-	};
-	std::vector<Tag> m_tags;
+	std::vector<std::vector<TextSpan>> m_spans;
 	Text::TextSelection m_selection;
 	bool m_selecting = false;
 

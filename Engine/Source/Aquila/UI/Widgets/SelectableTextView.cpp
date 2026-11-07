@@ -15,18 +15,17 @@ SelectableTextView::SelectableTextView() {
 	add_class("selectable-text-view");
 }
 
-void SelectableTextView::add_line(std::string text, std::string line_class, Int32 tag_begin, Int32 tag_length,
-								  std::string tag_class) {
+void SelectableTextView::add_line(std::string text, std::string line_class, std::vector<TextSpan> spans) {
 	m_lines.push_back(std::move(text));
 	m_line_classes.push_back(std::move(line_class));
-	m_tags.push_back({ .begin = tag_begin, .length = tag_length, .style_class = std::move(tag_class) });
+	m_spans.push_back(std::move(spans));
 	invalidate_layout();
 }
 
 void SelectableTextView::clear() {
 	m_lines.clear();
 	m_line_classes.clear();
-	m_tags.clear();
+	m_spans.clear();
 	m_rows.clear();
 	m_wrapped_lines = 0;
 	m_selection = {};
@@ -40,7 +39,7 @@ void SelectableTextView::remove_front(Int32 count) {
 	}
 	m_lines.erase(m_lines.begin(), m_lines.begin() + count);
 	m_line_classes.erase(m_line_classes.begin(), m_line_classes.begin() + count);
-	m_tags.erase(m_tags.begin(), m_tags.begin() + count);
+	m_spans.erase(m_spans.begin(), m_spans.begin() + count);
 	std::erase_if(m_rows, [count](const Row &row) { return row.line < count; });
 	for (Row &row : m_rows) {
 		row.line -= count;
@@ -297,18 +296,15 @@ void SelectableTextView::on_draw_self(Rendering::DrawList &draw_list) {
 		};
 
 		const Vec4 color = color_of(m_line_classes[line]);
-		const Tag &tag = m_tags[line];
-		const Int32 tag_end = tag.begin + tag.length;
-		if (tag.length <= 0 || tag_end > length) {
-			draw_segment(row.begin, row.end, color);
-			continue;
+		Int32 cursor = row.begin;
+		for (const TextSpan &span : m_spans[line]) {
+			const Int32 from = std::clamp(span.begin, cursor, row.end);
+			const Int32 to = std::clamp(span.begin + span.length, from, row.end);
+			draw_segment(cursor, from, color);
+			draw_segment(from, to, color_of(span.style_class));
+			cursor = to;
 		}
-
-		const Int32 tag_from = std::clamp(tag.begin, row.begin, row.end);
-		const Int32 tag_to = std::clamp(tag_end, row.begin, row.end);
-		draw_segment(row.begin, tag_from, color);
-		draw_segment(tag_from, tag_to, color_of(tag.style_class));
-		draw_segment(tag_to, row.end, color);
+		draw_segment(cursor, row.end, color);
 	}
 }
 

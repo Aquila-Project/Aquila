@@ -85,12 +85,14 @@ void ConsolePanel::flush_pending() {
 		const LogLevel level = continuation ? m_entries.back().level : parse_level(line);
 		const std::string_view tag = level_tag(level);
 		const Usize tag_pos = tag.empty() || continuation ? std::string::npos : line.find(tag);
-		LogEntry entry{ level, continuation ? "    " + line : std::move(line) };
-		entry.continuation = continuation;
+		std::vector<UI::Core::TextSpan> spans;
 		if (tag_pos != std::string::npos) {
-			entry.tag_begin = static_cast<int>(tag_pos);
-			entry.tag_length = static_cast<int>(tag.size());
+			spans.push_back({ .begin = static_cast<Int32>(tag_pos),
+							  .length = static_cast<Int32>(tag.size()),
+							  .style_class = level_tag_class(level) });
 		}
+		LogEntry entry{ level, continuation ? "    " + line : std::move(line), std::move(spans) };
+		entry.continuation = continuation;
 		append_entry(std::move(entry));
 	}
 	update_filter_buttons();
@@ -169,7 +171,7 @@ bool ConsolePanel::is_shown(LogLevel level) const {
 }
 
 void ConsolePanel::show_entry(const LogEntry &entry) {
-	m_view->add_line(entry.message, {}, entry.tag_begin, entry.tag_length, level_tag_class(entry.level));
+	m_view->add_line(entry.message, {}, entry.spans);
 }
 
 void ConsolePanel::rebuild_view() {

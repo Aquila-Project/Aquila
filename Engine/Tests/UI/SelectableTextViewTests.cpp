@@ -68,16 +68,21 @@ TEST_SUITE("SelectableTextView") {
 		CanvasSingletonsScope singletons;
 		Canvas canvas(400, 200);
 		REQUIRE(Aquila::UI::StyleParser::LoadString(
-			".line-warn { color: rgb(1, 0, 0); } .tag-warn { color: rgb(0, 1, 0); }", canvas.get_style_sheet()));
+			".line-warn { color: rgb(1, 0, 0); } .tag-warn { color: rgb(0, 1, 0); } .tag-time { color: rgb(0, 0, 1); }",
+			canvas.get_style_sheet()));
 		auto *view = canvas.get_root()->add_child<SelectableTextView>();
 		Aquila::UI::StyleProperties size;
 		size.font_family = "regular";
 		size.width = Aquila::UI::StyleLength::pixel(380.F);
 		size.height = Aquila::UI::StyleLength::pixel(180.F);
 		view->set_style(size);
-		view->add_line("[WARN] hi", "line-warn", 0, 6, "tag-warn");
+		view->add_line("[WARN] hi", "line-warn", { { .begin = 0, .length = 6, .style_class = "tag-warn" } });
 		view->add_line("plain");
 		view->add_line("unknown", "nope");
+		view->add_line("12:00 [ERR] x", {},
+					   { { .begin = 0, .length = 5, .style_class = "tag-time" },
+						 { .begin = 6, .length = 5, .style_class = "tag-warn" } });
+		view->add_line("short", {}, { { .begin = 3, .length = 50, .style_class = "tag-warn" } });
 		canvas.compute();
 
 		Aquila::UI::Rendering::DrawList list;
@@ -97,5 +102,15 @@ TEST_SUITE("SelectableTextView") {
 		CHECK(drawn["plain"] == own);
 		REQUIRE(drawn.contains("unknown"));
 		CHECK(drawn["unknown"] == own);
+		REQUIRE(drawn.contains("12:00"));
+		CHECK(drawn["12:00"] == Vec4(0.F, 0.F, 1.F, 1.F));
+		REQUIRE(drawn.contains("[ERR]"));
+		CHECK(drawn["[ERR]"] == Vec4(0.F, 1.F, 0.F, 1.F));
+		REQUIRE(drawn.contains(" x"));
+		CHECK(drawn[" x"] == own);
+		REQUIRE(drawn.contains("sho"));
+		CHECK(drawn["sho"] == own);
+		REQUIRE(drawn.contains("rt"));
+		CHECK(drawn["rt"] == Vec4(0.F, 1.F, 0.F, 1.F));
 	}
 }
