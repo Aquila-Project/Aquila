@@ -87,6 +87,10 @@ void ConsolePanel::flush_pending() {
 		const Usize tag_pos = tag.empty() || continuation ? std::string::npos : line.find(tag);
 		std::vector<UI::Core::TextSpan> spans;
 		if (tag_pos != std::string::npos) {
+			const Usize time_end = tag_pos == 0 ? 0 : line.find_last_not_of(' ', tag_pos - 1) + 1;
+			if (time_end > 0) {
+				spans.push_back({ .begin = 0, .length = static_cast<Int32>(time_end), .style_class = "console-time" });
+			}
 			spans.push_back({ .begin = static_cast<Int32>(tag_pos),
 							  .length = static_cast<Int32>(tag.size()),
 							  .style_class = level_tag_class(level) });
