@@ -3,8 +3,25 @@
 
 #include "Aquila/Foundation/Log.h"
 
+#ifdef AQUILA_DEBUG
 #define AQUILA_LOG_TRACE(...) Aquila::Foundation::log_trace(__VA_ARGS__)
 #define AQUILA_LOG_DEBUG(...) Aquila::Foundation::log_debug(__VA_ARGS__)
+#else
+/// Engine internals, Debug builds only. Elsewhere the arguments still compile but never run.
+#define AQUILA_LOG_TRACE(...)                           \
+	do {                                                \
+		if constexpr (false) {                          \
+			Aquila::Foundation::log_trace(__VA_ARGS__); \
+		}                                               \
+	} while (false)
+/// Engine internals, Debug builds only. Elsewhere the arguments still compile but never run.
+#define AQUILA_LOG_DEBUG(...)                           \
+	do {                                                \
+		if constexpr (false) {                          \
+			Aquila::Foundation::log_debug(__VA_ARGS__); \
+		}                                               \
+	} while (false)
+#endif
 #define AQUILA_LOG_INFO(...) Aquila::Foundation::log_info(__VA_ARGS__)
 #define AQUILA_LOG_WARNING(...) Aquila::Foundation::log_warning(__VA_ARGS__)
 #define AQUILA_LOG_ERROR(...) Aquila::Foundation::log_error(__VA_ARGS__)
