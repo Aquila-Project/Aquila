@@ -1,13 +1,18 @@
 #include "Aquila/Rendering/Systems/SkySystem.h"
 #include "Aquila/Foundation/EnginePaths.h"
 #include "Aquila/Foundation/FrameScheduler.h"
+#include "Aquila/Foundation/JobSystem.h"
 #include "Aquila/Scene/Visibility.h"
+#include "Aquila/Rendering/Environment/EnvironmentImage.h"
 #include "Aquila/Rendering/FrameContext.h"
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/GFX/GfxContext.h"
 #include "Aquila/GFX/GfxCommandList.h"
 #include "Aquila/Graphics/RenderGraph/RGGraph.h"
 #include "Aquila/Graphics/RenderGraph/RGPassBuilder.h"
+#include "Aquila/Graphics/Texture/MipChain.h"
+#include "Aquila/Graphics/Texture/TextureLoader.h"
+#include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
 #include "Aquila/RHI/Vulkan/VulkanShaderCompiler.h"
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/Scene/Components/SkyLightComponent.h"
@@ -28,6 +33,8 @@ constexpr Uint32 K_CUBE_FACES = 6;
 
 struct SkyCubePush {
 	Uint32 face = 0;
+	Uint32 image = 0;
+	F32 image_lod = 0.F;
 };
 
 struct PrefilterPush {
@@ -91,16 +98,38 @@ Ref<Shader::ReloadablePipeline> create_sky_pipeline(GFX::GfxContext &ctx, const 
 
 }
 
+struct SkySystem::ImageInbox {
+	struct Finished {
+		Uint64 request = 0;
+		EnvironmentImage image;
+	};
+
+	std::mutex mutex;
+	std::vector<Finished> done;
+};
+
+SkySystem::SkySystem() : m_inbox(std::make_shared<ImageInbox>()) {}
+
+SkySystem::~SkySystem() = default;
+
 void SkySystem::on_init(GFX::GfxContext &ctx) {
 	RenderingSystemBase::on_init(ctx);
 
 	m_sky_layout = ctx.create_descriptor_set_layout({
-		.bindings = { {
-			.binding = 0,
-			.type = RHI::DescriptorType::UniformBuffer,
-			.stages = RHI::ShaderStageFlags::Fragment,
-			.count = 1,
-		} },
+		.bindings = {
+			{
+				.binding = 0,
+				.type = RHI::DescriptorType::UniformBuffer,
+				.stages = RHI::ShaderStageFlags::Fragment,
+				.count = 1,
+			},
+			{
+				.binding = 1,
+				.type = RHI::DescriptorType::CombinedImageSampler,
+				.stages = RHI::ShaderStageFlags::Fragment,
+				.count = 1,
+			},
+		},
 	});
 	m_cube_layout = ctx.create_descriptor_set_layout({
 		.bindings = { {
@@ -111,6 +140,11 @@ void SkySystem::on_init(GFX::GfxContext &ctx) {
 		} },
 	});
 
+	const std::array<Uint8, 4> black = { 0, 0, 0, 255 };
+	m_placeholder = Texture::upload_mip_chain(
+		ctx, Texture::MipChain{ .width = 1, .height = 1, .levels = { { black.begin(), black.end() } } },
+		RHI::TextureFormat::RGBA8, RHI::SamplerDesc::texture2_d(), "SkyImagePlaceholder");
+
 	for (Uint32 i = 0; i < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++i) {
 		m_sky_buffers[i] = ctx.create_buffer({
 			.size = sizeof(GpuSkyData),
@@ -119,7 +153,8 @@ void SkySystem::on_init(GFX::GfxContext &ctx) {
 			.debug_name = "SkyData_" + std::to_string(i),
 		});
 		m_sky_sets[i] = ctx.allocate_descriptor_set(*m_sky_layout);
-		m_sky_sets[i]->set_buffer(0, *m_sky_buffers[i]).flush();
+		m_sky_sets[i]->set_buffer(0, *m_sky_buffers[i]).set_texture(1, *m_placeholder).flush();
+		m_bound_images[i] = m_placeholder->get_id();
 	}
 
 	RHI::SamplerDesc source_sampler = RHI::SamplerDesc::render_target();
@@ -142,6 +177,7 @@ void SkySystem::on_init(GFX::GfxContext &ctx) {
 	m_cube_set->set_texture(0, *m_source_cube).flush();
 
 	m_pipeline = create_sky_pipeline(ctx, "HosekWilkieSky.slang", *m_sky_layout);
+	m_image_pipeline = create_sky_pipeline(ctx, "SkyImage.slang", *m_sky_layout);
 
 	m_cube_pipeline = Shader::ReloadablePipeline::create(
 		ctx, shaders_dir() + "SkyCube.slang", [this](GFX::GfxContext &build_ctx) -> Ref<GFX::GfxPipeline> {
@@ -190,8 +226,77 @@ void SkySystem::on_init(GFX::GfxContext &ctx) {
 		});
 }
 
+void SkySystem::request_image(const std::string &path) {
+	if (path == m_image_path) {
+		return;
+	}
+	m_image_path = path;
+	m_image = {};
+	m_image_failed = false;
+	++m_image_request;
+	if (path.empty()) {
+		return;
+	}
+
+	auto job = [inbox = m_inbox, request = m_image_request, path,
+				native_path = Platform::Filesystem::VirtualFileSystem::get()->to_native_path(path)] {
+		Texture::TextureLoader::RawHDRData raw;
+		try {
+			raw = native_path ? Texture::TextureLoader().load_hdr_from_native(*native_path)
+							  : Texture::TextureLoader().load_hdr_from_file(path);
+		} catch (const std::exception &error) {
+			AQUILA_LOG_WARNING("SkySystem: {}", error.what());
+		}
+		EnvironmentImage image;
+		if (raw.is_valid()) {
+			image = EnvironmentImage::build(raw.pixels.get(), raw.width, raw.height);
+		} else {
+			AQUILA_LOG_WARNING("SkySystem: can't decode sky image '{}'", path);
+		}
+		{
+			std::scoped_lock lock(inbox->mutex);
+			inbox->done.push_back({ .request = request, .image = std::move(image) });
+		}
+		Foundation::FrameScheduler::get()->request_frame();
+	};
+	Foundation::JobSystem::get()->schedule(Foundation::JobPriority::High, "Load sky image " + path, std::move(job));
+}
+
+void SkySystem::receive_image() {
+	std::vector<ImageInbox::Finished> done;
+	{
+		std::scoped_lock lock(m_inbox->mutex);
+		done.swap(m_inbox->done);
+	}
+	for (ImageInbox::Finished &finished : done) {
+		if (finished.request != m_image_request) {
+			continue;
+		}
+		if (!finished.image.is_valid()) {
+			m_image_failed = true;
+			continue;
+		}
+		RHI::SamplerDesc sampler = RHI::SamplerDesc::texture2_d(static_cast<F32>(finished.image.mips.levels.size()));
+		sampler.address_v = RHI::AddressMode::ClampToEdge;
+		sampler.anisotropy = false;
+		m_image.texture =
+			Texture::upload_mip_chain(*m_ctx, finished.image.mips, RHI::TextureFormat::RGBA16F, sampler, m_image_path);
+		m_image.irradiance = finished.image.irradiance;
+		m_image_failed = m_image.texture == nullptr;
+	}
+}
+
+void SkySystem::bind_image(Uint32 frame_slot) {
+	GFX::GfxTexture &image = m_image.texture ? *m_image.texture : *m_placeholder;
+	if (m_bound_images[frame_slot] != image.get_id()) {
+		m_sky_sets[frame_slot]->set_texture(1, image).flush();
+		m_bound_images[frame_slot] = image.get_id();
+	}
+}
+
 void SkySystem::prepare_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 	m_has_sky = false;
+	receive_image();
 	if (ctx.scene == nullptr) {
 		return;
 	}
@@ -201,8 +306,7 @@ void SkySystem::prepare_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 	entt::entity sky_entity = entt::null;
 	for (auto entity : registry.view<SkyLightComponent>()) {
 		auto &candidate = registry.get<SkyLightComponent>(entity);
-		if (candidate.is_active() && candidate.get_source() == SkySource::Procedural &&
-			SceneManagement::is_visible_in_hierarchy(registry, entity)) {
+		if (candidate.is_active() && SceneManagement::is_visible_in_hierarchy(registry, entity)) {
 			sky = &candidate;
 			sky_entity = entity;
 			break;
@@ -213,15 +317,32 @@ void SkySystem::prepare_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 		return;
 	}
 
+	m_image_sky = sky->get_source() == SkySource::HdrImage;
+	if (m_image_sky) {
+		request_image(sky->get_hdr_path());
+		if (!m_image.texture) {
+			return;
+		}
+	}
+
 	const bool changed = sky->is_dirty() || sky_entity != m_sky_entity;
 	m_sky_entity = sky_entity;
-	if (changed) {
-		m_cached = HosekWilkieSky::build(Math::radians(sky->get_sun_elevation()), sky->get_turbidity(),
-										 sky->get_ground_albedo(), sky->get_sun_direction());
-		sky->set_irradiance(HosekWilkieSky::bake_sh(m_cached));
+	if (m_image_sky) {
+		if (changed) {
+			sky->set_irradiance(m_image.irradiance);
+		}
+		m_cached.tint_intensity = Vec4(sky->get_tint(), sky->get_image_intensity());
+	} else {
+		if (changed) {
+			m_cached = HosekWilkieSky::build(Math::radians(sky->get_sun_elevation()), sky->get_turbidity(),
+											 sky->get_ground_albedo(), sky->get_sun_direction());
+			sky->set_irradiance(HosekWilkieSky::bake_sh(m_cached));
+		}
+		m_cached.tint_intensity =
+			Vec4(sky->get_tint(), sky->get_intensity() * Foundation::Photometry::LUMINOUS_EFFICACY);
 	}
-	m_cached.tint_intensity = Vec4(sky->get_tint(), sky->get_intensity() * Foundation::Photometry::LUMINOUS_EFFICACY);
 	m_sky_buffers[ctx.frame_slot]->write(&m_cached, sizeof(GpuSkyData));
+	bind_image(ctx.frame_slot);
 	m_has_sky = true;
 
 	if (changed) {
@@ -235,7 +356,8 @@ void SkySystem::prepare_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 }
 
 void SkySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
-	if (!m_has_sky || !m_pipeline || !m_pipeline->is_valid()) {
+	Shader::ReloadablePipeline *pipeline = m_image_sky ? m_image_pipeline.get() : m_pipeline.get();
+	if (!m_has_sky || pipeline == nullptr || !pipeline->is_valid()) {
 		return;
 	}
 	if (ctx.settings != nullptr &&
@@ -254,8 +376,8 @@ void SkySystem::add_passes(RG::RenderGraph &graph, FrameContext &ctx) {
 				builder.set_depth_attachment(ctx.h_depth, RG::AttachmentLoadOp::Load, RG::AttachmentStoreOp::Store,
 											 RG::AttachmentLoadOp::DontCare, RG::AttachmentStoreOp::DontCare, true);
 		},
-		[this, frame_slot](GFX::GfxCommandList &cmd, RG::RGRegistry &) {
-			cmd.bind_pipeline(m_pipeline->get());
+		[this, pipeline, frame_slot](GFX::GfxCommandList &cmd, RG::RGRegistry &) {
+			cmd.bind_pipeline(pipeline->get());
 			cmd.bind_descriptor_set(0, SceneFrameData::get()->get_descriptor_set(frame_slot));
 			cmd.bind_descriptor_set(1, *m_sky_sets[frame_slot]);
 			cmd.draw(3);
@@ -268,11 +390,18 @@ void SkySystem::add_bake_passes(RG::RenderGraph &graph, Uint32 frame_slot) {
 		return;
 	}
 
+	const F32 image_width = m_image_sky && m_image.texture ? static_cast<F32>(m_image.texture->get_width()) : 0.F;
 	RG::RGTextureHandle source =
 		graph.import_texture(m_source_cube.get(), "SkySourceCube", RG::ResourceState::ShaderRead);
 	for (Uint32 mip = 0; mip < K_SOURCE_MIPS; ++mip) {
+		const F32 face_size = static_cast<F32>(std::max(1U, K_SOURCE_SIZE >> mip));
+		const SkyCubePush base{
+			.image = m_image_sky ? 1U : 0U,
+			.image_lod = image_width > 0.F ? Math::max(0.F, std::log2(image_width / (4.F * face_size))) : 0.F,
+		};
 		for (Uint32 face = 0; face < K_CUBE_FACES; ++face) {
-			const SkyCubePush push{ .face = face };
+			SkyCubePush push = base;
+			push.face = face;
 			graph.add_pass(
 				"SkyCube",
 				[&source, mip, face](RG::RGPassBuilder &builder) {

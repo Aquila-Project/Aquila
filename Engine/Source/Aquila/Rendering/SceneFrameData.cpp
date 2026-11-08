@@ -727,7 +727,7 @@ void SceneFrameData::update(SceneManagement::Scene &scene, float delta_time, Uin
 			for (int i = 0; i < 9; ++i) {
 				env_data.m_sh_coeffs[i] = Vec4(sh.coeffs[i], 0.F);
 			}
-			env_data.m_tint_and_intensity = Vec4(sky.get_tint(), sky.get_intensity());
+			env_data.m_tint_and_intensity = Vec4(sky.get_tint(), sky.get_environment_scale());
 			env_data.m_enabled = 1;
 			break;
 		}

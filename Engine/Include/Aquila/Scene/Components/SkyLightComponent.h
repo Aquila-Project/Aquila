@@ -4,7 +4,6 @@
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/Foundation/Macros.h"
-#include "Aquila/GFX/GfxTexture.h"
 
 namespace Aquila::SceneManagement::Components {
 
@@ -27,7 +26,8 @@ enum class SkySource {
 /// Anything that changes the lighting marks it dirty so the irradiance gets baked again,
 /// set_irradiance() marks it clean.
 struct SkyLightComponent {
-	Ref<GFX::GfxTexture> m_hdr_texture;
+	/// VFS path of an equirectangular image (.hdr, or any image stb reads), the middle of the image looks down +Z.
+	std::string m_hdr_path;
 	SHCoefficients m_irradiance;
 
 	SkySource m_source = SkySource::Procedural;
@@ -38,6 +38,8 @@ struct SkyLightComponent {
 	Vec3 m_ground_albedo = Vec3(0.3F);
 
 	F32 m_intensity = 1.0F;
+	/// Nits for a value of 1.0 in the image. Images come in whatever units they were saved with.
+	F32 m_image_intensity = 5000.0F;
 	F32 m_skybox_lod = 0;
 	Vec3 m_tint = Vec3(1.0F);
 	bool m_is_active = true;
@@ -52,6 +54,12 @@ struct SkyLightComponent {
 	[[nodiscard]] F32 get_turbidity() const noexcept { return m_turbidity; }
 	[[nodiscard]] Vec3 get_ground_albedo() const noexcept { return m_ground_albedo; }
 	[[nodiscard]] F32 get_intensity() const noexcept { return m_intensity; }
+	[[nodiscard]] F32 get_image_intensity() const noexcept { return m_image_intensity; }
+	/// What the sky's radiance gets multiplied by before the tint: the intensity for the procedural sky (already in
+	/// nits), the image intensity for an image.
+	[[nodiscard]] F32 get_environment_scale() const noexcept {
+		return m_source == SkySource::HdrImage ? m_image_intensity : m_intensity;
+	}
 	[[nodiscard]] F32 get_skybox_lod() const noexcept { return m_skybox_lod; }
 	[[nodiscard]] Vec3 get_tint() const noexcept { return m_tint; }
 	[[nodiscard]] bool is_dirty() const noexcept { return m_is_dirty; }
@@ -66,7 +74,7 @@ struct SkyLightComponent {
 		return Vec3(cos_elevation * Math::sin(azimuth), Math::sin(elevation), cos_elevation * Math::cos(azimuth));
 	}
 
-	[[nodiscard]] const Ref<GFX::GfxTexture> &get_hdr_texture() const noexcept { return m_hdr_texture; }
+	[[nodiscard]] const std::string &get_hdr_path() const noexcept { return m_hdr_path; }
 	[[nodiscard]] const SHCoefficients &get_irradiance() const noexcept { return m_irradiance; }
 
 	void set_active(bool active) noexcept { m_is_active = active; }
@@ -91,13 +99,17 @@ struct SkyLightComponent {
 		m_is_dirty = true;
 	}
 	void set_intensity(F32 intensity) noexcept { m_intensity = intensity; }
+	void set_image_intensity(F32 intensity) noexcept { m_image_intensity = intensity; }
 	void set_skybox_lod(F32 lod) noexcept { m_skybox_lod = lod; }
 	void set_tint(const Vec3 &tint) noexcept { m_tint = tint; }
 	void set_render_skybox(bool render) noexcept { m_render_skybox = render; }
 	void mark_clean() noexcept { m_is_dirty = false; }
 
-	void set_hdr_texture(const Ref<GFX::GfxTexture> &texture) {
-		m_hdr_texture = texture;
+	void set_hdr_path(const std::string &path) {
+		if (path == m_hdr_path) {
+			return;
+		}
+		m_hdr_path = path;
 		m_is_dirty = true;
 	}
 
@@ -106,9 +118,6 @@ struct SkyLightComponent {
 		m_is_dirty = false;
 	}
 
-	SkyLightComponent() = default;
-	explicit SkyLightComponent(const Ref<GFX::GfxTexture> &texture, F32 intensity = 1.0F, int lod = 0.0F)
-		: m_hdr_texture(texture), m_source(SkySource::HdrImage), m_intensity(intensity), m_skybox_lod(lod) {}
 };
 
 } // namespace Aquila::SceneManagement::Components

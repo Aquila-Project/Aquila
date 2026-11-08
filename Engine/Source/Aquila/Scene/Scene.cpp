@@ -639,6 +639,8 @@ bool Scene::serialize(const std::string &filepath) {
 				{ "turbidity", sky.get_turbidity() },
 				{ "ground_albedo", { ground.x, ground.y, ground.z } },
 				{ "intensity", sky.get_intensity() },
+				{ "image", sky.get_hdr_path() },
+				{ "image_intensity", sky.get_image_intensity() },
 				{ "tint", { tint.x, tint.y, tint.z } },
 				{ "render_skybox", sky.get_render_skybox() },
 				{ "skybox_lod", sky.get_skybox_lod() },
@@ -929,6 +931,8 @@ bool Scene::deserialize(const std::string &filepath) {
 			sky_light.set_turbidity(sky_light_json.value("turbidity", sky_light.get_turbidity()));
 			sky_light.set_skybox_lod(sky_light_json.value("skybox_lod", sky_light.get_skybox_lod()));
 			sky_light.set_intensity(sky_light_json.value("intensity", 1.0F));
+			sky_light.set_hdr_path(sky_light_json.value("image", std::string{}));
+			sky_light.set_image_intensity(sky_light_json.value("image_intensity", sky_light.get_image_intensity()));
 
 			if (sky_light_json.contains("ground_albedo")) {
 				const auto &ground = sky_light_json["ground_albedo"];
