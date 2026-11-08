@@ -50,6 +50,11 @@ class TextureLoader {
 	RawImageData load_from_memory(std::span<const Uint8> bytes);
 	/// RGBA32F. Returns an invalid image on failure.
 	RawHDRData load_hdr_from_file(const std::string &filepath);
+	/// RGBA32F from a path on disk, doesn't touch the VFS. LDR images are turned linear (gamma 2.2).
+	/// Throws when the file can't be read, returns an invalid image when it can't be decoded. Thread safe.
+	RawHDRData load_hdr_from_native(const std::string &native_path);
+	/// RGBA32F from an encoded file in memory. Invalid when it can't be decoded. Thread safe.
+	RawHDRData load_hdr_from_memory(std::span<const Uint8> bytes);
 
   private:
 	static std::array<Uint8, 4> color_to_pixel(Vec4 color);
