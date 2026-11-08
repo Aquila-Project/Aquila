@@ -1,6 +1,7 @@
 #include "Aquila/Rendering/Environment/HosekWilkieSky.h"
 #include "Aquila/Foundation/Math/Math.h"
 #include "Aquila/Foundation/Photometry.h"
+#include "Aquila/Rendering/Environment/SphericalHarmonics.h"
 
 extern "C" {
 #include "hosek/ArHosekSkyModel.h"
@@ -22,24 +23,6 @@ F32 radiance_internal(const Vec4 &a, const Vec4 &b, F32 c8, F32 theta, F32 gamma
 
 	return (1.0F + a.x * std::exp(a.y / (cos_theta + 0.01F))) *
 		   (a.z + a.w * exp_m + b.y * ray_m + b.z * mie_m + b.w * zenith);
-}
-
-void evaluate_sh_basis(const Vec3 &dir, std::array<F32, 9> &basis) {
-	const F32 c0 = 0.282095F;
-	const F32 c1 = 0.488603F;
-	const F32 c2 = 1.092548F;
-	const F32 c3 = 0.315392F;
-	const F32 c4 = 0.546274F;
-
-	basis[0] = c0;
-	basis[1] = -c1 * dir.y;
-	basis[2] = c1 * dir.z;
-	basis[3] = -c1 * dir.x;
-	basis[4] = c2 * dir.x * dir.y;
-	basis[5] = -c2 * dir.y * dir.z;
-	basis[6] = c3 * (3.0F * dir.z * dir.z - 1.0F);
-	basis[7] = -c2 * dir.x * dir.z;
-	basis[8] = c4 * (dir.x * dir.x - dir.y * dir.y);
 }
 
 } // namespace
@@ -108,19 +91,17 @@ SHCoefficients HosekWilkieSky::bake_sh(const GpuSkyData &data, int samples) {
 		const Vec3 dir(sin_theta * Math::cos(phi), cos_theta, sin_theta * Math::sin(phi));
 		const Vec3 color = evaluate(data, dir);
 
-		std::array<F32, 9> basis{};
-		evaluate_sh_basis(dir, basis);
+		const std::array<F32, 9> basis = SH::basis(dir);
 		for (int i = 0; i < 9; ++i) {
 			sh.coeffs[i] += color * basis[i];
 		}
 	}
 
-	constexpr std::array<F32, 9> K_COSINE_LOBE = { 1.0F,		 2.0F / 3.0F, 2.0F / 3.0F, 2.0F / 3.0F, 0.25F,
-												   0.25F, 0.25F,		0.25F,		 0.25F };
 	const F32 weight = 4.0F * Math::PI / static_cast<F32>(samples);
-	for (int i = 0; i < 9; ++i) {
-		sh.coeffs[i] *= weight * K_COSINE_LOBE[i];
+	for (Vec3 &coefficient : sh.coeffs) {
+		coefficient *= weight;
 	}
+	SH::convolve_cosine_lobe(sh);
 	return sh;
 }
 
