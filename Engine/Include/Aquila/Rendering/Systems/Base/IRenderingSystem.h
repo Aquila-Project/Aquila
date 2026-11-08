@@ -38,6 +38,9 @@ class IRenderingSystem {
 
 	virtual void on_init(GFX::GfxContext &ctx) = 0;
 	virtual void add_passes(Graphics::RG::RenderGraph &graph, FrameContext &ctx) = 0;
+	/// Runs before any system of the same renderer adds its passes, for passes whose results other systems read
+	/// this frame through something the graph can't see, like a texture bound in set 0 (SkySystem's reflection bake).
+	virtual void prepare_passes(Graphics::RG::RenderGraph & /*graph*/, FrameContext & /*ctx*/) {}
 	/// Runs after every system's add_passes(), for passes that draw into the swapchain image.
 	virtual void blit_to_swapchain(Graphics::RG::RenderGraph & /*graph*/, FrameContext & /*ctx*/) {}
 	/// True when it overwrites the whole swapchain image, so the scene blit is skipped.
