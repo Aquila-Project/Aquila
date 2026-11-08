@@ -91,6 +91,20 @@ void ProjectLauncher::define_behaviour() {
 	show_page(m_page);
 }
 
+void ProjectLauncher::take_state(WindowBehaviour &previous) {
+	auto *launcher = dynamic_cast<ProjectLauncher *>(&previous);
+	if (launcher == nullptr) {
+		return;
+	}
+	m_page = launcher->m_page;
+	if (launcher->m_name_input != nullptr) {
+		m_restored_name = launcher->m_name_input->get_text();
+	}
+	if (launcher->m_location_input != nullptr) {
+		m_restored_location = launcher->m_location_input->get_text();
+	}
+}
+
 void ProjectLauncher::wire_home_page() {
 	if (auto *new_tile = get<Clickable>("launcher-new-tile")) {
 		new_tile->on_click.connect([this] { show_page(Page::New); });
@@ -127,7 +141,7 @@ void ProjectLauncher::wire_new_page() {
 	m_error_label = get<Label>("launcher-error");
 	m_create_button = get<Button>("launcher-create");
 	if (m_location_input != nullptr) {
-		m_location_input->set_text(m_project_manager.get_native_root());
+		m_location_input->set_text(m_restored_location.value_or(m_project_manager.get_native_root()));
 	}
 	for (TextInput *input : { m_name_input, m_location_input }) {
 		if (input != nullptr) {
@@ -187,7 +201,8 @@ void ProjectLauncher::show_page(Page page) {
 		refresh_list();
 	}
 	if (page == Page::New && m_name_input != nullptr) {
-		m_name_input->set_text(default_project_name());
+		m_name_input->set_text(m_restored_name.value_or(default_project_name()));
+		m_restored_name.reset();
 		if (m_error_label != nullptr) {
 			m_error_label->set_class("hidden", true);
 		}

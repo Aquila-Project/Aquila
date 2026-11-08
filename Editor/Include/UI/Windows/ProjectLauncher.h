@@ -20,6 +20,8 @@ class ProjectLauncher final : public Aquila::UI::Core::WindowBehaviour {
 	~ProjectLauncher() override;
 
 	void define_behaviour() override;
+	/// Keeps the page and what was typed in the new project form.
+	void take_state(Aquila::UI::Core::WindowBehaviour &previous) override;
 
 	Delegate<void(const ProjectInfo &)> on_project_ready;
 
@@ -47,6 +49,8 @@ class ProjectLauncher final : public Aquila::UI::Core::WindowBehaviour {
 
 	ProjectManager &m_project_manager;
 	Page m_page = Page::Home;
+	Option<std::string> m_restored_name;
+	Option<std::string> m_restored_location;
 
 	Aquila::UI::Core::View *m_home_page = nullptr;
 	Aquila::UI::Core::View *m_new_page = nullptr;
