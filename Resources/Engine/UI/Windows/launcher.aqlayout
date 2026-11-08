@@ -1,63 +1,59 @@
-<Component name="LauncherRow">
-    <View class="launcher-row"/>
-</Component>
-
-<Component name="LauncherSpacer">
-    <View class="launcher-spacer"/>
-</Component>
-
-<Component name="LauncherCard" props="name meta letter palette">
-    <Clickable class="launcher-card">
-        <View class="launcher-thumb launcher-thumb-$palette">
-            <Label class="launcher-thumb-letter">$letter</Label>
+<Component name="LauncherRecent" props="name path when">
+    <Clickable class="launcher-recent">
+        <View class="launcher-recent-text">
+            <Label class="launcher-recent-name">$name</Label>
+            <Label class="launcher-recent-path">$path</Label>
         </View>
-        <View class="launcher-card-body">
-            <Label class="launcher-card-name">$name</Label>
-            <Label class="launcher-card-meta">$meta</Label>
-        </View>
-    </Clickable>
-</Component>
-
-<Component name="LauncherTemplate" props="name description">
-    <Clickable class="launcher-template">
-        <Label class="launcher-template-name">$name</Label>
-        <Label class="launcher-template-desc">$description</Label>
+        <Label class="launcher-recent-when">$when</Label>
     </Clickable>
 </Component>
 
 <View id="launcher-root" class="launcher-root">
-    <View class="launcher-header">
-        <Image class="launcher-logo" src="Engine/aquila-logo.png"/>
-        <View class="launcher-brand">
-            <Label class="launcher-title">Aquila</Label>
-            <Label class="launcher-tagline">Real-time rendering sandbox</Label>
-        </View>
-        <View class="launcher-header-fill"/>
-        <Label id="launcher-version" class="launcher-version"/>
-    </View>
-
-    <View class="launcher-main">
-        <TabBar id="launcher-rail" class="launcher-rail" tab-class="launcher-nav">
-            <Tab title="Recent projects" icon="Engine/UI/Icons/folder-open.svg"/>
-            <Tab title="New project" icon="Engine/UI/Icons/plus.svg"/>
-            <Tab title="Learn" icon="Engine/UI/Icons/book-open-text.svg"/>
-        </TabBar>
-
-        <View class="launcher-content">
-            <View id="launcher-page-recent" class="launcher-page">
-                <View class="launcher-title-row">
-                    <Label class="launcher-page-title">Recent projects</Label>
-                    <Label id="launcher-count" class="launcher-page-count"/>
+    <View id="launcher-page-home" class="launcher-screen">
+        <View class="launcher-column">
+            <View class="launcher-header">
+                <Image class="launcher-logo" src="Engine/aquila-logo.png"/>
+                <View class="launcher-brand">
+                    <Label class="launcher-title">Aquila</Label>
+                    <Label id="launcher-version" class="launcher-version"/>
                 </View>
-                <ScrollView id="launcher-grid-scroll" class="launcher-grid-scroll">
-                    <View id="launcher-grid" class="launcher-grid"/>
-                </ScrollView>
-                <View id="launcher-empty" class="launcher-empty">
-                    <Image class="launcher-empty-logo" src="Engine/aquila-logo.png"/>
-                    <Label class="launcher-empty-title">No projects yet</Label>
-                    <Label class="launcher-empty-hint">Create a project to start building a scene, a shader or a rendering pipeline.</Label>
-                    <Button id="launcher-empty-create" class="launcher-primary">Create your first project</Button>
+            </View>
+
+            <View class="launcher-home-body">
+                <View class="launcher-tiles">
+                    <Clickable id="launcher-new-tile" class="launcher-tile">
+                        <View class="launcher-tile-icon launcher-tile-icon-accent">
+                            <Image class="launcher-tile-glyph" src="Engine/UI/Icons/plus.svg"/>
+                        </View>
+                        <View class="launcher-tile-text">
+                            <Label class="launcher-tile-title">New Project</Label>
+                            <Label class="launcher-tile-hint">Create a project folder</Label>
+                        </View>
+                    </Clickable>
+                    <Clickable id="launcher-open-tile" class="launcher-tile">
+                        <View class="launcher-tile-icon">
+                            <Image class="launcher-tile-glyph" src="Engine/UI/Icons/folder.svg"/>
+                        </View>
+                        <View class="launcher-tile-text">
+                            <Label class="launcher-tile-title">Open Project...</Label>
+                            <Label class="launcher-tile-hint">Browse for an existing project</Label>
+                        </View>
+                    </Clickable>
                 </View>
+                <Label id="launcher-open-error" class="launcher-error hidden"/>
+
+                <View class="launcher-recent-section">
+                    <View class="launcher-recent-header">
+                        <Label class="launcher-section">RECENT</Label>
+                    </View>
+                    <ScrollView id="launcher-recent-scroll" class="launcher-recent-scroll">
+                        <View id="launcher-recent" class="launcher-recent-list"/>
+                    </ScrollView>
+                    <View id="launcher-empty" class="launcher-empty">
+                        <Label class="launcher-empty-text">No projects yet. Create one to get started.</Label>
+                    </View>
+                </View>
+
                 <View id="launcher-action-bar" class="launcher-action-bar hidden">
                     <Label id="launcher-action-label" class="launcher-action-label"/>
                     <TextInput id="launcher-action-input" class="launcher-action-input" placeholder="Project name"/>
@@ -66,42 +62,60 @@
                 </View>
             </View>
 
-            <View id="launcher-page-new" class="launcher-page">
-                <Label class="launcher-page-title">New project</Label>
-                <Label class="launcher-section">Template</Label>
-                <View id="launcher-templates" class="launcher-template-row"/>
-                <Label class="launcher-section">Name</Label>
-                <TextInput id="launcher-name" class="launcher-name-input" placeholder="My project"/>
-                <Label id="launcher-location" class="launcher-hint"/>
-                <Label id="launcher-error" class="launcher-error"/>
-                <View class="launcher-form-actions">
-                    <Button id="launcher-create" class="launcher-primary">Create project</Button>
-                    <Button id="launcher-back" class="launcher-secondary">Back</Button>
+            <View class="launcher-footer">
+                <Clickable id="launcher-docs" class="launcher-footer-button">
+                    <Image class="launcher-footer-icon" src="Engine/UI/Icons/book-open-text.svg"/>
+                    <Label class="launcher-footer-label">Documentation</Label>
+                </Clickable>
+                <Clickable id="launcher-git" class="launcher-footer-button">
+                    <Image class="launcher-footer-icon" src="Engine/UI/Icons/git-branch.svg"/>
+                    <Label class="launcher-footer-label">Aquila Repository</Label>
+                </Clickable>
+
+            </View>
+        </View>
+    </View>
+
+    <View id="launcher-page-new" class="launcher-screen hidden">
+        <Clickable id="launcher-new-back" class="launcher-back">
+            <Image class="launcher-back-icon" src="Engine/UI/Icons/chevron-left.svg"/>
+            <Label class="launcher-back-label">Back</Label>
+        </Clickable>
+        <View class="launcher-new-column">
+            <View class="launcher-new-header">
+                <Image class="launcher-new-logo" src="Engine/aquila-logo.png"/>
+                <View class="launcher-new-heading">
+                    <Label class="launcher-new-title">New Project</Label>
+                    <Label class="launcher-new-subtitle">Name it and choose where it lives.</Label>
                 </View>
             </View>
 
-            <View id="launcher-page-learn" class="launcher-page">
-                <Label class="launcher-page-title">Learn</Label>
-                <Label class="launcher-section">Documentation</Label>
-                <Clickable id="launcher-wiki" class="launcher-link">
-                    <Label class="launcher-tip-title">Aquila wiki</Label>
-                    <Label class="launcher-tip-text">Guides and reference for the engine and the editor.</Label>
-                    <Label class="launcher-link-url">github.com/Aquila-Project/Aquila/wiki</Label>
-                </Clickable>
-                <Label class="launcher-section">Tips</Label>
-                <View class="launcher-tips">
-                    <View class="launcher-tip">
-                        <Label class="launcher-tip-title">Build a scene</Label>
-                        <Label class="launcher-tip-text">Add entities from the Hierarchy panel and edit their components in the Inspector.</Label>
+            <View class="launcher-form">
+                <View class="launcher-field">
+                    <Label class="launcher-field-label">Project name</Label>
+                    <TextInput id="launcher-name" class="launcher-input" placeholder="My project"/>
+                    <Label id="launcher-name-error" class="launcher-field-error hidden"/>
+                </View>
+
+                <View class="launcher-field">
+                    <Label class="launcher-field-label">Location</Label>
+                    <View class="launcher-field-row">
+                        <TextInput id="launcher-location" class="launcher-input launcher-input-mono"/>
+                        <Button id="launcher-browse" class="launcher-browse">Browse...</Button>
                     </View>
-                    <View class="launcher-tip">
-                        <Label class="launcher-tip-title">Move around</Label>
-                        <Label class="launcher-tip-text">Hold the right mouse button in the viewport to fly. Use W, E and R for the transform tools.</Label>
-                    </View>
-                    <View class="launcher-tip">
-                        <Label class="launcher-tip-title">Scale the interface</Label>
-                        <Label class="launcher-tip-text">Ctrl plus, Ctrl minus and Ctrl zero change the interface scale.</Label>
-                    </View>
+                    <Label id="launcher-location-error" class="launcher-field-error hidden"/>
+                </View>
+
+                <View class="launcher-preview">
+                    <Image class="launcher-preview-icon" src="Engine/UI/Icons/folder.svg"/>
+                    <Label class="launcher-preview-label">Creates</Label>
+                    <Label id="launcher-preview" class="launcher-preview-path"/>
+                </View>
+
+                <Label id="launcher-error" class="launcher-field-error hidden"/>
+                <View class="launcher-new-actions">
+                    <Button id="launcher-cancel" class="launcher-button">Cancel</Button>
+                    <Button id="launcher-create" class="launcher-create">Create Project</Button>
                 </View>
             </View>
         </View>
@@ -111,5 +125,10 @@
         <MenuItem action="open" label="Open"/>
         <MenuItem action="rename" label="Rename"/>
         <MenuItem action="delete" label="Delete"/>
+    </PopupMenu>
+    <PopupMenu id="launcher-external-menu">
+        <MenuItem action="open" label="Open"/>
+        <MenuItem action="rename" label="Rename"/>
+        <MenuItem action="forget" label="Remove from list"/>
     </PopupMenu>
 </View>

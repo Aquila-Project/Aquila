@@ -97,19 +97,18 @@ Aquila::GFX::GfxTexture *settings_icon(TextureCache &icons, std::string_view nam
 	return icons.load("Engine/UI/Icons/" + std::string(name) + ".svg");
 }
 
-enum class LauncherShown : Uint8 { Recent, Delete, Empty, New, Learn };
+enum class LauncherShown : Uint8 { Recent, Delete, Empty, New };
 
 struct LauncherProject {
 	const char *name;
-	const char *meta;
-	const char *letter;
-	const char *palette;
+	const char *path;
+	const char *when;
 };
 
 constexpr std::array<LauncherProject, 3> K_LAUNCHER_PROJECTS = { {
-	{ .name = "Lighthouse", .meta = "Opened 2 hours ago  ·  3 scenes", .letter = "L", .palette = "2" },
-	{ .name = "Shader $1 & <b>", .meta = "Opened just now  ·  1 scene", .letter = "S", .palette = "5" },
-	{ .name = "Untitled", .meta = "Opened never  ·  0 scenes", .letter = "U", .palette = "0" },
+	{ .name = "Lighthouse", .path = "/home/user/Aquila/Projects/Lighthouse", .when = "2 hours ago" },
+	{ .name = "Shader $1 & <b>", .path = "/mnt/data/shaders/Shader_1__b", .when = "just now" },
+	{ .name = "Untitled", .path = "/home/user/Aquila/Projects/Untitled", .when = "never" },
 } };
 
 View &debug_target(View &host) {
@@ -638,8 +637,8 @@ TEST_SUITE("Style snapshots") {
 
 	TEST_CASE("style snapshot launcher" * doctest::skip()) {
 		const std::string file = "/resources/Engine/UI/Windows/launcher.aqlayout";
-		for (const LauncherShown shown : { LauncherShown::Recent, LauncherShown::Delete, LauncherShown::Empty,
-										   LauncherShown::New, LauncherShown::Learn }) {
+		for (const LauncherShown shown :
+			 { LauncherShown::Recent, LauncherShown::Delete, LauncherShown::Empty, LauncherShown::New }) {
 			LoaderCanvas fixture(1200, 900);
 			TextureCache icons(*test_gpu().ctx, "/resources");
 			fixture.loader.register_texture_cache(&icons);
@@ -651,48 +650,21 @@ TEST_SUITE("Style snapshots") {
 				REQUIRE_MESSAGE(found != nullptr, id);
 				return found;
 			};
-			dynamic_cast<Label &>(*find("launcher-version")).set_text("v0.1.0");
-			View *templates = find("launcher-templates");
-			for (const bool sandbox : { false, true }) {
-				View *option = fixture.loader.create(
-					file, "LauncherTemplate", *templates,
-					{ .attributes = {
-						  { "name", sandbox ? "Lit sandbox" : "Empty" },
-						  { "description",
-							sandbox ? "A camera, a directional sun and a procedural sky, ready to fill with meshes."
-									: "A single camera and nothing else. Start from a blank scene." } } });
-				REQUIRE(option != nullptr);
-				option->set_class("launcher-template-selected", sandbox);
-			}
-			dynamic_cast<Label &>(*find("launcher-location")).set_text("Will be created in Projects/Lighthouse_2");
-			find("launcher-error")->set_class("hidden", true);
-			find("launcher-create")->set_class("launcher-primary-disabled", false);
+			dynamic_cast<Label &>(*find("launcher-version")).set_text("Engine 0.1.0");
+			dynamic_cast<TextInput &>(*find("launcher-name")).set_text("Lighthouse 2");
+			dynamic_cast<TextInput &>(*find("launcher-location")).set_text("/home/user/Aquila/Projects");
+			dynamic_cast<Label &>(*find("launcher-preview")).set_text("/home/user/Aquila/Projects/Lighthouse_2");
 
 			const bool has_projects = shown != LauncherShown::Empty;
 			find("launcher-empty")->set_class("hidden", has_projects);
-			find("launcher-grid-scroll")->set_class("hidden", !has_projects);
-			dynamic_cast<Label &>(*find("launcher-count")).set_text(has_projects ? "3 projects" : "");
+			find("launcher-recent-scroll")->set_class("hidden", !has_projects);
 			if (has_projects) {
-				View *grid = find("launcher-grid");
-				View *row = fixture.loader.create(file, "LauncherRow", *grid);
-				REQUIRE(row != nullptr);
-				const auto card = [&](const LauncherProject &project) {
-					REQUIRE(fixture.loader.create(file, "LauncherCard", *row,
+				for (const LauncherProject &project : K_LAUNCHER_PROJECTS) {
+					REQUIRE(fixture.loader.create(file, "LauncherRecent", *find("launcher-recent"),
 												  { .attributes = { { "name", project.name },
-																	{ "meta", project.meta },
-																	{ "letter", project.letter },
-																	{ "palette", project.palette } } }) != nullptr);
-				};
-				card({ .name = "New project", .meta = "Start from a template", .letter = "+", .palette = "new" });
-				for (Usize i = 0; i < K_LAUNCHER_PROJECTS.size(); ++i) {
-					if (i == 2) {
-						row = fixture.loader.create(file, "LauncherRow", *grid);
-						REQUIRE(row != nullptr);
-					}
-					card(K_LAUNCHER_PROJECTS[i]);
+																	{ "path", project.path },
+																	{ "when", project.when } } }) != nullptr);
 				}
-				REQUIRE(fixture.loader.create(file, "LauncherSpacer", *row) != nullptr);
-				REQUIRE(fixture.loader.create(file, "LauncherSpacer", *row) != nullptr);
 			}
 			if (shown == LauncherShown::Delete) {
 				find("launcher-action-bar")->set_class("hidden", false);
@@ -703,15 +675,13 @@ TEST_SUITE("Style snapshots") {
 				dynamic_cast<Label &>(*find("launcher-action-label"))
 					.set_text("Delete 'Lighthouse' and all of its files? This cannot be undone.");
 			}
-			const int page = shown == LauncherShown::New ? 1 : shown == LauncherShown::Learn ? 2 : 0;
-			dynamic_cast<TabBar &>(*find("launcher-rail")).set_active(page);
-			find("launcher-page-recent")->set_class("hidden", page != 0);
-			find("launcher-page-new")->set_class("hidden", page != 1);
-			find("launcher-page-learn")->set_class("hidden", page != 2);
+			const bool new_page = shown == LauncherShown::New;
+			find("launcher-page-home")->set_class("hidden", new_page);
+			find("launcher-page-new")->set_class("hidden", !new_page);
 
 			fixture.settle_fully();
-			constexpr std::array<const char *, 5> K_NAMES = { "launcher-recent", "launcher-delete", "launcher-empty",
-															  "launcher-new", "launcher-learn" };
+			constexpr std::array<const char *, 4> K_NAMES = { "launcher-recent", "launcher-delete", "launcher-empty",
+															  "launcher-new" };
 			write_style_snapshot(K_NAMES.at(static_cast<Usize>(shown)), box);
 		}
 	}
