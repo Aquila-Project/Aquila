@@ -23,6 +23,21 @@ namespace Components = Aquila::SceneManagement::Components;
 
 namespace {
 
+constexpr const char *K_EXTERNAL_FILE = "external_projects.json";
+
+std::string normalized_folder(const std::string &native_directory) {
+	std::error_code error;
+	std::filesystem::path path = std::filesystem::weakly_canonical(native_directory, error);
+	if (error) {
+		path = std::filesystem::path(native_directory).lexically_normal();
+	}
+	std::string folder = path.string();
+	while (folder.size() > 1 && (folder.back() == '/' || folder.back() == '\\')) {
+		folder.pop_back();
+	}
+	return folder;
+}
+
 Uint64 now_seconds() {
 	const auto now = std::chrono::system_clock::now().time_since_epoch();
 	return static_cast<Uint64>(std::chrono::duration_cast<std::chrono::seconds>(now).count());
@@ -46,6 +61,10 @@ ProjectManager::ProjectManager() : m_native_root(Aquila::Platform::Filesystem::p
 }
 
 std::string ProjectManager::to_native(const std::string &directory) const {
+	if (directory.starts_with(K_EXTERNAL_ROOT)) {
+		const auto it = m_external_mounts.find(directory);
+		return it != m_external_mounts.end() ? it->second : std::string{};
+	}
 	const std::string_view root = K_ROOT;
 	std::string_view relative = directory;
 	if (relative.starts_with(root)) {
@@ -97,18 +116,57 @@ const char *ProjectManager::template_description(ProjectTemplate project_templat
 	return "A single camera and nothing else. Start from a blank scene.";
 }
 
-std::string ProjectManager::validate_name(const std::string &name) const {
+std::string ProjectManager::validate_name(const std::string &name, const std::string &native_parent) const {
 	if (Aquila::Foundation::trim(name).empty()) {
-		return "Enter a project name";
+		return "Enter a project name.";
 	}
-	const std::string safe = Aquila::Foundation::to_file_name(name);
-	if (safe.empty()) {
-		return "Use letters, numbers, spaces, - or _";
+	const std::string folder = target_folder(name, native_parent);
+	if (folder.empty()) {
+		return "Use letters, numbers, spaces, - or _.";
 	}
-	if (VirtualFileSystem::get()->exists(std::string(K_ROOT) + "/" + safe + "/project.aqproject")) {
-		return "A project with this name already exists";
+	std::error_code error;
+	if (std::filesystem::exists(std::filesystem::path(folder) / "project.aqproject", error)) {
+		return "A project with this name already exists there.";
+	}
+	if (std::filesystem::exists(folder, error) &&
+		(!std::filesystem::is_directory(folder, error) || !std::filesystem::is_empty(folder, error))) {
+		return "Something with this name already exists there.";
 	}
 	return {};
+}
+
+std::string ProjectManager::validate_location(const std::string &native_parent) {
+	if (Aquila::Foundation::trim(native_parent).empty()) {
+		return "Choose where the project goes.";
+	}
+	const std::filesystem::path parent(native_parent);
+	if (!parent.is_absolute()) {
+		return "Use a full path.";
+	}
+	std::error_code error;
+	if (std::filesystem::exists(parent, error) && !std::filesystem::is_directory(parent, error)) {
+		return "That is a file, not a folder.";
+	}
+	return {};
+}
+
+std::string ProjectManager::target_folder(const std::string &name, const std::string &native_parent) const {
+	const std::string safe = Aquila::Foundation::to_file_name(name);
+	if (safe.empty()) {
+		return {};
+	}
+	const std::string parent = native_parent.empty() ? m_native_root : native_parent;
+	return normalized_folder((std::filesystem::path(parent) / safe).string());
+}
+
+Option<std::string> ProjectManager::internal_directory(const std::string &native_folder) const {
+	const std::filesystem::path relative =
+		std::filesystem::path(normalized_folder(native_folder)).lexically_relative(normalized_folder(m_native_root));
+	if (relative.empty() || relative == "." || std::distance(relative.begin(), relative.end()) != 1 ||
+		*relative.begin() == "..") {
+		return std::nullopt;
+	}
+	return std::string(K_ROOT) + "/" + relative.generic_string();
 }
 
 bool ProjectManager::add_scene(ProjectInfo &project, const std::string &scene) const {
@@ -144,25 +202,38 @@ bool ProjectManager::rename(ProjectInfo &project, const std::string &name) const
 }
 
 bool ProjectManager::remove(const ProjectInfo &project) const {
-	if (!VirtualFileSystem::get()->exists(project.project_file)) {
+	if (is_external(project) || !VirtualFileSystem::get()->exists(project.project_file)) {
 		return false;
 	}
 	VirtualFileSystem::get()->delete_directory(project.directory, true);
 	return !VirtualFileSystem::get()->exists(project.directory);
 }
 
-Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTemplate project_template) {
+Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTemplate project_template,
+										   const std::string &native_parent) {
 	auto *vfs = VirtualFileSystem::get();
 
 	const std::string safe = Aquila::Foundation::to_file_name(name);
-	if (safe.empty()) {
+	const std::string folder = target_folder(name, native_parent);
+	if (folder.empty()) {
 		AQUILA_LOG_ERROR("ProjectManager: invalid project name '{}'", name);
 		return std::nullopt;
 	}
 
 	ProjectInfo info;
 	info.name = name;
-	info.directory = std::string(K_ROOT) + "/" + safe;
+	const Option<std::string> internal = internal_directory(folder);
+	if (internal) {
+		info.directory = *internal;
+	} else {
+		std::error_code error;
+		std::filesystem::create_directories(folder, error);
+		if (error) {
+			AQUILA_LOG_ERROR("ProjectManager: failed to create {}: {}", folder, error.message());
+			return std::nullopt;
+		}
+		info.directory = mount_external(folder);
+	}
 	info.native_directory = to_native(info.directory);
 	info.project_file = info.directory + "/project.aqproject";
 	info.created = now_seconds();
@@ -176,7 +247,7 @@ Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTempl
 		return std::nullopt;
 	}
 
-	if (!vfs->create_dir(info.directory)) {
+	if (!vfs->is_directory(info.directory) && !vfs->create_dir(info.directory)) {
 		AQUILA_LOG_ERROR("ProjectManager: failed to create directory {}", info.directory);
 		return std::nullopt;
 	}
@@ -205,7 +276,15 @@ Option<ProjectInfo> ProjectManager::create(const std::string &name, ProjectTempl
 		return std::nullopt;
 	}
 
-	AQUILA_LOG_INFO("ProjectManager: created project '{}' at {}", name, info.directory);
+	if (!internal) {
+		std::vector<std::string> folders = read_external();
+		if (std::ranges::find(folders, folder) == folders.end()) {
+			folders.push_back(folder);
+			write_external(folders);
+		}
+	}
+
+	AQUILA_LOG_INFO("ProjectManager: created project '{}' at {}", name, info.native_directory);
 	return info;
 }
 
@@ -219,6 +298,11 @@ std::vector<ProjectInfo> ProjectManager::list() const {
 			continue;
 		}
 		if (Option<ProjectInfo> info = load(directory)) {
+			projects.push_back(*info);
+		}
+	}
+	for (const std::string &folder : read_external()) {
+		if (Option<ProjectInfo> info = load(mount_external(folder))) {
 			projects.push_back(*info);
 		}
 	}
@@ -259,6 +343,87 @@ Option<ProjectInfo> ProjectManager::load(const std::string &directory) const {
 	}
 
 	return info;
+}
+
+Option<ProjectInfo> ProjectManager::add_existing(const std::string &native_directory) {
+	const std::string folder = normalized_folder(native_directory);
+	if (const Option<std::string> internal = internal_directory(folder)) {
+		return load(*internal);
+	}
+
+	const std::string directory = mount_external(folder);
+	Option<ProjectInfo> project = load(directory);
+	if (!project) {
+		VirtualFileSystem::get()->unmount(directory);
+		m_external_mounts.erase(directory);
+		return std::nullopt;
+	}
+	std::vector<std::string> folders = read_external();
+	if (std::ranges::find(folders, folder) == folders.end()) {
+		folders.push_back(folder);
+		write_external(folders);
+	}
+	return project;
+}
+
+bool ProjectManager::forget(const ProjectInfo &project) {
+	if (!is_external(project)) {
+		return false;
+	}
+	std::vector<std::string> folders = read_external();
+	std::erase(folders, normalized_folder(project.native_directory));
+	if (!write_external(folders)) {
+		return false;
+	}
+	VirtualFileSystem::get()->unmount(project.directory);
+	m_external_mounts.erase(project.directory);
+	return true;
+}
+
+bool ProjectManager::is_external(const ProjectInfo &project) {
+	return project.directory.starts_with(K_EXTERNAL_ROOT);
+}
+
+std::vector<std::string> ProjectManager::read_external() const {
+	std::ifstream file(std::filesystem::path(m_native_root) / K_EXTERNAL_FILE);
+	if (!file) {
+		return {};
+	}
+	const nlohmann::json root = nlohmann::json::parse(file, nullptr, false);
+	if (root.is_discarded() || !root.is_array()) {
+		AQUILA_LOG_WARNING("ProjectManager: malformed {}", K_EXTERNAL_FILE);
+		return {};
+	}
+	std::vector<std::string> folders;
+	for (const nlohmann::json &entry : root) {
+		if (entry.is_string()) {
+			folders.push_back(entry.get<std::string>());
+		}
+	}
+	return folders;
+}
+
+bool ProjectManager::write_external(const std::vector<std::string> &folders) const {
+	std::error_code error;
+	std::filesystem::create_directories(m_native_root, error);
+	std::ofstream file(std::filesystem::path(m_native_root) / K_EXTERNAL_FILE, std::ios::trunc);
+	if (!file) {
+		AQUILA_LOG_ERROR("ProjectManager: can't write {} in {}", K_EXTERNAL_FILE, m_native_root);
+		return false;
+	}
+	file << nlohmann::json(folders).dump(4);
+	return static_cast<bool>(file);
+}
+
+std::string ProjectManager::mount_external(const std::string &native_directory) const {
+	const std::string directory =
+		std::format("{}/{:016x}", K_EXTERNAL_ROOT, std::hash<std::string>{}(native_directory));
+	auto *vfs = VirtualFileSystem::get();
+	if (!vfs->is_mounted(directory)) {
+		vfs->mount(directory, std::make_shared<NativeFileSystem>(native_directory));
+	}
+	m_external_mounts[directory] = native_directory;
+	return directory;
 }
 
 } // namespace Editor
