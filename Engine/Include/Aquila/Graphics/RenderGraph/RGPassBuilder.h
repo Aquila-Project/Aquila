@@ -14,6 +14,9 @@ struct RGColorAttachment {
 	AttachmentLoadOp load_op = AttachmentLoadOp::Clear;
 	AttachmentStoreOp store_op = AttachmentStoreOp::Store;
 	ClearColor clear = {};
+	Uint32 mip_level = 0;
+	/// Cubemap face or array layer.
+	Uint32 array_layer = 0;
 };
 
 struct RGDepthAttachment {
@@ -97,10 +100,14 @@ class RGPassBuilder {
 
 	/// Declare a color attachment at a given slot index.
 	/// Internally calls WriteTexture — returns the new versioned handle.
+	/// `mip_level` and `array_layer` (the cubemap face) pick what gets drawn into, the pass takes that mip's size.
+	/// The layout switch still covers the whole texture: one before the first pass that writes it, one before the
+	/// first that reads it.
 	[[nodiscard]] RGTextureHandle set_color_attachment(Uint32 slot, RGTextureHandle handle,
 													   AttachmentLoadOp load_op = AttachmentLoadOp::Clear,
 													   AttachmentStoreOp store_op = AttachmentStoreOp::Store,
-													   ClearColor clear = {});
+													   ClearColor clear = {}, Uint32 mip_level = 0,
+													   Uint32 array_layer = 0);
 
 	// Mark this pass as having an external side effect (e.g. swapchain present).
 	// Prevents the culling step from removing it even when it has no tracked outputs.
