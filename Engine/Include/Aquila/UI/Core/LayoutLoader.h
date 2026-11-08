@@ -51,6 +51,9 @@ class LayoutLoader : public IResourceResolver {
 
 	/// VFS path. Null when the file can't be read or an <Include> loops.
 	Unique<View> load_file(const std::string &path);
+	/// Drops every parsed .aqlayout, so the next build reads the files again. The cache alone only notices a file
+	/// whose write time (whole seconds) or size changed.
+	void forget_documents() { m_documents.clear(); }
 	Unique<View> load_string(std::string_view xml);
 
 	[[nodiscard]] BehaviourRegistry &behaviours() { return m_behaviours; }
