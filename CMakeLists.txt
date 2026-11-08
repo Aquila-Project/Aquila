@@ -315,13 +315,21 @@ add_compile_definitions(
 
 
 if (PROJECT_IS_TOP_LEVEL AND CMAKE_EXPORT_COMPILE_COMMANDS)
-    add_custom_target(copy_compile_commands ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_BINARY_DIR}/compile_commands.json"
-            "${CMAKE_SOURCE_DIR}/compile_commands.json"
-        COMMENT "Exposing compile_commands.json at source root"
-        VERBATIM
+    file(CREATE_LINK
+        "${CMAKE_BINARY_DIR}/compile_commands.json"
+        "${CMAKE_SOURCE_DIR}/compile_commands.json"
+        RESULT AQUILA_COMPILE_COMMANDS_LINK
+        SYMBOLIC
     )
+    if (NOT AQUILA_COMPILE_COMMANDS_LINK EQUAL 0)
+        add_custom_target(copy_compile_commands ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_BINARY_DIR}/compile_commands.json"
+                "${CMAKE_SOURCE_DIR}/compile_commands.json"
+            COMMENT "Exposing compile_commands.json at source root"
+            VERBATIM
+        )
+    endif ()
 endif ()
 
 include(AquilaPlayer)

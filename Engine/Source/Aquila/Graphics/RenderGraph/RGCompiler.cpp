@@ -654,8 +654,10 @@ void RGCompiler::create_render_passes(const std::vector<RGPassData> &passes, con
 			color_attachment.texture = &tex.get_rhi();
 			color_attachment.clear_color = { rga.clear.color.r, rga.clear.color.g, rga.clear.color.b,
 											 rga.clear.color.a };
-			color_attachment.load_op = static_cast<RHI::AttachmentLoadOp>(rga.load_op);
-			color_attachment.store_op = static_cast<RHI::AttachmentStoreOp>(rga.store_op);
+			color_attachment.load_op = rga.load_op;
+			color_attachment.store_op = rga.store_op;
+			color_attachment.mip_level = rga.mip_level;
+			color_attachment.array_layer = rga.array_layer;
 
 			rp_desc.color_attachments.push_back(color_attachment);
 		}
@@ -667,24 +669,15 @@ void RGCompiler::create_render_passes(const std::vector<RGPassData> &passes, con
 
 			RHI::RenderPassDepthAttachmentDesc depth_attachment{};
 			depth_attachment.texture = &tex.get_rhi();
-			depth_attachment.depth_load_op = static_cast<RHI::AttachmentLoadOp>(rda.depth_load_op);
-			depth_attachment.depth_store_op = static_cast<RHI::AttachmentStoreOp>(rda.depth_store_op);
-			depth_attachment.stencil_load_op = static_cast<RHI::AttachmentLoadOp>(rda.stencil_load_op);
-			depth_attachment.stencil_store_op = static_cast<RHI::AttachmentStoreOp>(rda.stencil_store_op);
+			depth_attachment.depth_load_op = rda.depth_load_op;
+			depth_attachment.depth_store_op = rda.depth_store_op;
+			depth_attachment.stencil_load_op = rda.stencil_load_op;
+			depth_attachment.stencil_store_op = rda.stencil_store_op;
 			depth_attachment.read_only = rda.read_only;
 			depth_attachment.clear_depth = rda.clear.depth;
 			depth_attachment.clear_stencil = rda.clear.stencil;
 
 			rp_desc.depth_attachment = depth_attachment;
-		}
-
-		// Derive dimensions from the first valid attachment
-		if (!rp_desc.color_attachments.empty() && (rp_desc.color_attachments[0].texture != nullptr)) {
-			rp_desc.width = rp_desc.color_attachments[0].texture->get_width();
-			rp_desc.height = rp_desc.color_attachments[0].texture->get_height();
-		} else if (has_depth && rp_desc.depth_attachment) {
-			rp_desc.width = rp_desc.depth_attachment->texture->get_width();
-			rp_desc.height = rp_desc.depth_attachment->texture->get_height();
 		}
 
 		out.pass_render_passes[sched_pos] = ctx.create_render_pass(rp_desc);

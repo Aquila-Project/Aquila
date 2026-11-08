@@ -1,5 +1,7 @@
 #include "Aquila/UI/Widgets/AssetSlot.h"
 
+#include "Aquila/Platform/Filesystem/VirtualFileSystem.h"
+
 namespace Aquila::UI::Core {
 
 namespace {
@@ -17,14 +19,14 @@ std::vector<AssetSlot *> &live_slots() {
 }
 
 void AssetSlot::set_adapter(const std::string &type, Adapter adapter) {
-	if (!adapter.from_drag && !adapter.display_name && !adapter.thumbnail) {
+	if (!adapter.from_drag && !adapter.display_name && !adapter.thumbnail && !adapter.exists) {
 		adapters().erase(type);
 	} else {
 		adapters()[type] = std::move(adapter);
 	}
 	for (AssetSlot *slot : live_slots()) {
 		if (slot->m_accepted_type == type) {
-			slot->update_thumbnail();
+			slot->update_display();
 		}
 	}
 }
@@ -33,6 +35,14 @@ void AssetSlot::refresh_thumbnails(const std::string &asset_path) {
 	for (AssetSlot *slot : live_slots()) {
 		if (slot->m_has_value && slot->m_value.asset_path == asset_path) {
 			slot->update_thumbnail();
+		}
+	}
+}
+
+void AssetSlot::check_missing() {
+	for (AssetSlot *slot : live_slots()) {
+		if (slot->m_has_value && slot->value_exists() == slot->m_missing) {
+			slot->update_display();
 		}
 	}
 }
@@ -154,25 +164,48 @@ void AssetSlot::apply_xml_attribute(std::string_view name, std::string_view valu
 }
 
 void AssetSlot::update_display() {
+	const bool was_missing = m_missing;
+	m_missing = m_has_value && !value_exists();
 	m_clear_button->set_hidden(!m_has_value);
 	set_class("asset-slot-filled", m_has_value);
+	set_class("asset-slot-missing", m_missing);
 
 	m_label->set_class("asset-slot-placeholder", !m_has_value);
-	set_tooltip(m_has_value ? m_value.asset_path : std::string{});
+	if (!m_has_value) {
+		set_tooltip(std::string{});
+	} else {
+		set_tooltip(m_missing ? "Missing: " + m_value.asset_path : m_value.asset_path);
+	}
 	if (m_has_value) {
 		m_label->set_text(m_value.display_name.empty() ? m_value.asset_path : m_value.display_name);
 	} else {
 		m_label->set_text(m_placeholder.empty() ? "Drop " + accepted_name() + " here" : m_placeholder);
 	}
 	update_thumbnail();
+	if (m_missing != was_missing) {
+		on_missing_changed(m_missing);
+	}
 }
 
 void AssetSlot::update_thumbnail() {
 	const Adapter *adapter = find_adapter(m_accepted_type);
-	GFX::GfxTexture *texture =
-		m_has_value && adapter != nullptr && adapter->thumbnail ? adapter->thumbnail(m_value.asset_path) : nullptr;
+	GFX::GfxTexture *texture = m_has_value && !m_missing && adapter != nullptr && adapter->thumbnail
+		? adapter->thumbnail(m_value.asset_path)
+		: nullptr;
 	m_thumbnail->set_texture(texture);
 	m_thumbnail->set_hidden(texture == nullptr);
+}
+
+bool AssetSlot::value_exists() const {
+	const std::string &path = m_value.asset_path;
+	if (const Adapter *adapter = find_adapter(m_accepted_type); adapter != nullptr && adapter->exists) {
+		return adapter->exists(path);
+	}
+	using Platform::Filesystem::VirtualFileSystem;
+	if (!path.starts_with('/') || !VirtualFileSystem::is_initialized()) {
+		return true;
+	}
+	return VirtualFileSystem::get()->exists(path);
 }
 
 void AssetSlot::show_hint(std::string text) {

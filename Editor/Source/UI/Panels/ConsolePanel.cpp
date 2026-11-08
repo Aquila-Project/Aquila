@@ -42,7 +42,7 @@ ConsolePanel::ConsolePanel() {
 		FrameScheduler::get()->request_frame();
 	});
 	Logger::enable_colors(false);
-	Logger::set_sink(&m_capture_stream);
+	Logger::set_sink(&m_capture_stream, Foundation::LogLevel::Info);
 }
 
 ConsolePanel::~ConsolePanel() {
@@ -85,12 +85,18 @@ void ConsolePanel::flush_pending() {
 		const LogLevel level = continuation ? m_entries.back().level : parse_level(line);
 		const std::string_view tag = level_tag(level);
 		const Usize tag_pos = tag.empty() || continuation ? std::string::npos : line.find(tag);
-		LogEntry entry{ level, continuation ? "    " + line : std::move(line) };
-		entry.continuation = continuation;
+		std::vector<UI::Core::TextSpan> spans;
 		if (tag_pos != std::string::npos) {
-			entry.tag_begin = static_cast<int>(tag_pos);
-			entry.tag_length = static_cast<int>(tag.size());
+			const Usize time_end = tag_pos == 0 ? 0 : line.find_last_not_of(' ', tag_pos - 1) + 1;
+			if (time_end > 0) {
+				spans.push_back({ .begin = 0, .length = static_cast<Int32>(time_end), .style_class = "console-time" });
+			}
+			spans.push_back({ .begin = static_cast<Int32>(tag_pos),
+							  .length = static_cast<Int32>(tag.size()),
+							  .style_class = level_tag_class(level) });
 		}
+		LogEntry entry{ level, continuation ? "    " + line : std::move(line), std::move(spans) };
+		entry.continuation = continuation;
 		append_entry(std::move(entry));
 	}
 	update_filter_buttons();
@@ -169,7 +175,7 @@ bool ConsolePanel::is_shown(LogLevel level) const {
 }
 
 void ConsolePanel::show_entry(const LogEntry &entry) {
-	m_view->add_line(entry.message, {}, entry.tag_begin, entry.tag_length, level_tag_class(entry.level));
+	m_view->add_line(entry.message, {}, entry.spans);
 }
 
 void ConsolePanel::rebuild_view() {
@@ -205,12 +211,6 @@ LogLevel ConsolePanel::parse_level(const std::string &line) {
 	}
 	if (line.find("[AQUILA WARNING]") != std::string::npos) {
 		return LogLevel::Warning;
-	}
-	if (line.find("[AQUILA DEBUG]") != std::string::npos) {
-		return LogLevel::Debug;
-	}
-	if (line.find("[AQUILA TRACE]") != std::string::npos) {
-		return LogLevel::Trace;
 	}
 	return LogLevel::Info;
 }
@@ -248,10 +248,6 @@ std::string ConsolePanel::level_tag_class(LogLevel level) {
 		return "console-tag-error";
 	case LogLevel::Critical:
 		return "console-tag-critical";
-	case LogLevel::Debug:
-		return "console-tag-debug";
-	case LogLevel::Trace:
-		return "console-tag-trace";
 	default:
 		return "console-tag-info";
 	}
@@ -265,10 +261,6 @@ std::string_view ConsolePanel::level_tag(LogLevel level) {
 		return "[AQUILA ERROR]";
 	case LogLevel::Critical:
 		return "[AQUILA CRITICAL]";
-	case LogLevel::Debug:
-		return "[AQUILA DEBUG]";
-	case LogLevel::Trace:
-		return "[AQUILA TRACE]";
 	default:
 		return "[AQUILA INFO]";
 	}

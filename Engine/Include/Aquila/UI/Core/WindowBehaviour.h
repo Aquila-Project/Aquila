@@ -17,6 +17,10 @@ class WindowBehaviour : public Behaviour {
 
 	virtual void update(F32 delta_time) {}
 	virtual bool intercept_event(Platform::Events::Event &event) { return false; }
+	/// Called on the fresh behaviour when its window rebuilds (BehaviourWindow::rebuild), before it's built, with the
+	/// one it replaces, which still has its views. Copy what should survive into members, define_behaviour() runs
+	/// after.
+	virtual void take_state(WindowBehaviour &previous) {}
 
 	[[nodiscard]] View *overlay_root() const { return m_overlay_root; }
 	void set_overlay_root(View *root) { m_overlay_root = root; }

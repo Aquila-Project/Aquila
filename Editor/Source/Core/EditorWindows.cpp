@@ -196,7 +196,12 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 		return std::move(created_panel);
 	};
 
-	Unique<EditorWindow> window = type->create(m_context);
+	build_into(*panel, *type, type_id);
+	return unstage();
+}
+
+bool EditorWindows::build_into(DockPanel &panel, const EditorWindowType &type, const std::string &type_id) {
+	Unique<EditorWindow> window = type.create(m_context);
 	window->m_type_id = type_id;
 	window->set_overlay_root(m_context.overlay_root());
 
@@ -210,9 +215,9 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 
 	EditorWindow *built = window.get();
 	const std::string path = built->get_layout_path();
-	if (m_context.layouts().build_file(path, *panel, std::move(window)) == nullptr) {
+	if (m_context.layouts().build_file(path, panel, std::move(window)) == nullptr) {
 		AQUILA_LOG_ERROR("EditorWindows: '{}' has no window to show, {} didn't build", type_id, path);
-		return unstage();
+		return false;
 	}
 
 	if (overlay != nullptr) {
@@ -223,13 +228,27 @@ Unique<DockPanel> EditorWindows::create_panel(const std::string &panel_id) {
 			}
 		}
 		for (View *view : created) {
-			built->m_overlays.emplace_back(panel->add_child(overlay->detach_child(view)));
+			built->m_overlays.emplace_back(panel.add_child(overlay->detach_child(view)));
 		}
 	}
 
 	built->m_on_destroyed = [this](EditorWindow *destroyed) { forget(destroyed); };
-	m_live.push_back({ built, panel });
-	return unstage();
+	m_live.push_back({ built, &panel });
+	return true;
+}
+
+void EditorWindows::rebuild_all() {
+	std::vector<std::pair<DockPanel *, std::string>> panels;
+	for (const Live &live : m_live) {
+		panels.emplace_back(live.panel, live.window->get_type_id());
+	}
+	for (const auto &[panel, type_id] : panels) {
+		const EditorWindowType *type = find_type(type_id);
+		panel->clear_children();
+		if (type != nullptr && type->create) {
+			build_into(*panel, *type, type_id);
+		}
+	}
 }
 
 DockNode *EditorWindows::default_target() const {

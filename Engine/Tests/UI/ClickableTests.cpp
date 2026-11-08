@@ -32,6 +32,38 @@ TEST_SUITE("Clickable") {
 		CHECK(state.label == "Floor");
 	}
 
+	TEST_CASE("a clickable is no drop target until it accepts drops") {
+		Clickable clickable;
+		View *child = clickable.add_child(std::make_unique<View>());
+		CHECK_FALSE(clickable.is_accepting_payload());
+		CHECK(child->get_first_parent_that_accepts_drop() == nullptr);
+		clickable.set_accepts_drop(true);
+		CHECK(clickable.is_accepting_payload());
+		CHECK(child->get_first_parent_that_accepts_drop() == &clickable);
+		clickable.set_accepts_drop(false);
+		CHECK_FALSE(clickable.is_accepting_payload());
+	}
+
+	TEST_CASE("drags over it and drops on it are reported with their payload") {
+		Clickable clickable;
+		clickable.set_accepts_drop(true);
+		std::vector<std::string> calls;
+		const auto record = [&calls](std::string name) {
+			return [&calls, name = std::move(name)](DragState &state) {
+				const auto *payload = std::any_cast<std::string>(&state.payload);
+				calls.push_back(name + " " + (payload != nullptr ? *payload : "?"));
+			};
+		};
+		clickable.on_drag_entered.connect(record("enter"));
+		clickable.on_dropped.connect(record("drop"));
+		clickable.on_drag_left.connect(record("leave"));
+		DragState state{ .payload = std::string("a.png"), .label = "a", .is_dragging = true };
+		clickable.on_drag_enter(state);
+		clickable.on_drop(state);
+		clickable.on_drag_leave(state);
+		CHECK(calls == std::vector<std::string>{ "enter a.png", "drop a.png", "leave a.png" });
+	}
+
 	TEST_CASE("keys pressed on it are reported") {
 		Clickable clickable;
 		std::vector<KeyCode> keys;

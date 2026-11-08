@@ -85,6 +85,13 @@ class EditorModule final : public Aquila::Application::IModule {
 	void register_entity_slots();
 	void register_thumbnail_slots();
 	void reload_styles();
+	/// editor.reload_layouts (F5): forgets the parsed markup, reloads the styles and builds every window again. Runs
+	/// at the start of the next frame, so nothing is destroyed inside its own click or key.
+	void request_layout_reload();
+	void reload_layouts();
+	/// The BehaviourWindows' event hook. Runs editor.reload_layouts for its keys, because the shortcut system never
+	/// sees keys from secondary windows and has no commands before a project is open (the launcher).
+	bool handle_window_key(Aquila::Platform::Events::Event &event);
 	[[nodiscard]] BuildWindow *build_window() const;
 	void open_settings_window();
 	void open_build_window();
@@ -143,6 +150,7 @@ class EditorModule final : public Aquila::Application::IModule {
 	Unique<Aquila::UI::Core::BehaviourWindow> m_build_window;
 	Unique<Aquila::UI::Core::BehaviourWindow> m_project_launcher;
 	bool m_editor_entered = false;
+	bool m_layout_reload_pending = false;
 	Option<ProjectInfo> m_pending_project;
 	std::string m_startup_project;
 	ProjectInfo m_project;

@@ -74,6 +74,14 @@ constexpr std::array<PropertyMark, 6> K_EXPOSURE_MARKS = { {
 	{ .value = 15.F, .label = "Sunny day" },
 } };
 
+constexpr std::array<PropertyMark, 5> K_SKY_LUMINANCE_MARKS = { {
+	{ .value = 0.001F, .label = "Starlit night" },
+	{ .value = 0.03F, .label = "Full moon night" },
+	{ .value = 10.F, .label = "Twilight" },
+	{ .value = 2000.F, .label = "Overcast day" },
+	{ .value = 8000.F, .label = "Clear sky" },
+} };
+
 constexpr std::array<PropertyMark, 4> K_FOG_DENSITY_MARKS = { {
 	{ .value = 0.002F, .label = "Light haze" },
 	{ .value = 0.02F, .label = "Mist" },
@@ -256,20 +264,40 @@ void register_builtin_components(ComponentRegistry &registry) {
 		.visible_if(is_spot)
 		.property("Active", &LightComponent::is_active, &LightComponent::set_active, PropertyHints{ .toggle = true });
 
+	const auto is_procedural = [](const SkyLightComponent &sky) { return sky.get_source() == SkySource::Procedural; };
+	const auto is_image = [](const SkyLightComponent &sky) { return sky.get_source() == SkySource::HdrImage; };
 	registry.register_component<SkyLightComponent>("Sky Light")
 		.property("Source", &SkyLightComponent::get_source, &SkyLightComponent::set_source)
 		.options({ { .name = "Procedural", .value = static_cast<Int32>(SkySource::Procedural) },
 				   { .name = "HDR Image", .value = static_cast<Int32>(SkySource::HdrImage) } })
+		.property("Image", &SkyLightComponent::get_hdr_path, &SkyLightComponent::set_hdr_path,
+				  PropertyHints{ .asset_type = "texture" })
+		.visible_if(is_image)
 		.property("Sun Elevation", &SkyLightComponent::get_sun_elevation, &SkyLightComponent::set_sun_elevation,
 				  PropertyHints{ .min = -10.F, .max = 90.F, .speed = 0.5F, .precision = 1, .unit = "°" })
+		.visible_if(is_procedural)
 		.property("Sun Azimuth", &SkyLightComponent::get_sun_azimuth, &SkyLightComponent::set_sun_azimuth,
 				  PropertyHints{ .min = 0.F, .max = 360.F, .speed = 1.F, .precision = 1, .unit = "°" })
+		.visible_if(is_procedural)
 		.property("Turbidity", &SkyLightComponent::get_turbidity, &SkyLightComponent::set_turbidity,
 				  PropertyHints{ .min = 1.F, .max = 10.F, .speed = 0.05F, .precision = 2, .slider = true })
+		.visible_if(is_procedural)
 		.property("Ground Albedo", &SkyLightComponent::get_ground_albedo, &SkyLightComponent::set_ground_albedo,
 				  PropertyHints{ .color = true })
+		.visible_if(is_procedural)
 		.property("Intensity", &SkyLightComponent::get_intensity, &SkyLightComponent::set_intensity,
 				  PropertyHints{ .min = 0.F, .max = 20.F, .speed = 0.05F, .precision = 3 })
+		.visible_if(is_procedural)
+		.property("Intensity", &SkyLightComponent::get_image_intensity, &SkyLightComponent::set_image_intensity,
+				  PropertyHints{ .min = 0.F,
+								 .max = 1000000000.F,
+								 .precision = 3,
+								 .unit = "nits",
+								 .logarithmic = true,
+								 .slider_min = 0.001F,
+								 .slider_max = 100000.F,
+								 .marks = K_SKY_LUMINANCE_MARKS })
+		.visible_if(is_image)
 		.property("Tint", &SkyLightComponent::get_tint, &SkyLightComponent::set_tint, PropertyHints{ .color = true })
 		.property("Active", &SkyLightComponent::is_active, &SkyLightComponent::set_active,
 				  PropertyHints{ .toggle = true })

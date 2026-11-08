@@ -172,16 +172,6 @@ static VkBufBarrierInfo buf_barrier_info(ResourceState state) {
 	return out;
 }
 
-static VkImageAspectFlags aspect_for(TextureFormat fmt) {
-	if (fmt == TextureFormat::Depth24Stencil8 || fmt == TextureFormat::Depth32Stencil8) {
-		return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-	}
-	if (is_depth_format(fmt)) {
-		return VK_IMAGE_ASPECT_DEPTH_BIT;
-	}
-	return VK_IMAGE_ASPECT_COLOR_BIT;
-}
-
 } // anonymous namespace
 
 // Lifecycle
@@ -260,7 +250,7 @@ void VulkanCommandList::transition_texture(IRHITexture &texture, ResourceState o
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = vk_tex.get_image();
-	barrier.subresourceRange = { aspect_for(vk_tex.get_format()), 0, VK_REMAINING_MIP_LEVELS, 0,
+	barrier.subresourceRange = { to_vk_image_aspect(vk_tex.get_format()), 0, VK_REMAINING_MIP_LEVELS, 0,
 								 VK_REMAINING_ARRAY_LAYERS };
 
 	vkCmdPipelineBarrier(m_command_buffer, src.stage, dst.stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);

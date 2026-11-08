@@ -38,8 +38,8 @@ struct RGBufferDesc {
 	std::string_view debug_name;
 };
 
-enum class AttachmentLoadOp : Uint8 { Load, Clear, DontCare };
-enum class AttachmentStoreOp : Uint8 { Store, DontCare };
+using AttachmentLoadOp = RHI::AttachmentLoadOp;
+using AttachmentStoreOp = RHI::AttachmentStoreOp;
 
 struct ClearColor {
 	Vec4 color;

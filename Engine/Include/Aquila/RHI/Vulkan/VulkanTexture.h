@@ -36,6 +36,7 @@ class VulkanTexture final : public IRHITexture {
 	[[nodiscard]] VkSampler get_sampler() const { return m_sampler; }
 	[[nodiscard]] const ImageAllocation &get_allocation() const { return m_image_allocation; }
 	[[nodiscard]] VkDescriptorImageInfo get_descriptor_image_info() const;
+	[[nodiscard]] VkImageView get_attachment_view(Uint32 mip_level, Uint32 layer);
 
   private:
 	void create_image_view();
@@ -45,6 +46,7 @@ class VulkanTexture final : public IRHITexture {
 	TextureDesc m_desc;
 	ImageAllocation m_image_allocation{};
 	VkImageView m_image_view = VK_NULL_HANDLE;
+	std::vector<VkImageView> m_image_views; // Used mostly for cubemaps
 	VkSampler m_sampler = VK_NULL_HANDLE;
 };
 

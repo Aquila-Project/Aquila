@@ -2,6 +2,7 @@
 #include <doctest.h>
 #include "Aquila/Foundation/Timer.h"
 #include "Aquila/Foundation/Log.h"
+#include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/Profiler.h"
 
 using namespace Aquila::Foundation;
@@ -166,6 +167,28 @@ TEST_SUITE("Logger tests") {
 		LogCapture capture(LogLevel::Warning);
 		Logger::log_debug("Should not appear");
 		CHECK(capture.stream.str().empty());
+	}
+
+	TEST_CASE("Lines under the sink's level skip it") {
+		LogCapture capture(LogLevel::Trace);
+		Logger::set_sink(&capture.stream, LogLevel::Info);
+		Logger::log_debug("engine internals");
+		Logger::log_info("for the console");
+		CHECK(capture.stream.str().find("engine internals") == std::string::npos);
+		CHECK(capture.stream.str().find("for the console") != std::string::npos);
+	}
+
+	TEST_CASE("Debug and trace logs only run in Debug builds") {
+		LogCapture capture(LogLevel::Trace);
+		int evaluated = 0;
+		AQUILA_LOG_DEBUG("{}", ++evaluated);
+		AQUILA_LOG_TRACE("{}", ++evaluated);
+#ifdef AQUILA_DEBUG
+		CHECK(evaluated == 2);
+#else
+		CHECK(evaluated == 0);
+		CHECK(capture.stream.str().empty());
+#endif
 	}
 
 	TEST_CASE("Profiler is enabled by default") {

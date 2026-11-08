@@ -1,4 +1,6 @@
 #include "Aquila/GFX/GfxContext.h"
+
+#include <memory>
 #include "Aquila/GFX/GfxBuffer.h"
 #include "Aquila/GFX/GfxTexture.h"
 #include "Aquila/RHI/RHIBackend.h"
@@ -61,7 +63,7 @@ Unique<RHI::IRHIQueryPool> GfxContext::create_timestamp_pool(Uint32 count) {
 }
 
 Ref<GfxRenderPass> GfxContext::create_render_pass(const RHI::RenderPassDesc &desc) {
-	return Ref<GfxRenderPass>(new GfxRenderPass(m_device->create_render_pass(desc)));
+	return std::make_shared<GfxRenderPass>(m_device->create_render_pass(desc));
 }
 Ref<GfxCommandList> GfxContext::create_command_list(RHI::CommandListType type, const std::string &name) {
 	return Ref<GfxCommandList>(new GfxCommandList(m_device->create_command_list(type, name)));

@@ -96,7 +96,8 @@ RGTextureHandle RGPassBuilder::set_depth_attachment(RGTextureHandle handle, Atta
 }
 
 RGTextureHandle RGPassBuilder::set_color_attachment(Uint32 slot, RGTextureHandle handle, AttachmentLoadOp load_op,
-												  AttachmentStoreOp store_op, ClearColor clear) {
+													AttachmentStoreOp store_op, ClearColor clear, Uint32 mip_level,
+													Uint32 array_layer) {
 	AQUILA_ASSERT(handle.is_valid(), "SetColorAttachment: invalid handle");
 
 	// Color attachments are always writes, bump the version.
@@ -105,10 +106,12 @@ RGTextureHandle RGPassBuilder::set_color_attachment(Uint32 slot, RGTextureHandle
 	// Grow the slot array to fit.
 	if (slot >= m_data.color_attachments.size()) {
 		m_data.color_attachments.resize(slot + 1,
-									   RGColorAttachment{ .handle = RGTextureHandle{},
-														  .load_op = AttachmentLoadOp::DontCare,
-														  .store_op = AttachmentStoreOp::DontCare,
-														  .clear = {} });
+										RGColorAttachment{ .handle = RGTextureHandle{},
+														   .load_op = AttachmentLoadOp::DontCare,
+														   .store_op = AttachmentStoreOp::DontCare,
+														   .clear = {},
+														   .mip_level = 0,
+														   .array_layer = 0 });
 	}
 
 	m_data.color_attachments[slot] = RGColorAttachment{
@@ -116,6 +119,8 @@ RGTextureHandle RGPassBuilder::set_color_attachment(Uint32 slot, RGTextureHandle
 		.load_op = load_op,
 		.store_op = store_op,
 		.clear = clear,
+		.mip_level = mip_level,
+		.array_layer = array_layer,
 	};
 
 	return new_handle;

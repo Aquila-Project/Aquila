@@ -27,7 +27,7 @@ class LogCaptureBuf : public std::streambuf {
 	LineCallback m_callback;
 };
 
-enum class LogLevel { Trace, Debug, Info, Warning, Error, Critical };
+enum class LogLevel { Info, Warning, Error, Critical };
 
 class ConsolePanel : public IEditorPanel {
   public:
@@ -43,8 +43,7 @@ class ConsolePanel : public IEditorPanel {
 	struct LogEntry {
 		LogLevel level;
 		std::string message;
-		int tag_begin = 0;
-		int tag_length = 0;
+		std::vector<Aquila::UI::Core::TextSpan> spans;
 		/// A line of a multi-line message (a script traceback): it has the message's level and isn't counted.
 		bool continuation = false;
 	};

@@ -75,6 +75,7 @@ namespace Events = Aquila::Platform::Events;
 
 namespace {
 constexpr std::string_view K_GAME_WORKSPACE = "Game";
+constexpr std::string_view K_RELOAD_LAYOUTS = "editor.reload_layouts";
 constexpr F64 K_SETTINGS_SAVE_SECONDS = 0.5;
 constexpr auto K_SETTINGS_SAVE_DELAY = std::chrono::milliseconds(500);
 
@@ -157,13 +158,18 @@ void EditorModule::on_attach(EngineContext &engine) {
 void EditorModule::open_project_launcher() {
 	m_project_launcher = std::make_unique<BehaviourWindow>(
 		m_ui_host->get_layout_loader(),
-		std::make_unique<ProjectLauncher>(layout_dir() + "Windows/launcher.aqlayout", *m_project_manager), 900, 600);
-	if (auto *launcher = m_project_launcher->get_behaviour<ProjectLauncher>()) {
-		launcher->on_project_ready = [this](const ProjectInfo &project) {
-			m_pending_project = project;
-			Aquila::Foundation::FrameScheduler::get()->request_frame();
-		};
-	}
+		[this]() -> Unique<WindowBehaviour> {
+			auto launcher =
+				std::make_unique<ProjectLauncher>(layout_dir() + "Windows/launcher.aqlayout", *m_project_manager);
+			launcher->on_project_ready = [this](const ProjectInfo &project) {
+				m_pending_project = project;
+				Aquila::Foundation::FrameScheduler::get()->request_frame();
+			};
+			return launcher;
+		},
+		900, 600);
+	m_project_launcher->set_event_hook(
+		[this](Aquila::Platform::Events::Event &event) { return handle_window_key(event); });
 
 	m_project_launcher->open(m_engine->get_window_host(), "Aquila - Projects", [this] {
 		m_project_launcher.reset();
@@ -248,6 +254,10 @@ void EditorModule::on_pre_render(F32 delta_time) {
 		const ProjectInfo project = *m_pending_project;
 		m_pending_project.reset();
 		enter_editor(project);
+	}
+	if (m_layout_reload_pending) {
+		m_layout_reload_pending = false;
+		reload_layouts();
 	}
 	save_settings_if_due(false);
 	update_luau_config();
@@ -763,6 +773,13 @@ void EditorModule::register_entity_slots() {
 						Aquila::Foundation::UUID::from_string(uuid));
 					return entity ? entity->get_name() : std::string("Missing entity");
 				},
+			.exists =
+				[this](const std::string &uuid) {
+					return m_engine->get_scene()
+						.get_entity_manager()
+						->find_entity_by_uuid(Aquila::Foundation::UUID::from_string(uuid))
+						.has_value();
+				},
 		});
 }
 
@@ -785,16 +802,72 @@ void EditorModule::reload_styles() {
 	}
 }
 
+void EditorModule::request_layout_reload() {
+	m_layout_reload_pending = true;
+	Aquila::Foundation::FrameScheduler::get()->request_frame();
+}
+
+void EditorModule::reload_layouts() {
+	m_ui_host->get_layout_loader().forget_documents();
+	reload_styles();
+	if (m_project_launcher) {
+		m_project_launcher->rebuild();
+	}
+	if (m_settings_window) {
+		m_settings_window->rebuild();
+	}
+	if (m_build_window) {
+		if (const BuildWindow *build = build_window(); build != nullptr && build->is_busy()) {
+			AQUILA_LOG_WARNING("EditorModule: the Build window is building, it keeps its old layout");
+		} else {
+			m_build_window->rebuild();
+		}
+	}
+	if (m_windows) {
+		m_windows->rebuild_all();
+	}
+	AQUILA_LOG_INFO("Layouts rebuilt");
+	Aquila::Foundation::FrameScheduler::get()->request_frame();
+}
+
+bool EditorModule::handle_window_key(Aquila::Platform::Events::Event &event) {
+	auto *key = dynamic_cast<Aquila::Platform::Events::KeyPressedEvent *>(&event);
+	if (key == nullptr || key->is_repeat()) {
+		return false;
+	}
+	const Commands no_commands;
+	Shortcuts fallback(no_commands);
+	const Shortcuts *shortcuts = m_context ? &m_context->shortcuts : nullptr;
+	if (shortcuts == nullptr) {
+		bind_default_shortcuts(fallback);
+		apply_user_shortcuts(fallback, Config::get_preferences().shortcuts);
+		shortcuts = &fallback;
+	}
+	const Aquila::Platform::Events::KeyChord chord = Aquila::Platform::Events::KeyChord::from(*key);
+	for (const ShortcutBinding &binding : shortcuts->get_bindings(K_RELOAD_LAYOUTS)) {
+		if (binding.chord == chord) {
+			request_layout_reload();
+			return true;
+		}
+	}
+	return false;
+}
+
 void EditorModule::open_settings_window() {
 	if (m_settings_window) {
 		return;
 	}
 
-	m_settings_window = std::make_unique<BehaviourWindow>(m_ui_host->get_layout_loader(),
-														  std::make_unique<SettingsWindow>(*m_context), 860, 640);
-	if (auto *settings = m_settings_window->get_behaviour<SettingsWindow>()) {
-		settings->on_preferences_changed = [this] { preferences_edited(); };
-	}
+	m_settings_window = std::make_unique<BehaviourWindow>(
+		m_ui_host->get_layout_loader(),
+		[this]() -> Unique<WindowBehaviour> {
+			auto settings = std::make_unique<SettingsWindow>(*m_context);
+			settings->on_preferences_changed = [this] { preferences_edited(); };
+			return settings;
+		},
+		860, 640);
+	m_settings_window->set_event_hook(
+		[this](Aquila::Platform::Events::Event &event) { return handle_window_key(event); });
 	m_settings_window->open(m_engine->get_window_host(), "Aquila - Settings",
 							[this] {
 								m_settings_window.reset();
@@ -808,8 +881,10 @@ void EditorModule::open_build_window() {
 		return;
 	}
 
-	m_build_window = std::make_unique<BehaviourWindow>(m_ui_host->get_layout_loader(),
-													   std::make_unique<BuildWindow>(*m_context), 720, 600);
+	m_build_window = std::make_unique<BehaviourWindow>(
+		m_ui_host->get_layout_loader(),
+		[this]() -> Unique<WindowBehaviour> { return std::make_unique<BuildWindow>(*m_context); }, 720, 600);
+	m_build_window->set_event_hook([this](Aquila::Platform::Events::Event &event) { return handle_window_key(event); });
 	m_build_window->open(m_engine->get_window_host(), "Aquila - Build", [this] { m_build_window.reset(); },
 						 { 480.F, 400.F });
 }
@@ -985,6 +1060,11 @@ void EditorModule::register_editor_commands() {
 				}
 			},
 		.enabled = [this] { return build_window() == nullptr || !build_window()->is_busy(); },
+	});
+	commands.add({
+		.id = std::string(K_RELOAD_LAYOUTS),
+		.title = "Rebuild layouts",
+		.run = [this] { request_layout_reload(); },
 	});
 	commands.add({
 		.id = "editor.reload_styles",

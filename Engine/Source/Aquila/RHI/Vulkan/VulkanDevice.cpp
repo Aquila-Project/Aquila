@@ -15,7 +15,7 @@
 #include "Aquila/RHI/Vulkan/VulkanShader.h"
 #include "Aquila/RHI/Vulkan/VulkanSwapchain.h"
 #include "Aquila/RHI/Vulkan/VulkanTexture.h"
-#include "Aquila/RHI/Vulkan/VulkanVertex.h"
+#include "Aquila/RHI/Vertex.h"
 #include "Aquila/Platform/Filesystem/Filesystem.h"
 
 #include <vulkan/vulkan_core.h>
@@ -52,7 +52,7 @@ VulkanDevice::VulkanDevice(GLFWwindow &native_window) : m_window_handle(native_w
 }
 
 VulkanDevice::~VulkanDevice() {
-	wait(); // before killing device wait for it, be gentle
+	wait_idle(); // before killing device wait for it, be gentle
 
 	for (Uint32 i = 0; i < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++i) {
 		for (auto &p : m_offscreen_pending_cmd_bufs[i]) {
@@ -106,9 +106,6 @@ std::string VulkanDevice::pipeline_cache_path() const {
 }
 
 void VulkanDevice::create_pipeline_cache() {
-	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(m_physical_device, &props);
-
 	std::vector<char> initial_data;
 	std::ifstream file(pipeline_cache_path(), std::ios::binary | std::ios::ate);
 	if (file.is_open()) {
@@ -124,9 +121,9 @@ void VulkanDevice::create_pipeline_cache() {
 				std::memcpy(&vendor_id, blob.data() + 8, sizeof(Uint32));
 				std::memcpy(&device_id, blob.data() + 12, sizeof(Uint32));
 
-				bool matches = header_version == VK_PIPELINE_CACHE_HEADER_VERSION_ONE && vendor_id == props.vendorID &&
-					device_id == props.deviceID &&
-					std::memcmp(blob.data() + 16, props.pipelineCacheUUID, VK_UUID_SIZE) == 0;
+				bool matches = header_version == VK_PIPELINE_CACHE_HEADER_VERSION_ONE &&
+					vendor_id == m_properties.vendorID && device_id == m_properties.deviceID &&
+					std::memcmp(blob.data() + 16, m_properties.pipelineCacheUUID, VK_UUID_SIZE) == 0;
 				if (matches) {
 					initial_data = std::move(blob);
 				} else {
@@ -234,12 +231,11 @@ void VulkanDevice::destroy_surface_handle(VkSurfaceKHR surface) const {
 }
 
 Unique<IRHIQueryPool> VulkanDevice::create_timestamp_pool(Uint32 count) {
-	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(m_physical_device, &properties);
-	if (properties.limits.timestampComputeAndGraphics == VK_FALSE || count == 0) {
+	if (m_properties.limits.timestampComputeAndGraphics == VK_FALSE || count == 0) {
 		return nullptr;
 	}
-	auto pool = std::make_unique<VulkanQueryPool>(m_device, count, static_cast<F64>(properties.limits.timestampPeriod));
+	auto pool =
+		std::make_unique<VulkanQueryPool>(m_device, count, static_cast<F64>(m_properties.limits.timestampPeriod));
 	if (pool->get_count() == 0) {
 		return nullptr;
 	}
@@ -564,22 +560,15 @@ Unique<IRHIPipeline> VulkanDevice::create_graphics_pipeline(const GraphicsPipeli
 		config.color_blend_attachments.clear();
 	}
 
-	if (desc.no_vertex_input) {
-		config.binding_descriptions.clear();
-		config.attribute_descriptions.clear();
-	} else if (desc.custom_vertex_layout.has_value()) {
-		const auto &layout = desc.custom_vertex_layout.value();
+	if (!desc.no_vertex_input) {
+		const VertexBindingDesc layout = desc.custom_vertex_layout.value_or(Vertex::layout());
 		config.binding_descriptions = {
 			{ .binding = 0, .stride = layout.stride, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX },
 		};
-		config.attribute_descriptions.clear();
 		for (const auto &a : layout.attributes) {
 			config.attribute_descriptions.push_back(
 				{ .location = a.location, .binding = a.binding, .format = to_vk_format(a.format), .offset = a.offset });
 		}
-	} else {
-		config.binding_descriptions = Vertex::get_binding_descriptions();
-		config.attribute_descriptions = Vertex::get_attribute_descriptions();
 	}
 	if (const auto consumed = spirv_vertex_input_locations(desc.vertex_shader.spirv, desc.vertex_shader.entry_point)) {
 		std::erase_if(config.attribute_descriptions, [&](const VkVertexInputAttributeDescription &attribute) {
@@ -767,10 +756,7 @@ VkSampler VulkanDevice::get_or_create_sampler(const SamplerDesc &desc) {
 		return it->second;
 	}
 
-	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(m_physical_device, &props);
-
-	VkSamplerCreateInfo info = to_vk_sampler_create_info(desc, props.limits.maxSamplerAnisotropy);
+	VkSamplerCreateInfo info = to_vk_sampler_create_info(desc, m_properties.limits.maxSamplerAnisotropy);
 
 	VkSampler sampler = nullptr;
 	AQUILA_VULKAN_CHECK(vkCreateSampler(m_device, &info, nullptr, &sampler));
@@ -857,8 +843,7 @@ void VulkanDevice::set_object_debug_name(VkObjectType object_type, Uint64 handle
 }
 
 void VulkanDevice::log_device_info() const {
-	VkPhysicalDeviceProperties properties;
-	vkGetPhysicalDeviceProperties(m_physical_device, &properties);
+	const VkPhysicalDeviceProperties &properties = m_properties;
 
 	AQUILA_LOG_INFO("Graphics Device Information");
 	AQUILA_LOG_INFO("Device Name: {}", properties.deviceName);
@@ -1113,6 +1098,8 @@ void VulkanDevice::pick_physical_device() {
 		AQUILA_LOG_CRITICAL("Failed to find a suitable GPU!");
 		abort();
 	}
+
+	vkGetPhysicalDeviceProperties(m_physical_device, &m_properties);
 }
 
 bool VulkanDevice::is_suitable(const VkPhysicalDevice vk_physical_device) {

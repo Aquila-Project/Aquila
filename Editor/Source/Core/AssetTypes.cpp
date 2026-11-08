@@ -4,7 +4,10 @@
 #include "Aquila/Foundation/Text/StringUtils.h"
 #include "Aquila/Graphics/Material/MaterialData.h"
 #include "Core/ScriptEditor.h"
-#include "UI/Inspector/MaterialAssetContent.h"
+#include "UI/Inspector/Material/MaterialAssetContent.h"
+#include "UI/Inspector/Mesh/MeshAssetContent.h"
+#include "UI/Inspector/Script/ScriptAssetContent.h"
+#include "UI/Inspector/Shader/ShaderAssetContent.h"
 
 namespace Editor {
 
@@ -45,7 +48,13 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.extensions = { ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".hdr", ".svg" },
 		.thumbnail = AssetThumbnail::Image,
 	});
-	types.add({ .id = "model", .title = "Model", .icon = "box", .extensions = { ".gltf", ".glb", ".obj", ".fbx" } });
+	types.add({
+		.id = "model",
+		.title = "Model",
+		.icon = "box",
+		.extensions = { ".gltf", ".glb", ".obj", ".fbx" },
+		.inspect = inspect_mesh_asset,
+	});
 	types.add({
 		.id = "material",
 		.title = "Material",
@@ -54,13 +63,21 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.thumbnail = AssetThumbnail::Material,
 		.inspect = inspect_material_asset,
 	});
-	types.add({ .id = "shader", .title = "Shader", .icon = "file-code", .extensions = { ".slang", ".hlsl", ".glsl" } });
+	types.add({
+		.id = "shader",
+		.title = "Shader",
+		.icon = "file-code",
+		.extensions = { ".slang", ".hlsl", ".glsl" },
+		.open = open_in_script_editor,
+		.inspect = inspect_shader_asset,
+	});
 	types.add({
 		.id = "script",
 		.title = "Script",
 		.icon = "file-code",
 		.extensions = { ".luau", ".lua" },
 		.open = open_in_script_editor,
+		.inspect = inspect_script_asset,
 	});
 	types.add({
 		.id = "definitions",
@@ -69,8 +86,17 @@ void add_builtin_asset_types(AssetTypes &types) {
 		.extensions = { ".d.luau" },
 		.open = open_in_script_editor,
 	});
-	types.add({ .id = "scene", .title = "Scene", .extensions = { ".aqscene" } });
-	types.add({ .id = "ui", .title = "UI Markup", .icon = "panel-left", .extensions = { ".aqlayout", ".aqstyle" } });
+	types.add({
+		.id = "scene",
+		.title = "Scene",
+		.extensions = { ".aqscene" },
+	});
+	types.add({
+		.id = "ui",
+		.title = "UI Markup",
+		.icon = "panel-left",
+		.extensions = { ".aqlayout", ".aqstyle" },
+	});
 }
 
 }

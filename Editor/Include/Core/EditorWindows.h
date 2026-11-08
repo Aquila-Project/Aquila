@@ -52,6 +52,10 @@ class EditorWindows {
 	/// Swaps the active tab of `node` for another window type, what the editor switcher does.
 	void replace(Aquila::UI::Core::DockNode *node, std::string_view type_id);
 	void apply_layout(const Aquila::UI::Core::DockLayoutDesc &layout);
+	/// Builds every open window again from its markup, in the same panel: what the editor.reload_layouts command
+	/// does after LayoutLoader::forget_documents(). Window state that isn't in the context is lost. Never from inside
+	/// a window's own events or update.
+	void rebuild_all();
 	[[nodiscard]] Aquila::UI::Core::DockLayoutDesc capture() const;
 
 	[[nodiscard]] const std::vector<EditorWindowType> &get_types() const { return m_types; }
@@ -84,6 +88,8 @@ class EditorWindows {
 	[[nodiscard]] const Live *find_live(std::string_view type_id) const;
 	[[nodiscard]] Aquila::UI::Core::DockNode *default_target() const;
 	void forget(EditorWindow *window);
+	/// Builds a new window of `type` into `panel` and tracks it. False when the markup doesn't build.
+	bool build_into(Aquila::UI::Core::DockPanel &panel, const EditorWindowType &type, const std::string &type_id);
 
 	EditorContext &m_context;
 	Aquila::UI::Core::DockSpace *m_dock_space = nullptr;

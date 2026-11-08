@@ -29,6 +29,16 @@ namespace {
 constexpr std::string_view K_ROOT = Aquila::SharedConstants::PROJECT_CONTENT_DIR;
 constexpr std::chrono::milliseconds K_DOUBLE_CLICK{ 400 };
 
+const AssetPayload *movable_asset(const DragState &state, std::string_view folder) {
+	const auto *asset = std::any_cast<AssetPayload>(&state.payload);
+	if (asset == nullptr || !asset->asset_path.starts_with(std::string(K_ROOT) + "/")) {
+		return nullptr;
+	}
+	const std::string_view path = asset->asset_path;
+	const bool inside = folder.starts_with(path) && (folder.size() == path.size() || folder[path.size()] == '/');
+	return inside || path.substr(0, path.find_last_of('/')) == folder ? nullptr : asset;
+}
+
 } // namespace
 
 ContentBrowserWindow::ContentBrowserWindow(EditorContext &context)
@@ -129,6 +139,7 @@ void ContentBrowserWindow::build_path() {
 			return;
 		}
 		crumb->set_class("content-crumb-current", path == m_directory);
+		accept_drop(*crumb, path);
 		crumb->on_click.connect([this, path = std::move(path)] { navigate(path); });
 	};
 
@@ -180,6 +191,9 @@ void ContentBrowserWindow::build_grid() {
 		tile.view->on_pressed.connect([this, path = tile.path](Vec2) { press(path); });
 		tile.view->on_context_menu.connect([this, path = tile.path](Vec2 position) { open_item_menu(path, position); });
 		if (Clickable *clickable = tile.tile->get_clickable()) {
+			if (tile.is_directory) {
+				accept_drop(*clickable, tile.path);
+			}
 			clickable->on_click.connect([this, path = tile.path] { open_in_inspector(path); });
 			clickable->on_key_pressed.connect([this, path = tile.path, view = tile.view](KeyCode key, int) {
 				if (key == KeyCode::F2) {
@@ -257,7 +271,8 @@ void ContentBrowserWindow::create(const ContentCreator &creator) {
 }
 
 void ContentBrowserWindow::open_item_menu(const std::string &path, Vec2 position) {
-	press(path);
+	m_last_press = {};
+	select(path);
 	m_menu->clear_items();
 	if (const AssetType *type = context().asset_types.find_for_path(path); type != nullptr && type->open) {
 		m_menu->add_item("Open", {}, context().icon(type->icon), [open = type->open, path] { open(path); });
@@ -288,6 +303,37 @@ void ContentBrowserWindow::remove(const std::string &path) {
 	if (!removed) {
 		AQUILA_LOG_WARNING("ContentBrowserWindow: could not delete {}", path);
 	}
+	navigate(m_directory);
+}
+
+void ContentBrowserWindow::accept_drop(Clickable &target, std::string folder) {
+	target.set_accepts_drop(true);
+	target.on_drag_entered.connect([&target, folder](DragState &state) {
+		target.set_class("content-drop-target", movable_asset(state, folder) != nullptr);
+	});
+	target.on_drag_left.connect([&target](DragState &) { target.set_class("content-drop-target", false); });
+	target.on_dropped.connect([this, folder](DragState &state) {
+		if (const AssetPayload *asset = movable_asset(state, folder)) {
+			move(asset->asset_path, folder);
+		}
+	});
+}
+
+void ContentBrowserWindow::move(const std::string &path, const std::string &folder) {
+	const std::string target = folder + path.substr(path.find_last_of('/'));
+	auto *vfs = VirtualFileSystem::get();
+	if (vfs->exists(target) || vfs->is_directory(target)) {
+		AQUILA_LOG_WARNING("ContentBrowserWindow: cannot move {}, {} already exists", path, target);
+		return;
+	}
+	if (!vfs->rename_file(path, target)) {
+		AQUILA_LOG_WARNING("ContentBrowserWindow: could not move {} to {}", path, folder);
+		return;
+	}
+	if (context().selection.get_asset() == path) {
+		context().selection.select_asset(target);
+	}
+	m_selected = target;
 	navigate(m_directory);
 }
 
@@ -325,20 +371,23 @@ void ContentBrowserWindow::press(const std::string &path) {
 	const auto now = std::chrono::steady_clock::now();
 	const bool double_click = path == m_selected && now - m_last_press < K_DOUBLE_CLICK;
 	m_last_press = now;
-	m_selected = path;
+	select(path);
 
+	const auto tile = std::ranges::find(m_tiles, path, &Tile::path);
+	if (!double_click || tile == m_tiles.end()) {
+		return;
+	}
+	if (tile->is_directory) {
+		navigate(path);
+	} else if (const AssetType *asset = context().asset_types.find_for_path(path); asset != nullptr && asset->open) {
+		asset->open(path);
+	}
+}
+
+void ContentBrowserWindow::select(const std::string &path) {
+	m_selected = path;
 	for (const Tile &tile : m_tiles) {
 		tile.view->set_class("content-tile-selected", tile.path == path);
-		if (double_click && tile.path == path && tile.is_directory) {
-			navigate(path);
-		}
-
-		if (double_click && tile.path == path && !tile.is_directory) {
-			if (const AssetType *asset = context().asset_types.find_for_path(tile.path);
-				asset != nullptr && asset->open) {
-				asset->open(tile.path);
-			}
-		}
 	}
 }
 

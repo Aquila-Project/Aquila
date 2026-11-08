@@ -2,7 +2,7 @@
 
 #include "Aquila/Platform/Input.h"
 #include "Aquila/UI/Widgets/InspectorView.h"
-#include "UI/Inspector/EntityInspector.h"
+#include "UI/Inspector/Entity/EntityInspector.h"
 
 namespace Editor {
 

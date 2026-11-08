@@ -35,7 +35,9 @@ struct alignas(16) GpuEnvironmentData {
 	Vec4 m_fog_sun_direction;
 	Vec4 m_fog_sun_illuminance;
 	Int32 m_enabled;
-	std::array<Int32, 3> m_padding;
+	/// 1 when SceneFrameData's reflection cube holds this sky, see SceneFrameData::set_reflection_ready().
+	Int32 m_reflection;
+	std::array<Int32, 2> m_padding;
 };
 
 static_assert(sizeof(GpuEnvironmentData) == 240, "GpuEnvironmentData layout mismatch");

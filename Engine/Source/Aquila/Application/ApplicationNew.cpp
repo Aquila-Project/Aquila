@@ -236,6 +236,7 @@ void Application::run() {
 		}
 
 		poll_shader_hot_reload();
+		scheduler->run_polls();
 
 		if (seconds_until_frame_slot() <= 0.0 && scheduler->is_pending()) {
 			m_last_frame_start = Foundation::now();
@@ -276,6 +277,9 @@ F64 Application::seconds_until_frame_slot() const {
 
 Option<F64> Application::idle_timeout() const {
 	Option<F64> timeout = Foundation::FrameScheduler::get()->seconds_until_deadline();
+	if (const Option<F64> until_poll = Foundation::FrameScheduler::get()->seconds_until_poll()) {
+		timeout = timeout ? std::min(*timeout, *until_poll) : *until_poll;
+	}
 	if (Graphics::Shader::ShaderHotReload::get()->is_enabled()) {
 		const F64 until_check = std::max(Foundation::elapsed_seconds(Foundation::now(), m_next_hot_reload_check), 0.0);
 		timeout = timeout ? std::min(*timeout, until_check) : until_check;

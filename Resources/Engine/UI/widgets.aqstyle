@@ -243,6 +243,14 @@ AssetSlot:hover {
     border-color: var(--accent);
 }
 
+.asset-slot-missing {
+    border-color: var(--danger);
+}
+
+.asset-slot-missing:hover {
+    border-color: var(--danger);
+}
+
 .asset-slot-thumbnail {
     width: var(--control-thumbnail);
     height: var(--control-thumbnail);

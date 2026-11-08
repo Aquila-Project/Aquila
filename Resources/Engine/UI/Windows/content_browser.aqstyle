@@ -171,3 +171,8 @@
     color: var(--text-muted);
     padding: 8px;
 }
+
+.content-drop-target {
+    border-width: 2px;
+    border-color: var(--accent);
+}

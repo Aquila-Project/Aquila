@@ -8,11 +8,15 @@ namespace Aquila::UI::Core {
 namespace {
 
 constexpr std::string_view K_COMPONENTS = "property_grid";
+constexpr std::string_view K_MESSAGE_CLASS = "property-message";
 
 std::string split_class(const View &widget) {
 	return "split-" + std::string(widget.get_type_name());
 }
 
+bool has_class(const View &view, std::string_view name) {
+	return std::ranges::find(view.get_classes(), name) != view.get_classes().end();
+}
 }
 
 PropertyGrid::PropertyGrid(float label_width) : m_label_width(label_width) {
@@ -85,6 +89,58 @@ View *PropertyGrid::add_action(View &widget, Unique<View> action) {
 		return nullptr;
 	}
 	return row->add_child(std::move(action));
+}
+
+void PropertyGrid::set_message(View &widget, MessageKind kind, std::string text) {
+	View *row = row_of(widget);
+	if (row == nullptr) {
+		return;
+	}
+	clear_message(widget);
+	View *message = create_message_box(*this, kind, std::move(text));
+	if (message == nullptr) {
+		return;
+	}
+	message->add_class(std::string(K_MESSAGE_CLASS));
+	reorder_child(message, row);
+	bool row_hidden = false;
+	for (const View *view = widget.get_parent(); view != nullptr && view != this; view = view->get_parent()) {
+		row_hidden = row_hidden || has_class(*view, "hidden");
+	}
+	message->set_hidden(row_hidden);
+}
+
+void PropertyGrid::clear_message(View &widget) {
+	if (View *message = message_of(widget)) {
+		remove_child(message);
+	}
+}
+
+void PropertyGrid::set_message_hidden(View &widget, bool hidden) {
+	if (View *message = message_of(widget)) {
+		message->set_hidden(hidden);
+	}
+}
+
+View *PropertyGrid::row_of(View &widget) const {
+	View *view = &widget;
+	while (view != nullptr && view->get_parent() != this) {
+		view = view->get_parent();
+	}
+	return view;
+}
+
+View *PropertyGrid::message_of(View &widget) const {
+	const View *row = row_of(widget);
+	const auto &children = get_children();
+	for (Usize i = 1; i < children.size(); ++i) {
+		if (children[i].get() != row) {
+			continue;
+		}
+		View *previous = children[i - 1].get();
+		return has_class(*previous, K_MESSAGE_CLASS) ? previous : nullptr;
+	}
+	return nullptr;
 }
 
 View *PropertyGrid::add_component_row(std::string_view component, std::string label, Unique<View> widget) {

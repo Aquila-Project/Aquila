@@ -214,6 +214,7 @@ void MaterialPreview::create_resources() {
 		.set_texture(10, blank)
 		.set_buffer(11, *local_shadow_buffer)
 		.set_texture(12, blank)
+		.set_texture(13, SceneFrameData::get()->get_reflection_cube())
 		.flush();
 
 	m_tone_map_layout = m_ctx.create_descriptor_set_layout({

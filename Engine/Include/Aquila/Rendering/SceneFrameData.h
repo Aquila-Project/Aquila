@@ -83,6 +83,18 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 	/// Filled by update(), in tile order. Empty when no point or spot light got a shadow.
 	[[nodiscard]] const std::vector<LocalShadowView> &get_local_shadow_views() const { return m_local_shadow_views; }
 
+	/// The sky's reflection cube, bound at set 0 binding 13. One roughness per mip: mip / (K_REFLECTION_MIPS - 1).
+	/// EnvironmentData.slang's REFLECTION_MAX_MIP must stay K_REFLECTION_MIPS - 1.
+	static constexpr Uint32 K_REFLECTION_SIZE = 128;
+	static constexpr Uint32 K_REFLECTION_MIPS = 8;
+
+	/// SkySystem renders into it. Radiance in nits before the sky's tint and intensity. Starts out readable but
+	/// empty, lit shaders only sample it once set_reflection_ready() says so.
+	[[nodiscard]] GFX::GfxTexture &get_reflection_cube() const { return *m_reflection_cube; }
+	/// Whether the cube holds the current sky. Patches `frame_slot`'s environment block, so call it after update()
+	/// for that slot. Every update() resets it to not ready.
+	void set_reflection_ready(Uint32 frame_slot, bool ready);
+
   private:
 	GFX::GfxContext &m_ctx;
 	Uint32 m_width = 0;
@@ -114,6 +126,8 @@ class SceneFrameData : public Foundation::Singleton<SceneFrameData> {
 	std::array<Ref<GFX::GfxBuffer>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_local_shadow_buffers;
 	std::array<Ref<GFX::GfxTexture>, SharedConstants::MAX_FRAMES_IN_FLIGHT> m_local_shadow_atlases;
 	std::vector<LocalShadowView> m_local_shadow_views;
+
+	Ref<GFX::GfxTexture> m_reflection_cube;
 
 	bool m_shadows_enabled = false;
 

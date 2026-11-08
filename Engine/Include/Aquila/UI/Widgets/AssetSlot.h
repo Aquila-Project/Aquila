@@ -22,12 +22,18 @@ class AssetSlot : public View {
 		/// A picture of the stored asset_path, shown left of the name. Null hides it (none, or not ready yet: call
 		/// refresh_thumbnails() once it is).
 		Delegate<GFX::GfxTexture *(const std::string &asset_path)> thumbnail;
+		/// Whether the stored asset_path still points at something. Without it a path starting with '/' is looked
+		/// up in the VFS and anything else counts as there.
+		Delegate<bool(const std::string &asset_path)> exists;
 	};
 	/// An empty adapter removes it. Main thread.
 	static void set_adapter(const std::string &type, Adapter adapter);
 	[[nodiscard]] static const Adapter *find_adapter(std::string_view type);
 	/// Asks the thumbnail adapter again in every live slot holding `asset_path`. Main thread.
 	static void refresh_thumbnails(const std::string &asset_path);
+	/// Checks every filled slot again and updates the ones whose value went missing or came back. UIHost polls it,
+	/// so deleting a file anywhere shows up without reselecting. Main thread.
+	static void check_missing();
 
 	AssetSlot();
 	explicit AssetSlot(std::string accepted_type);
@@ -44,8 +50,12 @@ class AssetSlot : public View {
 	void clear();
 	[[nodiscard]] bool has_value() const { return m_has_value; }
 	[[nodiscard]] const AssetPayload &get_value() const { return m_value; }
+	/// Filled, but what it points at isn't there. As of the last set_value() or check_missing().
+	[[nodiscard]] bool is_missing() const { return m_missing; }
 
 	Signal<void(Option<AssetPayload>)> on_changed;
+	/// Fires when is_missing() flips, also from set_value() and clear().
+	Signal<void(bool)> on_missing_changed;
 
 	void on_drop(DragState &state) override;
 	void on_drag_enter(DragState &state) override;
@@ -55,6 +65,7 @@ class AssetSlot : public View {
   private:
 	void update_display();
 	void update_thumbnail();
+	[[nodiscard]] bool value_exists() const;
 	void show_hint(std::string text);
 	[[nodiscard]] std::string accepted_name() const;
 	[[nodiscard]] bool is_compatible(const AssetPayload &payload) const;
@@ -64,6 +75,7 @@ class AssetSlot : public View {
 	std::string m_placeholder;
 	AssetPayload m_value;
 	bool m_has_value = false;
+	bool m_missing = false;
 
 	Image *m_thumbnail = nullptr;
 	Label *m_label = nullptr;

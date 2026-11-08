@@ -3,6 +3,7 @@
 
 #include "Aquila/Foundation/Macros.h"
 #include "Aquila/Foundation/PrimitiveTypes.h"
+#include "Aquila/Foundation/Registration.h"
 #include "Aquila/Platform/Cursor.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/CanvasManager.h"
@@ -27,8 +28,8 @@ struct UIHostDesc {
 	std::vector<std::string> base_styles{};
 };
 
-/// Boots the UI for an app: the canvas layers, the overlay rendering system and the clipboard.
-/// The owner forwards update() and on_event() to it.
+/// Boots the UI for an app: the canvas layers, the overlay rendering system, the clipboard and the poll that keeps
+/// asset slots' missing state current. The owner forwards update() and on_event() to it.
 class UIHost {
   public:
 	explicit UIHost(const UIHostDesc &desc);
@@ -46,6 +47,7 @@ class UIHost {
 
   private:
 	LayoutLoader m_layouts;
+	Foundation::Registration m_missing_poll;
 };
 
 }

@@ -11,10 +11,14 @@ struct EnvironmentData {
 	float4 fogSunDirection;
 	float4 fogSunIlluminance;
 	int enabled;
-	int3 _pad;
+	int reflection;
+	int2 _pad;
 };
 
 [vk::binding(2, 0)] ConstantBuffer<EnvironmentData> environment;
+[vk::binding(13, 0)] SamplerCube environmentReflection;
+
+static const float REFLECTION_MAX_MIP = 7.0;
 
 bool IsEnvironmentEnabled() {
 	return environment.enabled != 0;
@@ -45,6 +49,14 @@ float3 EvaluateSH(float3 N) {
 					c4 * (N.x * N.x - N.y * N.y) * environment.shCoeffs[8].xyz;
 
 	return max(result, float3(0.0)) * environment.tintAndIntensity.w * environment.tintAndIntensity.xyz;
+}
+
+float3 EvaluateReflection(float3 R, float roughness) {
+	if (environment.reflection == 0) {
+		return EvaluateSH(R);
+	}
+	float3 radiance = environmentReflection.SampleLevel(R, roughness * REFLECTION_MAX_MIP).rgb;
+	return radiance * environment.tintAndIntensity.w * environment.tintAndIntensity.xyz;
 }
 
 bool IsFogEnabled() {

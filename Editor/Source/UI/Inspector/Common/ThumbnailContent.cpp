@@ -1,4 +1,4 @@
-#include "UI/Inspector/ThumbnailContent.h"
+#include "UI/Inspector/Common/ThumbnailContent.h"
 
 #include "Aquila/UI/Core/LayoutLoader.h"
 #include "Aquila/UI/Widgets/Image.h"

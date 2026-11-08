@@ -176,6 +176,13 @@ struct SamplerDesc {
 		return d;
 	}
 
+	static SamplerDesc cube() {
+		SamplerDesc d{};
+		d.mipmap_mode = MipmapMode::Linear;
+		d.max_lod = 7;
+		return d;
+	}
+
 	static SamplerDesc render_target() {
 		SamplerDesc d{};
 		d.mipmap_mode = MipmapMode::Linear;
@@ -386,7 +393,7 @@ struct GraphicsPipelineDesc {
 	bool min_sample_shading = false;
 	std::vector<IRHIDescriptorSetLayout *> set_layouts;
 	std::vector<PushConstantRange> push_constants;
-	std::optional<VertexBindingDesc> custom_vertex_layout;
+	Option<VertexBindingDesc> custom_vertex_layout;
 	bool no_vertex_input = false; // true for shader-only draws (SV_VertexID, no VB)
 	std::string debug_name;
 };
@@ -435,11 +442,13 @@ struct RenderPassDepthAttachmentDesc {
 
 struct RenderPassDesc {
 	std::vector<RenderPassColorAttachmentDesc> color_attachments{};
-	std::optional<RenderPassDepthAttachmentDesc> depth_attachment{};
+	Option<RenderPassDepthAttachmentDesc> depth_attachment{};
 	bool use_swapchain = false;
 	// When true, colorAttachments[0].texture is the MSAA render target and the
 	// swapchain image (passed to Begin()) is used as the resolve destination.
 	bool use_swapchain_as_resolve = false;
+	/// 0 takes the size of the first color attachment's mip_level, or of the depth attachment. A pass that draws to or
+	/// resolves into the swapchain always takes the swapchain's size.
 	Uint32 width = 0;
 	Uint32 height = 0;
 

@@ -87,6 +87,9 @@ void Renderer::set_swapchain_target(GFX::GfxSwapchain &swapchain, Uint32 image_i
 
 void Renderer::add_passes(Graphics::RG::RenderGraph &graph, FrameContext &ctx) {
 	for (auto &sys : m_systems) {
+		sys->prepare_passes(graph, ctx);
+	}
+	for (auto &sys : m_systems) {
 		sys->add_passes(graph, ctx);
 	}
 }

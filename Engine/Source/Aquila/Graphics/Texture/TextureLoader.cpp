@@ -6,6 +6,27 @@
 
 namespace Aquila::Graphics::Texture {
 
+namespace {
+
+std::vector<Uint8> read_native_file(const std::string &native_path) {
+	std::ifstream file(native_path, std::ios::binary | std::ios::ate);
+	if (!file) {
+		throw std::runtime_error("Failed to open file: " + native_path);
+	}
+	const std::streamsize size = file.tellg();
+	if (size <= 0) {
+		throw std::runtime_error("File has invalid size: " + native_path);
+	}
+	std::vector<Uint8> buffer(static_cast<Usize>(size));
+	file.seekg(0);
+	if (!file.read(reinterpret_cast<char *>(buffer.data()), size)) {
+		throw std::runtime_error("Failed to read complete file: " + native_path);
+	}
+	return buffer;
+}
+
+}
+
 TextureLoader::RawImageData TextureLoader::load_from_file(const std::string &filepath) {
 	return load_from_vfs(filepath);
 }
@@ -30,20 +51,7 @@ TextureLoader::RawImageData TextureLoader::load_from_vfs(const std::string &file
 }
 
 TextureLoader::RawImageData TextureLoader::load_from_native(const std::string &native_path) {
-	std::ifstream file(native_path, std::ios::binary | std::ios::ate);
-	if (!file) {
-		throw std::runtime_error("Failed to open file: " + native_path);
-	}
-	const std::streamsize size = file.tellg();
-	if (size <= 0) {
-		throw std::runtime_error("File has invalid size: " + native_path);
-	}
-	std::vector<Uint8> buffer(static_cast<Usize>(size));
-	file.seekg(0);
-	if (!file.read(reinterpret_cast<char *>(buffer.data()), size)) {
-		throw std::runtime_error("Failed to read complete file: " + native_path);
-	}
-	return load_from_memory(buffer);
+	return load_from_memory(read_native_file(native_path));
 }
 
 TextureLoader::RawImageData TextureLoader::load_from_memory(std::span<const Uint8> bytes) {
@@ -84,26 +92,37 @@ TextureLoader::RawHDRData TextureLoader::load_hdr_from_file(const std::string &f
 		return data;
 	}
 
-	std::vector<char> buffer(size);
+	std::vector<Uint8> buffer(static_cast<Usize>(size));
 	const size_t bytes_read = file->read(buffer.data(), size);
 	if (bytes_read != static_cast<size_t>(size)) {
 		AQUILA_LOG_ERROR("TextureLoader: incomplete read for '{}'", filepath);
 		return data;
 	}
 
+	data = load_hdr_from_memory(buffer);
+	if (!data.is_valid()) {
+		AQUILA_LOG_ERROR("TextureLoader: failed to decode HDR '{}': {}", filepath, stbi_failure_reason());
+	}
+	return data;
+}
+
+TextureLoader::RawHDRData TextureLoader::load_hdr_from_native(const std::string &native_path) {
+	return load_hdr_from_memory(read_native_file(native_path));
+}
+
+TextureLoader::RawHDRData TextureLoader::load_hdr_from_memory(std::span<const Uint8> bytes) {
+	RawHDRData data{};
+
 	int width = 0, height = 0, channels = 0;
-	F32 *pixels = stbi_loadf_from_memory(reinterpret_cast<const stbi_uc *>(buffer.data()), static_cast<int>(bytes_read),
-										 &width, &height, &channels, 4);
+	F32 *pixels = stbi_loadf_from_memory(bytes.data(), static_cast<int>(bytes.size()), &width, &height, &channels,
+										 STBI_rgb_alpha);
+	if (pixels == nullptr) {
+		return data;
+	}
 
 	data.width = static_cast<Uint32>(width);
 	data.height = static_cast<Uint32>(height);
 	data.channels = static_cast<Uint32>(channels);
-
-	if (pixels == nullptr) {
-		AQUILA_LOG_ERROR("TextureLoader: failed to decode HDR '{}': {}", filepath, stbi_failure_reason());
-		return data;
-	}
-
 	const size_t pixel_count = static_cast<size_t>(data.width) * data.height * 4;
 	data.pixels = std::make_unique<F32[]>(pixel_count);
 	std::memcpy(data.pixels.get(), pixels, pixel_count * sizeof(F32));

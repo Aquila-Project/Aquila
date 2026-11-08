@@ -1,19 +1,16 @@
-#include "UI/Inspector/ScriptContent.h"
+#include "UI/Inspector/Script/ScriptFieldRows.h"
 
 #include "Aquila/Foundation/ServiceRegistry.h"
 #include "Aquila/Scene/Components/ScriptComponent.h"
 #include "Aquila/Scripting/ScriptApi.h"
-#include "Aquila/UI/Widgets/Button.h"
 #include "Aquila/UI/Widgets/PropertyGrid.h"
 #include "Aquila/UI/Widgets/ReflectedPropertyGrid.h"
 #include "Core/EditorContext.h"
-#include "Core/ScriptEditor.h"
-#include "UI/Inspector/InspectorLabels.h"
+#include "UI/Inspector/Common/InspectorLabels.h"
 
 namespace Editor {
 
 using namespace Aquila;
-using SceneManagement::Entity;
 using SceneManagement::Components::EntityReference;
 using SceneManagement::Components::ScriptComponent;
 using SceneManagement::Components::ScriptFieldValue;
@@ -73,9 +70,10 @@ ScriptFieldValue from_property(const ScriptField &field, const Reflection::Prope
 	return field.default_value;
 }
 
-Reflection::Property make_property(const ScriptField &field) {
+Reflection::Property make_property(const ScriptField &field, bool read_only) {
 	Reflection::Property property;
 	property.name = label_of(field.name);
+	property.hints.read_only = read_only;
 	switch (field.type) {
 	case ScriptFieldType::Number: {
 		property.kind = field.integer ? Reflection::PropertyKind::Int : Reflection::PropertyKind::Float;
@@ -120,47 +118,19 @@ Reflection::Property make_property(const ScriptField &field) {
 
 }
 
-ScriptContent::ScriptContent(Entity entity, EditorContext &context) : m_entity(entity), m_context(context) {}
-
-ScriptContent::~ScriptContent() = default;
-
-void ScriptContent::build_below(UI::Core::PropertyGrid &grid) {
-	m_open_button = grid.add_row<UI::Core::Button>("", std::string("Open in Script Editor"));
-	if (m_open_button != nullptr) {
-		m_open_button->set_icon(m_context.icon("file-code"));
-		m_open_button->set_tooltip("Settings > Script Editor picks the program");
-		m_open_button->on_click.connect([this] { open_script(); });
-	}
-	m_fields_grid = grid.add_grid();
-	m_fields_grid->set_split(grid.is_split());
-	m_fields_grid->set_hidden(true);
-	show_fields();
-}
-
-void ScriptContent::refresh() {
-	if (m_fields != nullptr) {
-		m_fields->refresh();
+ScriptFieldRows::ScriptFieldRows(UI::Core::PropertyGrid &parent, EditorContext &context, bool read_only)
+	: m_context(context), m_read_only(read_only), m_grid(parent.add_grid()) {
+	if (m_grid != nullptr) {
+		m_grid->set_split(parent.is_split());
+		m_grid->set_hidden(true);
 	}
 }
 
-void ScriptContent::on_property_edited() {
-	show_fields();
-}
+ScriptFieldRows::~ScriptFieldRows() = default;
 
-void ScriptContent::open_script() const {
-	const auto *component = m_entity.exists() ? m_entity.try_get_component<ScriptComponent>() : nullptr;
-	if (component != nullptr && !component->path.empty()) {
-		open_in_script_editor(component->path);
-	}
-}
-
-void ScriptContent::show_fields() {
-	if (m_fields_grid == nullptr) {
+void ScriptFieldRows::show(ScriptComponent *component, Delegate<void()> on_edited) {
+	if (m_grid == nullptr) {
 		return;
-	}
-	auto *component = m_entity.exists() ? m_entity.try_get_component<ScriptComponent>() : nullptr;
-	if (m_open_button != nullptr) {
-		m_open_button->set_enabled(component != nullptr && !component->path.empty());
 	}
 	const auto *api = m_context.engine().get_services().find<Scripting::ScriptApi>();
 	std::vector<ScriptField> declared =
@@ -168,24 +138,26 @@ void ScriptContent::show_fields() {
 
 	if (m_fields == nullptr || declared != m_declared) {
 		m_fields.reset();
-		m_fields_grid->clear_children();
+		m_grid->clear_children();
 		m_declared = std::move(declared);
-		m_fields_type = std::make_unique<Reflection::TypeInfo>("Script Fields");
+		m_type = std::make_unique<Reflection::TypeInfo>("Script Fields");
 		for (const ScriptField &field : m_declared) {
-			m_fields_type->add(make_property(field));
+			m_type->add(make_property(field, m_read_only));
 		}
-		m_fields = std::make_unique<UI::Core::ReflectedPropertyGrid>(*m_fields_grid, *m_fields_type,
-																	 &m_context.engine().get_context());
+		m_fields =
+			std::make_unique<UI::Core::ReflectedPropertyGrid>(*m_grid, *m_type, &m_context.engine().get_context());
 	}
-	m_fields_grid->set_hidden(m_declared.empty() || component == nullptr);
+	m_grid->set_hidden(m_declared.empty() || component == nullptr);
 	if (component == nullptr) {
 		return;
 	}
-	m_fields->bind(component, [this] {
-		if (notify_edited) {
-			notify_edited();
-		}
-	});
+	m_fields->bind(component, std::move(on_edited));
+}
+
+void ScriptFieldRows::refresh() {
+	if (m_fields != nullptr) {
+		m_fields->refresh();
+	}
 }
 
 }
