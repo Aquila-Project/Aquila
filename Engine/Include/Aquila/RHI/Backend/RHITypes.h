@@ -176,6 +176,13 @@ struct SamplerDesc {
 		return d;
 	}
 
+	static SamplerDesc cube() {
+		SamplerDesc d{};
+		d.mipmap_mode = MipmapMode::Linear;
+		d.max_lod = 7;
+		return d;
+	}
+
 	static SamplerDesc render_target() {
 		SamplerDesc d{};
 		d.mipmap_mode = MipmapMode::Linear;

@@ -160,7 +160,8 @@ float3 ShadeSurface(Surface s, SurfaceInput input, bool receivesShadows) {
 		float3 kD = (1.0 - specularAlbedo) * (1.0 - p.metallic);
 		float specularOcclusion = saturate(pow(p.NdotV + ao, exp2(-16.0 * p.roughness - 1.0)) - 1.0 + ao);
 		float3 diffuseAmbient = kD * p.albedo * EvaluateSH(p.N) * ao;
-		float3 specularAmbient = EvaluateSH(p.R) * specularAlbedo * p.energyCompensation * specularOcclusion;
+		float3 specularAmbient =
+			EvaluateReflection(p.R, p.roughness) * specularAlbedo * p.energyCompensation * specularOcclusion;
 		ambient = diffuseAmbient + specularAmbient;
 	}
 

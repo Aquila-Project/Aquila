@@ -1,6 +1,7 @@
 #include "Aquila/Rendering/SceneFrameData.h"
 #include "Aquila/Scene/Visibility.h"
 #include "Aquila/GFX/GfxContext.h"
+#include "Aquila/GFX/GfxCommandList.h"
 #include "Aquila/Scene/Scene.h"
 #include "Aquila/Scene/Entity.h"
 #include "Aquila/Scene/Components/CameraComponent.h"
@@ -104,6 +105,12 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
                 .stages  = RHI::ShaderStageFlags::Fragment,
                 .count   = 1,
             },
+            {
+                .binding = 13,
+                .type    = RHI::DescriptorType::CombinedImageSampler,
+                .stages  = RHI::ShaderStageFlags::Fragment,
+                .count   = 1,
+            },
         },
     });
 
@@ -189,6 +196,23 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 		.debug_name = "ClusterLightInfo",
 	});
 
+	RHI::SamplerDesc reflection_sampler = RHI::SamplerDesc::render_target();
+	reflection_sampler.max_lod = static_cast<F32>(K_REFLECTION_MIPS - 1);
+	m_reflection_cube = ctx.create_texture({
+		.width = K_REFLECTION_SIZE,
+		.height = K_REFLECTION_SIZE,
+		.mip_levels = K_REFLECTION_MIPS,
+		.array_layers = 6,
+		.format = RHI::TextureFormat::RGBA16F,
+		.usage = RHI::TextureUsage::ColorAttachment | RHI::TextureUsage::Sampled | RHI::TextureUsage::TransferSrc,
+		.view_type = RHI::TextureViewType::Cube,
+		.sampler = reflection_sampler,
+		.debug_name = "ReflectionCube",
+	});
+	ctx.execute_immediate(RHI::CommandListType::Graphics, [this](GFX::GfxCommandList &cmd) {
+		cmd.transition_texture(*m_reflection_cube, RHI::ResourceState::Undefined, RHI::ResourceState::ShaderRead);
+	});
+
 	for (Uint32 i = 0; i < SharedConstants::MAX_FRAMES_IN_FLIGHT; ++i) {
 		m_sets[i]
 			->set_buffer(0, *m_frame_buffers[i])
@@ -204,8 +228,14 @@ SceneFrameData::SceneFrameData(GFX::GfxContext &ctx, Uint32 width, Uint32 height
 			.set_texture(10, *m_shadow_maps[i][3])
 			.set_buffer(11, *m_local_shadow_buffers[i])
 			.set_texture(12, *m_local_shadow_atlases[i])
+			.set_texture(13, *m_reflection_cube)
 			.flush();
 	}
+}
+
+void SceneFrameData::set_reflection_ready(Uint32 frame_slot, bool ready) {
+	const Int32 flag = ready ? 1 : 0;
+	m_env_buffers[frame_slot]->write(&flag, sizeof(flag), offsetof(GpuEnvironmentData, m_reflection));
 }
 
 RenderView render_view_from_entity(const CameraComponent &cam, TransformComponent &transform, Option<F32> aspect) {
