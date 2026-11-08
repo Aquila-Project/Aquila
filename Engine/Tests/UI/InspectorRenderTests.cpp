@@ -1,7 +1,6 @@
 #include <doctest.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb/stb_image_write.h"
 
 #include "Aquila/GFX/GfxBuffer.h"
 #include "Aquila/GFX/GfxRenderpass.h"
@@ -15,6 +14,7 @@
 #include "GpuTestSupport.h"
 #include "InspectorFixture.h"
 #include "LoaderTestSupport.h"
+#include "RenderTestSupport.h"
 #include "StyleSnapshot.h"
 
 using namespace Aquila;
@@ -78,29 +78,6 @@ const Reflection::TypeInfo &material_type() {
 	return type;
 }
 
-struct Fonts {
-	Unique<Text::FontAtlas> regular;
-	Unique<Text::FontAtlas> mono;
-
-	explicit Fonts(GFX::GfxContext &ctx)
-		: regular(Text::FontAtlas::create_from_file(ctx, "/resources/Engine/Fonts/Geist/Geist-Regular.ttf")),
-		  mono(Text::FontAtlas::create_from_file(ctx, "/resources/Engine/Fonts/Inconsolata/Inconsolata-Regular.ttf")) {
-		REQUIRE(regular != nullptr);
-		REQUIRE(mono != nullptr);
-		for (const char *family : { "regular", "medium", "bold" }) {
-			FontRegistry::Register(family, regular.get());
-		}
-		FontRegistry::Register("mono", mono.get());
-	}
-
-	~Fonts() {
-		for (const char *family : { "regular", "medium", "mono", "bold" }) {
-			FontRegistry::Register(family, test_gpu().font.get());
-		}
-	}
-	AQUILA_NONCOPYABLE(Fonts);
-	AQUILA_NONMOVEABLE(Fonts);
-};
 
 struct Section {
 	PropertyGrid *grid = nullptr;
@@ -119,66 +96,6 @@ Section add_section(LayoutLoader &loader, InspectorPage &page, const std::string
 	return result;
 }
 
-void write_png(GFX::GfxContext &ctx, Canvas &canvas, Uint32 width, Uint32 height, const std::string &path) {
-	RHI::TextureDesc desc{};
-	desc.width = width;
-	desc.height = height;
-	desc.format = RHI::TextureFormat::RGBA8;
-	desc.usage = RHI::TextureUsage::ColorAttachment | RHI::TextureUsage::TransferSrc;
-	desc.debug_name = "InspectorRender";
-	Ref<GFX::GfxTexture> target = ctx.create_texture(desc);
-	REQUIRE(target != nullptr);
-
-	RHI::RenderPassDesc pass_desc{};
-	pass_desc.color_attachments = { {
-		.texture = &target->get_rhi(),
-		.clear_color = Vec4(0.122F, 0.122F, 0.122F, 1.F),
-		.load_op = RHI::AttachmentLoadOp::Clear,
-		.store_op = RHI::AttachmentStoreOp::Store,
-	} };
-	pass_desc.width = width;
-	pass_desc.height = height;
-	pass_desc.debug_name = "InspectorRender";
-	pass_desc.external_barriers = true;
-	Ref<GFX::GfxRenderPass> pass = ctx.create_render_pass(pass_desc);
-	REQUIRE(pass != nullptr);
-
-	RHI::BufferDesc buffer_desc{};
-	buffer_desc.size = static_cast<Uint64>(width) * height * 4;
-	buffer_desc.usage = RHI::BufferUsage::TransferDst;
-	buffer_desc.domain = RHI::MemoryDomain::GpuToCpu;
-	buffer_desc.debug_name = "InspectorRenderReadback";
-	Ref<GFX::GfxBuffer> readback = ctx.create_buffer(buffer_desc);
-	REQUIRE(readback != nullptr);
-
-	Graphics::Renderer2D batcher(ctx);
-	const Mat4 ortho = glm::ortho(0.F, static_cast<F32>(width), static_cast<F32>(height), 0.F, -1.F, 1.F);
-	ctx.execute_immediate(RHI::CommandListType::Graphics, [&](GFX::GfxCommandList &cmd) {
-		cmd.transition_texture(*target, RHI::ResourceState::Undefined, RHI::ResourceState::ColorAttachmentWrite);
-		pass->begin(cmd);
-		cmd.set_viewport(0.F, 0.F, static_cast<F32>(width), static_cast<F32>(height));
-		cmd.set_scissor(0, 0, width, height);
-		batcher.begin(cmd, RHI::TextureFormat::RGBA8, RHI::SampleCount::X1, ortho);
-		canvas.submit_to_quad_batcher(batcher, cmd);
-		batcher.end();
-		pass->end(cmd);
-		cmd.transition_texture(*target, RHI::ResourceState::ColorAttachmentWrite, RHI::ResourceState::TransferSrc);
-		cmd.copy_texture_to_buffer(*target, *readback, width, height);
-	});
-	ctx.wait_idle();
-
-	std::filesystem::create_directories(std::filesystem::path(path).parent_path());
-	const auto *mapped = static_cast<const Uint8 *>(readback->map());
-	REQUIRE(mapped != nullptr);
-	std::vector<Uint8> pixels(mapped, mapped + buffer_desc.size);
-	readback->unmap();
-	for (Usize i = 3; i < pixels.size(); i += 4) {
-		pixels[i] = 255;
-	}
-	CHECK(stbi_write_png(path.c_str(), static_cast<int>(width), static_cast<int>(height), 4, pixels.data(),
-						 static_cast<int>(width * 4)) != 0);
-	MESSAGE("wrote " << std::filesystem::absolute(path).string());
-}
 
 }
 
@@ -188,7 +105,7 @@ TEST_SUITE("Inspector render") {
 		GFX::GfxContext &ctx = *gpu.ctx;
 		RHI::VulkanShaderCompiler::initialize();
 		Graphics::Shader::ShaderHotReload::init();
-		Fonts fonts(ctx);
+		RenderFonts fonts(ctx);
 		FontRegistry::set_ui_scale(K_SCALE);
 		const auto width = static_cast<Uint32>(static_cast<F32>(K_WIDTH) * K_SCALE);
 		const auto height = static_cast<Uint32>(static_cast<F32>(K_HEIGHT) * K_SCALE);
