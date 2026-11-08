@@ -21,6 +21,8 @@ class BehaviourWindow final : public CanvasWindow {
 	/// Never call it from the window's own events or update: the old behaviour is destroyed.
 	/// @return false without a factory or when the markup doesn't build (the window stays empty until it does)
 	bool rebuild();
+	/// Sees the window's events before its behaviour, true swallows the event. For app-wide keys.
+	void set_event_hook(Delegate<bool(Platform::Events::Event &)> hook) { m_event_hook = std::move(hook); }
 
 	template <std::derived_from<WindowBehaviour> T> [[nodiscard]] T *get_behaviour() const {
 		return dynamic_cast<T *>(m_behaviour);
@@ -33,6 +35,7 @@ class BehaviourWindow final : public CanvasWindow {
 
 	LayoutLoader &m_loader;
 	Factory m_factory;
+	Delegate<bool(Platform::Events::Event &)> m_event_hook;
 	WindowBehaviour *m_behaviour = nullptr;
 };
 

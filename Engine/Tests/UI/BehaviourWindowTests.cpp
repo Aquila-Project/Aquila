@@ -1,5 +1,6 @@
 #include <doctest.h>
 
+#include "Aquila/Platform/Events/InputEvent.h"
 #include "Aquila/UI/Core/BehaviourWindow.h"
 #include "Aquila/UI/Core/Canvas.h"
 #include "Aquila/UI/Core/LayoutLoader.h"
@@ -28,8 +29,14 @@ struct CountingWindow final : WindowBehaviour {
 		carried = dynamic_cast<CountingWindow &>(previous).carried + 1;
 	}
 
+	bool intercept_event(Platform::Events::Event &) override {
+		++intercepted;
+		return true;
+	}
+
 	int &built;
 	int carried = 0;
+	int intercepted = 0;
 };
 
 std::string title_of(const BehaviourWindow &window) {
@@ -96,5 +103,29 @@ TEST_SUITE("BehaviourWindow") {
 		loader.forget_documents();
 		CHECK(window.rebuild());
 		CHECK(title_of(window) == "After 0");
+	}
+
+	TEST_CASE("the event hook sees events before the behaviour and can swallow them") {
+		CanvasSingletonsScope singletons;
+		MarkupFiles files;
+		write_window(files, "Keys");
+		LayoutLoader loader;
+		int built = 0;
+		BehaviourWindow window(loader, [&built] { return std::make_unique<CountingWindow>(K_FILE, built); }, 200, 100);
+		int hooked = 0;
+		bool swallow = true;
+		window.set_event_hook([&hooked, &swallow](Platform::Events::Event &) {
+			++hooked;
+			return swallow;
+		});
+		Platform::Events::KeyPressedEvent key(Platform::Events::KeyCode::F5, 0);
+		window.on_event(key);
+		CHECK(hooked == 1);
+		CHECK(window.get_behaviour<CountingWindow>()->intercepted == 0);
+
+		swallow = false;
+		window.on_event(key);
+		CHECK(hooked == 2);
+		CHECK(window.get_behaviour<CountingWindow>()->intercepted == 1);
 	}
 }

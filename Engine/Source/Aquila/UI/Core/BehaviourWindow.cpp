@@ -65,6 +65,9 @@ void BehaviourWindow::on_update(F32 delta_time) {
 }
 
 bool BehaviourWindow::intercept_event(Platform::Events::Event &event) {
+	if (m_event_hook && m_event_hook(event)) {
+		return true;
+	}
 	return m_behaviour != nullptr && m_behaviour->intercept_event(event);
 }
 
