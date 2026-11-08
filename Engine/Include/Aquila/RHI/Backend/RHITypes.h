@@ -440,6 +440,8 @@ struct RenderPassDesc {
 	// When true, colorAttachments[0].texture is the MSAA render target and the
 	// swapchain image (passed to Begin()) is used as the resolve destination.
 	bool use_swapchain_as_resolve = false;
+	/// 0 takes the size of the first color attachment's mip_level, or of the depth attachment. A pass that draws to or
+	/// resolves into the swapchain always takes the swapchain's size.
 	Uint32 width = 0;
 	Uint32 height = 0;
 

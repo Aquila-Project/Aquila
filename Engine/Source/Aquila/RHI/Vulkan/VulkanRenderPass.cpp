@@ -8,6 +8,20 @@
 
 namespace Aquila::RHI {
 
+static VkExtent2D attachment_extent(const RenderPassDesc &desc) {
+	const auto mip_extent = [](const IRHITexture &texture, Uint32 mip_level) {
+		return VkExtent2D{ .width = std::max(1U, texture.get_width() >> mip_level),
+						   .height = std::max(1U, texture.get_height() >> mip_level) };
+	};
+	if (!desc.color_attachments.empty() && desc.color_attachments[0].texture != nullptr) {
+		return mip_extent(*desc.color_attachments[0].texture, desc.color_attachments[0].mip_level);
+	}
+	if (desc.depth_attachment.has_value() && desc.depth_attachment->texture != nullptr) {
+		return mip_extent(*desc.depth_attachment->texture, 0);
+	}
+	return VkExtent2D{};
+}
+
 static VkImageMemoryBarrier make_barrier(VkImage image, VkImageAspectFlags aspect, VkImageLayout old_layout,
 										 VkImageLayout new_layout, VkAccessFlags src_access, VkAccessFlags dst_access) {
 	VkImageMemoryBarrier b{};
@@ -181,6 +195,11 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 
 	Uint32 width = m_desc.width;
 	Uint32 height = m_desc.height;
+	if (width == 0 || height == 0) {
+		const VkExtent2D extent = attachment_extent(m_desc);
+		width = extent.width;
+		height = extent.height;
+	}
 
 	std::vector<VkRenderingAttachmentInfo> color_infos;
 	const auto add_color = [&color_infos](VkImageView view, VkImageView resolve_view,
@@ -226,7 +245,7 @@ void VulkanRenderPass::begin(IRHICommandList &cmd, IRHISwapchain *swapchain, Uin
 				resolve_view = m_active_swapchain->get_image_view(image_index);
 			}
 
-			add_color(vk_tex.get_image_view(), resolve_view, att);
+			add_color(vk_tex.get_attachment_view(att.mip_level, att.array_layer), resolve_view, att);
 			m_color_format = m_desc.use_swapchain_as_resolve ? TextureFormat::BGRA8 : vk_tex.get_format();
 			m_sample_count = vk_tex.get_sample_count();
 		}

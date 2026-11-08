@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include "Aquila/GFX/GfxContext.h"
+#include "Aquila/GFX/GfxRenderpass.h"
 
 using namespace Aquila;
 
@@ -330,5 +331,61 @@ TEST_SUITE("CommandList") {
 		}
 		std::array<Uint64, 3> ticks{};
 		CHECK_FALSE(pool->read_timestamps(0, ticks));
+	}
+}
+
+// [RenderPass]
+
+namespace {
+
+Ref<GFX::GfxRenderPass> begin_and_end(GFX::GfxTexture &target, Uint32 mip_level, Uint32 width = 0, Uint32 height = 0) {
+	RHI::RenderPassColorAttachmentDesc color{};
+	color.texture = &target.get_rhi();
+	color.mip_level = mip_level;
+	RHI::RenderPassDesc desc{};
+	desc.color_attachments = { color };
+	desc.width = width;
+	desc.height = height;
+	Ref<GFX::GfxRenderPass> pass = Ctx().create_render_pass(desc);
+	Ctx().execute_immediate(RHI::CommandListType::Graphics, [&](GFX::GfxCommandList &cmd) {
+		pass->begin(cmd);
+		pass->end(cmd);
+	});
+	return pass;
+}
+
+Ref<GFX::GfxTexture> mipped_target() {
+	RHI::TextureDesc desc{};
+	desc.width = 128;
+	desc.height = 64;
+	desc.mip_levels = 8;
+	desc.format = RHI::TextureFormat::RGBA8;
+	desc.usage = RHI::TextureUsage::ColorAttachment | RHI::TextureUsage::Sampled;
+	desc.debug_name = "Test_MippedTarget";
+	return Ctx().create_texture(desc);
+}
+
+}
+
+TEST_SUITE("RenderPass") {
+	TEST_CASE("A pass without a size takes its attachment's mip size") {
+		Ref<GFX::GfxTexture> target = mipped_target();
+		Ref<GFX::GfxRenderPass> pass = begin_and_end(*target, 2);
+		CHECK(pass->get_width() == 32);
+		CHECK(pass->get_height() == 16);
+	}
+
+	TEST_CASE("A mip is never smaller than one pixel") {
+		Ref<GFX::GfxTexture> target = mipped_target();
+		Ref<GFX::GfxRenderPass> pass = begin_and_end(*target, 7);
+		CHECK(pass->get_width() == 1);
+		CHECK(pass->get_height() == 1);
+	}
+
+	TEST_CASE("A size set on the desc wins") {
+		Ref<GFX::GfxTexture> target = mipped_target();
+		Ref<GFX::GfxRenderPass> pass = begin_and_end(*target, 0, 40, 20);
+		CHECK(pass->get_width() == 40);
+		CHECK(pass->get_height() == 20);
 	}
 }

@@ -1,8 +1,12 @@
 #include "Aquila/RHI/Vulkan/VulkanTexture.h"
+#include "Aquila/Foundation/PrimitiveTypes.h"
 #include "Aquila/RHI/Vulkan/VulkanDeletionQueue.h"
 
 #include "Aquila/RHI/Vulkan/VulkanDevice.h"
 #include "Aquila/RHI/Vulkan/VulkanFormatUtils.h"
+#include <vulkan/vulkan_core.h>
+
+#include <cstddef>
 
 namespace Aquila::RHI {
 
@@ -35,8 +39,18 @@ VulkanTexture::~VulkanTexture() {
 	}
 
 	if (m_image_allocation.image != VK_NULL_HANDLE) {
-		queue.queue_deletion(Deletion::VmaImageDeletion{ .image = m_image_allocation.image,
-														 .allocation = m_image_allocation.allocation });
+		queue.queue_deletion(Deletion::VmaImageDeletion{
+			.image = m_image_allocation.image,
+			.allocation = m_image_allocation.allocation,
+		});
+	}
+
+	if (!m_image_views.empty()) {
+		for (auto *view : m_image_views) {
+			if (view != VK_NULL_HANDLE) {
+				queue.queue_deletion(view);
+			}
+		}
 	}
 }
 
@@ -45,6 +59,14 @@ void VulkanTexture::destroy_immediate() {
 		vkDestroyImageView(m_device.get_device(), m_image_view, nullptr);
 		m_image_view = VK_NULL_HANDLE;
 	}
+	if (!m_image_views.empty()) {
+		for (auto *view : m_image_views) {
+			if (view != VK_NULL_HANDLE) {
+				vkDestroyImageView(m_device.get_device(), view, nullptr);
+			}
+		}
+	}
+
 	vmaDestroyImage(m_device.get_allocator(), m_image_allocation.image, m_image_allocation.allocation);
 	m_image_allocation.image = VK_NULL_HANDLE;
 	m_image_allocation.allocation = VK_NULL_HANDLE;
@@ -75,6 +97,31 @@ void VulkanTexture::create_image_view() {
 	view_info.subresourceRange.layerCount = m_desc.array_layers;
 
 	AQUILA_VULKAN_CHECK(vkCreateImageView(m_device.get_device(), &view_info, nullptr, &m_image_view));
+}
+
+VkImageView VulkanTexture::get_attachment_view(Uint32 mip_level, Uint32 layer) {
+	if (m_image_views.empty()) {
+		m_image_views.resize(m_desc.mip_levels * m_desc.array_layers, VK_NULL_HANDLE);
+	}
+	VkImageView &view = m_image_views[(layer * m_desc.mip_levels) + mip_level];
+	if (view == VK_NULL_HANDLE) {
+		bool is_depth = is_depth_format(m_desc.format);
+
+		VkImageViewCreateInfo view_info{};
+		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		view_info.image = m_image_allocation.image;
+		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		view_info.format = to_vk_format(m_desc.format);
+		view_info.components = to_vk_component_mapping(m_desc.swizzle);
+		view_info.subresourceRange.aspectMask = is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+		view_info.subresourceRange.baseMipLevel = mip_level;
+		view_info.subresourceRange.levelCount = 1;
+		view_info.subresourceRange.baseArrayLayer = layer;
+		view_info.subresourceRange.layerCount = 1;
+
+		AQUILA_VULKAN_CHECK(vkCreateImageView(m_device.get_device(), &view_info, nullptr, &view));
+	}
+	return view;
 }
 
 void VulkanTexture::create_sampler() {
