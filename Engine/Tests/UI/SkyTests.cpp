@@ -65,7 +65,7 @@ SHCoefficients sh_of(Uint32 width, Uint32 height, const Radiance &radiance) {
 	return Rendering::bake_equirect_sh(image.data(), width, height);
 }
 
-bool near(Vec3 a, Vec3 b, F32 tolerance) {
+bool is_near(Vec3 a, Vec3 b, F32 tolerance) {
 	return Math::length(a - b) <= tolerance * Math::max(Math::length(b), 1e-3F);
 }
 
@@ -88,7 +88,7 @@ TEST_SUITE("Environment image") {
 		const SHCoefficients sh = sh_of(64, 32, [&](F32, F32) { return radiance; });
 		for (const Vec3 normal : { Vec3(1, 0, 0), Vec3(-1, 0, 0), Vec3(0, 1, 0), Vec3(0, -1, 0), Vec3(0, 0, 1),
 								   Vec3(0, 0, -1), Vec3(1, 1, 1) }) {
-			CHECK(near(evaluate_sh(sh, normal), radiance, 0.01F));
+			CHECK(is_near(evaluate_sh(sh, normal), radiance, 0.01F));
 		}
 	}
 
@@ -355,16 +355,16 @@ TEST_SUITE("Sky") {
 		for (Uint32 face = 0; face < 6; ++face) {
 			for (const Uint32 mip : { 0U, 4U, Rendering::SkySystem::K_SOURCE_MIPS - 1 }) {
 				for (const Vec4 &texel : fixture.read(fixture.source(), face, mip)) {
-					REQUIRE(near(Vec3(texel), radiance, 0.01F));
+					REQUIRE(is_near(Vec3(texel), radiance, 0.01F));
 				}
 			}
 			for (const Uint32 mip : { 0U, 3U, Rendering::SceneFrameData::K_REFLECTION_MIPS - 1 }) {
 				for (const Vec4 &texel : fixture.read(SkyFixture::reflection(), face, mip)) {
-					REQUIRE(near(Vec3(texel), radiance, 0.02F));
+					REQUIRE(is_near(Vec3(texel), radiance, 0.02F));
 				}
 			}
 		}
-		CHECK(near(evaluate_sh(fixture.sky->get_irradiance(), Vec3(0, 1, 0)), radiance, 0.01F));
+		CHECK(is_near(evaluate_sh(fixture.sky->get_irradiance(), Vec3(0, 1, 0)), radiance, 0.01F));
 	}
 
 	TEST_CASE("The source cube faces look where the image says") {
@@ -473,8 +473,8 @@ TEST_SUITE("Sky") {
 			Math::radians(fixture.sky->get_sun_elevation()), fixture.sky->get_turbidity(),
 			fixture.sky->get_ground_albedo(), fixture.sky->get_sun_direction());
 		const Vec3 zenith = Rendering::HosekWilkieSky::evaluate(data, Vec3(0, 1, 0));
-		CHECK(near(fixture.centre(fixture.source(), 2), zenith, 0.02F));
-		CHECK(near(fixture.centre(SkyFixture::reflection(), 2), zenith, 0.03F));
+		CHECK(is_near(fixture.centre(fixture.source(), 2), zenith, 0.02F));
+		CHECK(is_near(fixture.centre(SkyFixture::reflection(), 2), zenith, 0.03F));
 		CHECK_FALSE(fixture.sky->is_dirty());
 	}
 }

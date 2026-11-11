@@ -1,44 +1,38 @@
-set(AQUILA_VULKAN_VERSION 1.4.357)
+option(AQUILA_SYSTEM_VULKAN "Use an installed Vulkan SDK or system loader instead of the Vulkan-Headers and Vulkan-Loader submodules" OFF)
 
-option(AQUILA_FETCH_VULKAN "Build the Vulkan headers and loader from source instead of using a system or SDK install" OFF)
+set(AQUILA_VULKAN_HEADERS_DIR "${CMAKE_SOURCE_DIR}/Engine/Vendor/Vulkan-Headers")
+set(AQUILA_VULKAN_LOADER_DIR "${CMAKE_SOURCE_DIR}/Engine/Vendor/Vulkan-Loader")
 
-function(aquila_detect_vulkan)
-    set(AQUILA_BUILD_VULKAN_LOADER OFF PARENT_SCOPE)
-    if (NOT AQUILA_FETCH_VULKAN)
-        find_package(Vulkan QUIET)
-        if (Vulkan_FOUND)
-            return()
-        endif ()
-    endif ()
-    set(AQUILA_BUILD_VULKAN_LOADER ON PARENT_SCOPE)
+function(_aquila_expose_vulkan_headers_package)
+    get_directory_property(_version DIRECTORY "${AQUILA_VULKAN_HEADERS_DIR}" DEFINITION VULKAN_HEADERS_VERSION)
+    include(CMakePackageConfigHelpers)
+    file(WRITE "${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}/vulkanheaders-config.cmake" "")
+    write_basic_package_version_file("${CMAKE_FIND_PACKAGE_REDIRECTS_DIR}/vulkanheaders-config-version.cmake"
+        VERSION ${_version}
+        COMPATIBILITY SameMajorVersion
+        ARCH_INDEPENDENT
+    )
+    message(STATUS "Aquila: building the Vulkan loader ${_version} from Engine/Vendor")
 endfunction()
 
 macro(aquila_provide_vulkan)
-    if (AQUILA_BUILD_VULKAN_LOADER)
-        message(STATUS "Aquila: building Vulkan headers and loader ${AQUILA_VULKAN_VERSION} from source")
-        include(FetchContent)
-        FetchContent_Declare(aquila_vulkan_headers
-            URL https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v${AQUILA_VULKAN_VERSION}.tar.gz
-            DOWNLOAD_EXTRACT_TIMESTAMP ON
-        )
-        FetchContent_MakeAvailable(aquila_vulkan_headers)
+    if (AQUILA_SYSTEM_VULKAN)
+        find_package(Vulkan REQUIRED)
+    else ()
+        add_subdirectory("${AQUILA_VULKAN_HEADERS_DIR}" SYSTEM)
+        _aquila_expose_vulkan_headers_package()
 
         set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(BUILD_WSI_WAYLAND_SUPPORT OFF CACHE BOOL "" FORCE)
         set(BUILD_WSI_DIRECTFB_SUPPORT OFF CACHE BOOL "" FORCE)
-        FetchContent_Declare(aquila_vulkan_loader
-            URL https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/v${AQUILA_VULKAN_VERSION}.tar.gz
-            DOWNLOAD_EXTRACT_TIMESTAMP ON
-        )
-        FetchContent_MakeAvailable(aquila_vulkan_loader)
+        add_subdirectory("${AQUILA_VULKAN_LOADER_DIR}" SYSTEM)
+        set_target_properties(vulkan PROPERTIES DEBUG_POSTFIX "")
 
         add_library(AquilaVulkan INTERFACE)
         target_link_libraries(AquilaVulkan INTERFACE vulkan Vulkan::Headers)
         add_library(Vulkan::Vulkan ALIAS AquilaVulkan)
         set(Vulkan_FOUND TRUE)
-        set(Vulkan_INCLUDE_DIRS "${aquila_vulkan_headers_SOURCE_DIR}/include")
-    else ()
-        find_package(Vulkan REQUIRED)
+        set(Vulkan_INCLUDE_DIRS "${AQUILA_VULKAN_HEADERS_DIR}/include")
     endif ()
 endmacro()
 

@@ -36,7 +36,7 @@ _aquila_require(X11_Xcursor_FOUND "Xcursor headers" libxcursor-dev libxcursor li
 _aquila_require(X11_Xi_FOUND "XInput headers" libxi-dev libxi libXi-devel libXi-devel)
 _aquila_require(X11_Xkb_FOUND "XKB headers" libx11-dev libx11 libX11-devel libX11-devel)
 
-if (AQUILA_BUILD_VULKAN_LOADER)
+if (NOT AQUILA_SYSTEM_VULKAN)
     _aquila_require(X11_xcb_FOUND "XCB headers (Vulkan loader)" libxcb1-dev libxcb libxcb-devel libxcb-devel)
 endif ()
 

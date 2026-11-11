@@ -12,6 +12,13 @@ namespace Aquila::UI::Core {
 class IResourceResolver;
 
 struct MarkupItem {
+	MarkupItem() = default;
+	MarkupItem(const MarkupItem &) = delete;
+	MarkupItem &operator=(const MarkupItem &) = delete;
+	MarkupItem(MarkupItem &&) = default;
+	MarkupItem &operator=(MarkupItem &&) = default;
+	~MarkupItem() = default;
+
 	std::string tag{};
 	std::map<std::string, std::string, std::less<>> attributes{};
 	std::vector<MarkupItem> items{};

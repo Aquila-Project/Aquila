@@ -1573,12 +1573,12 @@ TEST_SUITE("Scene.raycast") {
 			entity.add_component<MeshComponent>().set_mesh(cube);
 			return entity;
 		};
-		Entity near = crate("Crate", Vec3(0.F, 0.F, 10.F));
-		near.get_component<TransformComponent>().set_local_rotation_euler(Vec3(0.F, 30.F, 0.F));
-		near.get_component<TransformComponent>().set_local_scale(Vec3(2.F));
+		Entity near_crate = crate("Crate", Vec3(0.F, 0.F, 10.F));
+		near_crate.get_component<TransformComponent>().set_local_rotation_euler(Vec3(0.F, 30.F, 0.F));
+		near_crate.get_component<TransformComponent>().set_local_scale(Vec3(2.F));
 		crate("Far", Vec3(0.F, 0.F, 20.F));
 		crate("Hidden", Vec3(0.F, 0.F, 5.F)).get_component<MetadataComponent>().set_visible(false);
-		refer(scripted_entity(scene, path), "crate", near);
+		refer(scripted_entity(scene, path), "crate", near_crate);
 		ScriptSystem system(scene);
 
 		system.update(0.F);

@@ -798,7 +798,10 @@ void LayoutLoader::add_item(View &parent, const Markup::MarkupNode &node, const 
 							Text::FontAtlas *font) {
 	const Markup::MarkupDocument &document = *scope.document;
 	const ItemRule &rule = *find_item_rule(node.tag);
-	MarkupItem item{ .tag = node.tag, .location = document.location(node.where), .id_scope = scope.scope_id };
+	MarkupItem item;
+	item.tag = node.tag;
+	item.location = document.location(node.where);
+	item.id_scope = scope.scope_id;
 	for (const Markup::MarkupAttribute &attribute : node.attributes) {
 		if (std::ranges::find(rule.attributes, attribute.name) == rule.attributes.end()) {
 			AQUILA_LOG_WARNING("LayoutLoader: {}: <{}> doesn't take the attribute '{}'",

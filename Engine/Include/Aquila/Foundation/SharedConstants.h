@@ -7,7 +7,7 @@
 namespace Aquila::SharedConstants {
 
 /// Where the open project is mounted in the VFS. Asset paths in scenes start with PROJECT_CONTENT_DIR.
-constexpr std::string PROJECT_MOUNT = "/project";
+inline const std::string PROJECT_MOUNT = "/project";
 constexpr std::string_view PROJECT_CONTENT_FOLDER = "Content";
 constexpr std::string_view PROJECT_CONTENT_DIR = "/project/Content";
 /// Scene files of the open project, the project file lists them relative to the project root.

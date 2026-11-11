@@ -6,8 +6,6 @@ endif ()
 include(AquilaSubmodules)
 
 include(AquilaVulkan)
-aquila_detect_vulkan()
-
 include(AquilaSystemPackages)
 
 aquila_provide_vulkan()

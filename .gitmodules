@@ -22,3 +22,9 @@
 [submodule "Engine/Vendor/nativefiledialog-extended"]
 	path = Engine/Vendor/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended.git
+[submodule "Engine/Vendor/Vulkan-Headers"]
+	path = Engine/Vendor/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+[submodule "Engine/Vendor/Vulkan-Loader"]
+	path = Engine/Vendor/Vulkan-Loader
+	url = https://github.com/KhronosGroup/Vulkan-Loader.git

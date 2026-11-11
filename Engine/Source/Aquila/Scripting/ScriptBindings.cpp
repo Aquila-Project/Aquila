@@ -756,19 +756,19 @@ Option<F32> box_entry(Vec3 origin, Vec3 direction, Vec3 low, Vec3 high, Vec3 &no
 			}
 			continue;
 		}
-		F32 near = (low[axis] - origin[axis]) / direction[axis];
-		F32 far = (high[axis] - origin[axis]) / direction[axis];
+		F32 near_distance = (low[axis] - origin[axis]) / direction[axis];
+		F32 far_distance = (high[axis] - origin[axis]) / direction[axis];
 		F32 face = -1.F;
-		if (near > far) {
-			std::swap(near, far);
+		if (near_distance > far_distance) {
+			std::swap(near_distance, far_distance);
 			face = 1.F;
 		}
-		if (near > enter) {
-			enter = near;
+		if (near_distance > enter) {
+			enter = near_distance;
 			normal = Vec3(0.F);
 			normal[axis] = face;
 		}
-		exit = Math::min(exit, far);
+		exit = Math::min(exit, far_distance);
 		if (enter > exit) {
 			return std::nullopt;
 		}
